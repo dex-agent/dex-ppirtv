@@ -12,8 +12,10 @@ Resultado observado:
 
 - Build TypeScript passou.
 - Vitest executou 2 arquivos de teste.
-- 11 testes passaram.
+- 17 testes passaram.
 - Cobertura: MCP `stdio`, listagem deterministica, `flow_create`,
   persistencia/restart, gates, retorno, reunioes, evidencia, veredito,
-  higiene, gate persistido, estacionamento/garimpo em reuniao e E2E de flow
-  completo.
+  higiene, gate persistido, estacionamento/garimpo em reuniao, aliases pt-BR,
+  checklist visual, principios operacionais editaveis, prompts L1/L2/L3,
+  deteccao de L2 sem L1, deteccao de chave fake com cara de secret sem expor
+  valor, creditos materiais e E2E de flow completo.

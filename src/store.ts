@@ -148,15 +148,21 @@ function scrubSecrets(value: unknown): unknown {
 function normalizeFlow(flow: Flow): Flow {
   flow.parking_lot ??= [];
   flow.gold_mining ??= [];
+  flow.cooperators ??= [];
+  flow.active_credits ??= [];
   flow.evidence = (flow.evidence ?? []).map((evidence) => ({
     ...evidence,
     parking_lot: evidence.parking_lot ?? [],
-    gold_mining: evidence.gold_mining ?? []
+    gold_mining: evidence.gold_mining ?? [],
+    cooperators: evidence.cooperators ?? [],
+    active_credits: evidence.active_credits ?? []
   }));
   flow.verdicts = (flow.verdicts ?? []).map((verdict) => ({
     ...verdict,
     parking_lot: verdict.parking_lot ?? [],
-    gold_mining: verdict.gold_mining ?? []
+    gold_mining: verdict.gold_mining ?? [],
+    cooperators: verdict.cooperators ?? [],
+    active_credits: verdict.active_credits ?? []
   }));
   return flow;
 }
@@ -164,5 +170,7 @@ function normalizeFlow(flow: Flow): Flow {
 function normalizeMeeting(meeting: Meeting): Meeting {
   meeting.parking_lot ??= [];
   meeting.gold_mining ??= [];
+  meeting.cooperators ??= [];
+  meeting.active_credits ??= [];
   return meeting;
 }

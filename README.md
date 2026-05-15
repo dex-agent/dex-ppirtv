@@ -43,6 +43,11 @@ mais visivel, testavel e menos sujeito a entusiasmo sem evidencia.
 ## Status
 
 MVP implementado como servidor MCP local por `stdio`.
+Sprint 7 implementado: respostas agora incluem aliases pt-BR e camada
+`display` para a Fernanda, preservando os campos tecnicos existentes.
+Sprint 8 em andamento: principios operacionais e memoria L1/L2/L3 agora vivem
+em arquivos editaveis dentro de `principles/` e alimentam checklist, higiene e
+prompts sem remover campos existentes.
 
 ## Stack
 
@@ -62,6 +67,9 @@ npm install
 npm run build
 npm start
 ```
+
+O processo MCP deve ser iniciado com `cwd` na raiz deste repositorio. Essa raiz
+e usada para localizar `.ppirtv/` e `principles/operational-contract.json`.
 
 Para desenvolvimento:
 
@@ -89,6 +97,44 @@ npm run check
 - `verdict_record`
 - `hygiene_scan`
 - `flow_archive`
+
+## Saidas humanas e compatibilidade
+
+O contrato tecnico antigo continua valido:
+
+- `missing`
+- `next`
+- `back_to`
+- `parking_lot`
+- `gold_mining`
+
+As respostas tambem podem trazer:
+
+- `aliases.faltando`, `aliases.proximo`, `aliases.voltar_para`
+- `aliases.estacionamento`, `aliases.garimpo`
+- `display.phase_label`, `display.phase_emoji`
+- `display.owner`, `display.owner_emoji`
+- `display.cooperators`
+- `display.active_credits`
+- `display.direct_action`
+- `display.checklist_visual`
+- `suggested_cooperation`
+
+`suggested_cooperation` e apenas sugestao de lente; nao significa que o
+especialista foi executado. `active_credits` so aparece quando houver
+contribuicao material registrada.
+
+## Principios e memoria recuperavel
+
+- Fonte humana: `principles/PRINCIPLES.md`.
+- Contrato operacional editavel: `principles/operational-contract.json`.
+- L1: `lembranca.md` para gatilhos curtos.
+- L2: `memoria.md` para ancoras operacionais.
+- L3: `conhecimento/` para detalhe sob demanda.
+
+`checklist_render` mantem `items` com os gates da fase e adiciona
+`operational_principles`. `hygiene_scan` pode apontar achados de principios,
+memoria e seguranca sem expor valores sensiveis.
 
 ## Resources implementados
 

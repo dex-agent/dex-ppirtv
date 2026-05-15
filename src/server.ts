@@ -35,6 +35,12 @@ export async function runStdioServer(): Promise<void> {
 }
 
 function registerTools(server: McpServer, engine: FlowEngine): void {
+  const cooperatorSchema = z.object({
+    name: z.string().min(1),
+    reason: z.string().min(1),
+    material: z.boolean().default(false)
+  });
+
   server.registerTool(
     "flow_create",
     {
@@ -134,7 +140,9 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         gates_extra: z.array(z.string()).optional(),
         rollback_plan: z.string().optional(),
         parking_lot: z.array(z.string()).optional(),
-        gold_mining: z.array(z.string()).optional()
+        gold_mining: z.array(z.string()).optional(),
+        cooperators: z.array(cooperatorSchema).optional(),
+        active_credits: z.array(z.string()).optional()
       }
     },
     async (args) => toolResult(await engine.recordMeeting(args))
@@ -152,7 +160,9 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         content: z.string().optional(),
         note: z.string().optional(),
         parking_lot: z.array(z.string()).optional(),
-        gold_mining: z.array(z.string()).optional()
+        gold_mining: z.array(z.string()).optional(),
+        cooperators: z.array(cooperatorSchema).optional(),
+        active_credits: z.array(z.string()).optional()
       }
     },
     async (args) => toolResult(await engine.attachEvidence(args))
@@ -179,6 +189,8 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         residual_risks: z.array(z.string()).optional(),
         parking_lot: z.array(z.string()).optional(),
         gold_mining: z.array(z.string()).optional(),
+        cooperators: z.array(cooperatorSchema).optional(),
+        active_credits: z.array(z.string()).optional(),
         next_step: z.string().min(1)
       }
     },

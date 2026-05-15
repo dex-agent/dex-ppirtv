@@ -63,3 +63,34 @@
 - [x] Registrar evidencias.
 - [x] Revisar seguranca e paths.
 - [x] Atualizar docs finais.
+
+## Sprint 7 - Refinamento Fernanda e legibilidade MCP
+
+- [x] Preservar `missing`, `next`, `back_to`, `parking_lot` e `gold_mining` sem renomear nem remover.
+- [x] Adicionar aliases pt-BR: `faltando`, `proximo`, `voltar_para`, `estacionamento`, `garimpo`.
+- [x] Adicionar `display.phase_label`, `display.phase_emoji`, `display.owner` e `display.owner_emoji`.
+- [x] Adicionar `display.cooperators` com `name`, `reason` e `material`.
+- [x] Adicionar `display.active_credits` para contribuicoes materiais.
+- [x] Adicionar `display.direct_action` para achados pequenos e claros.
+- [x] Expandir `checklist_render` com `display.checklist_visual` e andamento por fase.
+- [x] Adicionar `suggested_cooperation` deterministico, sem fingir que especialista foi executado.
+- [x] Atualizar prompts para pedir termos humanos por padrao e manter `flow_id` explicito.
+- [x] Criar testes de compatibilidade para garantir que clientes antigos continuam funcionando.
+- [x] Criar testes de legibilidade para gate bloqueado, checklist e veredito.
+- [x] Atualizar README/REFERENCE/docs com exemplos de uso humano e tecnico.
+
+## Sprint 8 - Principios, memoria L1/L2/L3 e contrato editavel
+
+- [x] Criar `principles/PRINCIPLES.md` como fonte humana editavel.
+- [x] Criar ADR para contrato operacional editavel.
+- [x] Criar contrato operacional lido em runtime.
+- [x] Atualizar `hygiene_scan` com achados de principios, memoria e secrets.
+- [x] Atualizar `checklist_render` com checklist de principios sem remover itens atuais.
+- [x] Atualizar prompts com orientacao L1/L2/L3 e inicio pelo contexto vivo.
+- [x] Testar que campos antigos continuam presentes.
+- [x] Testar que principios aparecem no checklist.
+- [x] Testar que prompts carregam orientacao editavel.
+- [x] Testar `hygiene_scan` detectando L2 sem L1.
+- [x] Testar `hygiene_scan` detectando chave fake com cara de secret sem expor valor.
+- [x] Rodar `npm run check`.
+- [x] Rodar `git diff --check`.

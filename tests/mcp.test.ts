@@ -84,13 +84,46 @@ describe("PPIRTV MCP stdio server", () => {
     expect(result.missing).toEqual(["context", "risks", "uncertainties"]);
     expect(result.next).toBe("complete_gate_pensamentos");
     expect(result.back_to).toBeNull();
+    expect((result.aliases as Record<string, unknown>).faltando).toEqual(result.missing);
+    expect((result.aliases as Record<string, unknown>).proximo).toBe(result.next);
+    expect((result.aliases as Record<string, unknown>).voltar_para).toBe(result.back_to);
+    expect(((result.display as Record<string, unknown>).active_credits as unknown[])).toEqual([]);
+    expect(((result.suggested_cooperation as Array<Record<string, unknown>>)[0].material)).toBe(false);
+  });
+
+  it("returns a visual checklist display through MCP", async () => {
+    await connectClient();
+    const created = await client!.callTool({
+      name: "flow_create",
+      arguments: {
+        goal: "Checklist visual MCP",
+        context: "ctx",
+        risks: ["risco"],
+        uncertainties: ["lacuna"]
+      }
+    });
+    const flowId = resultOf(created).flow_id as string;
+
+    const checklist = await client!.callTool({ name: "checklist_render", arguments: { flow_id: flowId } });
+    const result = resultOf(checklist);
+    const display = result.display as Record<string, unknown>;
+
+    expect(result.markdown).toContain("Checklist PPIRTV");
+    expect(Array.isArray(result.items)).toBe(true);
+    expect(Array.isArray(result.operational_principles)).toBe(true);
+    expect(display.phase_emoji).toBe("🧠");
+    expect(Array.isArray(display.checklist_visual)).toBe(true);
+    expect((display.checklist_visual as unknown[]).length).toBeGreaterThan((result.items as unknown[]).length);
   });
 
   it("returns useful prompt templates", async () => {
     await connectClient();
     const prompt = await client!.getPrompt({ name: "final-verdict", arguments: { flow_id: "flow_demo" } });
     expect(prompt.messages[0]?.content.type).toBe("text");
-    expect(prompt.messages[0]?.content.type === "text" ? prompt.messages[0].content.text : "").toContain("flow_demo");
+    const text = prompt.messages[0]?.content.type === "text" ? prompt.messages[0].content.text : "";
+    expect(text).toContain("flow_demo");
+    expect(text).toContain("Principios operacionais");
+    expect(text).toContain("L1");
   });
 });
 

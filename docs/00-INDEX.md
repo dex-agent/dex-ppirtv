@@ -22,6 +22,7 @@
 - [ADR-0002 - Estado por handles explicitos](adr/0002-explicit-flow-handles.md)
 - [ADR-0003 - Separar tools, resources e prompts](adr/0003-tools-resources-prompts-split.md)
 - [ADR-0004 - Reunioes como artefatos gateados](adr/0004-meetings-as-gated-artifacts.md)
+- [ADR-0006 - Principios editaveis como contrato operacional](adr/0006-editable-principles-contract.md)
 
 ## Estado atual
 

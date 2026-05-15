@@ -56,6 +56,29 @@ Resultado esperado:
 
 - `hygiene_scan` encontra paths fixos, docs contraditorias ou tasks sem evidencia.
 
+### TST-007 - Compatibilidade e legibilidade Fernanda
+
+Resultado esperado:
+
+- campos antigos `missing`, `next`, `back_to`, `parking_lot` e `gold_mining`
+  continuam presentes quando aplicavel;
+- aliases `faltando`, `proximo`, `voltar_para`, `estacionamento` e `garimpo`
+  aparecem junto dos campos tecnicos;
+- `checklist_render` retorna `display.checklist_visual`;
+- `suggested_cooperation` tem `material=false` por padrao;
+- `display.active_credits` nao finge execucao sem contribuicao material.
+
+### TST-008 - Principios operacionais editaveis
+
+Resultado esperado:
+
+- `principles/PRINCIPLES.md` e contrato operacional existem;
+- `checklist_render` retorna `operational_principles`;
+- `display.checklist_visual` inclui itens de principios sem remover gates;
+- prompts incluem orientacao derivada do contrato editavel;
+- `hygiene_scan` retorna achados de memoria, principios ou seguranca quando
+  detectar violacao.
+
 ## 3. Evidencias esperadas
 
 - logs de teste;
@@ -74,9 +97,11 @@ npm run check
 Resultado:
 
 - 2 arquivos de teste passaram.
-- 11 testes passaram.
+- 17 testes passaram.
 - Cobertura executada: inicializacao MCP, listagem de tools/resources/prompts,
   `flow_create`, persistencia/restart, gate bloqueando, avanco valido, retorno,
   reunioes divergente/convergente/transversal, evidencia, veredito,
   `hygiene_scan`, gate persistido pelo runbook, estacionamento/garimpo em
-  reuniao e flow E2E.
+  reuniao, aliases pt-BR, checklist visual, principios operacionais, prompts
+  com orientacao L1/L2/L3, deteccao de L2 sem L1, deteccao de chave fake com
+  cara de secret sem expor valor, creditos materiais e flow E2E.

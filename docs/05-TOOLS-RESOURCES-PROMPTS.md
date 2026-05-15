@@ -88,6 +88,48 @@ Esses campos nao criam novo fluxo paralelo. Eles alimentam o proprio flow,
 ficam no ledger e servem como base para especialistas, revisao, higiene e
 veredito.
 
+### Aliases e camada Fernanda
+
+As respostas preservam os campos tecnicos e adicionam nomes humanos quando
+aplicavel:
+
+```json
+{
+  "missing": ["tasks"],
+  "next": "complete_gate_planejamento",
+  "back_to": "pensamentos",
+  "aliases": {
+    "faltando": ["tasks"],
+    "proximo": "complete_gate_planejamento",
+    "voltar_para": "pensamentos",
+    "estacionamento": [],
+    "garimpo": []
+  },
+  "display": {
+    "phase_label": "Planejamento",
+    "phase_emoji": "🗂️",
+    "owner": "Paula Planeja",
+    "owner_emoji": "📋",
+    "cooperators": [],
+    "active_credits": [],
+    "direct_action": {
+      "available": true,
+      "action": "Completar: tasks"
+    }
+  },
+  "suggested_cooperation": [
+    {
+      "name": "Paula Planeja",
+      "reason": "fechar escopo, tarefas, evidencias esperadas e criterio de pronto",
+      "material": false
+    }
+  ]
+}
+```
+
+`suggested_cooperation` nao significa execucao do especialista. Creditos ativos
+so aparecem quando `active_credits` foi registrado por tool ou artefato.
+
 ### `hygiene_scan`
 
 Primeiro conjunto de checagens:
@@ -98,12 +140,31 @@ Primeiro conjunto de checagens:
 - arquivos temporarios;
 - dependencias orfas;
 - decisoes sem ADR quando necessario.
+- principios sem fonte editavel;
+- memoria L1/L2/L3 documentada sem gatilhos recuperaveis;
+- valores com cara de segredo em configuracoes, sem expor o valor.
+
+### Principios operacionais
+
+O harness le `principles/operational-contract.json` em runtime. Esse contrato
+deriva de `principles/PRINCIPLES.md` e pode ajustar labels, severidades,
+orientacoes de prompt e checklist sem alterar codigo.
+
+`checklist_render` mantem `items` com os gates da fase atual e adiciona
+`operational_principles` para os principios aplicaveis. A camada
+`display.checklist_visual` pode renderizar gates e principios juntos.
 
 ## 2.1 Tools implementadas no MVP
 
 `flow_create`, `flow_status`, `flow_advance`, `flow_return`, `gate_check`,
 `meeting_open`, `meeting_record`, `evidence_attach`, `checklist_render`,
 `verdict_record`, `hygiene_scan` e `flow_archive`.
+
+## 2.2 Refinamento Fernanda implementado
+
+`gate_check`, `flow_advance`, `flow_status`, `meeting_open`,
+`meeting_record`, `evidence_attach`, `checklist_render`, `verdict_record`,
+`hygiene_scan` e `flow_archive` podem retornar aliases e `display`.
 
 ## 3. Resources detalhados
 
@@ -129,3 +190,6 @@ Primeiro conjunto de checagens:
 | `open-divergent-meeting` | `flow_id` | Roteiro divergente |
 | `open-convergent-meeting` | `flow_id` | Roteiro convergente |
 | `open-transversal-meeting` | `flow_id` | Roteiro transversal |
+
+Prompts devem lembrar o cliente de consultar fonte viva, L1, L2, skills e docs
+antes da acao tecnica, preservando `flow_id` explicito.

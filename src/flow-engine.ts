@@ -11,11 +11,14 @@ import {
   type HygieneFinding,
   type Meeting,
   type MeetingType,
+  type PresentationEnvelope,
   type Phase,
   type Scope,
   type Verdict,
   type VerdictStatus
 } from "./domain.js";
+import { presentArtifact, presentChecklist, presentFlow, presentGate } from "./presentation.js";
+import { principleChecklist, scanOperationalPrinciples, type PrincipleChecklistItem } from "./principles.js";
 import { PpirtvStore } from "./store.js";
 
 const DEFAULT_SCOPE: Scope = { in: [], out: [] };
@@ -30,7 +33,7 @@ export class FlowEngine {
     scope?: Partial<Scope>;
     risks?: string[];
     uncertainties?: string[];
-  }): Promise<Flow> {
+  }): Promise<Flow & PresentationEnvelope> {
     await this.store.init();
     requireText(input.goal, "goal");
     const now = nowIso();
@@ -54,6 +57,8 @@ export class FlowEngine {
       decisions: [],
       parking_lot: [],
       gold_mining: [],
+      cooperators: [],
+      active_credits: [],
       evidence: [],
       meetings: [],
       verdicts: [],
@@ -64,11 +69,11 @@ export class FlowEngine {
     };
     await this.store.saveFlow(flow);
     await this.ledger(flow.flow_id, "flow_created", { goal: flow.goal, phase: flow.phase });
-    return flow;
+    return presentFlow(flow);
   }
 
-  async status(flowId: string): Promise<Flow> {
-    return this.store.loadFlow(flowId);
+  async status(flowId: string): Promise<Flow & PresentationEnvelope> {
+    return presentFlow(await this.store.loadFlow(flowId));
   }
 
   async updateFlowFacts(
@@ -113,7 +118,7 @@ export class FlowEngine {
     phase?: Phase;
     provided?: Record<string, unknown>;
     persist?: boolean;
-  }): Promise<GateRecord> {
+  }): Promise<GateRecord & PresentationEnvelope> {
     const flow = await this.store.loadFlow(input.flow_id);
     const phase = input.phase ?? flow.phase;
     assertPhase(phase);
@@ -139,7 +144,7 @@ export class FlowEngine {
       await this.store.saveFlow(flow);
       await this.ledger(flow.flow_id, "gate_checked", record as unknown as Record<string, unknown>);
     }
-    return record;
+    return presentGate(record, flow);
   }
 
   async advance(input: {
@@ -147,7 +152,7 @@ export class FlowEngine {
     provided?: Record<string, unknown>;
     evidence_ids?: string[];
     actor?: string;
-  }): Promise<Record<string, unknown>> {
+  }): Promise<Record<string, unknown> & Partial<PresentationEnvelope>> {
     const flow = await this.store.loadFlow(input.flow_id);
     if (flow.status === "archived") {
       throw new Error(`Flow ${flow.flow_id} is archived`);
@@ -158,14 +163,14 @@ export class FlowEngine {
         ? savedGate
         : await this.checkGate({ flow_id: flow.flow_id, phase: flow.phase, provided: input.provided });
     if (effectiveGate.status === "blocked") {
-      return {
+      return presentGate({
         advanced: false,
         status: "blocked",
         phase: flow.phase,
         missing: effectiveGate.missing,
         next: effectiveGate.next,
         back_to: effectiveGate.back_to
-      };
+      }, flow);
     }
     const fresh = await this.store.loadFlow(flow.flow_id);
     const from = fresh.phase;
@@ -177,7 +182,7 @@ export class FlowEngine {
       fresh.history.push({ at: now, type: "flow_completed", data: { from } });
       await this.store.saveFlow(fresh);
       await this.ledger(fresh.flow_id, "flow_completed", { from, evidence_ids: input.evidence_ids ?? [] }, input.actor);
-      return { advanced: true, from, to: null, status: "complete" };
+      return presentGate({ advanced: true, phase: from, from, to: null, status: "complete", next: "complete", back_to: null }, fresh);
     }
     fresh.phase = to;
     fresh.status = "active";
@@ -185,10 +190,10 @@ export class FlowEngine {
     fresh.history.push({ at: now, type: "phase_advanced", data: { from, to, evidence_ids: input.evidence_ids ?? [] } });
     await this.store.saveFlow(fresh);
     await this.ledger(fresh.flow_id, "phase_advanced", { from, to, evidence_ids: input.evidence_ids ?? [] }, input.actor);
-    return { advanced: true, from, to, status: fresh.status };
+    return presentGate({ advanced: true, phase: to, from, to, status: fresh.status, next: `gate_${to}`, back_to: null }, fresh);
   }
 
-  async returnTo(input: { flow_id: string; to: Phase; reason: string; evidence_ids?: string[]; actor?: string }): Promise<Flow> {
+  async returnTo(input: { flow_id: string; to: Phase; reason: string; evidence_ids?: string[]; actor?: string }): Promise<Flow & PresentationEnvelope> {
     assertPhase(input.to);
     requireText(input.reason, "reason");
     const flow = await this.store.loadFlow(input.flow_id);
@@ -204,10 +209,10 @@ export class FlowEngine {
     });
     await this.store.saveFlow(flow);
     await this.ledger(flow.flow_id, "phase_returned", { from, to: input.to, reason: input.reason, evidence_ids: input.evidence_ids ?? [] }, input.actor);
-    return flow;
+    return presentFlow(flow);
   }
 
-  async openMeeting(input: { flow_id: string; type: MeetingType; question: string }): Promise<Meeting> {
+  async openMeeting(input: { flow_id: string; type: MeetingType; question: string }): Promise<Meeting & PresentationEnvelope> {
     requireText(input.question, "question");
     const flow = await this.store.loadFlow(input.flow_id);
     const now = nowIso();
@@ -229,7 +234,9 @@ export class FlowEngine {
       owners: [],
       gates_extra: [],
       parking_lot: [],
-      gold_mining: []
+      gold_mining: [],
+      cooperators: [],
+      active_credits: []
     };
     flow.meetings.push(meeting.meeting_id);
     flow.updated_at = now;
@@ -237,10 +244,10 @@ export class FlowEngine {
     await this.store.saveMeeting(meeting);
     await this.store.saveFlow(flow);
     await this.ledger(flow.flow_id, "meeting_opened", { meeting_id: meeting.meeting_id, type: meeting.type, question: meeting.question });
-    return meeting;
+    return presentArtifact(meeting as Meeting & Record<string, unknown>, flow);
   }
 
-  async recordMeeting(input: Partial<Meeting> & { meeting_id: string }): Promise<Meeting> {
+  async recordMeeting(input: Partial<Meeting> & { meeting_id: string }): Promise<Meeting & PresentationEnvelope> {
     const meeting = await this.store.loadMeeting(input.meeting_id);
     const now = nowIso();
     meeting.status = "recorded";
@@ -258,17 +265,21 @@ export class FlowEngine {
     meeting.rollback_plan = input.rollback_plan ?? meeting.rollback_plan;
     meeting.parking_lot = input.parking_lot ?? meeting.parking_lot;
     meeting.gold_mining = input.gold_mining ?? meeting.gold_mining;
+    meeting.cooperators = input.cooperators ?? meeting.cooperators;
+    meeting.active_credits = input.active_credits ?? meeting.active_credits;
     await this.store.saveMeeting(meeting);
     const flow = await this.store.loadFlow(meeting.flow_id);
     flow.decisions = unique([...flow.decisions, ...meeting.decisions]);
     flow.risks = unique([...flow.risks, ...meeting.risks]);
     flow.parking_lot = unique([...flow.parking_lot, ...meeting.parking_lot]);
     flow.gold_mining = unique([...flow.gold_mining, ...meeting.gold_mining]);
+    flow.cooperators = uniqueCooperators([...flow.cooperators, ...meeting.cooperators]);
+    flow.active_credits = unique([...flow.active_credits, ...meeting.active_credits]);
     flow.updated_at = now;
     flow.history.push({ at: now, type: "meeting_recorded", data: { meeting_id: meeting.meeting_id, type: meeting.type } });
     await this.store.saveFlow(flow);
     await this.ledger(meeting.flow_id, "meeting_recorded", meeting as unknown as Record<string, unknown>);
-    return meeting;
+    return presentArtifact(meeting as Meeting & Record<string, unknown>, flow);
   }
 
   async attachEvidence(input: {
@@ -280,7 +291,9 @@ export class FlowEngine {
     note?: string;
     parking_lot?: string[];
     gold_mining?: string[];
-  }): Promise<Evidence> {
+    cooperators?: Flow["cooperators"];
+    active_credits?: string[];
+  }): Promise<Evidence & PresentationEnvelope> {
     requireText(input.title, "title");
     const flow = await this.store.loadFlow(input.flow_id);
     const now = nowIso();
@@ -294,33 +307,59 @@ export class FlowEngine {
       note: input.note,
       parking_lot: input.parking_lot ?? [],
       gold_mining: input.gold_mining ?? [],
+      cooperators: input.cooperators ?? [],
+      active_credits: input.active_credits ?? [],
       created_at: now
     };
     flow.parking_lot = unique([...flow.parking_lot, ...evidence.parking_lot]);
     flow.gold_mining = unique([...flow.gold_mining, ...evidence.gold_mining]);
+    flow.cooperators = uniqueCooperators([...flow.cooperators, ...evidence.cooperators]);
+    flow.active_credits = unique([...flow.active_credits, ...evidence.active_credits]);
     flow.evidence.push(evidence);
     flow.updated_at = now;
     flow.history.push({ at: now, type: "evidence_attached", data: { evidence_id: evidence.evidence_id, title: evidence.title } });
     await this.store.saveEvidence(evidence);
     await this.store.saveFlow(flow);
     await this.ledger(flow.flow_id, "evidence_attached", { evidence_id: evidence.evidence_id, kind: evidence.kind, title: evidence.title, uri: evidence.uri });
-    return evidence;
+    return presentArtifact(evidence as Evidence & Record<string, unknown>, flow);
   }
 
-  async renderChecklist(flowId: string): Promise<{ flow_id: string; phase: Phase; markdown: string; items: Array<{ label: string; checked: boolean }> }> {
+  async renderChecklist(flowId: string): Promise<{
+    flow_id: string;
+    phase: Phase;
+    markdown: string;
+    items: Array<{ label: string; checked: boolean }>;
+    operational_principles: PrincipleChecklistItem[];
+  } & PresentationEnvelope> {
     const flow = await this.store.loadFlow(flowId);
     const items = GATE_REQUIREMENTS[flow.phase].map((requirement) => ({
       label: requirement.label,
       checked: hasRequirement(flow, requirement.key, requirement.source, flow.gates[flow.phase]?.provided ?? {})
     }));
+    const operationalPrinciples = await principleChecklist();
     const markdown = [
       `# Checklist PPIRTV - ${flow.flow_id}`,
       "",
       `Fase atual: ${flow.phase}`,
       "",
-      ...items.map((item) => `- [${item.checked ? "x" : " "}] ${item.label}`)
+      ...items.map((item) => `- [${item.checked ? "x" : " "}] ${item.label}`),
+      "",
+      "## Principios operacionais",
+      "",
+      ...operationalPrinciples.map((item) => `- [${item.checked ? "x" : " "}] ${item.label}`)
     ].join("\n");
-    return { flow_id: flow.flow_id, phase: flow.phase, markdown, items };
+    return {
+      ...presentChecklist({
+        flow,
+        markdown,
+        items,
+        visualItems: [
+          ...items.map((item) => ({ ...item, emoji: item.checked ? "✅" : "◻️" })),
+          ...operationalPrinciples.map((item) => ({ label: item.label, checked: item.checked, emoji: item.checked ? "✅" : "⚡" }))
+        ]
+      }),
+      operational_principles: operationalPrinciples
+    };
   }
 
   async recordVerdict(input: {
@@ -331,8 +370,10 @@ export class FlowEngine {
     residual_risks?: string[];
     parking_lot?: string[];
     gold_mining?: string[];
+    cooperators?: Flow["cooperators"];
+    active_credits?: string[];
     next_step: string;
-  }): Promise<Verdict> {
+  }): Promise<Verdict & PresentationEnvelope> {
     requireText(input.rationale, "rationale");
     requireText(input.next_step, "next_step");
     const flow = await this.store.loadFlow(input.flow_id);
@@ -352,21 +393,25 @@ export class FlowEngine {
       residual_risks: residualRisks,
       parking_lot: input.parking_lot ?? [],
       gold_mining: input.gold_mining ?? [],
+      cooperators: input.cooperators ?? [],
+      active_credits: input.active_credits ?? [],
       next_step: input.next_step,
       created_at: now
     };
     flow.verdicts.push(verdict);
     flow.parking_lot = unique([...flow.parking_lot, ...verdict.parking_lot]);
     flow.gold_mining = unique([...flow.gold_mining, ...verdict.gold_mining]);
+    flow.cooperators = uniqueCooperators([...flow.cooperators, ...verdict.cooperators]);
+    flow.active_credits = unique([...flow.active_credits, ...verdict.active_credits]);
     flow.updated_at = now;
     flow.status = status === "pronto" || status === "pronto_com_ressalvas" ? "complete" : flow.status;
     flow.history.push({ at: now, type: "verdict_recorded", data: verdict as unknown as Record<string, unknown> });
     await this.store.saveFlow(flow);
     await this.ledger(flow.flow_id, "verdict_recorded", verdict as unknown as Record<string, unknown>);
-    return verdict;
+    return presentArtifact(verdict as Verdict & Record<string, unknown>, flow);
   }
 
-  async hygieneScan(flowId?: string): Promise<{ findings: HygieneFinding[]; rule: string }> {
+  async hygieneScan(flowId?: string): Promise<{ findings: HygieneFinding[]; rule: string } & Partial<PresentationEnvelope>> {
     const findings: HygieneFinding[] = [];
     const flows = flowId ? [await this.store.loadFlow(flowId)] : await this.store.listFlows();
     const root = process.cwd();
@@ -438,11 +483,28 @@ export class FlowEngine {
         action: "Remover temporarios obvios ou justificar se forem artefatos."
       });
     }
+    findings.push(...(await scanOperationalPrinciples(root)));
 
-    return { findings: findings.sort((a, b) => a.id.localeCompare(b.id)), rule: "barata nunca esta sozinha" };
+    return {
+      findings: findings.sort((a, b) => a.id.localeCompare(b.id)),
+      rule: "barata nunca esta sozinha",
+      aliases: {
+        estacionamento: [],
+        garimpo: []
+      },
+      display: {
+        cooperators: [],
+        active_credits: [],
+        direct_action: {
+          available: findings.length > 0,
+          action: findings.length > 0 ? "Tratar achados acionaveis antes do veredito" : "Sem achados de higiene"
+        }
+      },
+      suggested_cooperation: findings.length > 0 ? [{ name: "Chato", reason: "avaliar achados de higiene antes de declarar pronto", material: false }] : []
+    };
   }
 
-  async archiveFlow(input: { flow_id: string; reason?: string }): Promise<Flow> {
+  async archiveFlow(input: { flow_id: string; reason?: string }): Promise<Flow & PresentationEnvelope> {
     const flow = await this.store.loadFlow(input.flow_id);
     const now = nowIso();
     flow.status = "archived";
@@ -451,7 +513,7 @@ export class FlowEngine {
     flow.history.push({ at: now, type: "flow_archived", data: { reason: input.reason ?? "archived" } });
     await this.store.saveFlow(flow);
     await this.ledger(flow.flow_id, "flow_archived", { reason: input.reason ?? "archived" });
-    return flow;
+    return presentFlow(flow);
   }
 
   private async ledger(flowId: string, type: string, data: Record<string, unknown>, actor = "codex"): Promise<void> {
@@ -530,6 +592,18 @@ function nowIso(): string {
 
 function unique(values: string[]): string[] {
   return [...new Set(values.filter((value) => value.trim().length > 0))];
+}
+
+function uniqueCooperators(values: Flow["cooperators"]): Flow["cooperators"] {
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    const key = `${value.name}\n${value.reason}\n${value.material}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return value.name.trim().length > 0 && value.reason.trim().length > 0;
+  });
 }
 
 async function collectTempFiles(root: string): Promise<string[]> {

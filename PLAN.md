@@ -74,3 +74,30 @@ Objetivo: publicar pacote minimo confiavel.
 - Atualizar docs.
 - Rodar suite de testes.
 - Criar release.
+
+## Fase 8 - Refinamento Fernanda no MCP
+
+Objetivo: tornar o harness mais legivel e fiel ao fluxo visual dinamico sem
+quebrar o contrato que ja funcionou em Codex e DeepSeek.
+
+- [x] Adicionar aliases pt-BR em respostas de gate, checklist, reuniao, evidencia,
+  veredito e higiene.
+- [x] Adicionar envelope `display` com fase, emoji, owner, cooperadores, checklist
+  visual, acionavel direto e creditos ativos.
+- [x] Manter campos tecnicos existentes para compatibilidade.
+- [x] Adicionar testes garantindo que campos antigos continuam presentes.
+- [x] Adicionar testes MCP simulando saidas humanas menos confusas.
+- [x] Documentar exemplos de uso humano e tecnico.
+
+## Fase 9 - Principios e memoria recuperavel
+
+Objetivo: transformar principios em contrato operacional editavel sem quebrar o
+MCP existente.
+
+- [x] Criar `principles/PRINCIPLES.md`.
+- [x] Criar contrato operacional editavel em `principles/`.
+- [x] Registrar ADR dos principios editaveis.
+- [x] Expor principios em `checklist_render` sem remover itens atuais.
+- [x] Aplicar checagens aditivas em `hygiene_scan`.
+- [x] Orientar prompts a consultar L1/L2/L3 antes de executar.
+- [x] Testar compatibilidade, checklist, higiene e prompts.

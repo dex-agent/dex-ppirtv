@@ -18,6 +18,10 @@ npm start
 O servidor usa MCP por `stdio`. Configure o cliente MCP para executar
 `node dist/index.js` a partir da raiz do projeto.
 
+O `cwd` do processo deve ser a raiz do repositorio `dex-PPIRTV`. O harness usa
+essa raiz para localizar `.ppirtv/`, `principles/PRINCIPLES.md` e
+`principles/operational-contract.json`.
+
 ## 0.1 Governanca de especialistas
 
 No processo PPIRTV da Fernanda, os especialistas sao resolvidos sempre a partir

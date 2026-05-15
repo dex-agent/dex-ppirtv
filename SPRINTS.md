@@ -120,6 +120,7 @@ Definition of Done:
 
 ## Evidencia do MVP
 
-- `npm run check`: 11 testes passaram.
+- `npm run check`: 17 testes passaram.
 - Cobertura executada: engine, persistencia/restart, gates, retorno, reunioes,
-  evidencia, veredito, higiene e MCP `stdio` com cliente real.
+  evidencia, veredito, higiene, principios operacionais e MCP `stdio` com
+  cliente real.

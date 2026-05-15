@@ -43,3 +43,10 @@
 - [ ] Casa limpa confirmada
 - [ ] Flow arquivado ou mantido ativo com criterio claro
 
+## ⚡ Principios operacionais
+
+- [ ] Barata nunca esta sozinha aplicada a achados relevantes
+- [ ] Memoria L1/L2/L3 recuperavel por gatilhos
+- [ ] Ouro garimpado registrado e entulho removido
+- [ ] Casa limpa verificada
+- [ ] Contexto vivo consultado antes da acao tecnica

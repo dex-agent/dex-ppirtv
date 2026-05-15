@@ -1,8 +1,9 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FlowEngine } from "../src/flow-engine.js";
+import { promptText } from "../src/catalogs.js";
 import { PpirtvStore } from "../src/store.js";
 
 let tempRoot: string;
@@ -45,6 +46,12 @@ describe("PPIRTV flow engine", () => {
     expect(result.status).toBe("blocked");
     expect(result.missing).toEqual(["context", "risks", "uncertainties"]);
     expect(result.back_to).toBeNull();
+    expect(result.aliases?.faltando).toEqual(result.missing);
+    expect(result.aliases?.proximo).toBe(result.next);
+    expect(result.aliases?.voltar_para).toBe(result.back_to);
+    expect(result.display?.phase_emoji).toBe("🧠");
+    expect(result.display?.active_credits).toEqual([]);
+    expect(result.suggested_cooperation?.every((item) => item.material === false)).toBe(true);
   });
 
   it("advances when gate data is supplied and records a return", async () => {
@@ -145,9 +152,95 @@ describe("PPIRTV flow engine", () => {
     const hygiene = await engine.hygieneScan(flow.flow_id);
 
     expect(unsupported.status).toBe("nao_pronto");
+    expect(unsupported.display.active_credits).toEqual([]);
     expect(supported.status).toBe("pronto");
     expect(hygiene.rule).toBe("barata nunca esta sozinha");
     expect(Array.isArray(hygiene.findings)).toBe(true);
+  });
+
+  it("renders a Fernanda display checklist without removing legacy fields", async () => {
+    const flow = await engine.createFlow({
+      goal: "Checklist visual",
+      context: "ctx",
+      risks: ["risco"],
+      uncertainties: ["lacuna"]
+    });
+
+    const checklist = await engine.renderChecklist(flow.flow_id);
+
+    expect(checklist.markdown).toContain("Checklist PPIRTV");
+    expect(checklist.items.length).toBeGreaterThan(0);
+    expect(checklist.display.phase_label).toBe("Pensamentos");
+    expect(checklist.display.phase_emoji).toBe("🧠");
+    expect(checklist.display.checklist_visual?.[0]).toHaveProperty("emoji");
+    expect(checklist.operational_principles.some((item) => item.id === "memoria_sem_lembranca")).toBe(true);
+    expect(checklist.display.checklist_visual?.length).toBeGreaterThan(checklist.items.length);
+    expect(checklist.aliases.estacionamento).toEqual([]);
+    expect(checklist.aliases.garimpo).toEqual([]);
+  });
+
+  it("loads editable operational principles into prompts", () => {
+    const prompt = promptText("clean-house-review", { flow_id: "flow_demo" });
+
+    expect(prompt).toContain("Principios operacionais");
+    expect(prompt).toContain("L1");
+    expect(prompt).toContain("L2");
+    expect(prompt).toContain("L3");
+    expect(prompt).toContain("flow_demo");
+  });
+
+  it("finds memory L2 without L1 during hygiene scan", async () => {
+    const originalCwd = process.cwd();
+    await mkdir(path.join(tempRoot, "php"), { recursive: true });
+    await writeFile(path.join(tempRoot, "php", "memoria.md"), "# Memoria PHP\n\n## Include {#include}\n", "utf8");
+    process.chdir(tempRoot);
+    try {
+      const hygiene = await engine.hygieneScan();
+
+      expect(hygiene.findings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "memory:php:l2_without_l1",
+            category: "memory"
+          })
+        ])
+      );
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("finds secret-like config keys without exposing fake values", async () => {
+    const originalCwd = process.cwd();
+    await writeFile(path.join(tempRoot, "sandbox.toml"), 'api_key = "fake-test-secret-value"\n', "utf8");
+    process.chdir(tempRoot);
+    try {
+      const hygiene = await engine.hygieneScan();
+      const finding = hygiene.findings.find((item) => item.id === "security:secret_like_config:sandbox.toml");
+
+      expect(finding).toMatchObject({
+        category: "security",
+        severity: "warning"
+      });
+      expect(JSON.stringify(finding)).toContain("sandbox.toml:api_key");
+      expect(JSON.stringify(finding)).not.toContain("fake-test-secret-value");
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("records material cooperators only when supplied", async () => {
+    const flow = await engine.createFlow({ goal: "Creditos materiais" });
+    const meeting = await engine.openMeeting({ flow_id: flow.flow_id, type: "divergent", question: "Quem ajudou?" });
+
+    const recorded = await engine.recordMeeting({
+      meeting_id: meeting.meeting_id,
+      cooperators: [{ name: "Chato", reason: "encontrou risco de falso pronto", material: true }],
+      active_credits: ["Chato encontrou risco de falso pronto"]
+    });
+
+    expect(recorded.display.cooperators).toEqual([{ name: "Chato", reason: "encontrou risco de falso pronto", material: true }]);
+    expect(recorded.display.active_credits).toEqual(["Chato encontrou risco de falso pronto"]);
   });
 
   it("runs a complete PPIRTV flow E2E through all phases", async () => {

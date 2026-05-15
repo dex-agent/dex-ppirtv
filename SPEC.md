@@ -37,6 +37,14 @@ Criar um servidor MCP local que permita a um cliente/agente:
 | REQ-013 | Permitir replay/resumo de um flow encerrado | Media |
 | REQ-014 | Aplicar regra "barata nunca esta sozinha" em achados de bug/residuo | Media |
 | REQ-015 | Separar fatos confirmados, inferencias e lacunas | Alta |
+| REQ-016 | Expor aliases em portugues para campos tecnicos de gate e residuos | Alta |
+| REQ-017 | Expor camada visual da Fernanda com emojis de fase e especialistas | Alta |
+| REQ-018 | Registrar cooperadores e `Creditos Ativos` quando houver contribuicao material | Alta |
+| REQ-019 | Sugerir cooperacao especializada quando reduzir risco, ambiguidade ou retrabalho | Media |
+| REQ-020 | Expor `Acionavel direto` para achados pequenos, claros e dentro do objetivo atual | Media |
+| REQ-021 | Ler principios operacionais de arquivo editavel em `principles/` | Alta |
+| REQ-022 | Aplicar memoria L1/L2/L3 como contrato de recuperacao em checklist, higiene e prompts | Media |
+| REQ-023 | Alertar sobre secrets em configuracoes sem registrar valores sensiveis | Alta |
 
 ## 4. Requisitos nao funcionais
 
@@ -49,6 +57,9 @@ Criar um servidor MCP local que permita a um cliente/agente:
 | NFR-005 | Seguranca | Nenhuma tool destrutiva sem confirmacao ou contrato claro |
 | NFR-006 | Portabilidade | MVP deve rodar localmente via `stdio` |
 | NFR-007 | Casa limpa | Docs, ledger, tarefas e decisoes devem ter destinos definidos |
+| NFR-008 | Compatibilidade | Campos existentes nao devem ser removidos nem renomeados em refinamento fino |
+| NFR-009 | Legibilidade humana | Saidas podem manter campos tecnicos, mas devem oferecer aliases pt-BR quando o cliente exibir para humano |
+| NFR-010 | Principios editaveis | Texto e labels de principios devem poder mudar sem recompilar o harness |
 
 ## 5. Arquitetura alvo
 
@@ -97,6 +108,93 @@ campos opcionais `parking_lot` e `gold_mining`.
 Esses campos persistem no flow e no ledger. Eles servem como base para Chato,
 Akita Dev Raiz, Tereza Testa, Vera Veredito e demais especialistas sem depender
 de memoria solta da conversa.
+
+## 6.2 Camada Fernanda de apresentacao
+
+Refinamento implementado: adicionar uma camada `display` e aliases em portugues nas
+respostas, sem remover campos tecnicos existentes.
+
+Exemplo de envelope esperado:
+
+```json
+{
+  "phase": "planejamento",
+  "missing": ["tasks"],
+  "next": "complete_gate_planejamento",
+  "back_to": "pensamentos",
+  "aliases": {
+    "fase": "planejamento",
+    "faltando": ["tasks"],
+    "proximo": "complete_gate_planejamento",
+    "voltar_para": "pensamentos",
+    "estacionamento": [],
+    "garimpo": []
+  },
+  "display": {
+    "phase_label": "Planejamento",
+    "phase_emoji": "🗂️",
+    "owner": "Paula Planeja",
+    "owner_emoji": "📋",
+    "cooperators": [
+      {
+        "name": "Chato",
+        "reason": "pressionar riscos do gate",
+        "material": true
+      }
+    ],
+    "active_credits": [
+      "Chato encontrou gate incompleto antes de falso pronto"
+    ],
+    "direct_action": {
+      "available": true,
+      "action": "preencher tasks, expected_evidence e done_criteria"
+    },
+    "checklist_visual": [
+      {
+        "label": "Tarefas ordenadas",
+        "checked": false
+      }
+    ]
+  }
+}
+```
+
+Regra de compatibilidade:
+
+- `missing`, `next`, `back_to`, `parking_lot` e `gold_mining` continuam
+  existindo.
+- aliases `faltando`, `proximo`, `voltar_para`, `estacionamento` e `garimpo`
+  entram como camada adicional.
+- `display` e `active_credits` devem ser opcionais e deterministas.
+- nenhuma indicacao automatica de especialista deve fingir execucao; ela deve
+  declarar `reason` e `material`.
+
+## 6.3 Principios operacionais editaveis
+
+Os principios do `dex-PPIRTV` vivem em `principles/PRINCIPLES.md`. O contrato
+operacional derivado vive em `principles/operational-contract.json` e pode ser
+editado sem alterar codigo quando a mudanca for textual, de label, severidade ou
+orientacao de prompt.
+
+Primeira camada contratada:
+
+- "barata nunca esta sozinha" orienta higiene e revisao ao redor de achados.
+- "memoria sem lembranca e entulho inutil" define memoria como L1 -> L2 -> L3.
+- "ouro garimpado se guarda" conecta `gold_mining` a documentacao e handoff.
+- "casa limpa" reforca remocao de residuos e secrets fora de ledger.
+- "comecar pelo inicio" orienta prompts a consultar fontes vivas antes de
+  executar.
+
+Estrutura de memoria:
+
+| Camada | Papel | Arquivo |
+| --- | --- | --- |
+| L1 | Gatilhos curtos | `lembranca.md` |
+| L2 | Ancoras operacionais | `memoria.md` |
+| L3 | Conhecimento sob demanda | `conhecimento/` |
+
+`hygiene_scan` pode retornar achados com categoria `principles`, `memory` ou
+`security`. Esses achados nao removem nem renomeiam categorias existentes.
 
 ## 7. Tools MCP propostas
 

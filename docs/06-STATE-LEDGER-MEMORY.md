@@ -58,3 +58,18 @@ evento auditavel.
 - Ledger e historico, nao fila de trabalho.
 - Handoff deve vencer ledger para proximo passo operacional.
 - Memoria global, se existir, deve ser ponteiro curto, nao copia de contrato.
+
+## 6. Memoria L1/L2/L3
+
+O principio "memoria sem lembranca e entulho inutil" define recuperacao em tres
+camadas:
+
+| Camada | Arquivo ou pasta | Funcao |
+| --- | --- | --- |
+| L1 | `lembranca.md` | Gatilhos curtos que devem caber no contexto inicial |
+| L2 | `memoria.md` | Ancoras operacionais referenciaveis por L1 |
+| L3 | `conhecimento/` | Tutoriais, documentacao e modelos carregados sob demanda |
+
+O contrato operacional fica em `principles/operational-contract.json`. Se L2 ou
+L3 acumularem conteudo sem gatilho L1 ou indice, `hygiene_scan` deve tratar como
+risco de memoria nao recuperavel.

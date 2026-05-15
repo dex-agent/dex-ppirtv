@@ -33,6 +33,47 @@ export type GateRecord = {
   back_to: Phase | null;
 };
 
+export type Cooperator = {
+  name: string;
+  reason: string;
+  material: boolean;
+};
+
+export type PresentationAliases = {
+  fase?: Phase;
+  faltando?: string[];
+  proximo?: string;
+  voltar_para?: Phase | null;
+  estacionamento?: string[];
+  garimpo?: string[];
+};
+
+export type ChecklistVisualItem = {
+  label: string;
+  checked: boolean;
+  emoji: string;
+};
+
+export type DisplayEnvelope = {
+  phase_label?: string;
+  phase_emoji?: string;
+  owner?: string;
+  owner_emoji?: string;
+  cooperators: Cooperator[];
+  active_credits: string[];
+  direct_action?: {
+    available: boolean;
+    action: string;
+  };
+  checklist_visual?: ChecklistVisualItem[];
+};
+
+export type PresentationEnvelope = {
+  aliases: PresentationAliases;
+  display: DisplayEnvelope;
+  suggested_cooperation: Cooperator[];
+};
+
 export type Evidence = {
   evidence_id: string;
   flow_id: string;
@@ -43,6 +84,8 @@ export type Evidence = {
   note?: string;
   parking_lot: string[];
   gold_mining: string[];
+  cooperators: Cooperator[];
+  active_credits: string[];
   created_at: string;
 };
 
@@ -67,6 +110,8 @@ export type Meeting = {
   rollback_plan?: string;
   parking_lot: string[];
   gold_mining: string[];
+  cooperators: Cooperator[];
+  active_credits: string[];
 };
 
 export type Verdict = {
@@ -78,6 +123,8 @@ export type Verdict = {
   residual_risks: string[];
   parking_lot: string[];
   gold_mining: string[];
+  cooperators: Cooperator[];
+  active_credits: string[];
   next_step: string;
   created_at: string;
 };
@@ -99,6 +146,8 @@ export type Flow = {
   decisions: string[];
   parking_lot: string[];
   gold_mining: string[];
+  cooperators: Cooperator[];
+  active_credits: string[];
   evidence: Evidence[];
   meetings: string[];
   verdicts: Verdict[];
@@ -125,7 +174,7 @@ export type LedgerEvent = {
 export type HygieneFinding = {
   id: string;
   severity: "info" | "warning" | "error";
-  category: "docs" | "tasks" | "paths" | "temporary_files" | "dependencies" | "ledger" | "evidence";
+  category: "docs" | "tasks" | "paths" | "temporary_files" | "dependencies" | "ledger" | "evidence" | "principles" | "memory" | "security";
   message: string;
   evidence: string[];
   action: string;
