@@ -20,7 +20,7 @@
     },
     {
       "id": "ouro_garimpado_se_guarda",
-      "label": "Ouro garimpado se guarda, trilha aberta se marca",
+      "label": "Ouro garimpado se guarda, trilha aberta na mata se marca",
       "summary": "Aprendizado reutilizavel vira artefato rastreavel; entulho sai no mesmo turno.",
       "severity": "info",
       "checklist_label": "Pepitas e trilhas foram registradas; entulho obvio foi removido",
