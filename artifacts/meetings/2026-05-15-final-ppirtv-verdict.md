@@ -49,6 +49,9 @@ Fontes canonicas:
 - `$env:USERPROFILE\.agents\skills\00-governanca-mesa-de-skills.md`
 - `$env:USERPROFILE\.agents\skills\INDEX.md`
 
+Regra de paths: quando houver variavel do sistema, ela vence caminho local
+absoluto. Nomes de usuario e computador nao devem virar contrato canonico.
+
 ## Veredito operacional
 
 O MVP esta pronto para uso local com ressalva de que ainda nao ha empacotamento

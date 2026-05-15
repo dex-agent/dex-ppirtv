@@ -18,8 +18,14 @@
 - [EST-02] [governanca] especialistas e indice rapido tem caminhos canonicos globais
   - origem: instrucao do usuario durante validacao
   - motivo de estacionamento: regra operacional importante para futuras integracoes do harness com especialistas
-  - garimpo vinculado: dica de ouro - registrar caminhos como variaveis de ambiente, nao hardcode de usuario nem copia local de skills
+  - garimpo vinculado: dica de ouro - registrar caminhos como variaveis do sistema, nao hardcode de usuario, computador nem copia local de skills
   - sinal de destino: artefato
+
+- [EST-03] [governanca] paths canonicos devem preferir variaveis do sistema
+  - origem: instrucao do usuario apos commit inicial
+  - motivo de estacionamento: previne contratos quebrados quando muda usuario, maquina ou workspace
+  - garimpo vinculado: heuristica pratica - se existe variavel de ambiente para a raiz, documente a variavel e nao o path expandido
+  - sinal de destino: memoria
 
 ## Resolvidos/descartados recentes
 
@@ -29,6 +35,7 @@
 
 - [EST-01] Avaliar no proximo ciclo se `parking_lot` e `gold_mining` merecem tools dedicadas.
 - [EST-02] Avaliar integracao futura do MCP com leitura da governanca global de skills.
+- [EST-03] Aplicar regra de paths por variavel de sistema em docs e futuras tools.
 
 ## Itens que ainda dependem de decisao
 

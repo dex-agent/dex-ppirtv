@@ -40,6 +40,9 @@
   `$env:USERPROFILE\.agents\skills\00-governanca-mesa-de-skills.md`.
 - A indexacao rapida das skills vive em
   `$env:USERPROFILE\.agents\skills\INDEX.md`.
+- Caminhos canonicos devem usar variaveis do sistema sempre que existirem.
+  Evite registrar caminhos locais absolutos com nomes de usuario, porque nomes
+  de computador e usuarios mudam entre maquinas.
 
 ## Riscos conhecidos
 

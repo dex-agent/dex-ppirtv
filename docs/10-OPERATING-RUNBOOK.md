@@ -36,6 +36,10 @@ O harness MCP registra fases, gates, reunioes, evidencias e vereditos. Ele nao
 deve copiar skills para dentro do projeto nem depender de caminhos fixos de
 usuario alem dessas variaveis de ambiente documentadas.
 
+Regra de paths: sempre preferir variaveis do sistema quando existirem, como
+`$env:USERPROFILE` e `$env:CODEX_HOME`. Nao trate caminhos absolutos locais com
+nome de usuario como canonicos.
+
 ## 2. Avancar fase
 
 1. Consultar `flow_status`.
