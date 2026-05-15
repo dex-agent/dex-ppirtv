@@ -1,0 +1,23 @@
+# Local environment and secrets
+.env
+.env.*
+
+# Runtime state
+artifacts/tmp/
+artifacts/cache/
+*.log
+
+# Node/Python build folders, if adopted later
+node_modules/
+.venv/
+__pycache__/
+dist/
+build/
+
+# OS/editor noise
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
