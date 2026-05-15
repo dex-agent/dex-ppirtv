@@ -94,3 +94,22 @@
 - [x] Testar `hygiene_scan` detectando chave fake com cara de secret sem expor valor.
 - [x] Rodar `npm run check`.
 - [x] Rodar `git diff --check`.
+
+## Sprint 9 - Localizacao de contrato de principios
+
+Contrato decidido: `PPIRTV_PRINCIPLES_PATH` explicito vence; sem env var, usar
+`cwd/principles/operational-contract.json`; sem contrato local, usar fallback do
+proprio harness. `hygiene_scan` deve avisar quando esse fallback for usado.
+
+- [x] Implementar `PPIRTV_PRINCIPLES_PATH`.
+- [x] Preservar contrato local por `cwd/principles/operational-contract.json`.
+- [x] Usar fallback do proprio harness quando o projeto nao tiver contrato local.
+- [x] Fazer `hygiene_scan` avisar quando usar fallback.
+- [x] Testar contrato via env var.
+- [x] Testar contrato local.
+- [x] Testar fallback do harness.
+- [x] Testar checklist com fallback nao vazio.
+- [x] Testar precedencia: env var explicita vence contrato local existente.
+- [x] Registrar evidencia da Sprint 9 apos os testes passarem.
+- [x] Rodar `npm run check`.
+- [x] Rodar `git diff --check`.

@@ -45,9 +45,11 @@ mais visivel, testavel e menos sujeito a entusiasmo sem evidencia.
 MVP implementado como servidor MCP local por `stdio`.
 Sprint 7 implementado: respostas agora incluem aliases pt-BR e camada
 `display` para a Fernanda, preservando os campos tecnicos existentes.
-Sprint 8 em andamento: principios operacionais e memoria L1/L2/L3 agora vivem
+Sprint 8 implementado: principios operacionais e memoria L1/L2/L3 agora vivem
 em arquivos editaveis dentro de `principles/` e alimentam checklist, higiene e
 prompts sem remover campos existentes.
+Sprint 9 implementado: principios podem ser localizados por env var, contrato
+local do `cwd` ou fallback visivel do harness.
 
 ## Stack
 
@@ -68,8 +70,29 @@ npm run build
 npm start
 ```
 
-O processo MCP deve ser iniciado com `cwd` na raiz deste repositorio. Essa raiz
-e usada para localizar `.ppirtv/` e `principles/operational-contract.json`.
+O processo MCP deve ser iniciado com `cwd` na raiz do projeto que esta sendo
+operado. Essa raiz e usada para localizar `.ppirtv/` e, quando existir, o
+contrato local `principles/operational-contract.json`.
+
+Contrato decidido para localizacao de principios:
+
+1. `PPIRTV_PRINCIPLES_PATH` explicito vence qualquer outro contrato.
+2. Sem env var, o harness deve usar `principles/operational-contract.json` no
+   `cwd` do processo.
+3. Sem contrato local, o harness deve usar o contrato do proprio `dex-PPIRTV`
+   como fallback.
+4. Quando usar fallback, `hygiene_scan` deve avisar para nao esconder a
+   dependencia.
+
+Para usar um contrato de principios compartilhado, configure a env var com um
+path absoluto:
+
+```powershell
+$env:PPIRTV_PRINCIPLES_PATH = "C:\CodexProjetos\dex-PPIRTV\principles\operational-contract.json"
+```
+
+Os testes da Sprint 9 cobrem env var, contrato local por `cwd`, fallback do
+harness e aviso informativo de `hygiene_scan`.
 
 Para desenvolvimento:
 
@@ -128,6 +151,8 @@ contribuicao material registrada.
 
 - Fonte humana: `principles/PRINCIPLES.md`.
 - Contrato operacional editavel: `principles/operational-contract.json`.
+- Contrato compartilhado opcional: `PPIRTV_PRINCIPLES_PATH`, com precedencia
+  sobre o contrato local.
 - L1: `lembranca.md` para gatilhos curtos.
 - L2: `memoria.md` para ancoras operacionais.
 - L3: `conhecimento/` para detalhe sob demanda.

@@ -45,6 +45,7 @@ Criar um servidor MCP local que permita a um cliente/agente:
 | REQ-021 | Ler principios operacionais de arquivo editavel em `principles/` | Alta |
 | REQ-022 | Aplicar memoria L1/L2/L3 como contrato de recuperacao em checklist, higiene e prompts | Media |
 | REQ-023 | Alertar sobre secrets em configuracoes sem registrar valores sensiveis | Alta |
+| REQ-024 | Resolver contrato de principios por `PPIRTV_PRINCIPLES_PATH`, contrato local ou fallback visivel do harness | Alta |
 
 ## 4. Requisitos nao funcionais
 
@@ -176,6 +177,18 @@ operacional derivado vive em `principles/operational-contract.json` e pode ser
 editado sem alterar codigo quando a mudanca for textual, de label, severidade ou
 orientacao de prompt.
 
+Status: a ordem abaixo esta implementada e coberta por teste de regressao.
+
+Ordem de resolucao do contrato operacional:
+
+1. `PPIRTV_PRINCIPLES_PATH`, quando configurado, vence tudo e deve apontar para
+   um arquivo JSON de contrato operacional.
+2. Sem env var, tentar `principles/operational-contract.json` no `cwd` do
+   projeto atual.
+3. Sem contrato local, usar fallback do proprio `dex-PPIRTV`.
+4. Quando o fallback do harness for usado, `hygiene_scan` deve retornar achado
+   informativo para nao fingir que o projeto atual possui contrato local.
+
 Primeira camada contratada:
 
 - "barata nunca esta sozinha" orienta higiene e revisao ao redor de achados.
@@ -195,6 +208,16 @@ Estrutura de memoria:
 
 `hygiene_scan` pode retornar achados com categoria `principles`, `memory` ou
 `security`. Esses achados nao removem nem renomeiam categorias existentes.
+
+Criterios de aceite especificos para REQ-024:
+
+- env var explicita vence contrato local;
+- contrato local em `cwd/principles/operational-contract.json` e usado quando a
+  env var nao existe;
+- fallback do harness mantem `checklist_render` nao vazio quando o projeto nao
+  possui contrato local;
+- `hygiene_scan` inclui achado informativo em `principles` quando o fallback e
+  usado.
 
 ## 7. Tools MCP propostas
 

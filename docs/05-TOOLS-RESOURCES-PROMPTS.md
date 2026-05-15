@@ -146,9 +146,21 @@ Primeiro conjunto de checagens:
 
 ### Principios operacionais
 
-O harness le `principles/operational-contract.json` em runtime. Esse contrato
-deriva de `principles/PRINCIPLES.md` e pode ajustar labels, severidades,
-orientacoes de prompt e checklist sem alterar codigo.
+O contrato operacional deriva de `principles/PRINCIPLES.md` e pode ajustar
+labels, severidades, orientacoes de prompt e checklist sem alterar codigo. A
+localizacao do arquivo e resolvida em runtime.
+
+Status: a ordem abaixo esta implementada e coberta por teste de regressao.
+
+Ordem de localizacao:
+
+1. `PPIRTV_PRINCIPLES_PATH`, quando configurado, com precedencia sobre qualquer
+   contrato local.
+2. `principles/operational-contract.json` no `cwd` do projeto atual.
+3. fallback do proprio `dex-PPIRTV`.
+
+Quando o fallback do harness for usado, `hygiene_scan` retorna um achado
+informativo em `principles` para deixar a dependencia visivel.
 
 `checklist_render` mantem `items` com os gates da fase atual e adiciona
 `operational_principles` para os principios aplicaveis. A camada

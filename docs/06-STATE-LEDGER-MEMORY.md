@@ -73,3 +73,18 @@ camadas:
 O contrato operacional fica em `principles/operational-contract.json`. Se L2 ou
 L3 acumularem conteudo sem gatilho L1 ou indice, `hygiene_scan` deve tratar como
 risco de memoria nao recuperavel.
+
+Quando o harness roda em outro projeto, o contrato de principios e resolvido
+nesta ordem:
+
+1. `PPIRTV_PRINCIPLES_PATH`, quando configurado explicitamente;
+2. contrato local em `cwd/principles/operational-contract.json`;
+3. fallback do proprio `dex-PPIRTV`.
+
+Fallback nao e memoria local do projeto. Ele deve aparecer como achado
+informativo de higiene para evitar dependencia invisivel.
+
+Esse contrato de localizacao esta decidido para a Sprint 9. A verificacao
+esperada deve provar que env var vence contrato local, contrato local vence
+fallback, e fallback ainda alimenta `checklist_render` sem fingir contrato local
+do projeto.

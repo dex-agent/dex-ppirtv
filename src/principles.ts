@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { HygieneFinding } from "./domain.js";
 
 export type PrincipleSeverity = "info" | "warning" | "error";
@@ -37,6 +38,17 @@ export type PrincipleChecklistItem = {
   severity: PrincipleSeverity;
 };
 
+type ContractOrigin = "env" | "local" | "harness" | "missing";
+
+type OperationalContractResolution = {
+  contract: OperationalContract;
+  origin: ContractOrigin;
+  contractPath?: string;
+  sourceRoot: string;
+  expectedLocalPath: string;
+  configuredPath?: string;
+};
+
 const DEFAULT_CONTRACT: OperationalContract = {
   version: 1,
   source: "principles/PRINCIPLES.md",
@@ -47,39 +59,54 @@ const DEFAULT_CONTRACT: OperationalContract = {
 };
 
 export async function loadOperationalContract(root = process.cwd()): Promise<OperationalContract> {
-  const filePath = contractPath(root);
-  if (!existsSync(filePath)) {
-    return DEFAULT_CONTRACT;
-  }
-  return normalizeContract(JSON.parse(await readFile(filePath, "utf8")));
+  return (await resolveOperationalContract(root)).contract;
 }
 
 export function loadOperationalContractSync(root = process.cwd()): OperationalContract {
-  const filePath = contractPath(root);
-  if (!existsSync(filePath)) {
-    return DEFAULT_CONTRACT;
-  }
-  return normalizeContract(JSON.parse(readFileSync(filePath, "utf8")));
+  return resolveOperationalContractSync(root).contract;
 }
 
 export async function principleChecklist(root = process.cwd()): Promise<PrincipleChecklistItem[]> {
-  const contract = await loadOperationalContract(root);
-  const sourceText = await readSourceText(root, contract.source);
-  return checklistFromContract(contract, sourceText);
+  const resolution = await resolveOperationalContract(root);
+  const sourceText = await readSourceText(resolution, resolution.contract.source);
+  return checklistFromContract(resolution.contract, sourceText);
 }
 
 export function principleChecklistSync(root = process.cwd()): PrincipleChecklistItem[] {
-  const contract = loadOperationalContractSync(root);
-  const sourcePath = path.join(root, contract.source);
+  const resolution = resolveOperationalContractSync(root);
+  const sourcePath = sourcePathFor(resolution, resolution.contract.source);
   const sourceText = existsSync(sourcePath) ? readFileSync(sourcePath, "utf8") : "";
-  return checklistFromContract(contract, sourceText);
+  return checklistFromContract(resolution.contract, sourceText);
 }
 
 export async function scanOperationalPrinciples(root = process.cwd()): Promise<HygieneFinding[]> {
-  const contract = await loadOperationalContract(root);
+  const resolution = await resolveOperationalContract(root);
+  const contract = resolution.contract;
   const findings: HygieneFinding[] = [];
-  const sourcePath = path.join(root, contract.source);
+  const sourcePath = sourcePathFor(resolution, contract.source);
   const sourceText = existsSync(sourcePath) ? await readFile(sourcePath, "utf8") : "";
+
+  if (resolution.origin === "env" && (!resolution.contractPath || !existsSync(resolution.contractPath))) {
+    findings.push({
+      id: "principles:env_contract_missing",
+      severity: "error",
+      category: "principles",
+      message: "PPIRTV_PRINCIPLES_PATH aponta para contrato inexistente.",
+      evidence: [resolution.configuredPath ?? "PPIRTV_PRINCIPLES_PATH"],
+      action: "Corrigir PPIRTV_PRINCIPLES_PATH ou remover a env var para usar contrato local/fallback."
+    });
+  }
+
+  if (resolution.origin === "harness") {
+    findings.push({
+      id: "principles:using_harness_fallback",
+      severity: "info",
+      category: "principles",
+      message: "Projeto atual nao possui contrato local de principios; usando fallback do dex-PPIRTV.",
+      evidence: [path.relative(root, resolution.expectedLocalPath).replace(/\\/g, "/"), "dex-PPIRTV/principles/operational-contract.json"],
+      action: "Criar principles/operational-contract.json no projeto ou configurar PPIRTV_PRINCIPLES_PATH explicitamente."
+    });
+  }
 
   if (!existsSync(sourcePath)) {
     findings.push({
@@ -138,13 +165,85 @@ export function promptGuidance(root = process.cwd()): string[] {
   return loadOperationalContractSync(root).prompt_guidance;
 }
 
-function contractPath(root: string): string {
+export async function resolveOperationalContract(root = process.cwd()): Promise<OperationalContractResolution> {
+  const resolution = resolveOperationalContractPath(root);
+  if (!resolution.contractPath || !existsSync(resolution.contractPath)) {
+    return { ...resolution, contract: DEFAULT_CONTRACT };
+  }
+  return {
+    ...resolution,
+    contract: normalizeContract(JSON.parse(await readFile(resolution.contractPath, "utf8")))
+  };
+}
+
+export function resolveOperationalContractSync(root = process.cwd()): OperationalContractResolution {
+  const resolution = resolveOperationalContractPath(root);
+  if (!resolution.contractPath || !existsSync(resolution.contractPath)) {
+    return { ...resolution, contract: DEFAULT_CONTRACT };
+  }
+  return {
+    ...resolution,
+    contract: normalizeContract(JSON.parse(readFileSync(resolution.contractPath, "utf8")))
+  };
+}
+
+function resolveOperationalContractPath(root: string): Omit<OperationalContractResolution, "contract"> {
+  const expectedLocalPath = localContractPath(root);
+  const configuredPath = process.env.PPIRTV_PRINCIPLES_PATH?.trim();
+  if (configuredPath) {
+    const resolved = path.isAbsolute(configuredPath) ? configuredPath : path.resolve(root, configuredPath);
+    return {
+      origin: "env",
+      contractPath: resolved,
+      sourceRoot: inferContractRoot(resolved),
+      expectedLocalPath,
+      configuredPath
+    };
+  }
+  if (existsSync(expectedLocalPath)) {
+    return {
+      origin: "local",
+      contractPath: expectedLocalPath,
+      sourceRoot: root,
+      expectedLocalPath
+    };
+  }
+  const fallback = harnessContractPath();
+  if (existsSync(fallback)) {
+    return {
+      origin: "harness",
+      contractPath: fallback,
+      sourceRoot: inferContractRoot(fallback),
+      expectedLocalPath
+    };
+  }
+  return {
+    origin: "missing",
+    sourceRoot: root,
+    expectedLocalPath
+  };
+}
+
+function localContractPath(root: string): string {
   return path.join(root, "principles", "operational-contract.json");
 }
 
-async function readSourceText(root: string, source: string): Promise<string> {
-  const sourcePath = path.join(root, source);
+function harnessContractPath(): string {
+  return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "principles", "operational-contract.json");
+}
+
+function inferContractRoot(contractPath: string): string {
+  const parent = path.basename(path.dirname(contractPath)).toLowerCase();
+  return parent === "principles" ? path.dirname(path.dirname(contractPath)) : path.dirname(contractPath);
+}
+
+async function readSourceText(resolution: OperationalContractResolution, source: string): Promise<string> {
+  const sourcePath = sourcePathFor(resolution, source);
   return existsSync(sourcePath) ? readFile(sourcePath, "utf8") : "";
+}
+
+function sourcePathFor(resolution: OperationalContractResolution, source: string): string {
+  return path.isAbsolute(source) ? source : path.join(resolution.sourceRoot, source);
 }
 
 function checklistFromContract(contract: OperationalContract, sourceText: string): PrincipleChecklistItem[] {

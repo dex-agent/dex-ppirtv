@@ -101,3 +101,18 @@ MCP existente.
 - [x] Aplicar checagens aditivas em `hygiene_scan`.
 - [x] Orientar prompts a consultar L1/L2/L3 antes de executar.
 - [x] Testar compatibilidade, checklist, higiene e prompts.
+
+## Fase 10 - Localizacao explicita de principios
+
+Objetivo: permitir que o harness rode em projetos diferentes sem perder o
+contrato operacional de principios.
+
+Contrato decidido: `PPIRTV_PRINCIPLES_PATH` explicito vence; sem env var, usar
+`cwd/principles/operational-contract.json`; sem contrato local, usar fallback do
+proprio harness e tornar esse fallback visivel em `hygiene_scan`.
+
+- [x] Implementar `PPIRTV_PRINCIPLES_PATH`.
+- [x] Manter contrato local por `cwd/principles/operational-contract.json`.
+- [x] Adicionar fallback para contrato do proprio `dex-PPIRTV`.
+- [x] Tornar o fallback visivel em `hygiene_scan`.
+- [x] Testar env var, contrato local e fallback.

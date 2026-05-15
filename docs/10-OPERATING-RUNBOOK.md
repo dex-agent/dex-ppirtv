@@ -18,9 +18,26 @@ npm start
 O servidor usa MCP por `stdio`. Configure o cliente MCP para executar
 `node dist/index.js` a partir da raiz do projeto.
 
-O `cwd` do processo deve ser a raiz do repositorio `dex-PPIRTV`. O harness usa
-essa raiz para localizar `.ppirtv/`, `principles/PRINCIPLES.md` e
+O `cwd` do processo deve ser a raiz do projeto que esta sendo conduzido. O
+harness usa essa raiz para localizar `.ppirtv/` e um contrato local opcional em
 `principles/operational-contract.json`.
+
+Contrato decidido para principios:
+
+1. Se `PPIRTV_PRINCIPLES_PATH` estiver configurado, ele vence.
+2. Sem env var, o contrato local e `principles/operational-contract.json` no
+   `cwd`.
+3. Sem contrato local, o fallback e o contrato do proprio `dex-PPIRTV`.
+4. Ao usar fallback, `hygiene_scan` deve mostrar essa condicao.
+
+Para reaproveitar um contrato compartilhado em outro projeto, configure:
+
+```powershell
+$env:PPIRTV_PRINCIPLES_PATH = "C:\CodexProjetos\dex-PPIRTV\principles\operational-contract.json"
+```
+
+Esse contrato esta coberto por testes de engine para env var, contrato local,
+fallback e aviso de higiene.
 
 ## 0.1 Governanca de especialistas
 

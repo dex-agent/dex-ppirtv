@@ -229,6 +229,111 @@ describe("PPIRTV flow engine", () => {
     }
   });
 
+  it("uses PPIRTV_PRINCIPLES_PATH when configured", async () => {
+    const originalCwd = process.cwd();
+    const originalEnv = process.env.PPIRTV_PRINCIPLES_PATH;
+    const contractDir = path.join(tempRoot, "contracts");
+    await mkdir(contractDir, { recursive: true });
+    await writeFile(
+      path.join(contractDir, "operational-contract.json"),
+      JSON.stringify({
+        version: 1,
+        source: "PRINCIPLES.md",
+        principles: [
+          {
+            id: "custom_env_contract",
+            label: "Contrato por env",
+            summary: "Contrato carregado por PPIRTV_PRINCIPLES_PATH.",
+            severity: "info",
+            checklist_label: "Contrato por env carregado",
+            applies_to: ["checklist_render", "prompts"]
+          }
+        ],
+        memory_layers: [],
+        prompt_guidance: ["Guia vindo da env var."],
+        hygiene_checks: []
+      }),
+      "utf8"
+    );
+    await writeFile(path.join(contractDir, "PRINCIPLES.md"), "# Contrato por env\n", "utf8");
+    process.env.PPIRTV_PRINCIPLES_PATH = path.join(contractDir, "operational-contract.json");
+    process.chdir(tempRoot);
+    try {
+      const flow = await engine.createFlow({ goal: "Contrato via env" });
+      const checklist = await engine.renderChecklist(flow.flow_id);
+
+      expect(checklist.operational_principles.map((item) => item.id)).toEqual(["custom_env_contract"]);
+    } finally {
+      restoreEnv(originalEnv);
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("uses a local principles contract from the project cwd", async () => {
+    const originalCwd = process.cwd();
+    const originalEnv = process.env.PPIRTV_PRINCIPLES_PATH;
+    const principlesDir = path.join(tempRoot, "principles");
+    await mkdir(principlesDir, { recursive: true });
+    await writeFile(
+      path.join(principlesDir, "operational-contract.json"),
+      JSON.stringify({
+        version: 1,
+        source: "principles/PRINCIPLES.md",
+        principles: [
+          {
+            id: "local_contract",
+            label: "Contrato local",
+            summary: "Contrato do projeto atual.",
+            severity: "warning",
+            checklist_label: "Contrato local carregado",
+            applies_to: ["checklist_render"]
+          }
+        ],
+        memory_layers: [],
+        prompt_guidance: ["Guia local."],
+        hygiene_checks: []
+      }),
+      "utf8"
+    );
+    await writeFile(path.join(principlesDir, "PRINCIPLES.md"), "# Contrato local\n", "utf8");
+    delete process.env.PPIRTV_PRINCIPLES_PATH;
+    process.chdir(tempRoot);
+    try {
+      const flow = await engine.createFlow({ goal: "Contrato local" });
+      const checklist = await engine.renderChecklist(flow.flow_id);
+
+      expect(checklist.operational_principles.map((item) => item.id)).toEqual(["local_contract"]);
+    } finally {
+      restoreEnv(originalEnv);
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("falls back to the harness principles contract and reports it in hygiene", async () => {
+    const originalCwd = process.cwd();
+    const originalEnv = process.env.PPIRTV_PRINCIPLES_PATH;
+    delete process.env.PPIRTV_PRINCIPLES_PATH;
+    process.chdir(tempRoot);
+    try {
+      const flow = await engine.createFlow({ goal: "Contrato fallback" });
+      const checklist = await engine.renderChecklist(flow.flow_id);
+      const hygiene = await engine.hygieneScan();
+
+      expect(checklist.operational_principles.some((item) => item.id === "memoria_sem_lembranca")).toBe(true);
+      expect(hygiene.findings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "principles:using_harness_fallback",
+            category: "principles"
+          })
+        ])
+      );
+    } finally {
+      restoreEnv(originalEnv);
+      process.chdir(originalCwd);
+    }
+  });
+
   it("records material cooperators only when supplied", async () => {
     const flow = await engine.createFlow({ goal: "Creditos materiais" });
     const meeting = await engine.openMeeting({ flow_id: flow.flow_id, type: "divergent", question: "Quem ajudou?" });
@@ -272,3 +377,11 @@ describe("PPIRTV flow engine", () => {
     expect(archived.status).toBe("archived");
   });
 });
+
+function restoreEnv(value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env.PPIRTV_PRINCIPLES_PATH;
+  } else {
+    process.env.PPIRTV_PRINCIPLES_PATH = value;
+  }
+}

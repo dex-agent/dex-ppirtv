@@ -79,6 +79,16 @@ Resultado esperado:
 - `hygiene_scan` retorna achados de memoria, principios ou seguranca quando
   detectar violacao.
 
+### TST-009 - Localizacao do contrato de principios
+
+Resultado esperado:
+
+- `PPIRTV_PRINCIPLES_PATH` explicito vence contrato local existente;
+- sem env var, `cwd/principles/operational-contract.json` e usado quando existe;
+- sem env var e sem contrato local, o fallback do proprio harness e usado;
+- `checklist_render` continua retornando `operational_principles` com fallback;
+- `hygiene_scan` retorna achado informativo em `principles` quando usa fallback.
+
 ## 3. Evidencias esperadas
 
 - logs de teste;
@@ -97,11 +107,12 @@ npm run check
 Resultado:
 
 - 2 arquivos de teste passaram.
-- 17 testes passaram.
+- 20 testes passaram.
 - Cobertura executada: inicializacao MCP, listagem de tools/resources/prompts,
   `flow_create`, persistencia/restart, gate bloqueando, avanco valido, retorno,
   reunioes divergente/convergente/transversal, evidencia, veredito,
   `hygiene_scan`, gate persistido pelo runbook, estacionamento/garimpo em
   reuniao, aliases pt-BR, checklist visual, principios operacionais, prompts
   com orientacao L1/L2/L3, deteccao de L2 sem L1, deteccao de chave fake com
-  cara de secret sem expor valor, creditos materiais e flow E2E.
+  cara de secret sem expor valor, `PPIRTV_PRINCIPLES_PATH`, contrato local,
+  fallback do harness, creditos materiais e flow E2E.
