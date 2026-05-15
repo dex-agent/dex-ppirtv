@@ -41,9 +41,9 @@ Backlog:
 
 Definition of Done:
 
-- Cliente lista tools/resources/prompts.
-- Teste smoke passa.
-- Erros de inicializacao sao legiveis.
+- [x] Cliente lista tools/resources/prompts.
+- [x] Teste smoke passa.
+- [x] Erros de inicializacao sao legiveis.
 
 ## Sprint 2 - Estado explicito
 
@@ -57,8 +57,8 @@ Backlog:
 
 Definition of Done:
 
-- Flow sobrevive a restart.
-- Nenhuma tool depende de estado implicito por conexao.
+- [x] Flow sobrevive a restart.
+- [x] Nenhuma tool depende de estado implicito por conexao.
 
 ## Sprint 3 - Gates e retornos
 
@@ -72,8 +72,8 @@ Backlog:
 
 Definition of Done:
 
-- Avanco sem gate falha com mensagem acionavel.
-- Retorno registra fase anterior, motivo e evidencia.
+- [x] Avanco sem gate falha com mensagem acionavel.
+- [x] Retorno registra fase anterior, motivo e evidencia.
 
 ## Sprint 4 - Reunioes
 
@@ -87,7 +87,7 @@ Backlog:
 
 Definition of Done:
 
-- Uma decisao importante tem origem rastreavel em reuniao.
+- [x] Uma decisao importante tem origem rastreavel em reuniao.
 
 ## Sprint 5 - Evidencia e veredito
 
@@ -102,7 +102,7 @@ Backlog:
 
 Definition of Done:
 
-- Um flow completo termina com veredito e riscos residuais.
+- [x] Um flow completo termina com veredito e riscos residuais.
 
 ## Sprint 6 - Uso real
 
@@ -116,5 +116,10 @@ Backlog:
 
 Definition of Done:
 
-- Outro agente consegue seguir o README e rodar o harness.
+- [x] Outro agente consegue seguir o README e rodar o harness.
 
+## Evidencia do MVP
+
+- `npm run check`: 11 testes passaram.
+- Cobertura executada: engine, persistencia/restart, gates, retorno, reunioes,
+  evidencia, veredito, higiene e MCP `stdio` com cliente real.

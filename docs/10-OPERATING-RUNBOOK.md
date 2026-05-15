@@ -7,6 +7,35 @@
 3. Confirmar fase `pensamentos`.
 4. Renderizar checklist.
 
+## 0. Rodar servidor local
+
+```bash
+npm install
+npm run build
+npm start
+```
+
+O servidor usa MCP por `stdio`. Configure o cliente MCP para executar
+`node dist/index.js` a partir da raiz do projeto.
+
+## 0.1 Governanca de especialistas
+
+No processo PPIRTV da Fernanda, os especialistas sao resolvidos sempre a partir
+do registry compartilhado:
+
+```powershell
+$env:USERPROFILE\.agents\skills\
+```
+
+Fontes canonicas:
+
+- Governanca da mesa: `$env:USERPROFILE\.agents\skills\00-governanca-mesa-de-skills.md`
+- Indexacao rapida: `$env:USERPROFILE\.agents\skills\INDEX.md`
+
+O harness MCP registra fases, gates, reunioes, evidencias e vereditos. Ele nao
+deve copiar skills para dentro do projeto nem depender de caminhos fixos de
+usuario alem dessas variaveis de ambiente documentadas.
+
 ## 2. Avancar fase
 
 1. Consultar `flow_status`.
@@ -64,4 +93,3 @@ Saida:
 2. Rodar checklist de higiene.
 3. Registrar veredito.
 4. Arquivar.
-

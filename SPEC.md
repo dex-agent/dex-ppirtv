@@ -83,8 +83,20 @@ Local Project Store
 | `gates` | array | Gates esperados por fase |
 | `risks` | array | Riscos abertos |
 | `decisions` | array | Decisoes tomadas |
+| `parking_lot` | array | Achados vivos, residuos e pendencias fora do foco imediato |
+| `gold_mining` | array | Pontos cegos, pepitas, armadilhas e heuristicas garimpadas |
 | `evidence` | array | Evidencias vinculadas |
 | `history` | array | Eventos de transicao |
+
+## 6.1 Estacionamento e garimpo
+
+O MVP nao adiciona tools separadas para estacionamento ou garimpo. Para manter o
+contrato enxuto, `meeting_record`, `evidence_attach` e `verdict_record` aceitam
+campos opcionais `parking_lot` e `gold_mining`.
+
+Esses campos persistem no flow e no ledger. Eles servem como base para Chato,
+Akita Dev Raiz, Tereza Testa, Vera Veredito e demais especialistas sem depender
+de memoria solta da conversa.
 
 ## 7. Tools MCP propostas
 
@@ -103,7 +115,7 @@ Local Project Store
 | `hygiene_scan` | Procurar residuos e inconsistencias conhecidas |
 | `flow_archive` | Encerrar e arquivar flow |
 
-## 8. Resources MCP propostas
+## 8. Resources MCP implementadas
 
 | Resource | Conteudo |
 | --- | --- |
@@ -111,11 +123,12 @@ Local Project Store
 | `ppirtv://flow/{flow_id}` | Estado completo do flow |
 | `ppirtv://flow/{flow_id}/checklist` | Checklist visual atual |
 | `ppirtv://flow/{flow_id}/ledger` | Eventos auditaveis |
+| `ppirtv://flow/{flow_id}/meetings` | Reunioes vinculadas ao flow |
 | `ppirtv://templates/gates` | Gates padrao por fase |
 | `ppirtv://templates/meetings` | Estruturas de reuniao |
 | `ppirtv://reference/mcp` | Referencias MCP adotadas |
 
-## 9. Prompts MCP propostas
+## 9. Prompts MCP implementadas
 
 | Prompt | Uso |
 | --- | --- |
@@ -148,9 +161,15 @@ Local Project Store
 
 ## 12. Lacunas a confirmar
 
-- Linguagem de implementacao final: TypeScript, Python ou outra.
 - Cliente MCP alvo principal.
-- Persistencia final: arquivos JSON/NDJSON ou banco local.
 - Politica de multiusuario.
 - Formato canonico de relatorios longos.
 
+## 13. Decisoes implementadas no MVP
+
+- Linguagem: TypeScript em Node.js 22.
+- SDK MCP: `@modelcontextprotocol/sdk`.
+- Transporte: `stdio`.
+- Persistencia: `.ppirtv/flows`, `.ppirtv/meetings`, `.ppirtv/evidence` e
+  `.ppirtv/ledger.ndjson`.
+- Testes: Vitest com engine tests e integracao MCP por cliente `stdio`.

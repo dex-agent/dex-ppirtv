@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposto
+Aceito
 
 ## Contexto
 
@@ -25,4 +25,3 @@ estruturados vinculados a flow.
 - Decisoes ficam rastreaveis.
 - Gates podem exigir reuniao em situacoes de risco.
 - O MVP ganha um pouco mais de escopo, mas com utilidade clara.
-

@@ -63,3 +63,20 @@ Resultado esperado:
 - flow de exemplo;
 - nota de veredito.
 
+## 4. Evidencia executada no MVP
+
+Comando:
+
+```bash
+npm run check
+```
+
+Resultado:
+
+- 2 arquivos de teste passaram.
+- 11 testes passaram.
+- Cobertura executada: inicializacao MCP, listagem de tools/resources/prompts,
+  `flow_create`, persistencia/restart, gate bloqueando, avanco valido, retorno,
+  reunioes divergente/convergente/transversal, evidencia, veredito,
+  `hygiene_scan`, gate persistido pelo runbook, estacionamento/garimpo em
+  reuniao e flow E2E.

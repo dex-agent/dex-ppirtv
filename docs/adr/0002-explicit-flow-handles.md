@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposto
+Aceito
 
 ## Contexto
 
@@ -25,4 +25,3 @@ devem receber esse `flow_id`.
 - Mais verboso.
 - Muito mais auditavel.
 - Permite multiplos flows simultaneos.
-

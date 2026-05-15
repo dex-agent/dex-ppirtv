@@ -25,4 +25,5 @@
 
 ## Estado atual
 
-Sprint 0 documenta o produto. Nenhum codigo de servidor MCP foi implementado.
+MVP implementado. O servidor MCP `stdio` expoe tools, resources e prompts
+PPIRTV, persiste estado em `.ppirtv/` e possui testes de engine e integracao MCP.

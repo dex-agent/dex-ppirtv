@@ -73,6 +73,21 @@ Tipos aceitos:
 - `convergent`
 - `transversal`
 
+### Campos transversais de estacionamento e garimpo
+
+As tools `meeting_record`, `evidence_attach` e `verdict_record` aceitam:
+
+```json
+{
+  "parking_lot": ["achados vivos fora do foco imediato"],
+  "gold_mining": ["pontos cegos, pepitas, armadilhas ou heuristicas"]
+}
+```
+
+Esses campos nao criam novo fluxo paralelo. Eles alimentam o proprio flow,
+ficam no ledger e servem como base para especialistas, revisao, higiene e
+veredito.
+
 ### `hygiene_scan`
 
 Primeiro conjunto de checagens:
@@ -84,16 +99,24 @@ Primeiro conjunto de checagens:
 - dependencias orfas;
 - decisoes sem ADR quando necessario.
 
+## 2.1 Tools implementadas no MVP
+
+`flow_create`, `flow_status`, `flow_advance`, `flow_return`, `gate_check`,
+`meeting_open`, `meeting_record`, `evidence_attach`, `checklist_render`,
+`verdict_record`, `hygiene_scan` e `flow_archive`.
+
 ## 3. Resources detalhados
 
 | URI | Descricao |
 | --- | --- |
 | `ppirtv://flows` | Lista de flows |
-| `ppirtv://flow/{id}` | Estado completo |
-| `ppirtv://flow/{id}/checklist` | Checklist visual |
-| `ppirtv://flow/{id}/meetings` | Reunioes vinculadas |
+| `ppirtv://flow/{flow_id}` | Estado completo |
+| `ppirtv://flow/{flow_id}/checklist` | Checklist visual |
+| `ppirtv://flow/{flow_id}/ledger` | Ledger filtrado por flow |
+| `ppirtv://flow/{flow_id}/meetings` | Reunioes vinculadas |
 | `ppirtv://templates/gates` | Gates padrao |
 | `ppirtv://templates/meetings` | Templates de reuniao |
+| `ppirtv://reference/mcp` | Referencias MCP adotadas |
 
 ## 4. Prompts detalhados
 
@@ -103,4 +126,6 @@ Primeiro conjunto de checagens:
 | `run-phase-gate` | `flow_id` | Gate aplicado |
 | `clean-house-review` | `flow_id` | Checklist de higiene |
 | `final-verdict` | `flow_id` | Veredito com risco residual |
-
+| `open-divergent-meeting` | `flow_id` | Roteiro divergente |
+| `open-convergent-meeting` | `flow_id` | Roteiro convergente |
+| `open-transversal-meeting` | `flow_id` | Roteiro transversal |

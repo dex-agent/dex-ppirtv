@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposto
+Aceito
 
 ## Contexto
 
@@ -28,4 +28,3 @@ Separar:
 - Contratos mais claros.
 - Melhor descoberta pelo cliente MCP.
 - Mais arquivos para manter sincronizados.
-

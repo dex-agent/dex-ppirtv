@@ -15,51 +15,51 @@
 
 ## Sprint 1 - Skeleton MCP
 
-- [ ] Escolher stack do servidor MCP.
-- [ ] Criar scaffold do projeto.
-- [ ] Implementar servidor `stdio`.
-- [ ] Declarar capabilities de tools/resources/prompts.
-- [ ] Expor tool `flow_create` fake/minima.
-- [ ] Criar teste smoke de inicializacao.
+- [x] Escolher stack do servidor MCP.
+- [x] Criar scaffold do projeto.
+- [x] Implementar servidor `stdio`.
+- [x] Declarar capabilities de tools/resources/prompts.
+- [x] Expor tool `flow_create`.
+- [x] Criar teste smoke de inicializacao.
 
 ## Sprint 2 - Flow e ledger
 
-- [ ] Criar schema de `Flow`.
-- [ ] Criar schema de `LedgerEvent`.
-- [ ] Implementar persistencia local.
-- [ ] Implementar `flow_create`.
-- [ ] Implementar `flow_status`.
-- [ ] Implementar `flow_archive`.
-- [ ] Testar recuperacao apos reiniciar servidor.
+- [x] Criar schema de `Flow`.
+- [x] Criar schema de `LedgerEvent`.
+- [x] Implementar persistencia local.
+- [x] Implementar `flow_create`.
+- [x] Implementar `flow_status`.
+- [x] Implementar `flow_archive`.
+- [x] Testar recuperacao apos reiniciar servidor.
 
 ## Sprint 3 - Gates PPIRTV
 
-- [ ] Implementar gates por fase.
-- [ ] Implementar `flow_advance`.
-- [ ] Implementar `flow_return`.
-- [ ] Testar bloqueio de avanco sem gate.
-- [ ] Testar retorno com motivo.
+- [x] Implementar gates por fase.
+- [x] Implementar `flow_advance`.
+- [x] Implementar `flow_return`.
+- [x] Testar bloqueio de avanco sem gate.
+- [x] Testar retorno com motivo.
 
 ## Sprint 4 - Reunioes
 
-- [ ] Implementar reuniao divergente.
-- [ ] Implementar reuniao convergente.
-- [ ] Implementar reuniao transversal.
-- [ ] Registrar decisoes e alternativas.
-- [ ] Testar reuniao vinculada a flow.
+- [x] Implementar reuniao divergente.
+- [x] Implementar reuniao convergente.
+- [x] Implementar reuniao transversal.
+- [x] Registrar decisoes e alternativas.
+- [x] Testar reuniao vinculada a flow.
 
 ## Sprint 5 - Evidencia e veredito
 
-- [ ] Implementar `evidence_attach`.
-- [ ] Implementar `verdict_record`.
-- [ ] Implementar `checklist_render`.
-- [ ] Implementar `hygiene_scan`.
-- [ ] Testar veredito `pronto_com_ressalvas`.
+- [x] Implementar `evidence_attach`.
+- [x] Implementar `verdict_record`.
+- [x] Implementar `checklist_render`.
+- [x] Implementar `hygiene_scan`.
+- [x] Testar veredito sem evidencia rebaixado e com evidencia aprovado.
 
 ## Sprint 6 - Integracao real
 
-- [ ] Configurar cliente MCP alvo.
-- [ ] Rodar flow PPIRTV completo de exemplo.
-- [ ] Registrar evidencias.
-- [ ] Revisar seguranca e paths.
-- [ ] Atualizar docs finais.
+- [x] Configurar cliente MCP `stdio` em teste.
+- [x] Rodar flow PPIRTV completo de exemplo em teste E2E.
+- [x] Registrar evidencias.
+- [x] Revisar seguranca e paths.
+- [x] Atualizar docs finais.

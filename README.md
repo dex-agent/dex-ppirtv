@@ -42,5 +42,71 @@ mais visivel, testavel e menos sujeito a entusiasmo sem evidencia.
 
 ## Status
 
-Sprint 0: documentacao e contrato do produto.
+MVP implementado como servidor MCP local por `stdio`.
 
+## Stack
+
+- TypeScript + Node.js 22.
+- `@modelcontextprotocol/sdk` para o servidor MCP.
+- Vitest para testes de engine e integracao MCP.
+- Persistencia local em arquivos JSON/NDJSON dentro de `.ppirtv/`.
+
+Essa stack foi escolhida porque o SDK TypeScript MCP e maduro para `stdio`,
+reduz codigo de protocolo escrito a mao e ainda permite manter as regras PPIRTV
+em engines testaveis fora do transporte.
+
+## Como rodar
+
+```bash
+npm install
+npm run build
+npm start
+```
+
+Para desenvolvimento:
+
+```bash
+npm run dev
+```
+
+Para verificacao:
+
+```bash
+npm run check
+```
+
+## Tools implementadas
+
+- `flow_create`
+- `flow_status`
+- `flow_advance`
+- `flow_return`
+- `gate_check`
+- `meeting_open`
+- `meeting_record`
+- `evidence_attach`
+- `checklist_render`
+- `verdict_record`
+- `hygiene_scan`
+- `flow_archive`
+
+## Resources implementados
+
+- `ppirtv://flows`
+- `ppirtv://flow/{flow_id}`
+- `ppirtv://flow/{flow_id}/checklist`
+- `ppirtv://flow/{flow_id}/ledger`
+- `ppirtv://flow/{flow_id}/meetings`
+- `ppirtv://templates/gates`
+- `ppirtv://templates/meetings`
+- `ppirtv://reference/mcp`
+
+## Prompts implementados
+
+- `start-ppirtv-flow`
+- `run-phase-gate`
+- `open-divergent-meeting`
+- `open-convergent-meeting`
+- `open-transversal-meeting`
+- `clean-house-review`
+- `final-verdict`

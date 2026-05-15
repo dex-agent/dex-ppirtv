@@ -14,57 +14,57 @@ Objetivo: fechar linguagem, escopo e arquitetura.
 
 Objetivo: criar servidor MCP minimo por `stdio`.
 
-- Escolher stack.
-- Criar comando local de execucao.
-- Implementar handshake/capabilities.
-- Expor `tools/list`, `resources/list` e `prompts/list`.
-- Criar teste smoke.
+- [x] Escolher stack TypeScript + Node + SDK MCP.
+- [x] Criar comando local de execucao.
+- [x] Implementar servidor MCP `stdio`.
+- [x] Expor `tools/list`, `resources/list` e `prompts/list`.
+- [x] Criar teste smoke.
 
 ## Fase 2 - Modelo de flow e ledger
 
 Objetivo: persistir estado auditavel.
 
-- Criar schema de `Flow`.
-- Criar schema de evento de ledger.
-- Implementar `flow_create`, `flow_status`, `flow_archive`.
-- Salvar dados em `artifacts/` ou diretorio configuravel.
+- [x] Criar schema de `Flow`.
+- [x] Criar schema de evento de ledger.
+- [x] Implementar `flow_create`, `flow_status`, `flow_archive`.
+- [x] Salvar dados em `.ppirtv/`.
 
 ## Fase 3 - Gates PPIRTV
 
 Objetivo: tornar o fluxo controlado.
 
-- Implementar `gate_check`.
-- Implementar `flow_advance`.
-- Implementar `flow_return`.
-- Validar bloqueios por gate incompleto.
+- [x] Implementar `gate_check`.
+- [x] Implementar `flow_advance`.
+- [x] Implementar `flow_return`.
+- [x] Validar bloqueios por gate incompleto.
 
 ## Fase 4 - Reunioes
 
 Objetivo: transformar divergencia, convergencia e transversalidade em rotinas.
 
-- Implementar `meeting_open`.
-- Implementar `meeting_record`.
-- Criar templates de perguntas.
-- Vincular decisoes ao flow.
+- [x] Implementar `meeting_open`.
+- [x] Implementar `meeting_record`.
+- [x] Criar templates de perguntas.
+- [x] Vincular decisoes ao flow.
 
 ## Fase 5 - Evidencia, veredito e higiene
 
 Objetivo: impedir conclusoes sem prova.
 
-- Implementar `evidence_attach`.
-- Implementar `verdict_record`.
-- Implementar `hygiene_scan`.
-- Implementar checklist visual.
+- [x] Implementar `evidence_attach`.
+- [x] Implementar `verdict_record`.
+- [x] Implementar `hygiene_scan`.
+- [x] Implementar checklist visual.
 
 ## Fase 6 - Integracao e hardening
 
 Objetivo: preparar uso real.
 
-- Testar com cliente MCP alvo.
-- Validar erros JSON-RPC.
-- Documentar instalacao.
-- Criar exemplos de uso.
-- Revisar seguranca.
+- [x] Testar com cliente MCP `stdio`.
+- [x] Validar erros principais por schemas e respostas estruturadas.
+- [x] Documentar instalacao.
+- [x] Criar exemplos de uso via flow de teste.
+- [x] Revisar seguranca basica de secrets em ledger.
 
 ## Fase 7 - Release inicial
 
@@ -74,4 +74,3 @@ Objetivo: publicar pacote minimo confiavel.
 - Atualizar docs.
 - Rodar suite de testes.
 - Criar release.
-

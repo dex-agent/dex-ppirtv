@@ -13,6 +13,8 @@ O harness deve lembrar por arquivo auditavel, nao por intuicao do modelo.
 | Meetings | Atas estruturadas | Atualizavel ate veredito |
 | Evidence | Links e artefatos | Append-only preferencial |
 | Templates | Gates e prompts padrao | Versionado |
+| Parking lot | Achados vivos e residuos | Append-only preferencial |
+| Gold mining | Pontos cegos e pepitas | Append-only preferencial |
 
 ## 3. Estrutura sugerida
 
@@ -29,6 +31,10 @@ O harness deve lembrar por arquivo auditavel, nao por intuicao do modelo.
     gates.json
     meetings.json
 ```
+
+Campos `parking_lot` e `gold_mining` vivem dentro dos JSONs de flow, meeting,
+evidence e verdict quando aplicavel. O ledger registra os mesmos dados como
+evento auditavel.
 
 ## 4. Evento de ledger
 
@@ -52,4 +58,3 @@ O harness deve lembrar por arquivo auditavel, nao por intuicao do modelo.
 - Ledger e historico, nao fila de trabalho.
 - Handoff deve vencer ledger para proximo passo operacional.
 - Memoria global, se existir, deve ser ponteiro curto, nao copia de contrato.
-

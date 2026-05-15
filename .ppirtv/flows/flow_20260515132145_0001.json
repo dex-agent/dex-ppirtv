@@ -1,0 +1,421 @@
+{
+  "flow_id": "flow_20260515132145_0001",
+  "goal": "Exemplo E2E PPIRTV MVP",
+  "context": "Validar harness MCP local implementado",
+  "phase": "validacao",
+  "status": "archived",
+  "scope": {
+    "in": [],
+    "out": []
+  },
+  "risks": [
+    "falso pronto sem evidencia",
+    "estado implicito",
+    "docs atrasadas"
+  ],
+  "uncertainties": [
+    "empacotamento futuro"
+  ],
+  "tasks": [],
+  "done_criteria": [],
+  "expected_evidence": [],
+  "changed_files": [],
+  "decisions": [
+    "TypeScript SDK com engine testavel"
+  ],
+  "evidence": [
+    {
+      "evidence_id": "evd_20260515132145_0006",
+      "flow_id": "flow_20260515132145_0001",
+      "kind": "test_log",
+      "title": "npm run check passou",
+      "uri": "artifacts/evidence/2026-05-15-test-evidence.md",
+      "created_at": "2026-05-15T13:21:45.063Z",
+      "parking_lot": [],
+      "gold_mining": []
+    }
+  ],
+  "meetings": [
+    "mtg_20260515132145_0002",
+    "mtg_20260515132145_0004"
+  ],
+  "verdicts": [
+    {
+      "verdict_id": "vrd_20260515132145_0017",
+      "flow_id": "flow_20260515132145_0001",
+      "status": "pronto_com_ressalvas",
+      "rationale": "MVP local testado com cliente stdio; falta empacotamento externo.",
+      "evidence_ids": [
+        "evd_20260515132145_0006"
+      ],
+      "residual_risks": [
+        "cliente externo ainda nao configurado"
+      ],
+      "next_step": "configurar cliente MCP real em proximo ciclo",
+      "created_at": "2026-05-15T13:21:45.085Z",
+      "parking_lot": [],
+      "gold_mining": []
+    }
+  ],
+  "gates": {
+    "pensamentos": {
+      "phase": "pensamentos",
+      "status": "passed",
+      "checked_at": "2026-05-15T13:21:45.067Z",
+      "provided": {
+        "context": "ctx",
+        "risks": [
+          "falso pronto"
+        ],
+        "uncertainties": [
+          "cliente externo"
+        ]
+      },
+      "missing": [],
+      "next": "advance_to_planejamento",
+      "back_to": null
+    },
+    "planejamento": {
+      "phase": "planejamento",
+      "status": "passed",
+      "checked_at": "2026-05-15T13:21:45.071Z",
+      "provided": {
+        "scope_in": [
+          "mvp stdio"
+        ],
+        "scope_out": [
+          "http"
+        ],
+        "tasks": [
+          "implementar tools/resources/prompts"
+        ],
+        "expected_evidence": [
+          "npm run check"
+        ],
+        "done_criteria": [
+          "tests pass"
+        ]
+      },
+      "missing": [],
+      "next": "advance_to_implementacao",
+      "back_to": null
+    },
+    "implementacao": {
+      "phase": "implementacao",
+      "status": "passed",
+      "checked_at": "2026-05-15T13:21:45.074Z",
+      "provided": {
+        "implementation_done": true,
+        "changed_files": [
+          "src/domain.ts",
+          "src/flow-engine.ts",
+          "src/server.ts"
+        ]
+      },
+      "missing": [],
+      "next": "advance_to_revisao",
+      "back_to": null
+    },
+    "revisao": {
+      "phase": "revisao",
+      "status": "passed",
+      "checked_at": "2026-05-15T13:21:45.078Z",
+      "provided": {
+        "diff_reviewed": true,
+        "barata_scan": true,
+        "regression_risks": [
+          "baixo"
+        ]
+      },
+      "missing": [],
+      "next": "advance_to_teste",
+      "back_to": null
+    },
+    "teste": {
+      "phase": "teste",
+      "status": "passed",
+      "checked_at": "2026-05-15T13:21:45.081Z",
+      "provided": {
+        "test_executed": true
+      },
+      "missing": [],
+      "next": "advance_to_validacao",
+      "back_to": null
+    },
+    "validacao": {
+      "phase": "validacao",
+      "status": "passed",
+      "checked_at": "2026-05-15T13:21:45.088Z",
+      "provided": {
+        "residual_risks": [
+          "cliente externo"
+        ],
+        "next_step": "proximo ciclo",
+        "clean_house": true
+      },
+      "missing": [],
+      "next": "advance_to_complete",
+      "back_to": null
+    }
+  },
+  "history": [
+    {
+      "at": "2026-05-15T13:21:45.038Z",
+      "type": "flow_created",
+      "data": {
+        "phase": "pensamentos"
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.043Z",
+      "type": "meeting_opened",
+      "data": {
+        "meeting_id": "mtg_20260515132145_0002",
+        "type": "divergent"
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.047Z",
+      "type": "meeting_recorded",
+      "data": {
+        "meeting_id": "mtg_20260515132145_0002",
+        "type": "divergent"
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.057Z",
+      "type": "meeting_opened",
+      "data": {
+        "meeting_id": "mtg_20260515132145_0004",
+        "type": "convergent"
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.060Z",
+      "type": "meeting_recorded",
+      "data": {
+        "meeting_id": "mtg_20260515132145_0004",
+        "type": "convergent"
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.063Z",
+      "type": "evidence_attached",
+      "data": {
+        "evidence_id": "evd_20260515132145_0006",
+        "title": "npm run check passou"
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.067Z",
+      "type": "gate_checked",
+      "data": {
+        "phase": "pensamentos",
+        "status": "passed",
+        "checked_at": "2026-05-15T13:21:45.067Z",
+        "provided": {
+          "context": "ctx",
+          "risks": [
+            "falso pronto"
+          ],
+          "uncertainties": [
+            "cliente externo"
+          ]
+        },
+        "missing": [],
+        "next": "advance_to_planejamento",
+        "back_to": null
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.069Z",
+      "type": "phase_advanced",
+      "data": {
+        "from": "pensamentos",
+        "to": "planejamento",
+        "evidence_ids": []
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.071Z",
+      "type": "gate_checked",
+      "data": {
+        "phase": "planejamento",
+        "status": "passed",
+        "checked_at": "2026-05-15T13:21:45.071Z",
+        "provided": {
+          "scope_in": [
+            "mvp stdio"
+          ],
+          "scope_out": [
+            "http"
+          ],
+          "tasks": [
+            "implementar tools/resources/prompts"
+          ],
+          "expected_evidence": [
+            "npm run check"
+          ],
+          "done_criteria": [
+            "tests pass"
+          ]
+        },
+        "missing": [],
+        "next": "advance_to_implementacao",
+        "back_to": null
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.072Z",
+      "type": "phase_advanced",
+      "data": {
+        "from": "planejamento",
+        "to": "implementacao",
+        "evidence_ids": []
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.074Z",
+      "type": "gate_checked",
+      "data": {
+        "phase": "implementacao",
+        "status": "passed",
+        "checked_at": "2026-05-15T13:21:45.074Z",
+        "provided": {
+          "implementation_done": true,
+          "changed_files": [
+            "src/domain.ts",
+            "src/flow-engine.ts",
+            "src/server.ts"
+          ]
+        },
+        "missing": [],
+        "next": "advance_to_revisao",
+        "back_to": null
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.076Z",
+      "type": "phase_advanced",
+      "data": {
+        "from": "implementacao",
+        "to": "revisao",
+        "evidence_ids": []
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.078Z",
+      "type": "gate_checked",
+      "data": {
+        "phase": "revisao",
+        "status": "passed",
+        "checked_at": "2026-05-15T13:21:45.078Z",
+        "provided": {
+          "diff_reviewed": true,
+          "barata_scan": true,
+          "regression_risks": [
+            "baixo"
+          ]
+        },
+        "missing": [],
+        "next": "advance_to_teste",
+        "back_to": null
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.079Z",
+      "type": "phase_advanced",
+      "data": {
+        "from": "revisao",
+        "to": "teste",
+        "evidence_ids": []
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.081Z",
+      "type": "gate_checked",
+      "data": {
+        "phase": "teste",
+        "status": "passed",
+        "checked_at": "2026-05-15T13:21:45.081Z",
+        "provided": {
+          "test_executed": true
+        },
+        "missing": [],
+        "next": "advance_to_validacao",
+        "back_to": null
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.083Z",
+      "type": "phase_advanced",
+      "data": {
+        "from": "teste",
+        "to": "validacao",
+        "evidence_ids": []
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.085Z",
+      "type": "verdict_recorded",
+      "data": {
+        "verdict_id": "vrd_20260515132145_0017",
+        "flow_id": "flow_20260515132145_0001",
+        "status": "pronto_com_ressalvas",
+        "rationale": "MVP local testado com cliente stdio; falta empacotamento externo.",
+        "evidence_ids": [
+          "evd_20260515132145_0006"
+        ],
+        "residual_risks": [
+          "cliente externo ainda nao configurado"
+        ],
+        "next_step": "configurar cliente MCP real em proximo ciclo",
+        "created_at": "2026-05-15T13:21:45.085Z"
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.088Z",
+      "type": "gate_checked",
+      "data": {
+        "phase": "validacao",
+        "status": "passed",
+        "checked_at": "2026-05-15T13:21:45.088Z",
+        "provided": {
+          "residual_risks": [
+            "cliente externo"
+          ],
+          "next_step": "proximo ciclo",
+          "clean_house": true
+        },
+        "missing": [],
+        "next": "advance_to_complete",
+        "back_to": null
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.090Z",
+      "type": "flow_completed",
+      "data": {
+        "from": "validacao"
+      }
+    },
+    {
+      "at": "2026-05-15T13:21:45.092Z",
+      "type": "flow_archived",
+      "data": {
+        "reason": "Exemplo E2E concluido"
+      }
+    }
+  ],
+  "created_at": "2026-05-15T13:21:45.038Z",
+  "updated_at": "2026-05-15T13:21:45.092Z",
+  "archived_at": "2026-05-15T13:21:45.092Z",
+  "parking_lot": [
+    "EST-01 avaliar tool dedicada para estacionamento/garimpo depois do MVP",
+    "EST-02 governanca canonica de skills via USERPROFILE/.agents/skills"
+  ],
+  "gold_mining": [
+    "usar artefatos existentes e ledger antes de ampliar contrato MCP",
+    "documentar caminhos por variavel de ambiente, sem copiar skills para o projeto"
+  ]
+}

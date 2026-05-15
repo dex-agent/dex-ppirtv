@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposto
+Aceito
 
 ## Contexto
 
@@ -24,4 +24,3 @@ Implementar primeiro como servidor MCP por `stdio`.
 - Menor superficie de seguranca no MVP.
 - Mais simples de testar localmente.
 - HTTP pode ser adicionado depois com ADR propria.
-

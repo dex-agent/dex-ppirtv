@@ -30,6 +30,13 @@ PPIRTV MCP Server
 | `LedgerStore` | Registrar eventos append-only |
 | `PromptCatalog` | Expor prompts PPIRTV |
 | `ResourceCatalog` | Expor estado e templates por URI |
+| `PpirtvStore` | Persistir JSON/NDJSON em `.ppirtv/` |
+
+## 2.1 Stack do MVP
+
+- TypeScript em Node.js 22.
+- `@modelcontextprotocol/sdk` para `McpServer` e `StdioServerTransport`.
+- Vitest para testes unitarios e integracao MCP.
 
 ## 3. Capabilities do MVP
 
@@ -82,4 +89,3 @@ Nao depender de:
 | gate incompleto | resposta estruturada `blocked` |
 | evidencia inexistente | erro acionavel com path/URI |
 | ledger indisponivel | erro interno com diagnostico seguro |
-

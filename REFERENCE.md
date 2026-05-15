@@ -26,11 +26,20 @@
 
 | Decisao | Estado |
 | --- | --- |
-| Usar PPIRTV como maquina de estados | Proposto |
-| Usar `flow_id` explicito | Proposto |
-| Separar tools/resources/prompts | Proposto |
-| Persistir ledger local auditavel | Proposto |
-| Fazer HTTP somente depois do MVP `stdio` | Proposto |
+| Usar PPIRTV como maquina de estados | Implementado |
+| Usar `flow_id` explicito | Implementado |
+| Separar tools/resources/prompts | Implementado |
+| Persistir ledger local auditavel | Implementado |
+| Fazer HTTP somente depois do MVP `stdio` | Mantido fora do MVP |
+| Usar TypeScript + Node + SDK MCP | Implementado |
+
+## Governanca local de skills
+
+- Especialistas vivem em `$env:USERPROFILE\.agents\skills\`.
+- A governanca canonica da mesa de skills vive em
+  `$env:USERPROFILE\.agents\skills\00-governanca-mesa-de-skills.md`.
+- A indexacao rapida das skills vive em
+  `$env:USERPROFILE\.agents\skills\INDEX.md`.
 
 ## Riscos conhecidos
 
@@ -39,4 +48,3 @@
 - Misturar prompts com tools e perder testabilidade.
 - Tratar reuniao como texto solto em vez de artefato rastreavel.
 - Avancar fases sem evidencia real.
-
