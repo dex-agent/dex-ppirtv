@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { HygieneFinding } from "./domain.js";
@@ -38,7 +39,7 @@ export type PrincipleChecklistItem = {
   severity: PrincipleSeverity;
 };
 
-type ContractOrigin = "env" | "local" | "harness" | "missing";
+type ContractOrigin = "env" | "shared" | "local" | "harness" | "missing";
 
 type OperationalContractResolution = {
   contract: OperationalContract;
@@ -46,6 +47,7 @@ type OperationalContractResolution = {
   contractPath?: string;
   sourceRoot: string;
   expectedLocalPath: string;
+  expectedSharedPath: string;
   configuredPath?: string;
 };
 
@@ -93,7 +95,7 @@ export async function scanOperationalPrinciples(root = process.cwd()): Promise<H
       category: "principles",
       message: "PPIRTV_PRINCIPLES_PATH aponta para contrato inexistente.",
       evidence: [resolution.configuredPath ?? "PPIRTV_PRINCIPLES_PATH"],
-      action: "Corrigir PPIRTV_PRINCIPLES_PATH ou remover a env var para usar contrato local/fallback."
+      action: "Corrigir PPIRTV_PRINCIPLES_PATH ou remover a env var para usar o contrato compartilhado/fallback."
     });
   }
 
@@ -102,9 +104,9 @@ export async function scanOperationalPrinciples(root = process.cwd()): Promise<H
       id: "principles:using_harness_fallback",
       severity: "info",
       category: "principles",
-      message: "Projeto atual nao possui contrato local de principios; usando fallback do dex-PPIRTV.",
-      evidence: [path.relative(root, resolution.expectedLocalPath).replace(/\\/g, "/"), "dex-PPIRTV/principles/operational-contract.json"],
-      action: "Criar principles/operational-contract.json no projeto ou configurar PPIRTV_PRINCIPLES_PATH explicitamente."
+      message: "Contrato compartilhado de principios nao encontrado; usando fallback do dex-PPIRTV.",
+      evidence: [resolution.expectedSharedPath, "dex-PPIRTV/principles/operational-contract.json"],
+      action: "Criar o contrato compartilhado em $env:USERPROFILE/.agents/memories/principles ou configurar PPIRTV_PRINCIPLES_PATH explicitamente."
     });
   }
 
@@ -115,7 +117,7 @@ export async function scanOperationalPrinciples(root = process.cwd()): Promise<H
       category: "principles",
       message: "Arquivo fonte de principios nao encontrado.",
       evidence: [contract.source],
-      action: "Criar principles/PRINCIPLES.md ou ajustar source no contrato operacional."
+      action: "Criar PRINCIPLES.md ao lado do contrato operacional ou ajustar source no contrato."
     });
   }
 
@@ -126,7 +128,7 @@ export async function scanOperationalPrinciples(root = process.cwd()): Promise<H
       category: "principles",
       message: "PRINCIPLES.md nao aponta claramente para o contrato operacional editavel.",
       evidence: [contract.source],
-      action: "Adicionar link para principles/operational-contract.json."
+      action: "Adicionar link para operational-contract.json."
     });
   }
 
@@ -189,6 +191,7 @@ export function resolveOperationalContractSync(root = process.cwd()): Operationa
 
 function resolveOperationalContractPath(root: string): Omit<OperationalContractResolution, "contract"> {
   const expectedLocalPath = localContractPath(root);
+  const expectedSharedPath = sharedMemoryContractPath();
   const configuredPath = process.env.PPIRTV_PRINCIPLES_PATH?.trim();
   if (configuredPath) {
     const resolved = path.isAbsolute(configuredPath) ? configuredPath : path.resolve(root, configuredPath);
@@ -197,7 +200,17 @@ function resolveOperationalContractPath(root: string): Omit<OperationalContractR
       contractPath: resolved,
       sourceRoot: inferContractRoot(resolved),
       expectedLocalPath,
+      expectedSharedPath,
       configuredPath
+    };
+  }
+  if (existsSync(expectedSharedPath)) {
+    return {
+      origin: "shared",
+      contractPath: expectedSharedPath,
+      sourceRoot: inferContractRoot(expectedSharedPath),
+      expectedLocalPath,
+      expectedSharedPath
     };
   }
   if (existsSync(expectedLocalPath)) {
@@ -205,7 +218,8 @@ function resolveOperationalContractPath(root: string): Omit<OperationalContractR
       origin: "local",
       contractPath: expectedLocalPath,
       sourceRoot: root,
-      expectedLocalPath
+      expectedLocalPath,
+      expectedSharedPath
     };
   }
   const fallback = harnessContractPath();
@@ -214,18 +228,25 @@ function resolveOperationalContractPath(root: string): Omit<OperationalContractR
       origin: "harness",
       contractPath: fallback,
       sourceRoot: inferContractRoot(fallback),
-      expectedLocalPath
+      expectedLocalPath,
+      expectedSharedPath
     };
   }
   return {
     origin: "missing",
     sourceRoot: root,
-    expectedLocalPath
+    expectedLocalPath,
+    expectedSharedPath
   };
 }
 
 function localContractPath(root: string): string {
   return path.join(root, "principles", "operational-contract.json");
+}
+
+function sharedMemoryContractPath(): string {
+  const home = process.env.USERPROFILE || os.homedir();
+  return path.join(home, ".agents", "memories", "principles", "operational-contract.json");
 }
 
 function harnessContractPath(): string {

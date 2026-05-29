@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -72,6 +72,284 @@ describe("PPIRTV MCP stdio server", () => {
     expect(resource.contents[0]?.text).toContain(flowId);
   });
 
+  it("runs the GOAL/SPT bridge through MCP with idempotency and evidence", async () => {
+    await connectClient();
+    const workspace = path.join(tempRoot, "workspace");
+    const sptPath = await writeFakeSpt(workspace);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Auditar ponte GOAL/SPT por MCP",
+      idempotency_key: "dex-code:mcp-goal-001",
+      evidence_required: true,
+      required_evidence: ["vitest"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code"
+    };
+
+    const validation = await client!.callTool({ name: "spt_validate", arguments: envelope });
+    const started = await client!.callTool({ name: "goal_start", arguments: envelope });
+    const reused = await client!.callTool({ name: "goal_start", arguments: envelope });
+    const flowId = resultOf(started).flow_id as string;
+    const evidence = await client!.callTool({
+      name: "evidence_add",
+      arguments: { flow_id: flowId, title: "vitest run", content: "pass", satisfies: ["vitest"] }
+    });
+    const verdict = await client!.callTool({
+      name: "goal_verdict",
+      arguments: {
+        flow_id: flowId,
+        status: "pronto",
+        rationale: "Evidencia MCP anexada",
+        evidence_ids: [resultOf(evidence).evidence_id],
+        residual_risks: [],
+        next_step: "arquivar"
+      }
+    });
+    const status = await client!.callTool({ name: "goal_status", arguments: { idempotency_key: envelope.idempotency_key } });
+
+    expect(resultOf(validation).valid).toBe(true);
+    expect(resultOf(validation).tasks).toContain("Rodar teste MCP.");
+    expect(resultOf(validation).expected_evidence).toContain("vitest.");
+    expect(resultOf(started).started).toBe(true);
+    expect(resultOf(reused).reused).toBe(true);
+    expect(resultOf(reused).flow_id).toBe(flowId);
+    expect(resultOf(status).tasks).toEqual(expect.arrayContaining(["Rodar teste MCP."]));
+    expect(resultOf(status).expected_evidence).toEqual(expect.arrayContaining(["vitest."]));
+    expect(resultOf(status).done_criteria).toEqual(expect.arrayContaining(["vitest."]));
+    expect(resultOf(status).phase_emoji).toBe("🧠");
+    expect(((resultOf(verdict).verdict as Record<string, unknown>).status)).toBe("pronto");
+    expect((resultOf(status).current_verdict as Record<string, unknown>).status).toBe("pronto");
+  });
+
+  it("runs the live GOAL wrappers through MCP", async () => {
+    await connectClient();
+    const workspace = path.join(tempRoot, "workspace");
+    const sptPath = await writeFakeSpt(workspace);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Auditar ponte GOAL/SPT por MCP",
+      idempotency_key: "dex-code:mcp-live-goal-001",
+      evidence_required: true,
+      required_evidence: ["vitest"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code"
+    };
+
+    const started = await client!.callTool({ name: "goal_start", arguments: envelope });
+    const flowId = resultOf(started).flow_id as string;
+    const opened = await client!.callTool({
+      name: "goal_meeting_open",
+      arguments: {
+        flow_id: flowId,
+        type: "divergent",
+        question: "Como provar que a reuniao e viva?",
+        suggested_cooperators: [{ name: "Chato", reason: "pressionar credito material falso", material: true }]
+      }
+    });
+    const meetingId = resultOf(opened).meeting_id as string;
+    const recorded = await client!.callTool({
+      name: "goal_meeting_record",
+      arguments: {
+        flow_id: flowId,
+        meeting_id: meetingId,
+        risks: ["credito decorativo"],
+        cooperators: [{ name: "Chato", reason: "exigiu evidencia de ledger", material: true }],
+        active_credits: ["Chato exigiu evidencia de ledger"]
+      }
+    });
+    const gate = await client!.callTool({ name: "goal_gate_check", arguments: { flow_id: flowId } });
+    const advanced = await client!.callTool({ name: "goal_advance", arguments: { flow_id: flowId } });
+    const status = await client!.callTool({ name: "goal_status", arguments: { flow_id: flowId } });
+    const resource = await client!.readResource({ uri: `ppirtv://flow/${flowId}/ledger` });
+
+    expect((resultOf(opened).suggested_cooperators as Array<Record<string, unknown>>)[0].material).toBe(false);
+    expect(resultOf(recorded).active_credits).toEqual(expect.arrayContaining(["Chato exigiu evidencia de ledger"]));
+    expect(resultOf(gate).status).toBe("passed");
+    expect(resultOf(gate).persisted).toBe(true);
+    expect(resultOf(advanced)).toMatchObject({ advanced: true, from: "pensamentos", to: "planejamento" });
+    expect(resultOf(status).phase).toBe("planejamento");
+    expect(resultOf(status).active_credits).toEqual(expect.arrayContaining(["Chato exigiu evidencia de ledger"]));
+    expect(resource.contents[0]?.text).toContain("meeting_opened");
+    expect(resource.contents[0]?.text).toContain("meeting_recorded");
+    expect(resource.contents[0]?.text).toContain("gate_checked");
+    expect(resource.contents[0]?.text).toContain("phase_advanced");
+  });
+
+  it("exposes mm_memory_mining and writes valid candidates through MCP", async () => {
+    await connectClient();
+    const workspace = path.join(tempRoot, "workspace");
+    const sptPath = await writeFakeSpt(workspace);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Auditar memoria por MCP",
+      idempotency_key: "dex-code:mcp-mm-memory-mining-001",
+      evidence_required: true,
+      required_evidence: ["vitest"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code"
+    };
+
+    const started = await client!.callTool({ name: "goal_start", arguments: envelope });
+    const flowId = resultOf(started).flow_id as string;
+    const opened = await client!.callTool({
+      name: "goal_meeting_open",
+      arguments: { flow_id: flowId, type: "divergent", question: "Qual memoria deve ser minerada?" }
+    });
+    await client!.callTool({
+      name: "goal_meeting_record",
+      arguments: {
+        flow_id: flowId,
+        meeting_id: resultOf(opened).meeting_id,
+        parking_lot: ["Ponto cego Delphi DUnitX standalone vs provider precisa virar memoria reutilizavel."]
+      }
+    });
+    const mined = await client!.callTool({ name: "mm_memory_mining", arguments: { flow_id: flowId } });
+    const status = await client!.callTool({ name: "goal_status", arguments: { flow_id: flowId } });
+    const lembranca = await readFile(path.join(tempRoot, "memories", "temas", "delphi", "LEMBRANCA.md"), "utf8");
+    const memoria = await readFile(path.join(tempRoot, "memories", "temas", "delphi", "MEMORIA.md"), "utf8");
+
+    expect(resultOf(mined).write_policy).toBe("auto_write");
+    expect(resultOf(mined).blocked_verdict).toBe(false);
+    expect(resultOf(status).goal_learning_links).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          garimpo_vinculado: expect.objectContaining({ promovido_para_gold_mining: true })
+        })
+      ])
+    );
+    expect(lembranca).toContain("DUnitX standalone");
+    expect(memoria).toContain("Delphi DUnitX standalone");
+  });
+
+  it("enforces mm_memory_mining auto_classify and weak parking rules through MCP", async () => {
+    await connectClient();
+    const created = await client!.callTool({
+      name: "flow_create",
+      arguments: {
+        goal: "Weak parking MCP",
+        context: "ctx",
+        risks: ["risco"],
+        uncertainties: ["lacuna"]
+      }
+    });
+    const flowId = resultOf(created).flow_id as string;
+    const opened = await client!.callTool({
+      name: "meeting_open",
+      arguments: { flow_id: flowId, type: "divergent", question: "O que ficou fraco?" }
+    });
+    await client!.callTool({
+      name: "meeting_record",
+      arguments: {
+        meeting_id: resultOf(opened).meeting_id,
+        parking_lot: ["Quando contrato MCP falhar, validar gate antes do veredito."]
+      }
+    });
+
+    const invalidAutoWrite = await client!.callTool({
+      name: "mm_memory_mining",
+      arguments: { flow_id: flowId, auto_classify: false, write_policy: "auto_write" }
+    });
+    expect((invalidAutoWrite as { isError?: boolean }).isError).toBe(true);
+    expect(JSON.stringify(invalidAutoWrite)).toContain("AUTO_CLASSIFY_DISABLED_AUTO_WRITE");
+
+    const skipped = await client!.callTool({
+      name: "mm_memory_mining",
+      arguments: { flow_id: flowId, auto_classify: false, write_policy: "classify_only" }
+    });
+    const mined = await client!.callTool({ name: "mm_memory_mining", arguments: { flow_id: flowId } });
+
+    expect(resultOf(skipped)).toMatchObject({ auto_classify: false, classification_skipped: true, candidates: [], written: [] });
+    expect(resultOf(mined).written).toEqual([]);
+    expect(resultOf(mined).candidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "parking_lot",
+          scope: "ledger_only",
+          score: expect.objectContaining({ evidencia: 0 })
+        })
+      ])
+    );
+  });
+
+  it("runs five PPIRTV flows sequentially through mm_pipeline_run over MCP", async () => {
+    await connectClient();
+    const pipeline = Array.from({ length: 5 }, (_, index) => validPipelineItem(`MCP pipeline item ${index + 1}`));
+
+    const response = await client!.callTool({
+      name: "mm_pipeline_run",
+      arguments: {
+        pipeline,
+        stop_on_failure: true,
+        auto_memory_mining: false
+      }
+    });
+    const result = resultOf(response);
+    const flows = result.flows as Array<Record<string, unknown>>;
+    const firstFlowId = flows[0].flow_id as string;
+    const resource = await client!.readResource({ uri: `ppirtv://flow/${firstFlowId}/ledger` });
+    const ledgerText = resource.contents[0]?.text ?? "";
+
+    expect(result.pipeline_id).toMatch(/^pipe_/);
+    expect(result).toMatchObject({
+      total: 5,
+      completed: 5,
+      failed: 0,
+      pending: 0,
+      stop_on_failure: true,
+      auto_memory_mining: false
+    });
+    expect(flows).toHaveLength(5);
+    expect(flows.every((flow) => flow.status === "pronto" && /^flow_/.test(String(flow.flow_id)))).toBe(true);
+    expect(ledgerText).toContain("pipeline_item_started");
+    expect(ledgerText).toContain("pipeline_item_completed");
+    expect(ledgerText).toContain("verdict_recorded");
+  });
+
+  it("keeps mm_pipeline_run ids unique and mines memory after verdict over MCP", async () => {
+    await connectClient();
+    const first = resultOf(
+      await client!.callTool({
+        name: "mm_pipeline_run",
+        arguments: { pipeline: [validPipelineItem("MCP rapid pipeline A")], auto_memory_mining: false }
+      })
+    );
+    const second = resultOf(
+      await client!.callTool({
+        name: "mm_pipeline_run",
+        arguments: { pipeline: [validPipelineItem("MCP rapid pipeline B")], auto_memory_mining: false }
+      })
+    );
+
+    expect(first.pipeline_id).not.toBe(second.pipeline_id);
+
+    const mined = resultOf(
+      await client!.callTool({
+        name: "mm_pipeline_run",
+        arguments: {
+          pipeline: [
+            {
+              ...validPipelineItem("MCP pipeline verdict mining"),
+              verdict_gold_mining: ["Ponto cego Delphi DUnitX standalone vs provider vindo do veredito MCP."]
+            }
+          ],
+          auto_memory_mining: true
+        }
+      })
+    );
+    const flow = (mined.flows as Array<Record<string, unknown>>)[0];
+    const ledger = await client!.readResource({ uri: `ppirtv://flow/${flow.flow_id}/ledger` });
+    const ledgerText = ledger.contents[0]?.text ?? "";
+    const memoryText = await readFile(path.join(tempRoot, "memories", "temas", "delphi", "MEMORIA.md"), "utf8");
+
+    expect(flow.status).toBe("pronto");
+    expect(ledgerText.indexOf("verdict_recorded")).toBeLessThan(ledgerText.indexOf("memory_mined"));
+    expect(memoryText).toContain("Delphi DUnitX standalone");
+  });
+
+
   it("returns missing, next and back_to when gate blocks an advance", async () => {
     await connectClient();
     const created = await client!.callTool({ name: "flow_create", arguments: { goal: "Gate block" } });
@@ -124,6 +402,12 @@ describe("PPIRTV MCP stdio server", () => {
     expect(text).toContain("flow_demo");
     expect(text).toContain("Principios operacionais");
     expect(text).toContain("L1");
+    expect(text).toContain("PLAN-TASKS");
+
+    const convergentPrompt = await client!.getPrompt({ name: "open-convergent-meeting", arguments: { flow_id: "flow_demo" } });
+    const convergentText = convergentPrompt.messages[0]?.content.type === "text" ? convergentPrompt.messages[0].content.text : "";
+    expect(convergentText).toContain("prompt de handoff/execucao");
+    expect(convergentText).toContain("nao e contrato canonico do PPIRTV");
   });
 });
 
@@ -135,7 +419,8 @@ async function connectClient(): Promise<void> {
     cwd: process.cwd(),
     env: {
       ...getDefaultEnvironment(),
-      PPIRTV_HOME: tempRoot
+      PPIRTV_HOME: tempRoot,
+      DEX_MEMORIA_HOME: path.join(tempRoot, "memories")
     },
     stderr: "pipe"
   });
@@ -144,4 +429,114 @@ async function connectClient(): Promise<void> {
 
 function resultOf(response: Awaited<ReturnType<Client["callTool"]>>): Record<string, unknown> {
   return (response as { structuredContent?: { result?: Record<string, unknown> } }).structuredContent?.result ?? {};
+}
+
+function validPipelineItem(goal: string): Record<string, unknown> {
+  return {
+    goal,
+    context: "ctx",
+    scope_in: [`src/${goal.toLowerCase().replace(/\s+/g, "-")}.ts`],
+    scope_out: ["fora do item atual"],
+    tasks: ["executar gates PPIRTV"],
+    done_criteria: ["flow completo com veredito"],
+    expected_evidence: ["evidencia declarada pelo pipeline"],
+    evidence: ["pipeline declarou evidencia para este item"]
+  };
+}
+
+async function writeFakeSpt(workspace: string): Promise<string> {
+  const dir = path.join(workspace, ".agents", "PLAN-TASKS");
+  await mkdir(dir, { recursive: true });
+  const sptPath = path.join(dir, "2026-05-24-fake-goal-spt.md");
+  await writeFile(
+    sptPath,
+    [
+      "# Trilho - Fake MCP GOAL SPT",
+      "",
+      "Tipo: SPEC-PLAN-TASKs",
+      "Status: EM TESTE",
+      "Owner: Teste",
+      "Data: 2026-05-24",
+      "Workspace: <workspace>",
+      "Origem: teste MCP",
+      "",
+      "## GoalEnvelope",
+      "",
+      "```json",
+      "{",
+      "  \"workspace\": \"<workspace>\",",
+      "  \"spt_path\": \"<spt-path>\",",
+      "  \"objective\": \"Auditar ponte GOAL/SPT por MCP\",",
+      "  \"idempotency_key\": \"dex-code:mcp-goal-001\",",
+      "  \"evidence_required\": true,",
+      "  \"required_evidence\": [\"vitest\"],",
+      "  \"requested_verdict_policy\": \"evidence_required\",",
+      "  \"source\": \"dex-code\"",
+      "}",
+      "```",
+      "",
+      "## Contexto",
+      "",
+      "Teste MCP do contrato GOAL/SPT.",
+      "",
+      "## Problema",
+      "",
+      "Garantir que o servidor MCP exponha e execute o contrato oficial.",
+      "",
+      "## Decisao",
+      "",
+      "Usar SPT canonico e tools oficiais.",
+      "",
+      "## Escopo",
+      "",
+      "- Validar SPT por MCP.",
+      "",
+      "## Fora de escopo",
+      "",
+      "- Usar tools antigas como substituto silencioso.",
+      "",
+      "## SPEC",
+      "",
+      "Auditar ponte GOAL/SPT por MCP.",
+      "",
+      "## PLAN",
+      "",
+      "1. Validar SPT.",
+      "2. Criar flow.",
+      "3. Registrar evidencia.",
+      "",
+      "## TASKs",
+      "",
+      "- [ ] Rodar teste MCP.",
+      "",
+      "## Expected Evidence",
+      "",
+      "- vitest.",
+      "",
+      "## Done Criteria",
+      "",
+      "- vitest.",
+      "",
+      "## Riscos",
+      "",
+      "- Cliente MCP antigo nao reiniciado.",
+      "",
+      "## Gates",
+      "",
+      "- tasks, expected_evidence e done_criteria preenchidos.",
+      "",
+      "## Validacao",
+      "",
+      "- vitest.",
+      "",
+      "## Prompt /GOAL de execucao",
+      "",
+      "```text",
+      "/GOAL",
+      "Execute este SPT.",
+      "```"
+    ].join("\n"),
+    "utf8"
+  );
+  return sptPath;
 }

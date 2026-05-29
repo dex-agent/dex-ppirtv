@@ -45,15 +45,53 @@ Apos cada correcao, verificar se nao ficou lixo operacional: scripts temporarios
 indentacao inconsistente, codigo morto, codigo dentro de codigo, docs
 contraditorias ou caminhos mortos.
 
+Sub-regra de higiene:
+
+```text
+Nao podemos jogar ouro no lixo.
+```
+
+Antes de descartar, mover para LIXEIRA, fechar estacionamento ou eliminar
+material antigo, e obrigatorio garimpar aprendizados, evidencias e memorias
+uteis.
+
+Regra de memoria durante a higiene:
+
+- nunca criar L3 sem L2 e L1;
+- nunca criar L2 sem L1.
+
 ## 5. Nunca comecamos pelo final nem pelo meio
 
 Antes de qualquer acao tecnica, consultar o que ja sabemos: `napkin.md`, L1,
 L2, skills e documentacao viva. So depois escolher ferramenta e executar.
 
+## 6. Erro repetido tres vezes bloqueia pronto
+
+Errar uma vez e dado. Errar duas vezes e sinal. Errar tres vezes e falha do
+metodo de recuperacao, teste, contrato ou memoria.
+
+Na terceira ocorrencia do mesmo erro, problema ou tropeco, nao declarar pronto
+ate existir um destino rastreavel: teste, contrato operacional, napkin tatico,
+memoria L1/L2/L3, skill atualizada, estacionamento ou descarte justificado.
+
+O erro deve morar no dominio certo, como projeto, tema ou global. Marcadores
+curtos como `#erro-recorrente`, `#falso-verde`, `#encoding`, `#fallback` e
+`#evidencia-visual` ajudam a busca transversal, mas nao substituem memoria
+recuperavel nem justificam criar deposito generico de erros.
+
 ## Contrato editavel
 
-O contrato operacional derivado fica em
-[`principles/operational-contract.json`](operational-contract.json).
+Fonte canonica dos principios:
+
+```text
+$env:USERPROFILE\.agents\memories\principles\PRINCIPLES.md
+```
+
+O contrato operacional derivado fica em:
+
+```text
+$env:USERPROFILE\.agents\memories\principles\operational-contract.json
+```
 
 Atualize o contrato quando a operacionalizacao estiver errada, mantendo este
 arquivo como fonte humana dos principios.

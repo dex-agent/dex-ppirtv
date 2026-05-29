@@ -1,183 +1,227 @@
 # dex-PPIRTV
 
-Repositorio de especificacao para transformar o metodo **PPIRTV** em um
-**harness MCP**: um trilho operacional que guia trabalho tecnico por fases,
-gates, retornos, reunioes e evidencias.
+FileVersion: 0.2.0
 
-## Objetivo
+`dex-PPIRTV` is a local MCP stdio server for running PPIRTV execution flows with
+explicit phases, gates, meetings, evidence, verdicts, memory mining and
+multi-flow pipelines.
 
-Criar um servidor MCP que ajude clientes/agentes a conduzir ciclos de trabalho
-com este fluxo:
+PPIRTV means:
 
 ```text
-P -> P -> I -> R -> T -> V
-
 Pensamentos -> Planejamento -> Implementacao -> Revisao -> Teste -> Validacao
 ```
 
-O harness nao deve substituir o julgamento tecnico. Ele deve tornar o processo
-mais visivel, testavel e menos sujeito a entusiasmo sem evidencia.
-
-## Decisoes iniciais
-
-- O MVP sera um servidor MCP local, preferencialmente `stdio`.
-- O estado de fluxo sera explicito por `flow_id`.
-- Tools executam transicoes e gates.
-- Resources expõem estado, trilhas, templates e historico auditavel.
-- Prompts oferecem roteiros de uso controlados pelo usuario.
-- Reunioes divergentes, convergentes e transversais serao modos de trabalho
-  acionaveis, nao conversa solta.
-
-## Mapa dos documentos
-
-| Documento | Uso |
-| --- | --- |
-| [CONTEXT.md](CONTEXT.md) | Glossario do dominio PPIRTV |
-| [SPEC.md](SPEC.md) | Especificacao funcional e tecnica |
-| [PLAN.md](PLAN.md) | Plano por fases |
-| [TASKS.md](TASKS.md) | Backlog executavel |
-| [SPRINTS.md](SPRINTS.md) | Sprints planejados |
-| [REFERENCE.md](REFERENCE.md) | Fontes MCP, decisoes e links |
-| [docs/00-INDEX.md](docs/00-INDEX.md) | Ordem de leitura dos guias |
+The server does not replace engineering judgment. It gives agents and local
+clients a structured way to keep work visible, resumable and evidence based.
 
 ## Status
 
-MVP implementado como servidor MCP local por `stdio`.
-Sprint 7 implementado: respostas agora incluem aliases pt-BR e camada
-`display` para a Fernanda, preservando os campos tecnicos existentes.
-Sprint 8 implementado: principios operacionais e memoria L1/L2/L3 agora vivem
-em arquivos editaveis dentro de `principles/` e alimentam checklist, higiene e
-prompts sem remover campos existentes.
-Sprint 9 implementado: principios podem ser localizados por env var, contrato
-local do `cwd` ou fallback visivel do harness.
+This package currently provides:
 
-## Stack
+- low-level PPIRTV flow tools;
+- official `goal_*` wrappers for GOAL/SPT execution;
+- `mm_memory_mining` for classified memory mining and safe writes;
+- `mm_pipeline_run` for sequential execution of multiple PPIRTV flows;
+- runtime persistence in a local store;
+- tests for the engine and MCP stdio behavior.
 
-- TypeScript + Node.js 22.
-- `@modelcontextprotocol/sdk` para o servidor MCP.
-- Vitest para testes de engine e integracao MCP.
-- Persistencia local em arquivos JSON/NDJSON dentro de `.ppirtv/`.
+## Public Boundary
 
-Essa stack foi escolhida porque o SDK TypeScript MCP e maduro para `stdio`,
-reduz codigo de protocolo escrito a mao e ainda permite manter as regras PPIRTV
-em engines testaveis fora do transporte.
+This repository is intended to publish source code, tests, package metadata,
+fallback principles, templates and this README.
 
-## Como rodar
+The following paths are intentionally local-only and ignored:
+
+- `.agents/`
+- `.codex/`
+- `.ppirtv/`
+- `artifacts/`
+- `docs/`
+- `examples/`
+- `skills/`
+- `AGENTS.md`
+- `INDEX.md`
+- `CONTEXT.md`
+- `DOCS.md`
+- `PLAN.md`
+- `REFERENCE.md`
+- `SPEC.md`
+- `SPRINTS.md`
+- `TASKS.md`
+- `setup-ppirtv-repo.ps1`
+- `.env`
+- local backup files matching `*--backup.*`
+
+Those files may exist in a maintainer workspace for planning, agent context,
+handoff or implementation history. They are not part of the public package.
+
+## Requirements
+
+- Node.js 22 or newer.
+- npm.
+
+## Install
 
 ```bash
 npm install
-npm run build
-npm start
 ```
 
-O processo MCP deve ser iniciado com `cwd` na raiz do projeto que esta sendo
-operado. Essa raiz e usada para localizar `.ppirtv/` e, quando existir, o
-contrato local `principles/operational-contract.json`.
-
-Contrato decidido para localizacao de principios:
-
-1. `PPIRTV_PRINCIPLES_PATH` explicito vence qualquer outro contrato.
-2. Sem env var, o harness deve usar `principles/operational-contract.json` no
-   `cwd` do processo.
-3. Sem contrato local, o harness deve usar o contrato do proprio `dex-PPIRTV`
-   como fallback.
-4. Quando usar fallback, `hygiene_scan` deve avisar para nao esconder a
-   dependencia.
-
-Para usar um contrato de principios compartilhado, configure a env var com um
-path absoluto:
-
-```powershell
-$env:PPIRTV_PRINCIPLES_PATH = "C:\CodexProjetos\dex-PPIRTV\principles\operational-contract.json"
-```
-
-Os testes da Sprint 9 cobrem env var, contrato local por `cwd`, fallback do
-harness e aviso informativo de `hygiene_scan`.
-
-Para desenvolvimento:
+## Build
 
 ```bash
-npm run dev
+npm run build
 ```
 
-Para verificacao:
+## Test
 
 ```bash
 npm run check
 ```
 
-## Tools implementadas
+`npm run check` builds the TypeScript project and runs the Vitest suite.
+
+## Run
+
+```bash
+npm start
+```
+
+The MCP process should be started with `cwd` set to the workspace being operated
+on. Runtime flow state is written under that workspace unless `PPIRTV_HOME` is
+configured.
+
+Minimal MCP server configuration shape:
+
+```json
+{
+  "command": "node",
+  "args": ["dist/index.js"],
+  "cwd": "<workspace-or-repo-root>",
+  "env": {
+    "PPIRTV_HOME": "<local-runtime-state-dir>",
+    "PPIRTV_PRINCIPLES_PATH": "<optional-operational-contract-json>"
+  }
+}
+```
+
+Do not point `PPIRTV_HOME` at a public or versioned directory.
+
+## Runtime State
+
+By default, the store uses a local runtime directory named `.ppirtv` under the
+current workspace. You can override it with `PPIRTV_HOME`.
+
+Runtime state can include:
+
+- flows;
+- meetings;
+- evidence;
+- ledger events.
+
+That state is operational data, not source code.
+
+## Principle Contract Resolution
+
+The server resolves the operational principles contract in this order:
+
+1. `PPIRTV_PRINCIPLES_PATH`, when explicitly configured.
+2. The shared user principles contract, when present.
+3. `principles/operational-contract.json` in the current workspace.
+4. The versioned fallback contract shipped in this repository.
+
+If a fallback is used, `hygiene_scan` reports it so clients do not mistake a
+default for a project-specific contract.
+
+## Tools
+
+Low-level tools:
 
 - `flow_create`
 - `flow_status`
 - `flow_advance`
 - `flow_return`
+- `flow_archive`
 - `gate_check`
 - `meeting_open`
 - `meeting_record`
 - `evidence_attach`
 - `checklist_render`
-- `verdict_record`
 - `hygiene_scan`
-- `flow_archive`
+- `verdict_record`
 
-## Saidas humanas e compatibilidade
+Official GOAL/SPT tools:
 
-O contrato tecnico antigo continua valido:
+- `spt_validate`
+- `goal_start`
+- `goal_status`
+- `goal_resume`
+- `goal_gate_check`
+- `goal_advance`
+- `goal_meeting_open`
+- `goal_meeting_record`
+- `evidence_add`
+- `goal_verdict`
 
-- `missing`
-- `next`
-- `back_to`
-- `parking_lot`
-- `gold_mining`
+Memory and pipeline tools:
 
-As respostas tambem podem trazer:
+- `mm_memory_mining`
+- `mm_pipeline_run`
 
-- `aliases.faltando`, `aliases.proximo`, `aliases.voltar_para`
-- `aliases.estacionamento`, `aliases.garimpo`
-- `display.phase_label`, `display.phase_emoji`
-- `display.owner`, `display.owner_emoji`
-- `display.cooperators`
-- `display.active_credits`
-- `display.direct_action`
-- `display.checklist_visual`
-- `suggested_cooperation`
+## Typical GOAL/SPT Flow
 
-`suggested_cooperation` e apenas sugestao de lente; nao significa que o
-especialista foi executado. `active_credits` so aparece quando houver
-contribuicao material registrada.
+1. Validate an SPT with `spt_validate`.
+2. Start or reuse a flow with `goal_start`.
+3. Inspect live state with `goal_status`.
+4. Open and record meetings with `goal_meeting_open` and
+   `goal_meeting_record` when a real decision, risk or ambiguity exists.
+5. Check gates with `goal_gate_check`.
+6. Advance with `goal_advance`.
+7. Attach evidence with `evidence_add`.
+8. Close with `goal_verdict`.
 
-## Principios e memoria recuperavel
+Positive verdicts require traceable evidence.
 
-- Fonte humana: `principles/PRINCIPLES.md`.
-- Contrato operacional editavel: `principles/operational-contract.json`.
-- Contrato compartilhado opcional: `PPIRTV_PRINCIPLES_PATH`, com precedencia
-  sobre o contrato local.
-- L1: `lembranca.md` para gatilhos curtos.
-- L2: `memoria.md` para ancoras operacionais.
-- L3: `conhecimento/` para detalhe sob demanda.
+## Multi-Flow Pipelines
 
-`checklist_render` mantem `items` com os gates da fase e adiciona
-`operational_principles`. `hygiene_scan` pode apontar achados de principios,
-memoria e seguranca sem expor valores sensiveis.
+Use `mm_pipeline_run` only when the request contains more than one SPT/flow or
+an explicit batch execution.
 
-## Resources implementados
+Each pipeline item becomes a normal PPIRTV flow. If `stop_on_failure=true`, a
+failed item blocks the pipeline and later items remain pending.
 
-- `ppirtv://flows`
-- `ppirtv://flow/{flow_id}`
-- `ppirtv://flow/{flow_id}/checklist`
-- `ppirtv://flow/{flow_id}/ledger`
-- `ppirtv://flow/{flow_id}/meetings`
-- `ppirtv://templates/gates`
-- `ppirtv://templates/meetings`
-- `ppirtv://reference/mcp`
+`mm_pipeline_run` proves orchestration state. It does not prove that external
+product code was edited, built or tested unless that evidence is attached to the
+flow.
 
-## Prompts implementados
+## Memory Mining
 
-- `start-ppirtv-flow`
-- `run-phase-gate`
-- `open-divergent-meeting`
-- `open-convergent-meeting`
-- `open-transversal-meeting`
-- `clean-house-review`
-- `final-verdict`
+`mm_memory_mining` reviews flow learning material, classifies candidates and can
+write valid memory entries according to the active memory contract.
+
+The tool must not write secrets, private payloads, runtime ledgers or local
+workspace state into public files.
+
+## Security Notes
+
+- Do not commit `.env` files.
+- Do not commit runtime ledgers, meetings, evidence or local agent memory.
+- Do not record tokens, credentials, authorization headers or sensitive payloads
+  in flow content.
+- Keep public examples generic and placeholder based.
+- Before publishing a repository publicly, audit both the current tree and the
+  Git history for private operational files.
+
+## Documentation Roadmap
+
+Current public documentation is intentionally small:
+
+| Priority | Document | Purpose | Status |
+| --- | --- | --- | --- |
+| Immediate | `README.md` | Public setup, tool map and safety boundary | Current |
+| Short term | `CONTRIBUTING.md` | Public contribution and test workflow | Planned |
+| Short term | `SECURITY.md` | Public vulnerability and secret-handling policy | Planned |
+| Later | Generated tool reference | Public schemas derived from the MCP server | Planned |
+
+Development notes, internal plans and agent handoff files should stay outside
+the public package unless they are rewritten as stable public documentation.

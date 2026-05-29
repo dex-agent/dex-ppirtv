@@ -3,6 +3,8 @@ import path from "node:path";
 import { existsSync } from "node:fs";
 import type { Evidence, Flow, LedgerEvent, Meeting } from "./domain.js";
 
+let idSequence = 0;
+
 export class PpirtvStore {
   readonly root: string;
   readonly flowsDir: string;
@@ -27,28 +29,30 @@ export class PpirtvStore {
     }
   }
 
-  async nextId(prefix: "flow" | "evt" | "mtg" | "evd" | "vrd"): Promise<string> {
+  async nextId(prefix: "flow" | "evt" | "mtg" | "evd" | "vrd" | "pipe"): Promise<string> {
     await this.init();
-    const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+    const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 17);
     const ledgerLines = await this.readLedger();
     const count = ledgerLines.length + 1;
-    return `${prefix}_${timestamp}_${String(count).padStart(4, "0")}`;
+    idSequence = (idSequence % 9999) + 1;
+    return `${prefix}_${timestamp}_${String(count).padStart(4, "0")}_${String(idSequence).padStart(4, "0")}`;
   }
 
   flowPath(flowId: string): string {
-    return path.join(this.flowsDir, `${flowId}.json`);
+    return path.join(this.flowsDir, `${safeArtifactId(flowId, "flow_id")}.json`);
   }
 
   meetingPath(meetingId: string): string {
-    return path.join(this.meetingsDir, `${meetingId}.json`);
+    return path.join(this.meetingsDir, `${safeArtifactId(meetingId, "meeting_id")}.json`);
   }
 
   evidencePath(evidenceId: string, extension = ".json"): string {
-    return path.join(this.evidenceDir, `${evidenceId}${extension}`);
+    return path.join(this.evidenceDir, `${safeArtifactId(evidenceId, "evidence_id")}${safeExtension(extension)}`);
   }
 
   async saveFlow(flow: Flow): Promise<void> {
     await this.init();
+    safeArtifactId(flow.flow_id, "flow_id");
     await writeJsonAtomic(this.flowPath(flow.flow_id), flow);
   }
 
@@ -67,6 +71,8 @@ export class PpirtvStore {
 
   async saveMeeting(meeting: Meeting): Promise<void> {
     await this.init();
+    safeArtifactId(meeting.meeting_id, "meeting_id");
+    safeArtifactId(meeting.flow_id, "flow_id");
     await writeJsonAtomic(this.meetingPath(meeting.meeting_id), meeting);
   }
 
@@ -87,6 +93,8 @@ export class PpirtvStore {
 
   async saveEvidence(evidence: Evidence): Promise<void> {
     await this.init();
+    safeArtifactId(evidence.evidence_id, "evidence_id");
+    safeArtifactId(evidence.flow_id, "flow_id");
     await writeJsonAtomic(this.evidencePath(evidence.evidence_id), evidence);
   }
 
@@ -114,6 +122,27 @@ export class PpirtvStore {
       return false;
     }
   }
+}
+
+function safeArtifactId(value: unknown, label: string): string {
+  if (typeof value !== "string") {
+    throw new Error(`Invalid ${label}: expected non-empty string`);
+  }
+  const id = value.trim();
+  if (!id || /^(?:undefined|null)$/i.test(id)) {
+    throw new Error(`Invalid ${label}: value cannot be empty, undefined or null`);
+  }
+  if (!/^[A-Za-z0-9_-]+$/.test(id)) {
+    throw new Error(`Invalid ${label}: only letters, numbers, underscore and dash are allowed`);
+  }
+  return id;
+}
+
+function safeExtension(extension: string): string {
+  if (!/^\.[A-Za-z0-9]+$/.test(extension)) {
+    throw new Error("Invalid artifact extension");
+  }
+  return extension;
 }
 
 async function readJson<T>(filePath: string): Promise<T> {
@@ -148,8 +177,18 @@ function scrubSecrets(value: unknown): unknown {
 function normalizeFlow(flow: Flow): Flow {
   flow.parking_lot ??= [];
   flow.gold_mining ??= [];
+  flow.goal_learning_links ??= [];
   flow.cooperators ??= [];
   flow.active_credits ??= [];
+  flow.memory_mining ??= {
+    required: flow.gold_mining.length > 0 || flow.parking_lot.length > 0,
+    blocked_verdict: false,
+    candidates_count: 0,
+    written_count: 0,
+    blocked_count: 0,
+    ledger_only_count: 0,
+    discarded_count: 0
+  };
   flow.evidence = (flow.evidence ?? []).map((evidence) => ({
     ...evidence,
     parking_lot: evidence.parking_lot ?? [],

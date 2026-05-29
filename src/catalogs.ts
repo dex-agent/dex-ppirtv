@@ -27,7 +27,16 @@ export function meetingsTemplate(): Record<MeetingType, Record<string, unknown>>
     },
     convergent: {
       use_when: ["alternativas levantadas", "necessidade de menor trilho", "escopo crescendo"],
-      required_output: ["decisao", "motivo", "fora do escopo", "criterio de pronto", "risco aceito"]
+      required_output: [
+        "decisao",
+        "motivo",
+        "fora do escopo",
+        "criterio de pronto",
+        "risco aceito",
+        "se decidir implementacao, caminho absoluto do SPEC-PLAN-TASKs em <WORKSPACE>\\.agents\\PLAN-TASKS\\YYYY-MM-DD-<slug>.md",
+        "owner do trilho, status do plano e prompt de handoff/execucao; use /GOAL apenas quando o cliente suportar esse comando",
+        "INDEX.md e ACTIVE.md atualizados quando houver persistencia local"
+      ]
     },
     transversal: {
       use_when: ["mudanca cruza areas", "dependencias ocultas", "risco de regressao entre fronteiras"],
@@ -121,6 +130,10 @@ export function promptText(name: string, args: Record<string, unknown>): string 
     "open-convergent-meeting": [
       `Abra reuniao convergente para ${flowId}.`,
       "Escolha menor trilho, motivo, fora do escopo, criterio de pronto e risco aceito.",
+      "Se a decisao gerar implementacao, nao deixe o plano apenas na conversa.",
+      "Exija ou registre o SPEC-PLAN-TASKs salvo em <WORKSPACE>\\.agents\\PLAN-TASKS\\YYYY-MM-DD-<slug>.md.",
+      "Inclua caminho absoluto, owner do trilho, status do plano, prompt de handoff/execucao e atualizacao de INDEX.md/ACTIVE.md.",
+      "Se o cliente suportar /GOAL, ele pode ser usado como exemplo de prompt de execucao, mas nao e contrato canonico do PPIRTV.",
       "Registre decisao rastreavel."
     ].join("\n"),
     "open-transversal-meeting": [
@@ -130,6 +143,9 @@ export function promptText(name: string, args: Record<string, unknown>): string 
     "clean-house-review": [
       `Rode revisao de casa limpa para ${flowId}.`,
       "Aplique higiene_scan e trate a regra barata nunca esta sozinha.",
+      "Aplique tambem: Nao podemos jogar ouro no lixo.",
+      "Antes de descartar, mover para LIXEIRA, fechar estacionamento ou eliminar material antigo, garimpe aprendizados, evidencias e memorias uteis.",
+      "Nunca crie L3 sem L2 e L1; nunca crie L2 sem L1.",
       "Separe achados acionaveis, ressalvas e itens fora de escopo.",
       guidance,
       "Use estacionamento/garimpo como aliases humanos para parking_lot/gold_mining."
@@ -138,6 +154,7 @@ export function promptText(name: string, args: Record<string, unknown>): string 
       `Prepare veredito final para ${flowId}.`,
       "Compare objetivo, implementacao, evidencias, testes, risco residual e proximo passo.",
       "Use verdict_record. Sem evidencia, registre ressalva ou nao_pronto.",
+      "Se houve decisao de implementacao sem SPEC-PLAN-TASKs salvo em .agents\\PLAN-TASKS, declare que o plano ainda nao virou trilho PPIRTV.",
       guidance,
       "Creditos ativos so devem aparecer quando houver contribuicao material registrada."
     ].join("\n")
