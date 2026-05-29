@@ -1,0 +1,10 @@
+{
+  "workspace": "<absolute-workspace-path>",
+  "spt_path": "<absolute-spt-path>",
+  "objective": "<clear-objective>",
+  "idempotency_key": "<project-or-repo>:<date-slug>",
+  "evidence_required": true,
+  "required_evidence": [],
+  "requested_verdict_policy": "evidence_required",
+  "source": "<origin>"
+}

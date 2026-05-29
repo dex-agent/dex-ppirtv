@@ -1,0 +1,40 @@
+# Local environment and secrets
+.env
+.env.*
+
+# Runtime state
+.ppirtv/
+.agents/
+.codex/
+artifacts/
+*.log
+*--backup.*
+
+# Local development/agent workspace notes
+AGENTS.md
+INDEX.md
+CONTEXT.md
+DOCS.md
+PLAN.md
+REFERENCE.md
+SPEC.md
+SPRINTS.md
+TASKS.md
+docs/
+examples/
+skills/
+setup-ppirtv-repo.ps1
+
+# Node/Python build folders, if adopted later
+node_modules/
+.venv/
+__pycache__/
+dist/
+build/
+
+# OS/editor noise
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/

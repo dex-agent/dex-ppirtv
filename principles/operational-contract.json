@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "source": "principles/PRINCIPLES.md",
+  "principles": [
+    {
+      "id": "barata_nunca_esta_sozinha",
+      "label": "Barata nunca esta sozinha",
+      "summary": "Ao encontrar um problema, procurar ocorrencias vizinhas antes de seguir.",
+      "severity": "warning",
+      "checklist_label": "Problemas encontrados foram varridos ao redor",
+      "applies_to": ["hygiene_scan", "checklist_render", "prompts"]
+    },
+    {
+      "id": "memoria_sem_lembranca",
+      "label": "Memoria sem lembranca e entulho inutil",
+      "summary": "L1 dispara L2; L2 aponta para L3 quando for preciso aprofundar.",
+      "severity": "warning",
+      "checklist_label": "Memoria L1/L2/L3 esta recuperavel por gatilhos",
+      "applies_to": ["hygiene_scan", "checklist_render", "prompts"]
+    },
+    {
+      "id": "ouro_garimpado_se_guarda",
+      "label": "Ouro garimpado se guarda, trilha aberta na mata se marca",
+      "summary": "Aprendizado reutilizavel vira artefato rastreavel; entulho sai no mesmo turno.",
+      "severity": "info",
+      "checklist_label": "Pepitas e trilhas foram registradas; entulho obvio foi removido",
+      "applies_to": ["hygiene_scan", "checklist_render", "prompts"]
+    },
+    {
+      "id": "casa_limpa",
+      "label": "Casa suja e baguncada chama baratas",
+      "summary": "Apos mexer, verificar sujeira operacional, docs e residuos; antes de descartar, garimpar aprendizados, evidencias e memorias uteis.",
+      "severity": "warning",
+      "checklist_label": "Casa limpa verificada; nenhum ouro foi jogado no lixo antes do garimpo",
+      "applies_to": ["hygiene_scan", "checklist_render", "prompts"]
+    },
+    {
+      "id": "comecar_pelo_inicio",
+      "label": "Nunca comecamos pelo final nem pelo meio",
+      "summary": "Consultar napkin, L1, L2, skills e docs vivas antes de executar.",
+      "severity": "warning",
+      "checklist_label": "Contexto inicial consultado antes da acao tecnica",
+      "applies_to": ["checklist_render", "prompts"]
+    },
+    {
+      "id": "erro_repetido_bloqueia_pronto",
+      "label": "Erro repetido tres vezes bloqueia pronto",
+      "summary": "Na terceira ocorrencia do mesmo erro, registrar destino rastreavel antes de declarar pronto.",
+      "severity": "blocking",
+      "checklist_label": "Erros recorrentes foram convertidos em teste, contrato, memoria, napkin, skill, estacionamento ou descarte justificado",
+      "applies_to": ["hygiene_scan", "gate_check", "checklist_render", "prompts"]
+    }
+  ],
+  "memory_layers": [
+    {
+      "level": "L1",
+      "path": "lembranca.md",
+      "role": "gatilhos curtos",
+      "rule": "carregavel sempre; nao deve virar tutorial"
+    },
+    {
+      "level": "L2",
+      "path": "memoria.md",
+      "role": "ancoras operacionais",
+      "rule": "detalhe acionavel com secoes referenciaveis"
+    },
+    {
+      "level": "L3",
+      "path": "conhecimento/",
+      "role": "conhecimento sob demanda",
+      "rule": "documentacao, modelos e tutoriais carregados so quando necessario"
+    }
+  ],
+  "prompt_guidance": [
+    "Antes de executar, consulte fonte viva do projeto, L1, L2, skills e docs relevantes.",
+    "Use L1 como gatilho, L2 como ancora operacional e L3 apenas sob demanda.",
+    "Se uma memoria detalhada nao tiver gatilho de recuperacao, trate como risco de entulho.",
+    "Na higiene, antes de descartar, mover para LIXEIRA, fechar estacionamento ou eliminar material antigo, garimpe aprendizados, evidencias e memorias uteis.",
+    "Nao podemos jogar ouro no lixo: nunca criar L3 sem L2 e L1; nunca criar L2 sem L1.",
+    "Se o mesmo erro apareceu tres vezes, bloqueie pronto ate haver destino rastreavel: teste, contrato, memoria, napkin, skill, estacionamento ou descarte justificado.",
+    "Nao registre secrets em ledger, evidencia, prompts ou docs versionadas.",
+    "Preserve campos MCP existentes; principios orientam bloqueio, retorno e aprendizado."
+  ],
+  "hygiene_checks": [
+    "principles_source_exists",
+    "principles_source_mentions_contract",
+    "memory_layers_documented",
+    "memory_layer_files_are_linked",
+    "hygiene_discards_are_garimped_before_trash",
+    "repeated_errors_have_traceable_destination",
+    "secret_like_config_values"
+  ]
+}
