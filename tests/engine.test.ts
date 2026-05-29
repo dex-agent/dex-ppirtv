@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FlowEngine } from "../src/flow-engine.js";
 import { promptText } from "../src/catalogs.js";
+import { MemoryLibrarian, type MemoryHookRunner } from "../src/memory/index.js";
 import { PpirtvStore } from "../src/store.js";
 
 let tempRoot: string;
@@ -78,6 +79,50 @@ describe("PPIRTV flow engine", () => {
     expect(ledger.some((event) => event.type === "phase_returned")).toBe(true);
   });
 
+  it("recalls curated memory before a phase and records runtime recall", async () => {
+    const workspace = path.join(tempRoot, "workspace");
+    await mkdir(path.join(workspace, ".agents"), { recursive: true });
+    await writeFile(path.join(workspace, ".agents", "LEMBRANCA.md"), "- [PPIRTV-RECALL] PPIRTV advance lembra contexto antes da fase.\n", "utf8");
+    await writeFile(path.join(workspace, ".agents", "MEMORIA.md"), "## PPIRTV advance\n\nUse recall antes de entrar na fase.\n", "utf8");
+    const flow = await engine.createFlow({ goal: "PPIRTV advance recall" });
+    flow.goal_binding = {
+      envelope: {
+        workspace,
+        spt_path: path.join(workspace, "trail.md"),
+        objective: flow.goal,
+        idempotency_key: "memory-before-phase",
+        evidence_required: true,
+        required_evidence: [],
+        requested_verdict_policy: "evidence_required",
+        source: "test"
+      },
+      started_at: new Date().toISOString(),
+      last_seen_at: new Date().toISOString()
+    };
+    const librarian = new MemoryLibrarian(tempRoot);
+
+    const recalled = await librarian.beforePhase({ flow, phase: "planejamento" });
+    const recallRuntime = await readFile(path.join(tempRoot, "memory", "recalls.jsonl"), "utf8");
+
+    expect(recalled.items.some((item) => item.source === "curated_l1")).toBe(true);
+    expect(recallRuntime).toContain("PPIRTV advance");
+  });
+
+  it("records afterPhase candidates and parking in runtime memory", async () => {
+    const flow = await engine.createFlow({ goal: "Preparar garimpo" });
+    flow.gold_mining = ["Regra PPIRTV: validar contrato antes do veredito."];
+    flow.parking_lot = ["Avaliar depois uma UI para estacionamento."];
+    const librarian = new MemoryLibrarian(tempRoot);
+
+    const recorded = await librarian.afterPhase({ flow, phase: "pensamentos", meetings: [] });
+    const candidates = await readFile(path.join(tempRoot, "memory", "candidates.jsonl"), "utf8");
+    const parking = await readFile(path.join(tempRoot, "memory", "parking-lot.jsonl"), "utf8");
+
+    expect(recorded.candidates_count).toBeGreaterThan(0);
+    expect(candidates).toContain("Regra PPIRTV");
+    expect(parking).toContain("Avaliar depois");
+  });
+
   it("reuses a persisted passing gate when advancing", async () => {
     const flow = await engine.createFlow({ goal: "Runbook gate then advance" });
     const gate = await engine.checkGate({
@@ -93,6 +138,88 @@ describe("PPIRTV flow engine", () => {
 
     expect(gate.status).toBe("passed");
     expect(advanced).toMatchObject({ advanced: true, from: "pensamentos", to: "planejamento" });
+  });
+
+  it("advance records librarian hooks across a normal phase change", async () => {
+    const flow = await engine.createFlow({ goal: "Hooks no advance" });
+
+    const advanced = await engine.advance({
+      flow_id: flow.flow_id,
+      provided: {
+        context: "contexto conhecido",
+        risks: ["risco"],
+        uncertainties: ["lacuna"]
+      }
+    });
+    const ledger = await engine.store.readLedger(flow.flow_id);
+    const eventTypes = ledger.map((event) => event.type);
+    const recalls = await readFile(path.join(tempRoot, "memory", "recalls.jsonl"), "utf8");
+    const hooks = await readFile(path.join(tempRoot, "memory", "hooks.jsonl"), "utf8");
+
+    expect(advanced).toMatchObject({ advanced: true, from: "pensamentos", to: "planejamento" });
+    expect(eventTypes).toEqual(expect.arrayContaining(["memory_hook_recorded", "phase_advanced", "memory_recalled"]));
+    expect(eventTypes.indexOf("memory_hook_recorded")).toBeLessThan(eventTypes.indexOf("phase_advanced"));
+    expect(eventTypes.indexOf("phase_advanced")).toBeLessThan(eventTypes.indexOf("memory_recalled"));
+    expect(recalls).toContain("recalled_count");
+    expect(hooks).toContain("promoted_curated_memory");
+  });
+
+  it("final advance records afterPhase without beforePhase", async () => {
+    const flow = await engine.createFlow({ goal: "Final hooks PPIRTV" });
+    await engine.advance({ flow_id: flow.flow_id, provided: { context: "ctx", risks: ["r"], uncertainties: ["u"] } });
+    await engine.advance({
+      flow_id: flow.flow_id,
+      provided: { scope_in: ["mvp"], scope_out: ["http"], tasks: ["codar"], expected_evidence: ["teste"], done_criteria: ["passar"] }
+    });
+    await engine.advance({ flow_id: flow.flow_id, provided: { implementation_done: true, changed_files: ["src/index.ts"] } });
+    await engine.advance({ flow_id: flow.flow_id, provided: { diff_reviewed: true, barata_scan: true, regression_risks: ["baixo"] } });
+    await engine.attachEvidence({ flow_id: flow.flow_id, kind: "note", title: "evidencia final", content: "ok" });
+    await engine.advance({ flow_id: flow.flow_id, provided: { test_executed: true } });
+    await engine.recordVerdict({
+      flow_id: flow.flow_id,
+      status: "pronto",
+      rationale: "E2E passou",
+      evidence_ids: ["e2e"],
+      residual_risks: [],
+      next_step: "arquivar"
+    });
+    const beforeFinal = await engine.store.readLedger(flow.flow_id);
+    const beforeRecallCount = beforeFinal.filter((event) => event.type === "memory_recalled").length;
+
+    const finalAdvance = await engine.advance({ flow_id: flow.flow_id, provided: { residual_risks: ["baixo"], next_step: "arquivar", clean_house: true } });
+    const afterFinal = await engine.store.readLedger(flow.flow_id);
+    const afterRecallCount = afterFinal.filter((event) => event.type === "memory_recalled").length;
+    const finalHook = afterFinal.findLast((event) => event.type === "memory_hook_recorded");
+
+    expect(finalAdvance).toMatchObject({ advanced: true, from: "validacao", to: null, status: "complete" });
+    expect(afterRecallCount).toBe(beforeRecallCount);
+    expect(finalHook?.data).toMatchObject({ phase: "validacao" });
+  });
+
+  it("keeps advance working when the librarian fails", async () => {
+    const failingHooks: MemoryHookRunner = {
+      beforePhase: async () => {
+        throw new Error("before unavailable");
+      },
+      afterPhase: async () => {
+        throw new Error("after unavailable");
+      }
+    };
+    const guardedEngine = new FlowEngine(new PpirtvStore(tempRoot), failingHooks);
+    const flow = await guardedEngine.createFlow({ goal: "Bibliotecario tolerante" });
+
+    const advanced = await guardedEngine.advance({
+      flow_id: flow.flow_id,
+      provided: {
+        context: "contexto conhecido",
+        risks: ["risco"],
+        uncertainties: ["lacuna"]
+      }
+    });
+    const ledger = await guardedEngine.store.readLedger(flow.flow_id);
+
+    expect(advanced).toMatchObject({ advanced: true, from: "pensamentos", to: "planejamento" });
+    expect(ledger.filter((event) => event.type === "memory_hook_warning")).toHaveLength(2);
   });
 
   it("runs pipeline items sequentially and marks remaining items pending after a gate failure", async () => {

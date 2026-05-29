@@ -22,6 +22,8 @@ This package currently provides:
 - low-level PPIRTV flow tools;
 - official `goal_*` wrappers for GOAL/SPT execution;
 - `mm_memory_mining` for classified memory mining and safe writes;
+- `src/memory`, the Bibliotecario layer for phase recall and local learning
+  hooks;
 - `mm_pipeline_run` for sequential execution of multiple PPIRTV flows;
 - runtime persistence in a local store;
 - tests for the engine and MCP stdio behavior.
@@ -221,6 +223,11 @@ product code was edited, built or tested unless that evidence is attached to the
 flow.
 
 ## Memory Mining
+
+The `src/memory` module implements the Bibliotecario: phase hooks that recall
+useful context before PPIRTV phases and record local learning material after
+them. The v1 uses local runtime files and preserves `mm_memory_mining` as the
+curated promotion path.
 
 `mm_memory_mining` reviews flow learning material, classifies candidates and can
 write valid memory entries according to the active memory contract.
