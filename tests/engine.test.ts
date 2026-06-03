@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FlowEngine } from "../src/flow-engine.js";
 import { promptText } from "../src/catalogs.js";
-import { MemoryLibrarian, type MemoryHookRunner } from "../src/memory/index.js";
+import { MemoryLibrarian, type MemoryGraphProvider, type MemoryHookRunner } from "../src/memory/index.js";
 import { PpirtvStore } from "../src/store.js";
 
 let tempRoot: string;
@@ -108,6 +108,42 @@ describe("PPIRTV flow engine", () => {
     expect(recallRuntime).toContain("PPIRTV advance");
   });
 
+  it("recalls graphify hints before a phase with a graph provider", async () => {
+    const flow = await engine.createFlow({ goal: "Graphify beforePhase recall", context: "Bibliotecario com grafo" });
+    const provider: MemoryGraphProvider = {
+      recall: async (input) => ({
+        flow_id: input.flow_id,
+        phase: input.phase,
+        queried_at: new Date().toISOString(),
+        warnings: [],
+        items: [
+          graphHit(input.question, "MemoryLibrarian", "src/memory/memory-hooks.ts", 20),
+          graphHit(input.question, "beforePhase()", "src/memory/memory-recall.ts", 19),
+          { ...graphHit(input.question, "memory_recalled", "src/flow-engine.ts", 18), observation: "Authorization: Bearer abc123" },
+          graphHit(input.question, "extra node", "src/extra.ts", 17)
+        ]
+      })
+    };
+    const librarian = new MemoryLibrarian(tempRoot, { graphProvider: provider });
+
+    const recalled = await librarian.beforePhase({ flow, phase: "planejamento" });
+    const graphItems = recalled.items.filter((item) => item.source === "graphify");
+    const recallRuntime = await readFile(path.join(tempRoot, "memory", "recalls.jsonl"), "utf8");
+
+    expect(graphItems).toHaveLength(3);
+    expect(graphItems[0]).toMatchObject({
+      source: "graphify",
+      question: expect.stringContaining("Graphify beforePhase recall"),
+      destination: "recall_hint",
+      observation: "Graphify node at L1"
+    });
+    expect(recalled.warnings).toContain("graphify_recalled: 3");
+    expect(recallRuntime).toContain("\"source\":\"graphify\"");
+    expect(recallRuntime).toContain("[redacted]");
+    expect(recallRuntime).not.toContain("abc123");
+    expect(recallRuntime).not.toContain("extra node");
+  });
+
   it("records afterPhase candidates and parking in runtime memory", async () => {
     const flow = await engine.createFlow({ goal: "Preparar garimpo" });
     flow.gold_mining = ["Regra PPIRTV: validar contrato antes do veredito."];
@@ -162,6 +198,67 @@ describe("PPIRTV flow engine", () => {
     expect(eventTypes.indexOf("phase_advanced")).toBeLessThan(eventTypes.indexOf("memory_recalled"));
     expect(recalls).toContain("recalled_count");
     expect(hooks).toContain("promoted_curated_memory");
+  });
+
+  it("advance records graphify recall hints when the provider is enabled", async () => {
+    const provider: MemoryGraphProvider = {
+      recall: async (input) => ({
+        flow_id: input.flow_id,
+        phase: input.phase,
+        queried_at: new Date().toISOString(),
+        warnings: [],
+        items: [graphHit(input.question, "MemoryLibrarian", "src/memory/memory-hooks.ts", 12)]
+      })
+    };
+    const graphEngine = new FlowEngine(new PpirtvStore(tempRoot), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
+    const flow = await graphEngine.createFlow({ goal: "Graphify ledger recall" });
+
+    const advanced = await graphEngine.advance({
+      flow_id: flow.flow_id,
+      provided: {
+        context: "contexto conhecido",
+        risks: ["risco"],
+        uncertainties: ["lacuna"]
+      }
+    });
+    const ledger = await graphEngine.store.readLedger(flow.flow_id);
+    const recallEvent = ledger.findLast((event) => event.type === "memory_recalled");
+
+    expect(advanced).toMatchObject({ advanced: true, from: "pensamentos", to: "planejamento" });
+    expect(recallEvent?.data).toMatchObject({
+      phase: "planejamento",
+      recalled_count: expect.any(Number),
+      warnings: expect.arrayContaining(["graphify_recalled: 1"])
+    });
+    expect(JSON.stringify(recallEvent?.data)).toContain("\"source\":\"graphify\"");
+    expect(JSON.stringify(recallEvent?.data)).toContain("\"destination\":\"recall_hint\"");
+    expect(JSON.stringify(recallEvent?.data)).not.toContain("Traversal:");
+  });
+
+  it("keeps advance working when graphify provider fails", async () => {
+    const provider: MemoryGraphProvider = {
+      recall: async () => {
+        throw new Error("graphify unavailable");
+      }
+    };
+    const graphEngine = new FlowEngine(new PpirtvStore(tempRoot), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
+    const flow = await graphEngine.createFlow({ goal: "Graphify falha tolerada" });
+
+    const advanced = await graphEngine.advance({
+      flow_id: flow.flow_id,
+      provided: {
+        context: "contexto conhecido",
+        risks: ["risco"],
+        uncertainties: ["lacuna"]
+      }
+    });
+    const ledger = await graphEngine.store.readLedger(flow.flow_id);
+    const recallEvent = ledger.findLast((event) => event.type === "memory_recalled");
+
+    expect(advanced).toMatchObject({ advanced: true, from: "pensamentos", to: "planejamento" });
+    expect(recallEvent?.data).toMatchObject({
+      warnings: expect.arrayContaining(["graphify_recall_failed: graphify unavailable"])
+    });
   });
 
   it("final advance records afterPhase without beforePhase", async () => {
@@ -385,13 +482,12 @@ describe("PPIRTV flow engine", () => {
       requested_verdict_policy: "evidence_required",
       source: "dex-code"
     });
-    const meeting = await engine.goalMeetingOpen({
+    const meeting = await engine.openMeeting({
       flow_id: started.flow_id as string,
       type: "divergent",
       question: "Item neutro promove?"
     });
-    await engine.goalMeetingRecord({
-      flow_id: started.flow_id as string,
+    await engine.recordMeeting({
       meeting_id: meeting.meeting_id as string,
       parking_lot: ["Item neutro de estacionamento sem palavra de promocao"]
     });
@@ -578,25 +674,27 @@ describe("PPIRTV flow engine", () => {
       question: "O que pode transformar o GOAL em fluxo passivo?",
       suggested_cooperators: [{ name: "Chato", reason: "fiscalizar falso fluxo vivo", material: true }]
     });
-    const recordedWithoutMaterial = await engine.goalMeetingRecord({
+    const turnWithoutMaterial = await engine.goalMeetingAddTurn({
       flow_id: flowId,
       meeting_id: opened.meeting_id as string,
-      risks: ["GOAL pode virar checklist passivo sem gate persistido."],
-      cooperators: [{ name: "Questionador", reason: "sugeriu pergunta de escopo", material: false }],
-      active_credits: ["Questionador sugeriu pergunta de escopo"]
+      speaker: "Questionador",
+      finding: "GOAL pode virar checklist passivo sem gate persistido."
     });
     const convergent = await engine.goalMeetingOpen({
       flow_id: flowId,
       type: "convergent",
       question: "Qual decisao fecha a fase de pensamentos?"
     });
-    const recorded = await engine.goalMeetingRecord({
+    const recorded = await engine.goalMeetingClose({
       flow_id: flowId,
       meeting_id: convergent.meeting_id as string,
+      participants_present: ["Chato", "questionador", "reuniao", "validador-pronto"],
+      decision: "Persistir gate antes de avancar fase.",
       decisions: ["Persistir gate antes de avancar fase."],
       risks: ["Falso pronto sem ledger."],
       parking_lot: ["Avaliar resource futuro para especialistas vivos."],
-      gold_mining: ["Credito material nasce de meeting_record, nao de sugestao."],
+      gold_mining: ["Credito material nasce de goal_meeting_close, nao de sugestao."],
+      satisfies_blockers: ["required_cooperation"],
       cooperators: [{ name: "Chato", reason: "bloqueou credito decorativo e exigiu gate persistido", material: true }],
       active_credits: ["Chato bloqueou credito decorativo e exigiu gate persistido"]
     });
@@ -606,11 +704,10 @@ describe("PPIRTV flow engine", () => {
     const ledger = await engine.store.readLedger(flowId);
 
     expect((opened.suggested_cooperators as Array<Record<string, unknown>>)[0].material).toBe(false);
-    expect(recordedWithoutMaterial.active_credits).toEqual([]);
+    expect(turnWithoutMaterial.turns).toEqual(expect.arrayContaining([expect.objectContaining({ speaker: "Questionador" })]));
     expect(recorded.active_credits).toEqual(
       expect.arrayContaining([
-        "Chato bloqueou credito decorativo e exigiu gate persistido",
-        "Chato: bloqueou credito decorativo e exigiu gate persistido"
+        "Chato bloqueou credito decorativo e exigiu gate persistido"
       ])
     );
     expect(gate.status).toBe("passed");
@@ -622,9 +719,9 @@ describe("PPIRTV flow engine", () => {
     );
     expect(status.active_credits).toEqual(expect.arrayContaining(["Chato bloqueou credito decorativo e exigiu gate persistido"]));
     expect(status.parking_lot).toEqual(expect.arrayContaining(["Avaliar resource futuro para especialistas vivos."]));
-    expect(status.gold_mining).toEqual(expect.arrayContaining(["Credito material nasce de meeting_record, nao de sugestao."]));
+    expect(status.gold_mining).toEqual(expect.arrayContaining(["Credito material nasce de goal_meeting_close, nao de sugestao."]));
     expect(ledger.map((event) => event.type)).toEqual(
-      expect.arrayContaining(["goal_started", "meeting_opened", "meeting_recorded", "gate_checked", "phase_advanced"])
+      expect.arrayContaining(["goal_started", "meeting_opened", "meeting_turn_added", "meeting_closed", "gate_checked", "phase_advanced"])
     );
   });
 
@@ -651,9 +748,12 @@ describe("PPIRTV flow engine", () => {
         type: "divergent",
         question: "Qual aprendizado nao pode se perder?"
       });
-      await engine.goalMeetingRecord({
+      await engine.goalMeetingClose({
         flow_id: flowId,
         meeting_id: opened.meeting_id as string,
+        participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+        decision: "Garimpo de memoria fechado com decisao material.",
+        satisfies_blockers: ["required_cooperation"],
         parking_lot: ["Ponto cego Delphi DUnitX standalone vs provider precisa virar memoria reutilizavel."]
       });
 
@@ -683,6 +783,12 @@ describe("PPIRTV flow engine", () => {
       expect(mined.write_policy).toBe("auto_write");
       expect(mined.blocked_verdict).toBe(false);
       expect(written.length).toBeGreaterThan(0);
+      expect(written[0]?.files).toEqual(
+        expect.arrayContaining([
+          path.join(memRoot, "temas", "delphi", "LEMBRANCA.md"),
+          path.join(memRoot, "temas", "delphi", "MEMORIA.md")
+        ])
+      );
       expect(lembranca).toContain("DUnitX standalone");
       expect(memoria).toContain("Delphi DUnitX standalone");
       expect(memoryStatus.written_count).toBeGreaterThan(0);
@@ -745,9 +851,12 @@ describe("PPIRTV flow engine", () => {
     });
     const flowId = started.flow_id as string;
     const opened = await engine.goalMeetingOpen({ flow_id: flowId, type: "divergent", question: "Como classificar achados?" });
-    await engine.goalMeetingRecord({
+    await engine.goalMeetingClose({
       flow_id: flowId,
       meeting_id: opened.meeting_id as string,
+      participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+      decision: "Classificar achados de memoria sem usar atalho antigo.",
+      satisfies_blockers: ["required_cooperation"],
       parking_lot: [
         "Ponto cego Delphi DUnitX standalone vs provider.",
         "Risco de regressao no contrato MCP.",
@@ -779,7 +888,7 @@ describe("PPIRTV flow engine", () => {
     expect(candidates).toEqual(expect.arrayContaining([expect.objectContaining({ blocked_reason: "secret_like_value_detected" })]));
   });
 
-  it("blocks positive GOAL verdict when memory mining finds an invalid theme route", async () => {
+  it("raises fiscal blocking before a positive GOAL verdict when memory mining finds an invalid theme route", async () => {
     const originalDexMemoriaHome = process.env.DEX_MEMORIA_HOME;
     const workspace = path.join(tempRoot, "workspace");
     process.env.DEX_MEMORIA_HOME = path.join(tempRoot, "memories");
@@ -818,7 +927,7 @@ describe("PPIRTV flow engine", () => {
           residual_risks: [],
           next_step: "corrigir tema"
         })
-      ).rejects.toThrow(/MEMORY_MINING_BLOCKED_VERDICT/);
+      ).rejects.toThrow(/PPIRTV_FISCAL_BLOCKED.*memory_required_but_empty/i);
     } finally {
       restoreDexMemoriaHome(originalDexMemoriaHome);
     }
@@ -933,6 +1042,1300 @@ describe("PPIRTV flow engine", () => {
     });
 
     expect((verdict.verdict as Record<string, unknown>).status).toBe("pronto");
+  });
+
+  it("T1 blocks material pronto_com_ressalvas without meeting, review, memory and visual librarian status", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-fiscal-t1", "Provar ressalva material frouxa");
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "A propria ressalva confessa ausencia dos fiscais.",
+        evidence_ids: [evidenceId],
+        residual_risks: [
+          "sem reuniao divergente/convergente/transversal",
+          "sem revisor-codigo material",
+          "sem memoria L1/L2 gerada pelo motor",
+          "sem retorno visual Bibliotecario/Graphify",
+          "hygiene_scan ainda nao consumido como bloqueador"
+        ],
+        next_step: "nao concluir; regressar para reuniao e review"
+      })
+    ).rejects.toThrow(/PPIRTV_FISCAL_BLOCKED.*required_cooperation.*memory_required_but_empty/i);
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+    expect(status.status).not.toBe("complete");
+    expect(status.required_cooperation).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "chato", material: true }),
+        expect.objectContaining({ name: "questionador", material: true }),
+        expect.objectContaining({ name: "revisor-codigo", material: true }),
+        expect.objectContaining({ name: "validador-pronto", material: true })
+      ])
+    );
+  });
+
+  it("T2 keeps principles blocked when memory is required but no L1/L2 was produced", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t2", "Memoria exigida no checklist");
+    await engine.updateFlowFacts(flowId, { risks: ["memoria L1/L2 exigida para nao repetir erro"], tasks: ["promover aprendizado reutilizavel"] });
+
+    const checklist = await engine.renderChecklist(flowId);
+    const memoryPrinciple = checklist.operational_principles.find((item) => item.id === "memoria_sem_lembranca");
+
+    expect(memoryPrinciple?.checked).toBe(false);
+    expect(checklist.display.checklist_visual).toEqual(
+      expect.arrayContaining([expect.objectContaining({ label: expect.stringContaining("L1/L2"), checked: false })])
+    );
+  });
+
+  it("T3 consumes hygiene warning as a blocker before a positive verdict", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-fiscal-t3", "Higiene bloqueia veredito");
+    await engine.updateFlowFacts(flowId, { tasks: ["task sem evidencia material suficiente"] });
+    const hygiene = await engine.hygieneScan(flowId);
+
+    expect(hygiene.blocking_findings_count).toBeGreaterThan(0);
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto",
+        rationale: "Tentando concluir com hygiene warning pendente.",
+        evidence_ids: [evidenceId],
+        residual_risks: [],
+        next_step: "arquivar"
+      })
+    ).rejects.toThrow(/hygiene_blocking/i);
+  });
+
+  it("T4 marks memory_required_but_empty when required learning has no promoted candidates", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t4", "Garimpo vazio bloqueia memoria exigida");
+    await engine.updateFlowFacts(flowId, { risks: ["memoria L1/L2 obrigatoria para este risco material"] });
+
+    const mined = await engine.mineMemory({ flow_id: flowId, write_policy: "classify_only" });
+
+    expect(mined.memory_required_but_empty).toBe(true);
+    expect(mined.blocked_verdict).toBe(true);
+  });
+
+  it("T5 blocks code-change GOAL verdicts without review artifact or findings", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-fiscal-t5", "Mudanca de codigo exige review");
+    await engine.updateFlowFacts(flowId, { changed_files: ["src/flow-engine.ts"] });
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Codigo mudou, mas nao existe review material.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["mudanca de codigo com risco de regressao"],
+        next_step: "arquivar"
+      })
+    ).rejects.toThrow(/review_required/i);
+  });
+
+  it("T6 exposes mandatory COO as required_cooperation and blocks until material participation exists", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t6", "COO obrigatorio");
+    await engine.updateFlowFacts(flowId, { risks: ["risco material de produto e fluxo"] });
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+    const names = (status.required_cooperation as Array<Record<string, unknown>>).map((item) => item.name);
+
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "chato",
+        "questionador",
+        "entrevista-me",
+        "garimpeiro",
+        "dex-memoria",
+        "estacionamento",
+        "reuniao",
+        "sprinter",
+        "duda-dev",
+        "mapeador-implementacao",
+        "revisor-codigo",
+        "tio-testador",
+        "validador-pronto"
+      ])
+    );
+    expect(status.required_cooperation).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "chato", reason: expect.stringContaining("perguntas de pressao") }),
+        expect.objectContaining({ name: "ancora-fluxo", reason: expect.stringContaining("regresso correto") }),
+        expect.objectContaining({ name: "validador-pronto", reason: expect.stringContaining("qualquer veredito positivo") })
+      ])
+    );
+    expect(status.blockers).toEqual(expect.arrayContaining(["required_cooperation"]));
+  });
+
+  it("T7 shows Graphify enabled but failing in visual librarian status", async () => {
+    const provider: MemoryGraphProvider = {
+      recall: async (input) => ({
+        flow_id: input.flow_id,
+        phase: input.phase,
+        queried_at: new Date().toISOString(),
+        warnings: ["graphify_graph_missing: graphify-out/graph.json"],
+        items: []
+      })
+    };
+    const graphEngine = new FlowEngine(new PpirtvStore(tempRoot), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
+    const flow = await graphEngine.createFlow({ goal: "Status visual Graphify" });
+
+    const advanced = await graphEngine.advance({ flow_id: flow.flow_id, provided: { context: "ctx", risks: ["r"], uncertainties: ["u"] } });
+    const ledger = await graphEngine.store.readLedger(flow.flow_id);
+    const recall = ledger.findLast((event) => event.type === "memory_recalled");
+
+    expect(advanced.display?.librarian).toMatchObject({ graphify_status: "missing_graph" });
+    expect(recall?.data).toMatchObject({
+      graphify_status: "missing_graph"
+    });
+  });
+
+  it("T8 exposes librarian warning and blocks fiscal verdict when Bibliotecario failed", async () => {
+    const failingHooks: MemoryHookRunner = {
+      beforePhase: async () => {
+        throw new Error("Bibliotecario indisponivel");
+      },
+      afterPhase: async () => ({ flow_id: "x", phase: "pensamentos", recorded_at: new Date().toISOString(), candidates_count: 0, parking_count: 0, warnings: [] })
+    };
+    const guarded = new FlowEngine(new PpirtvStore(tempRoot), failingHooks);
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-fiscal-t8", "Hook warning fiscal", guarded);
+    const advanced = await guarded.advance({ flow_id: flowId, provided: { context: "ctx", risks: ["risco"], uncertainties: ["u"] } });
+
+    expect(advanced.display?.librarian).toMatchObject({ status: "failed" });
+    const status = await guarded.goalStatus({ flow_id: flowId });
+    expect(status.librarian_status).toMatchObject({
+      bibliotecario: { status: "failed", visible: true },
+      graphify: { status: "failed", visible: true }
+    });
+    await expect(
+      guarded.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Sem Bibliotecario vivo nao deve aceitar ressalva material.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["sem retorno visual Bibliotecario/Graphify"],
+        next_step: "corrigir"
+      })
+    ).rejects.toThrow(/librarian_status/i);
+  });
+
+  it("T9 rejects provided=true without coherent evidence in fiscal GOAL gates", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t9", "Provided true sem prova");
+    await engine.goalAdvance({ flow_id: flowId, provided: { context: "ctx", risks: ["risco"], uncertainties: ["u"] } });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { scope_in: ["src"], scope_out: ["fora"], tasks: ["codar"], expected_evidence: ["review"], done_criteria: ["passar"] }
+    });
+    await engine.goalAdvance({ flow_id: flowId, provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] } });
+
+    const gate = await engine.goalGateCheck({
+      flow_id: flowId,
+      phase: "revisao",
+      provided: { diff_reviewed: true, barata_scan: true, regression_risks: ["risco de regressao"] }
+    });
+
+    expect(gate.status).toBe("blocked");
+    expect(gate.missing).toEqual(expect.arrayContaining(["review_evidence_coherent"]));
+  });
+
+  it("T10 blocks material recurring risk without enough attempts, regressions or meetings", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-fiscal-t10", "Tentativas insuficientes");
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Erro recorrente ainda sem regresso suficiente.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["erro recorrente em risco de produto"],
+        attempt_count: 1,
+        regress_count: 0,
+        next_step: "arquivar"
+      })
+    ).rejects.toThrow(/attempt_regress_count/i);
+  });
+
+  it("T11 exposes corrective check-in with disabled librarian/Graphify visible and explained", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t11", "Check-in corretivo");
+    await engine.updateFlowFacts(flowId, { risks: ["risco material exige COO visivel"] });
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+    const checkin = status.ppirtv_checkin as Record<string, unknown>;
+    const components = checkin.components as Array<Record<string, unknown>>;
+
+    expect(checkin.ppi_action_required).toBe(true);
+    expect(checkin.mode).toBe("goal_fiscal_blocked");
+    expect(checkin.direct_action).toEqual(expect.stringContaining("check-in bloqueado:"));
+    expect(components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "coo", visible: true, auto_repair: "already_visible" }),
+        expect.objectContaining({ name: "bibliotecario", visible: true, auto_repair: "await_beforePhase_or_report_disabled" }),
+        expect.objectContaining({ name: "graphify", visible: true, auto_repair: "optional_disabled_reported" }),
+        expect.objectContaining({ name: "meeting_tools", status: "available", visible: true }),
+        expect.objectContaining({ name: "ppi", status: "required" })
+      ])
+    );
+  });
+
+  it("T12 exposes check-in librarian and Graphify status after beforePhase", async () => {
+    const provider: MemoryGraphProvider = {
+      recall: async (input) => ({
+        flow_id: input.flow_id,
+        phase: input.phase,
+        queried_at: new Date().toISOString(),
+        warnings: ["graphify_recall_empty"],
+        items: []
+      })
+    };
+    const graphEngine = new FlowEngine(new PpirtvStore(tempRoot), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
+    const flow = await graphEngine.createFlow({ goal: "Check-in visual Graphify" });
+    await graphEngine.advance({ flow_id: flow.flow_id, provided: { context: "ctx", risks: ["r"], uncertainties: ["u"] } });
+
+    const status = await graphEngine.goalStatus({ flow_id: flow.flow_id });
+    const checkin = status.ppirtv_checkin as Record<string, unknown>;
+    const components = checkin.components as Array<Record<string, unknown>>;
+
+    expect(components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "bibliotecario", status: "empty", visible: true }),
+        expect.objectContaining({ name: "graphify", status: "empty", visible: true })
+      ])
+    );
+  });
+
+  it("T13 exposes check-out with final evidence, meetings, tests and verdict", async () => {
+    const flow = await engine.createFlow({ goal: "Check-out final" });
+    const meeting = await engine.openMeeting({ flow_id: flow.flow_id, type: "convergent", question: "Fechar como?" });
+    await engine.recordMeeting({
+      meeting_id: meeting.meeting_id,
+      decisions: ["fechar com evidencia"],
+      cooperators: [{ name: "validador-pronto", reason: "validou fechamento", material: true }],
+      active_credits: ["validador-pronto validou fechamento"]
+    });
+    const evidence = await engine.attachEvidence({ flow_id: flow.flow_id, kind: "test_log", title: "npm run check", content: "pass" });
+    await engine.recordVerdict({
+      flow_id: flow.flow_id,
+      status: "pronto",
+      rationale: "Evidencia e check-out presentes.",
+      evidence_ids: [evidence.evidence_id],
+      residual_risks: [],
+      next_step: "arquivar"
+    });
+
+    const status = await engine.goalStatus({ flow_id: flow.flow_id });
+    const checkout = status.ppirtv_checkout as Record<string, unknown>;
+
+    expect(checkout).toMatchObject({
+      complete: true,
+      status: "complete",
+      verdict: "pronto",
+      meetings_count: 1,
+      evidence_count: 1,
+      tests_visible: true,
+      direct_action: "fechamento_total_registrado"
+    });
+  });
+
+  it("T14 does not render false-green direct_action when fiscal blockers are active", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-fiscal-t14", "Direct action bloqueado");
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Ressalva material sem fiscais.",
+        evidence_ids: [evidenceId],
+        residual_risks: [
+          "sem reuniao divergente/convergente/transversal",
+          "sem revisor-codigo material",
+          "sem memoria L1/L2 gerada pelo motor",
+          "sem retorno visual Bibliotecario/Graphify"
+        ],
+        next_step: "regressar"
+      })
+    ).rejects.toThrow(/PPIRTV_FISCAL_BLOCKED/i);
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+    const directAction = (status.display as Record<string, Record<string, string>>).direct_action.action;
+
+    expect(status.blockers).toEqual(
+      expect.arrayContaining(["required_cooperation", "memory_required_but_empty", "review_required", "librarian_status"])
+    );
+    expect(directAction).toContain("Bloqueado:");
+    expect(directAction).toContain("required_cooperation");
+    expect(directAction).not.toContain("Gate pronto para avancar");
+  });
+
+  it("T15 keeps goal_verdict and mm_memory_mining aligned on memory_required_but_empty", async () => {
+    const workspace = path.join(tempRoot, "memory-policy-shared");
+    const sptPath = await writeFakeSpt(workspace);
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Politica de memoria compartilhada",
+      idempotency_key: "dex-code:test-fiscal-t15",
+      evidence_required: true,
+      required_evidence: ["evidencia rastreavel"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code"
+    });
+    const flowId = started.flow_id as string;
+    const evidence = await engine.attachEvidence({
+      flow_id: flowId,
+      kind: "note",
+      title: "evidencia rastreavel sem pepita",
+      content: "pass"
+    });
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Risco residual exige memoria.",
+        evidence_ids: [evidence.evidence_id],
+        residual_risks: ["sem memoria L1/L2 gerada pelo motor"],
+        next_step: "corrigir memoria"
+      })
+    ).rejects.toThrow(/memory_required_but_empty/i);
+
+    const mined = await engine.mineMemory({ flow_id: flowId, write_policy: "classify_only" });
+
+    expect(mined.memory_required_but_empty).toBe(true);
+    expect(mined.blocked_verdict).toBe(true);
+  });
+
+  it("T16 always returns structured librarian_status instead of null", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t16", "Bibliotecario status estruturado");
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+
+    expect(status.librarian_status).toMatchObject({
+      bibliotecario: {
+        enabled: false,
+        status: "disabled",
+        reason: "await_beforePhase_or_report_disabled",
+        visible: true
+      },
+      graphify: {
+        enabled: false,
+        status: "disabled",
+        reason: "optional_disabled_reported",
+        visible: true
+      }
+    });
+  });
+
+  it("T17 keeps proof-dependent checklist principles pending before hygiene/fiscal evidence exists", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t17", "Checklist pendente antes da prova");
+
+    const checklist = await engine.renderChecklist(flowId);
+    const proofPrinciples = checklist.operational_principles.filter((item) =>
+      ["casa_limpa", "memoria_sem_lembranca", "barata_nunca_esta_sozinha"].includes(item.id)
+    );
+
+    expect(proofPrinciples.length).toBeGreaterThan(0);
+    expect(proofPrinciples).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "casa_limpa", checked: false, state: "pending" })])
+    );
+    expect(checklist.display.checklist_visual).toEqual(
+      expect.arrayContaining([expect.objectContaining({ label: expect.stringContaining("ouro"), checked: false, state: "pending" })])
+    );
+  });
+
+  it("T18 preserves goal_gate_check blocking required cooperation and hygiene material findings", async () => {
+    const workspace = path.join(tempRoot, "gate-check-hygiene");
+    const sptPath = await writeFakeSpt(workspace);
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Gate check fiscal preservado",
+      idempotency_key: "dex-code:test-fiscal-t18",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code"
+    });
+    const flowId = started.flow_id as string;
+
+    await engine.hygieneScan(flowId);
+    const gate = await engine.goalGateCheck({ flow_id: flowId, persist: false });
+
+    expect(gate.status).toBe("blocked");
+    expect(gate.missing).toEqual(expect.arrayContaining(["required_cooperation", "hygiene_blocking"]));
+    expect((gate.display as Record<string, Record<string, string>>).direct_action.action).toContain("required_cooperation");
+  });
+
+  it("T19 explains required_cooperation reasons by blocker and keeps all mandatory COO visible", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t19", "Razoes especificas por fiscal");
+    await engine.updateFlowFacts(flowId, {
+      risks: ["sem memoria L1/L2 gerada pelo motor"],
+      changed_files: ["src/flow-engine.ts"]
+    });
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+    const required = status.required_cooperation as Array<Record<string, unknown>>;
+    const names = required.map((item) => item.name);
+
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "ancora-fluxo",
+        "chato",
+        "questionador",
+        "entrevista-me",
+        "garimpeiro",
+        "dex-memoria",
+        "estacionamento",
+        "reuniao",
+        "sprinter",
+        "duda-dev",
+        "mapeador-implementacao",
+        "revisor-codigo",
+        "tio-testador",
+        "validador-pronto"
+      ])
+    );
+    expect(required).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "revisor-codigo", reason: expect.stringContaining("review_required") }),
+        expect.objectContaining({ name: "garimpeiro", reason: expect.stringContaining("memory_required_but_empty") }),
+        expect.objectContaining({ name: "dex-memoria", reason: expect.stringContaining("memory_required_but_empty") }),
+        expect.objectContaining({ name: "reuniao", reason: expect.stringContaining("required_cooperation") }),
+        expect.objectContaining({ name: "sprinter", reason: expect.stringContaining("required_cooperation") }),
+        expect.objectContaining({ name: "tio-testador", reason: expect.stringContaining("risco de teste/evidencia") }),
+        expect.objectContaining({ name: "validador-pronto", reason: expect.stringContaining("qualquer veredito positivo") }),
+        expect.objectContaining({ name: "ancora-fluxo", reason: expect.stringContaining("regresso correto") }),
+        expect.objectContaining({ name: "chato", reason: expect.stringContaining("perguntas de pressao") }),
+        expect.objectContaining({ name: "questionador", reason: expect.stringContaining("perguntas de pressao") }),
+        expect.objectContaining({ name: "entrevista-me", reason: expect.stringContaining("perguntas de pressao") })
+      ])
+    );
+  });
+
+  it("T20 summarizes blockers and next action in ppirtv_checkout for blocked flows", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-fiscal-t20", "Check-out bloqueado detalhado");
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Bloqueio fiscal precisa aparecer no check-out.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["sem revisor-codigo material", "sem memoria L1/L2 gerada pelo motor"],
+        next_step: "regressar"
+      })
+    ).rejects.toThrow(/PPIRTV_FISCAL_BLOCKED/i);
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+    const checkout = status.ppirtv_checkout as Record<string, unknown>;
+
+    expect(checkout).toMatchObject({ complete: false, status: "blocked" });
+    expect(checkout.direct_action).toEqual(expect.stringContaining("check-out bloqueado:"));
+    expect(checkout.direct_action).toEqual(expect.stringContaining("required_cooperation"));
+    expect(checkout.direct_action).toEqual(expect.stringContaining("review_required"));
+    expect(checkout.direct_action).toEqual(expect.stringContaining("abrir reuniao/revisor/memoria"));
+  });
+
+  it("T21 reproduces the dex-code-kimi consumer validation without completing a material ressalva", async () => {
+    const originalCwd = process.cwd();
+    const workspace = path.join(tempRoot, "consumer-kimi");
+    const sptPath = await writeFakeSpt(workspace);
+    await mkdir(path.join(workspace, "tema"), { recursive: true });
+    await writeFile(path.join(workspace, "tema", "memoria.md"), "# Memoria sem L1\n\n## Aprendizado\n", "utf8");
+
+    const validation = await engine.validateSpt({
+      workspace,
+      spt_path: sptPath,
+      objective: "Validacao consumidor dex-code-kimi"
+    });
+    expect(validation.valid).toBe(true);
+
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Validacao consumidor dex-code-kimi",
+      idempotency_key: "dex-code:test-fiscal-consumer-kimi",
+      evidence_required: true,
+      required_evidence: ["evidencia sintetica controlada"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code-kimi"
+    });
+    const flowId = started.flow_id as string;
+    const initialStatus = await engine.goalStatus({ flow_id: flowId });
+    expect(initialStatus.librarian_status).toMatchObject({ bibliotecario: { status: "disabled" }, graphify: { status: "disabled" } });
+
+    const evidence = await engine.addGoalEvidence({
+      flow_id: flowId,
+      kind: "synthetic_controlled_evidence",
+      title: "evidencia sintetica controlada consumidor",
+      content: "Data/hora: 2026-06-02; origem: teste; objetivo: validar fiscal; SPT e Flow identificados.",
+      satisfies: ["evidencia sintetica controlada"]
+    });
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Validacao consumidor nao pode aceitar ausencia material dos fiscais.",
+        evidence_ids: [evidence.evidence_id as string],
+        residual_risks: [
+          "sem reuniao divergente/convergente/transversal",
+          "sem revisor-codigo material",
+          "sem memoria L1/L2 gerada pelo motor",
+          "sem retorno visual Bibliotecario/Graphify",
+          "hygiene_scan ainda nao consumido como bloqueador"
+        ],
+        next_step: "regressar antes de positivo"
+      })
+    ).rejects.toThrow(/PPIRTV_FISCAL_BLOCKED.*required_cooperation.*memory_required_but_empty.*review_required.*librarian_status/i);
+
+    process.chdir(workspace);
+    try {
+      const hygiene = await engine.hygieneScan(flowId);
+      const mined = await engine.mineMemory({ flow_id: flowId, write_policy: "classify_only" });
+      const gate = await engine.goalGateCheck({ flow_id: flowId, persist: false });
+      const status = await engine.goalStatus({ flow_id: flowId });
+      const archived = await engine.archiveFlow({ flow_id: flowId, reason: "teste consumidor simulado finalizado" });
+
+      expect(hygiene.hygiene_blocking).toBe(true);
+      expect(mined.memory_required_but_empty).toBe(true);
+      expect(gate.status).toBe("blocked");
+      expect(status.status).toBe("blocked");
+      expect(status.blockers).toEqual(
+        expect.arrayContaining(["required_cooperation", "memory_required_but_empty", "review_required", "librarian_status", "hygiene_blocking"])
+      );
+      expect(archived.status).toBe("archived");
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("T22 rejects false-green direct_action recursively and requires actionable meeting/regress contract", async () => {
+    const originalCwd = process.cwd();
+    const workspace = path.join(tempRoot, "consumer-kimi-mofo-bruto");
+    const sptPath = await writeFakeSpt(workspace);
+    await mkdir(path.join(workspace, "tema"), { recursive: true });
+    await writeFile(path.join(workspace, "tema", "memoria.md"), "# Memoria sem L1\n\n## Aprendizado\n", "utf8");
+
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Validacao consumidor mofo bruto",
+      idempotency_key: "dex-code:test-fiscal-consumer-mofo-bruto",
+      evidence_required: true,
+      required_evidence: ["evidencia sintetica controlada"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code-kimi"
+    });
+    assertNoFalseGreenDirectAction(started, "goal_start");
+    const flowId = started.flow_id as string;
+    const initialStatus = await engine.goalStatus({ flow_id: flowId });
+    expect(initialStatus.librarian_status).toMatchObject({
+      bibliotecario: { status: "disabled", functional_tested: false },
+      graphify: { status: "disabled", functional_tested: false },
+      functional_tested: false
+    });
+
+    const evidence = await engine.addGoalEvidence({
+      flow_id: flowId,
+      kind: "synthetic_controlled_evidence",
+      title: "evidencia sintetica controlada consumidor",
+      content: "Data/hora: 2026-06-02; origem: teste; objetivo: validar fiscal; SPT e Flow identificados.",
+      satisfies: ["evidencia sintetica controlada"]
+    });
+    assertNoFalseGreenDirectAction(evidence, "evidence_add_pre_block");
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Validacao consumidor nao pode aceitar ausencia material dos fiscais.",
+        evidence_ids: [evidence.evidence_id as string],
+        residual_risks: [
+          "sem reuniao divergente/convergente/transversal",
+          "sem revisor-codigo material",
+          "sem memoria L1/L2 gerada pelo motor",
+          "sem retorno visual Bibliotecario/Graphify",
+          "hygiene_scan ainda nao consumido como bloqueador"
+        ],
+        next_step: "regressar antes de positivo"
+      })
+    ).rejects.toThrow(/PPIRTV_FISCAL_BLOCKED.*required_cooperation.*memory_required_but_empty.*review_required.*librarian_status/i);
+
+    process.chdir(workspace);
+    try {
+      const hygiene = await engine.hygieneScan(flowId);
+      const mined = await engine.mineMemory({ flow_id: flowId, write_policy: "classify_only" });
+      const gate = await engine.goalGateCheck({ flow_id: flowId, persist: false });
+      const status = await engine.goalStatus({ flow_id: flowId });
+      const evidenceAfterBlock = await engine.addGoalEvidence({
+        flow_id: flowId,
+        kind: "synthetic_controlled_evidence",
+        title: "evidencia pos bloqueio",
+        content: "pass"
+      });
+      const archived = await engine.archiveFlow({ flow_id: flowId, reason: "teste consumidor mofo bruto finalizado" });
+
+      for (const [label, payload] of Object.entries({ hygiene, mined, gate, status, evidenceAfterBlock, archived })) {
+        assertNoFalseGreenDirectAction(payload, label);
+      }
+      expect(status).toMatchObject({
+        status: "blocked",
+        meeting_required: true,
+        regress_required: true,
+        back_to: expect.any(String),
+        can_retry_verdict: false,
+        next_required_action: {
+          type: "open_meeting",
+          tool: "goal_meeting_open",
+          can_retry_verdict: false
+        }
+      });
+      expect(status.ppirtv_checkin).toMatchObject({
+        initial_adjustment_required: true,
+        direct_action: expect.stringContaining("check-in bloqueado:"),
+        trail_alignment: {
+          workspace,
+          spt_path: sptPath,
+          goal: "Validacao consumidor mofo bruto",
+          evidence_required: true,
+          required_evidence_count: 1,
+          adjustment_targets: expect.arrayContaining(["mcp_cwd", "workspace", "spt_path", "goal", "required_evidence"])
+        },
+        components: expect.arrayContaining([
+          expect.objectContaining({ name: "ppirtv", visible: true }),
+          expect.objectContaining({ name: "coo", visible: true }),
+          expect.objectContaining({ name: "bibliotecario", visible: true }),
+          expect.objectContaining({ name: "graphify", visible: true }),
+          expect.objectContaining({ name: "ppi", visible: true })
+        ])
+      });
+      expect(status.ppirtv_checkout).toMatchObject({
+        complete: false,
+        status: "blocked",
+        direct_action: expect.stringContaining("check-out bloqueado:")
+      });
+      expect(status.checklist.display.direct_action.action).toContain("Bloqueado:");
+      expect(status.checklist.operational_principles).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: "casa_limpa", checked: false, state: "blocked" })])
+      );
+      expect(evidenceAfterBlock.status.checklist.display.direct_action.action).toContain("Bloqueado:");
+      expect(archived.display.direct_action.action).toContain("Arquivado com bloqueios preservados");
+      expect(archived.display.direct_action.action).not.toMatch(/Gate pronto para avancar|pronto para avancar/i);
+      expect(hygiene.hygiene_blocking).toBe(true);
+      expect(mined.memory_required_but_empty).toBe(true);
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("T23 distinguishes disabled librarian/Graphify from functionally tested recall", async () => {
+    const provider: MemoryGraphProvider = {
+      recall: async (input) => ({
+        flow_id: input.flow_id,
+        phase: input.phase,
+        queried_at: new Date().toISOString(),
+        warnings: ["graphify_recalled: 1"],
+        items: [graphHit(input.question, "Bibliotecario funcional", "src/memory/memory-recall.ts", 20)]
+      })
+    };
+    const graphEngine = new FlowEngine(new PpirtvStore(tempRoot), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
+    const flow = await graphEngine.createFlow({ goal: "Bibliotecario funcionalmente testado" });
+
+    await graphEngine.advance({ flow_id: flow.flow_id, provided: { context: "ctx", risks: ["r"], uncertainties: ["u"] } });
+    const status = await graphEngine.goalStatus({ flow_id: flow.flow_id });
+
+    expect(status.librarian_status).toMatchObject({
+      bibliotecario: { status: "recalled", functional_tested: true },
+      graphify: { status: "recalled", functional_tested: true },
+      functional_tested: true
+    });
+  });
+
+  it("T24 stops fiscal regress loops after the Chato maximum and requires a decision meeting", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-fiscal-regress-limit", "Limite de regressos fiscal");
+    await engine.updateFlowFacts(flowId, { changed_files: ["src/flow-engine.ts"] });
+    await engine.returnTo({ flow_id: flowId, to: "pensamentos", reason: "regresso fiscal 1" });
+    await engine.returnTo({ flow_id: flowId, to: "pensamentos", reason: "regresso fiscal 2" });
+    await engine.returnTo({ flow_id: flowId, to: "pensamentos", reason: "regresso fiscal 3" });
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Ainda ha risco material depois dos regressos.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["mudanca de codigo sem review material"],
+        next_step: "tentar voltar de novo"
+      })
+    ).rejects.toThrow(/review_required/i);
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+
+    expect(status).toMatchObject({
+      status: "blocked",
+      regress_count: 3,
+      max_regressions: 3,
+      regress_limit_reached: true,
+      regress_required: false,
+      can_retry_verdict: false,
+      next_required_action: {
+        type: "open_decision_meeting",
+        tool: "goal_meeting_open",
+        can_retry_verdict: false
+      }
+    });
+  });
+
+  it("T25 requires a closed meeting id before retrying a material positive verdict", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-fiscal-meeting-close", "Reuniao obrigatoria material");
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Sem reuniao material fechada nao pode tentar ressalva positiva.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["sem reuniao divergente/convergente/transversal"],
+        next_step: "abrir reuniao"
+      })
+    ).rejects.toThrow(/PPIRTV_FISCAL_BLOCKED.*required_cooperation/i);
+
+    const opened = await engine.goalMeetingOpen({
+      flow_id: flowId,
+      kind: "divergente",
+      question: "E SE aceitarmos a ressalva sem mesa material?"
+    });
+    const meetingId = opened.meeting_id as string;
+    await engine.goalMeetingAddTurn({
+      flow_id: flowId,
+      meeting_id: meetingId,
+      speaker: "chato",
+      question: "Qual evidencia material libera nova tentativa?",
+      finding: "Precisa decisao registrada e participantes minimos."
+    });
+    const insufficient = await engine.goalMeetingClose({
+      flow_id: flowId,
+      meeting_id: meetingId,
+      participants_present: ["chato"],
+      decision: "Nao liberar; faltam participantes minimos.",
+      satisfies_blockers: ["required_cooperation"]
+    });
+
+    expect(insufficient.satisfies_blockers).not.toContain("required_cooperation");
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Ainda tentando sem participantes minimos.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["sem reuniao divergente/convergente/transversal"],
+        meeting_id: meetingId,
+        next_step: "bloquear"
+      })
+    ).rejects.toThrow(/required_cooperation/i);
+
+    const reopened = await engine.goalMeetingOpen({
+      flow_id: flowId,
+      kind: "convergente",
+      question: "Quem fecha a decisao material?",
+      participants_required: ["chato", "questionador", "reuniao", "validador-pronto"]
+    });
+    const goodMeetingId = reopened.meeting_id as string;
+    const closed = await engine.goalMeetingClose({
+      flow_id: flowId,
+      meeting_id: goodMeetingId,
+      participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+      findings: ["Ressalva material exige mesa fechada antes de nova tentativa."],
+      decision: "Reuniao material fechada; required_cooperation satisfeito.",
+      satisfies_blockers: ["required_cooperation"]
+    });
+    const status = await engine.goalStatus({ flow_id: flowId });
+
+    expect(closed).toMatchObject({
+      status: "closed",
+      kind: "convergente",
+      decision: "Reuniao material fechada; required_cooperation satisfeito.",
+      satisfies_blockers: expect.arrayContaining(["required_cooperation"])
+    });
+    expect(status.meetings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          meeting_id: goodMeetingId,
+          kind: "convergente",
+          status: "closed",
+          participants_present: expect.arrayContaining(["chato", "questionador", "reuniao", "validador-pronto"]),
+          decision: expect.stringContaining("required_cooperation")
+        })
+      ])
+    );
+  });
+
+  it("T26 persists goal_regress and consumes reported regress_count before requiring decision meeting", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-goal-regress-tool", "Regresso fiscal auditavel");
+
+    const regressed = await engine.goalRegress({
+      flow_id: flowId,
+      to: "pensamentos",
+      reason: "regresso material antes da decisao"
+    });
+    expect(regressed.regressed).toBe(true);
+    expect(regressed.regress_count).toBe(1);
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Erro recorrente com regress_count informado pelo consumidor.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["erro recorrente ainda sem decisao"],
+        regress_count: 3,
+        next_step: "abrir decisao"
+      })
+    ).rejects.toThrow(/attempt_regress_count|required_cooperation/i);
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+    expect(status).toMatchObject({
+      regress_count: 3,
+      regress_limit_reached: true,
+      locked_by_limit: true,
+      next_required_action: {
+        type: "open_decision_meeting",
+        meeting_kind: "decisao",
+        locked_by_limit: true
+      }
+    });
+  });
+
+  it("T26b blocks a positive retry at the regress limit even after a material meeting", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-regress-limit-after-meeting", "Limite vence reuniao parcial");
+    const opened = await engine.goalMeetingOpen({
+      flow_id: flowId,
+      kind: "convergente",
+      question: "A mesa parcial libera tentativa positiva depois de tres regressos?",
+      participants_required: ["chato", "questionador", "reuniao", "validador-pronto"]
+    });
+    const meetingId = opened.meeting_id as string;
+    await engine.goalMeetingClose({
+      flow_id: flowId,
+      meeting_id: meetingId,
+      participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+      findings: ["A reuniao satisfaz cooperacao, mas nao substitui decisao anti-loop."],
+      decision: "Satisfazer required_cooperation; limite de regressos ainda exige decisao.",
+      satisfies_blockers: ["required_cooperation"]
+    });
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Erro recorrente depois de tres regressos nao pode virar ressalva comum.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["erro recorrente de produto ainda sem reuniao de decisao"],
+        meeting_id: meetingId,
+        regress_count: 3,
+        next_step: "abrir decisao"
+      })
+    ).rejects.toThrow(/attempt_regress_count/i);
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+    expect(status).toMatchObject({
+      status: "blocked",
+      regress_limit_reached: true,
+      locked_by_limit: true,
+      next_required_action: {
+        type: "open_decision_meeting",
+        meeting_kind: "decisao",
+        can_retry_verdict: false
+      }
+    });
+  });
+
+  it("T27 check-in treats configured empty Graphify as tested while fiscal risk still blocks recall absence", async () => {
+    const previousGraphifyRecall = process.env.PPIRTV_GRAPHIFY_RECALL;
+    process.env.PPIRTV_GRAPHIFY_RECALL = "1";
+    const provider: MemoryGraphProvider = {
+      recall: async (input) => ({
+        flow_id: input.flow_id,
+        phase: input.phase,
+        queried_at: new Date().toISOString(),
+        warnings: ["graphify_enabled_without_hits"],
+        items: []
+      })
+    };
+    try {
+      const graphEngine = new FlowEngine(new PpirtvStore(tempRoot), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
+      const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-graphify-checkin", "Graphify check-in funcional", graphEngine);
+
+      await graphEngine.advance({ flow_id: flowId, provided: { context: "ctx", risks: ["bibliotecario graphify"], uncertainties: ["u"] } });
+      await expect(
+        graphEngine.goalVerdict({
+          flow_id: flowId,
+          status: "pronto_com_ressalvas",
+          rationale: "Sem retorno visual Bibliotecario/Graphify funcional.",
+          evidence_ids: [evidenceId],
+          residual_risks: ["sem retorno visual Bibliotecario/Graphify"],
+          next_step: "corrigir check-in"
+        })
+      ).rejects.toThrow(/librarian_status/i);
+
+      const status = await graphEngine.goalStatus({ flow_id: flowId });
+      expect(status.librarian_status).toMatchObject({
+        graphify: {
+          enabled: true,
+          configured: true,
+          status: "empty",
+          functional_tested: true
+        }
+      });
+      expect(status.ppirtv_checkin).toMatchObject({
+        mode: "goal_fiscal_blocked",
+        blockers: expect.arrayContaining(["librarian_status"]),
+        components: expect.arrayContaining([
+          expect.objectContaining({
+            name: "graphify",
+            configured: true,
+            functional_required: true,
+            functional_tested: true,
+            needs_adjustment: false
+          })
+        ])
+      });
+      expect((status.ppirtv_checkin as { blockers: string[] }).blockers).not.toContain("graphify_config_mismatch");
+    } finally {
+      if (previousGraphifyRecall === undefined) {
+        delete process.env.PPIRTV_GRAPHIFY_RECALL;
+      } else {
+        process.env.PPIRTV_GRAPHIFY_RECALL = previousGraphifyRecall;
+      }
+    }
+  });
+
+  it("T27b goal_status probes Graphify when configured even before goal_advance", async () => {
+    const previousGraphifyRecall = process.env.PPIRTV_GRAPHIFY_RECALL;
+    process.env.PPIRTV_GRAPHIFY_RECALL = "1";
+    const provider: MemoryGraphProvider = {
+      recall: async (input) => ({
+        flow_id: input.flow_id,
+        phase: input.phase,
+        queried_at: new Date().toISOString(),
+        warnings: [],
+        items: [graphHit(input.question, "checkout accountability", ".agents/PLAN-TASKS/checkout.md", 8)]
+      })
+    };
+    try {
+      const graphEngine = new FlowEngine(new PpirtvStore(tempRoot), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
+      const { flowId } = await startGoalWithEvidence("dex-code:test-graphify-status-probe", "Graphify status probe sem advance", graphEngine);
+
+      const status = await graphEngine.goalStatus({ flow_id: flowId });
+      const ledger = await graphEngine.store.readLedger(flowId);
+
+      expect(status.librarian_status).toMatchObject({
+        graphify: {
+          enabled: true,
+          configured: true,
+          status: "recalled",
+          functional_tested: true
+        },
+        functional_tested: true
+      });
+      expect(ledger.map((event) => event.type)).toContain("memory_recalled");
+    } finally {
+      if (previousGraphifyRecall === undefined) {
+        delete process.env.PPIRTV_GRAPHIFY_RECALL;
+      } else {
+        process.env.PPIRTV_GRAPHIFY_RECALL = previousGraphifyRecall;
+      }
+    }
+  });
+
+  it("T28 check-out of archived blocked flow preserves blockers instead of closing total", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-checkout-archive-blocked", "Archive bloqueado");
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Bloqueado sem reuniao material.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["sem reuniao divergente/convergente/transversal"],
+        next_step: "arquivar bloqueado"
+      })
+    ).rejects.toThrow(/required_cooperation/i);
+
+    const archived = await engine.archiveFlow({ flow_id: flowId, reason: "preservar bloqueio" });
+    const status = await engine.goalStatus({ flow_id: flowId });
+
+    expect(archived).toMatchObject({
+      archived_blocked_flow: true,
+      preserved_blockers: expect.arrayContaining(["required_cooperation"])
+    });
+    expect(archived.display.direct_action.action).toContain("Arquivado com bloqueios preservados");
+    expect(status.ppirtv_checkout).toMatchObject({
+      status: "archived",
+      direct_action: expect.stringContaining("check-out bloqueado:")
+    });
+    expect((status.ppirtv_checkout as Record<string, unknown>).direct_action).not.toBe("fechamento_total_registrado");
+  });
+
+  it("T29 check-out reports memory layers, garimpo, estacionamento, blind spots, merits and librarian work", async () => {
+    const originalDexMemoriaHome = process.env.DEX_MEMORIA_HOME;
+    const memRoot = path.join(tempRoot, "checkout-accountability-memories");
+    process.env.DEX_MEMORIA_HOME = memRoot;
+    try {
+      const { flowId } = await startGoalWithEvidence("dex-code:test-checkout-accountability", "Prestacao de contas do check-out");
+      const opened = await engine.goalMeetingOpen({
+        flow_id: flowId,
+        kind: "divergente",
+        question: "O que precisa aparecer no check-out?"
+      });
+      await engine.goalMeetingClose({
+        flow_id: flowId,
+        meeting_id: opened.meeting_id as string,
+        participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+        decision: "Check-out precisa prestar contas sem inventar merito.",
+        parking_lot: ["Ponto cego Delphi DUnitX standalone vs provider precisa virar memoria reutilizavel."],
+        cooperators: [
+          { name: "chato", reason: "cobrou prestacao de contas material no check-out", material: true },
+          { name: "garimpeiro", reason: "classificou pepita reutilizavel", material: true }
+        ],
+        active_credits: ["chato cobrou prestacao de contas material", "garimpeiro classificou pepita reutilizavel"]
+      });
+
+      const mined = await engine.mineMemory({ flow_id: flowId, auto_classify: true, write_policy: "auto_write" });
+      const status = await engine.goalStatus({ flow_id: flowId });
+      const checkout = status.ppirtv_checkout as Record<string, unknown>;
+      const memory = checkout.memory_accountability as Record<string, unknown>;
+      const learning = checkout.learning_accountability as Record<string, unknown>;
+      const cooperation = checkout.cooperation_accountability as Record<string, unknown>;
+      const librarian = checkout.librarian_accountability as Record<string, unknown>;
+      const prestacao = checkout.prestacao_de_contas as Record<string, unknown>;
+
+      expect((mined.written as unknown[]).length).toBeGreaterThan(0);
+      expect(memory).toMatchObject({
+        written_count: expect.any(Number),
+        l1_files: expect.any(Array),
+        l2_files: expect.any(Array),
+        l3_files: expect.any(Array)
+      });
+      expect(memory.l1_files as string[]).toEqual(expect.arrayContaining([expect.stringContaining("LEMBRANCA.md")]));
+      expect(memory.l2_files as string[]).toEqual(expect.arrayContaining([expect.stringContaining("MEMORIA.md")]));
+      expect(learning.garimpado as string[]).toEqual(expect.arrayContaining([expect.stringContaining("DUnitX standalone")]));
+      expect(learning.estacionado as string[]).toEqual(expect.arrayContaining([expect.stringContaining("Ponto cego Delphi")]));
+      expect(learning.pontos_cegos as string[]).toEqual(expect.arrayContaining([expect.stringContaining("DUnitX standalone")]));
+      expect(cooperation).toMatchObject({
+        material_count: 2,
+        active_credits: expect.arrayContaining(["chato cobrou prestacao de contas material"])
+      });
+      expect(cooperation.merits as Array<Record<string, unknown>>).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "chato",
+            reason: expect.stringContaining("prestacao de contas"),
+            merit_source: "recorded_material_cooperator"
+          })
+        ])
+      );
+      expect(librarian).toMatchObject({
+        worked: false,
+        graphify_worked: false,
+        status: expect.any(Object)
+      });
+      expect(prestacao).toMatchObject({
+        memoria: memory,
+        garimpo: learning.garimpado,
+        estacionamento: learning.estacionado,
+        pontos_cegos: learning.pontos_cegos,
+        cooperadores: cooperation,
+        bibliotecario: librarian
+      });
+    } finally {
+      restoreDexMemoriaHome(originalDexMemoriaHome);
+    }
+  });
+
+  it("T30 reconciles classify_only memory candidates with final blockers and archive", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-checkout-memory-reconcile",
+      "Reconcilia memoria classify_only no checkout"
+    );
+    const opened = await engine.goalMeetingOpen({
+      flow_id: flowId,
+      kind: "divergente",
+      question: "A memoria foi classificada de verdade?"
+    });
+    await engine.goalMeetingClose({
+      flow_id: flowId,
+      meeting_id: opened.meeting_id as string,
+      participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+      decision: "Classificacao de memoria com candidatos reais resolve memoria vazia sem escrita canonica.",
+      satisfies_blockers: ["required_cooperation"],
+      parking_lot: ["Ponto cego PPIRTV classify_only com candidatos nao deve preservar blocker de memoria vazia."],
+      cooperators: [
+        { name: "chato", reason: "cobrou contradicao entre blockers e accountability", material: true },
+        { name: "observador-sugerido-controle", reason: "controle negativo sem contribuicao material", material: false }
+      ],
+      active_credits: ["chato cobrou contradicao entre blockers e accountability"]
+    });
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Risco material sem memoria classificada ainda.",
+        evidence_ids: [evidenceId],
+        meeting_id: opened.meeting_id as string,
+        residual_risks: ["sem memoria L1/L2/L3 ainda"],
+        next_step: "rodar mineracao classify_only"
+      })
+    ).rejects.toThrow(/memory_required_but_empty/i);
+
+    const mined = await engine.mineMemory({ flow_id: flowId, auto_classify: true, write_policy: "classify_only" });
+    const status = await engine.goalStatus({ flow_id: flowId });
+    const archived = await engine.archiveFlow({ flow_id: flowId, reason: "preservar apenas blockers reais" });
+    const archivedStatus = await engine.goalStatus({ flow_id: flowId });
+    const checkout = archivedStatus.ppirtv_checkout as Record<string, unknown>;
+    const memory = checkout.memory_accountability as Record<string, unknown>;
+    const cooperation = checkout.cooperation_accountability as Record<string, unknown>;
+
+    expect(mined).toMatchObject({
+      write_policy: "classify_only",
+      written: [],
+      memory_required_but_empty: false
+    });
+    expect((mined.candidates as unknown[]).length).toBeGreaterThan(0);
+    expect(status.blockers as string[]).not.toContain("memory_required_but_empty");
+    expect((status.fiscal_policy as Record<string, unknown>).blocking_reasons as string[]).not.toContain("memory_required_but_empty");
+    expect((status.ppirtv_checkout as Record<string, unknown>).direct_action as string).not.toContain("memory_required_but_empty");
+    expect(archived.preserved_blockers as string[]).not.toContain("memory_required_but_empty");
+    expect(memory).toMatchObject({
+      required: true,
+      mined: true,
+      candidates_count: expect.any(Number),
+      written_count: 0,
+      memory_required_but_empty: false,
+      candidates: expect.any(Array)
+    });
+    expect(memory.candidates_count as number).toBeGreaterThan(0);
+    expect((memory.candidates as unknown[]).length).toBeGreaterThan(0);
+    expect(cooperation).toMatchObject({ material_count: 1 });
+    expect(cooperation.material as Array<Record<string, unknown>>).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "observador-sugerido-controle" })])
+    );
+    expect(cooperation.merits as Array<Record<string, unknown>>).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "chato",
+          merit_source: "recorded_material_cooperator"
+        })
+      ])
+    );
+    expect(cooperation.merits as Array<Record<string, unknown>>).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "observador-sugerido-controle" })])
+    );
+  });
+
+  it("T31 keeps memory_required_but_empty when candidates_count has no candidates list", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-checkout-memory-candidates-missing",
+      "Candidatos sem lista nao resolvem memoria"
+    );
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Risco material sem memoria classificada.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["sem memoria L1/L2"],
+        next_step: "corrigir accountability"
+      })
+    ).rejects.toThrow(/memory_required_but_empty/i);
+
+    const flow = await engine.store.loadFlow(flowId);
+    flow.memory_mining = {
+      required: true,
+      last_run_at: new Date().toISOString(),
+      blocked_verdict: false,
+      candidates_count: 3,
+      written_count: 0,
+      blocked_count: 0,
+      ledger_only_count: 0,
+      discarded_count: 0,
+      memory_required_but_empty: false
+    };
+    await engine.store.saveFlow(flow);
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+    const archived = await engine.archiveFlow({ flow_id: flowId, reason: "candidatos sem lista continuam bloqueando" });
+
+    expect(status.blockers as string[]).toContain("memory_required_but_empty");
+    expect(archived.preserved_blockers as string[]).toContain("memory_required_but_empty");
+  });
+
+  it("T32 keeps goal_verdict from auto-writing after explicit classify_only mining", async () => {
+    const originalDexMemoriaHome = process.env.DEX_MEMORIA_HOME;
+    const memRoot = path.join(tempRoot, "classify-only-verdict-memories");
+    process.env.DEX_MEMORIA_HOME = memRoot;
+    try {
+      const { flowId, evidenceId, workspace } = await startGoalWithEvidence(
+        "dex-code:test-goal-verdict-classify-only-no-autowrite",
+        "Veredito respeita memoria classify_only"
+      );
+      const opened = await engine.goalMeetingOpen({
+        flow_id: flowId,
+        kind: "divergente",
+        participants_required: ["chato", "questionador", "reuniao", "validador-pronto"],
+        question: "O veredito pode escrever memoria sozinho?"
+      });
+      await engine.goalMeetingClose({
+        flow_id: flowId,
+        meeting_id: opened.meeting_id as string,
+        participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+        decision: "Veredito deve reutilizar classify_only explicito sem promover para auto_write.",
+        satisfies_blockers: ["required_cooperation"],
+        parking_lot: ["Aprendizado reutilizavel PPIRTV: goal_verdict nao deve trocar classify_only por auto_write implicito."]
+      });
+
+      const mined = await engine.mineMemory({ flow_id: flowId, auto_classify: true, write_policy: "classify_only" });
+      expect(mined).toMatchObject({
+        write_policy: "classify_only",
+        written: [],
+        memory_required_but_empty: false
+      });
+      expect((mined.candidates as unknown[]).length).toBeGreaterThan(0);
+
+      const verdict = await engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Risco material ja teve memoria classificada sem escrita canonica.",
+        evidence_ids: [evidenceId],
+        meeting_id: opened.meeting_id as string,
+        residual_risks: ["memoria classificada em classify_only sem escrita automatica"],
+        next_step: "validar checkout sem auto_write implicito"
+      });
+      const status = await engine.goalStatus({ flow_id: flowId });
+      const checkout = status.ppirtv_checkout as Record<string, unknown>;
+      const memory = checkout.memory_accountability as Record<string, unknown>;
+
+      expect(verdict.memory_mining).toMatchObject({
+        write_policy: "classify_only",
+        written_count: 0,
+        memory_required_but_empty: false
+      });
+      expect(memory).toMatchObject({
+        write_policy: "classify_only",
+        written_count: 0,
+        memory_required_but_empty: false,
+        candidates: expect.any(Array)
+      });
+      expect(memory.candidates_count as number).toBeGreaterThan(0);
+      expect(status.blockers as string[]).not.toContain("memory_required_but_empty");
+      await expect(readFile(path.join(memRoot, "temas", "ppirtv", "LEMBRANCA.md"), "utf8")).rejects.toThrow();
+      await expect(readFile(path.join(memRoot, "temas", "ppirtv", "MEMORIA.md"), "utf8")).rejects.toThrow();
+      await expect(readFile(path.join(workspace, ".agents", "LEMBRANCA.md"), "utf8")).rejects.toThrow();
+      await expect(readFile(path.join(workspace, ".agents", "MEMORIA.md"), "utf8")).rejects.toThrow();
+    } finally {
+      restoreDexMemoriaHome(originalDexMemoriaHome);
+    }
   });
 
   it("does not validate SPT files outside .agents/PLAN-TASKS", async () => {
@@ -1270,6 +2673,88 @@ describe("PPIRTV flow engine", () => {
   });
 });
 
+async function startGoalWithEvidence(
+  idempotencyKey: string,
+  objective: string,
+  targetEngine: FlowEngine = engine
+): Promise<{ flowId: string; evidenceId: string; workspace: string; sptPath: string }> {
+  const workspace = path.join(tempRoot, idempotencyKey.replace(/[^a-z0-9_-]+/gi, "-"));
+  const sptPath = await writeFakeSpt(workspace);
+  const started = await targetEngine.startGoal({
+    workspace,
+    spt_path: sptPath,
+    objective,
+    idempotency_key: idempotencyKey,
+    evidence_required: true,
+    required_evidence: ["npm run check"],
+    requested_verdict_policy: "evidence_required",
+    source: "dex-code"
+  });
+  const flowId = started.flow_id as string;
+  const evidence = await targetEngine.addGoalEvidence({
+    flow_id: flowId,
+    title: "npm run check",
+    content: "pass",
+    satisfies: ["npm run check"]
+  });
+  return { flowId, evidenceId: evidence.evidence_id as string, workspace, sptPath };
+}
+
+function assertNoFalseGreenDirectAction(payload: unknown, label: string): void {
+  if (!hasBlockingSignal(payload)) {
+    return;
+  }
+  const offenders = collectDirectActionActions(payload).filter((item) => /Gate pronto para avancar|pronto para avancar/i.test(item.action));
+  expect(offenders, `${label} false-green direct_action at ${offenders.map((item) => item.path).join(", ")}`).toEqual([]);
+}
+
+function hasBlockingSignal(value: unknown): boolean {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    return value.some(hasBlockingSignal);
+  }
+  const record = value as Record<string, unknown>;
+  if (record.status === "blocked" || record.archived_blocked_flow === true || record.meeting_required === true) {
+    return true;
+  }
+  if (Array.isArray(record.blockers) && record.blockers.length > 0) {
+    return true;
+  }
+  if (Array.isArray(record.missing) && record.missing.some((item) => /required_cooperation|hygiene_blocking|memory_required|review_required|librarian_status/i.test(String(item)))) {
+    return true;
+  }
+  if (Array.isArray(record.preserved_blockers) && record.preserved_blockers.length > 0) {
+    return true;
+  }
+  if (record.fiscal_policy && typeof record.fiscal_policy === "object") {
+    const fiscal = record.fiscal_policy as Record<string, unknown>;
+    if (Array.isArray(fiscal.blocking_reasons) && fiscal.blocking_reasons.length > 0) {
+      return true;
+    }
+  }
+  return Object.values(record).some(hasBlockingSignal);
+}
+
+function collectDirectActionActions(value: unknown, pathParts: string[] = []): Array<{ path: string; action: string }> {
+  if (!value || typeof value !== "object") {
+    return [];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) => collectDirectActionActions(item, [...pathParts, String(index)]));
+  }
+  const record = value as Record<string, unknown>;
+  const current =
+    record.direct_action && typeof record.direct_action === "object" && typeof (record.direct_action as Record<string, unknown>).action === "string"
+      ? [{ path: [...pathParts, "direct_action", "action"].join("."), action: String((record.direct_action as Record<string, unknown>).action) }]
+      : [];
+  return [
+    ...current,
+    ...Object.entries(record).flatMap(([key, nested]) => collectDirectActionActions(nested, [...pathParts, key]))
+  ];
+}
+
 function restoreEnv(value: string | undefined): void {
   if (value === undefined) {
     delete process.env.PPIRTV_PRINCIPLES_PATH;
@@ -1315,6 +2800,18 @@ function validPipelineItem(goal: string): {
     done_criteria: ["flow completo com veredito"],
     expected_evidence: ["evidencia declarada pelo pipeline"],
     evidence: ["pipeline declarou evidencia para este item"]
+  };
+}
+
+function graphHit(question: string, title: string, pathName: string, score: number) {
+  return {
+    source: "graphify" as const,
+    question,
+    title,
+    path: pathName,
+    observation: "Graphify node at L1",
+    destination: "recall_hint" as const,
+    score
   };
 }
 

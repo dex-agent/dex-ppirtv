@@ -2,25 +2,106 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Flow, Phase } from "../domain.js";
 import type { MemoryRecallItem, MemoryRecallSummary } from "./memory-types.js";
+import type { MemoryGraphProvider } from "./memory-graph-provider.js";
 import { MemoryRuntimeStore } from "./memory-store.js";
-import { normalizeTextKey } from "./mining-policy.js";
+import { normalizeTextKey, redactSecretLikeText } from "./mining-policy.js";
 
-export async function beforePhase(input: { flow: Flow; phase: Phase; runtime: MemoryRuntimeStore }): Promise<MemoryRecallSummary> {
+const MIN_RECALL_TOKEN_LENGTH = 3;
+const MAX_RECALL_QUERY_TOKENS = 40;
+
+export async function beforePhase(input: { flow: Flow; phase: Phase; runtime: MemoryRuntimeStore; graphProvider?: MemoryGraphProvider }): Promise<MemoryRecallSummary> {
   const recalledAt = new Date().toISOString();
   const warnings: string[] = [];
   const query = buildQuery(input.flow, input.phase);
   const runtimeItems = await runtimeRecall(input.runtime, input.flow.flow_id, query, warnings);
   const curatedItems = await curatedRecall(input.flow, query, warnings);
-  const items = [...runtimeItems, ...curatedItems].sort((a, b) => b.score - a.score).slice(0, 10);
+  const graphItems = await graphRecall(input.graphProvider, input.flow, input.phase, warnings);
+  const items = [...runtimeItems, ...curatedItems, ...graphItems].sort((a, b) => b.score - a.score).slice(0, 10);
+  const graphifyStatus = graphifyStatusFrom(warnings, graphItems.length);
   const summary: MemoryRecallSummary = {
     flow_id: input.flow.flow_id,
     phase: input.phase,
     recalled_at: recalledAt,
     items,
-    warnings
+    warnings,
+    visual_status: {
+      librarian: librarianStatusFrom(warnings, items.length, graphifyStatus),
+      graphify: graphifyStatus
+    }
   };
   await input.runtime.recordRecall(summary);
   return summary;
+}
+
+function graphifyStatusFrom(warnings: string[], graphItemsCount: number): MemoryRecallSummary["visual_status"]["graphify"] {
+  if (warnings.some((warning) => warning.startsWith("graphify_recalled:")) || graphItemsCount > 0) {
+    return "recalled";
+  }
+  if (warnings.some((warning) => warning.startsWith("graphify_timeout:"))) {
+    return "timeout";
+  }
+  if (warnings.some((warning) => warning.startsWith("graphify_graph_missing:"))) {
+    return "missing_graph";
+  }
+  if (warnings.some((warning) => warning.startsWith("graphify_query_failed:") || warning.startsWith("graphify_recall_failed:"))) {
+    return "failed";
+  }
+  if (warnings.some((warning) => warning.startsWith("graphify_recall_empty"))) {
+    return "empty";
+  }
+  return "disabled";
+}
+
+function librarianStatusFrom(
+  warnings: string[],
+  itemCount: number,
+  graphifyStatus: MemoryRecallSummary["visual_status"]["graphify"]
+): MemoryRecallSummary["visual_status"]["librarian"] {
+  if (itemCount > 0) {
+    return "recalled";
+  }
+  if (warnings.some((warning) => warning.includes("_failed") || warning.includes("failed:"))) {
+    return "failed";
+  }
+  if (graphifyStatus === "missing_graph" || graphifyStatus === "timeout" || graphifyStatus === "failed") {
+    return graphifyStatus;
+  }
+  return warnings.length > 0 ? "empty" : "disabled";
+}
+
+async function graphRecall(provider: MemoryGraphProvider | undefined, flow: Flow, phase: Phase, warnings: string[]): Promise<MemoryRecallItem[]> {
+  if (!provider) {
+    return [];
+  }
+  const workspace = path.resolve(flow.goal_binding?.envelope.workspace ?? process.cwd());
+  try {
+    const result = await provider.recall({
+      flow_id: flow.flow_id,
+      phase,
+      question: buildGraphQuestion(flow, phase),
+      workspace
+    });
+    warnings.push(...result.warnings.map(redactSecretLikeText));
+    const items = result.items.slice(0, 3).map((item) => ({
+      source: item.source,
+      title: redactSecretLikeText(item.title).slice(0, 120),
+      snippet: redactSecretLikeText(item.observation).slice(0, 180),
+      path: item.path ? redactSecretLikeText(item.path).slice(0, 220) : undefined,
+      score: item.score,
+      question: redactSecretLikeText(item.question).slice(0, 320),
+      destination: item.destination,
+      observation: redactSecretLikeText(item.observation).slice(0, 180)
+    }));
+    if (items.length > 0) {
+      warnings.push(`graphify_recalled: ${items.length}`);
+    } else if (!warnings.some((warning) => /^graphify_(recalled|timeout|graph_missing|query_failed|recall_failed|recall_empty)/.test(warning))) {
+      warnings.push("graphify_recall_empty");
+    }
+    return items;
+  } catch (error) {
+    warnings.push(`graphify_recall_failed: ${redactSecretLikeText(errorMessage(error))}`);
+    return [];
+  }
 }
 
 async function runtimeRecall(runtime: MemoryRuntimeStore, flowId: string, query: string[], warnings: string[]): Promise<MemoryRecallItem[]> {
@@ -84,12 +165,19 @@ function buildQuery(flow: Flow, phase: Phase): string[] {
   return tokenize([phase, flow.goal, flow.context, ...flow.risks, ...flow.uncertainties, ...flow.tasks, ...flow.decisions].filter(Boolean).join(" "));
 }
 
+function buildGraphQuestion(flow: Flow, phase: Phase): string {
+  return [phase, flow.goal, flow.context, ...flow.risks, ...flow.uncertainties, ...flow.tasks, ...flow.decisions]
+    .filter(Boolean)
+    .join(" ")
+    .slice(0, 320);
+}
+
 function tokenize(value: string): string[] {
   const stop = new Set(["para", "com", "sem", "uma", "por", "the", "and", "que", "de", "do", "da"]);
   return normalizeTextKey(value)
     .split(/[^a-z0-9_-]+/i)
-    .filter((token) => token.length >= 3 && !stop.has(token))
-    .slice(0, 40);
+    .filter((token) => token.length >= MIN_RECALL_TOKEN_LENGTH && !stop.has(token))
+    .slice(0, MAX_RECALL_QUERY_TOKENS);
 }
 
 function scoreText(value: string, query: string[]): number {

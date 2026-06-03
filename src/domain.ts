@@ -9,8 +9,10 @@ export const PHASES = [
 
 export type Phase = (typeof PHASES)[number];
 
-export const MEETING_TYPES = ["divergent", "convergent", "transversal"] as const;
+export const MEETING_TYPES = ["divergent", "convergent", "transversal", "decision"] as const;
 export type MeetingType = (typeof MEETING_TYPES)[number];
+export const MEETING_KINDS = ["divergente", "convergente", "transversal", "decisao"] as const;
+export type MeetingKind = (typeof MEETING_KINDS)[number];
 
 export const VERDICTS = ["pronto", "pronto_com_ressalvas", "nao_pronto", "bloqueado"] as const;
 export type VerdictStatus = (typeof VERDICTS)[number];
@@ -82,12 +84,19 @@ export type MemoryCandidate = {
 export type MemoryMiningSummary = {
   required: boolean;
   last_run_at?: string;
+  write_policy?: MemoryWritePolicy;
   blocked_verdict: boolean;
   candidates_count: number;
   written_count: number;
   blocked_count: number;
   ledger_only_count: number;
   discarded_count: number;
+  memory_required_but_empty?: boolean;
+  candidates?: Array<Record<string, unknown>>;
+  written?: Array<{ candidate_id: string; files: string[] }>;
+  ledger_only?: string[];
+  discarded?: string[];
+  blocked?: Array<Record<string, unknown>>;
 };
 
 export type PipelineItem = {
@@ -173,7 +182,31 @@ export type PresentationAliases = {
 export type ChecklistVisualItem = {
   label: string;
   checked: boolean;
+  state?: "checked" | "unchecked" | "pending" | "blocked";
   emoji: string;
+};
+
+export type LibrarianComponentStatus = "disabled" | "recalled" | "empty" | "missing_graph" | "timeout" | "failed";
+
+export type StructuredLibrarianStatus = {
+  bibliotecario: {
+    enabled: boolean;
+    status: LibrarianComponentStatus;
+    reason: string;
+    visible: boolean;
+    functional_tested: boolean;
+  };
+  graphify: {
+    enabled: boolean;
+    configured?: boolean;
+    status: LibrarianComponentStatus;
+    reason: string;
+    visible: boolean;
+    functional_tested: boolean;
+  };
+  warnings: string[];
+  recalled_count: number;
+  functional_tested: boolean;
 };
 
 export type DisplayEnvelope = {
@@ -188,6 +221,12 @@ export type DisplayEnvelope = {
     action: string;
   };
   checklist_visual?: ChecklistVisualItem[];
+  librarian?: {
+    status: LibrarianComponentStatus;
+    graphify_status?: LibrarianComponentStatus;
+    warnings: string[];
+    recalled_count: number;
+  };
 };
 
 export type PresentationEnvelope = {
@@ -215,14 +254,32 @@ export type Meeting = {
   meeting_id: string;
   flow_id: string;
   type: MeetingType;
+  kind: MeetingKind;
   question: string;
-  status: "open" | "recorded";
+  status: "open" | "recorded" | "closed";
   opened_at: string;
   recorded_at?: string;
+  closed_at?: string;
+  participants_required: string[];
+  participants_present: string[];
   questions: string[];
+  findings: string[];
   hypotheses: string[];
   alternatives: string[];
   decisions: string[];
+  decision?: string;
+  next_required_action?: Record<string, unknown> | null;
+  satisfies_blockers: string[];
+  created_by?: string;
+  evidence_ids: string[];
+  turns: Array<{
+    at: string;
+    speaker?: string;
+    question?: string;
+    finding?: string;
+    note?: string;
+    evidence_ids: string[];
+  }>;
   risks: string[];
   next_steps: string[];
   affected_areas: string[];
@@ -303,6 +360,7 @@ export type HygieneFinding = {
   message: string;
   evidence: string[];
   action: string;
+  sensitive_content_read?: boolean;
 };
 
 export const NEXT_PHASE: Record<Phase, Phase | null> = {
@@ -381,11 +439,13 @@ export const REQUIRED_TOOLS = [
   "goal_gate_check",
   "goal_advance",
   "goal_meeting_open",
-  "goal_meeting_record",
+  "goal_meeting_add_turn",
+  "goal_meeting_close",
   "mm_memory_mining",
   "mm_pipeline_run",
   "evidence_add",
-  "goal_verdict"
+  "goal_verdict",
+  "goal_regress"
 ] as const;
 
 export const REQUIRED_PROMPTS = [

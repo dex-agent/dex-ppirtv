@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { RUNTIME_ENV, resolveConfiguredPrinciplesPath, resolveUserHome } from "./config.js";
 import type { HygieneFinding } from "./domain.js";
 
 export type PrincipleSeverity = "info" | "warning" | "error";
@@ -36,6 +36,7 @@ export type PrincipleChecklistItem = {
   id: string;
   label: string;
   checked: boolean;
+  state?: "checked" | "unchecked" | "pending" | "blocked";
   severity: PrincipleSeverity;
 };
 
@@ -93,9 +94,9 @@ export async function scanOperationalPrinciples(root = process.cwd()): Promise<H
       id: "principles:env_contract_missing",
       severity: "error",
       category: "principles",
-      message: "PPIRTV_PRINCIPLES_PATH aponta para contrato inexistente.",
-      evidence: [resolution.configuredPath ?? "PPIRTV_PRINCIPLES_PATH"],
-      action: "Corrigir PPIRTV_PRINCIPLES_PATH ou remover a env var para usar o contrato compartilhado/fallback."
+      message: `${RUNTIME_ENV.principlesPath} aponta para contrato inexistente.`,
+      evidence: [resolution.configuredPath ?? RUNTIME_ENV.principlesPath],
+      action: `Corrigir ${RUNTIME_ENV.principlesPath} ou remover a env var para usar o contrato compartilhado/fallback.`
     });
   }
 
@@ -106,7 +107,7 @@ export async function scanOperationalPrinciples(root = process.cwd()): Promise<H
       category: "principles",
       message: "Contrato compartilhado de principios nao encontrado; usando fallback do dex-PPIRTV.",
       evidence: [resolution.expectedSharedPath, "dex-PPIRTV/principles/operational-contract.json"],
-      action: "Criar o contrato compartilhado em $env:USERPROFILE/.agents/memories/principles ou configurar PPIRTV_PRINCIPLES_PATH explicitamente."
+      action: `Criar o contrato compartilhado em $env:${RUNTIME_ENV.userProfile}/.agents/memories/principles ou configurar ${RUNTIME_ENV.principlesPath} explicitamente.`
     });
   }
 
@@ -192,7 +193,7 @@ export function resolveOperationalContractSync(root = process.cwd()): Operationa
 function resolveOperationalContractPath(root: string): Omit<OperationalContractResolution, "contract"> {
   const expectedLocalPath = localContractPath(root);
   const expectedSharedPath = sharedMemoryContractPath();
-  const configuredPath = process.env.PPIRTV_PRINCIPLES_PATH?.trim();
+  const configuredPath = resolveConfiguredPrinciplesPath();
   if (configuredPath) {
     const resolved = path.isAbsolute(configuredPath) ? configuredPath : path.resolve(root, configuredPath);
     return {
@@ -245,8 +246,7 @@ function localContractPath(root: string): string {
 }
 
 function sharedMemoryContractPath(): string {
-  const home = process.env.USERPROFILE || os.homedir();
-  return path.join(home, ".agents", "memories", "principles", "operational-contract.json");
+  return path.join(resolveUserHome(), ".agents", "memories", "principles", "operational-contract.json");
 }
 
 function harnessContractPath(): string {
@@ -334,10 +334,21 @@ async function scanMemoryLayerFiles(root: string): Promise<HygieneFinding[]> {
 async function scanSecretLikeConfig(root: string): Promise<HygieneFinding[]> {
   const findings: HygieneFinding[] = [];
   const entries = await safeReaddir(root);
+  if (entries.some((entry) => entry.isFile() && entry.name === ".env")) {
+    findings.push({
+      id: "security:secret_like_config_present",
+      severity: "warning",
+      category: "security",
+      message: "Arquivo sensivel presente; conteudo nao inspecionado.",
+      evidence: [".env:present_not_read"],
+      action: "Manter .env fora de leitura, logs, ledger e evidencias; validar apenas a presenca agregada.",
+      sensitive_content_read: false
+    } as HygieneFinding);
+  }
   const candidates = entries
     .filter((entry) => entry.isFile())
     .map((entry) => entry.name)
-    .filter((name) => name === ".env" || /\.(toml|json|yaml|yml)$/i.test(name))
+    .filter((name) => name !== ".env" && /\.(toml|json|yaml|yml)$/i.test(name))
     .filter((name) => !["package-lock.json", "package.json", "tsconfig.json", "vitest.config.ts"].includes(name));
 
   for (const file of candidates) {

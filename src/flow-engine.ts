@@ -13,6 +13,7 @@ import {
   type GoalEnvelope,
   type HygieneFinding,
   type Meeting,
+  type MeetingKind,
   type MeetingType,
   type MemoryMiningSummary,
   type MemoryWritePolicy,
@@ -21,6 +22,7 @@ import {
   type PresentationEnvelope,
   type Phase,
   type Scope,
+  type StructuredLibrarianStatus,
   type SptValidationResult,
   type Verdict,
   type VerdictStatus
@@ -40,8 +42,38 @@ import {
 import { presentArtifact, presentChecklist, presentFlow, presentGate } from "./presentation.js";
 import { principleChecklist, scanOperationalPrinciples, type PrincipleChecklistItem } from "./principles.js";
 import { PpirtvStore } from "./store.js";
+import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured } from "./config.js";
 
 const DEFAULT_SCOPE: Scope = { in: [], out: [] };
+
+type RecallVisualStatus = NonNullable<PresentationEnvelope["display"]["librarian"]>;
+
+type FiscalVerdictInput = {
+  status?: VerdictStatus;
+  rationale?: string;
+  residual_risks?: string[];
+  next_step?: string;
+  review_artifact_path?: string;
+  review_findings?: string[];
+  attempt_count?: number;
+  regress_count?: number;
+  meeting_id?: string;
+  meeting_ids?: string[];
+  memory_mining?: Record<string, unknown> | null;
+};
+
+type FiscalPolicyResult = {
+  material: boolean;
+  blocking_reasons: string[];
+  required_cooperation: Cooperator[];
+  meeting_policy: {
+    required: boolean;
+    rotation: string[];
+    repertoire: string[];
+    objective: string;
+  };
+  direct_action: string;
+};
 
 export class FlowEngine {
   readonly store: PpirtvStore;
@@ -128,6 +160,7 @@ export class FlowEngine {
     flow.done_criteria = facts.done_criteria ?? flow.done_criteria;
     flow.expected_evidence = facts.expected_evidence ?? flow.expected_evidence;
     flow.changed_files = facts.changed_files ?? flow.changed_files;
+    flow.changed_files = unique([...flow.changed_files, ...stringArray((facts as Record<string, unknown>).changed_files)]);
     flow.decisions = facts.decisions ?? flow.decisions;
     flow.scope = {
       in: facts.scope?.in ?? flow.scope.in,
@@ -342,17 +375,34 @@ export class FlowEngine {
   }
 
   async goalStatus(input: { flow_id?: string; idempotency_key?: string }): Promise<Record<string, unknown>> {
-    const flow = await this.resolveGoalFlow(input);
+    let flow = await this.resolveGoalFlow(input);
     const checklist = await this.renderChecklist(flow.flow_id);
     const gate = await this.checkGate({ flow_id: flow.flow_id, phase: flow.phase, persist: false });
     const currentVerdict = flow.verdicts.at(-1) ?? null;
+    let rawLibrarianStatus = latestLibrarianStatus(flow) ?? latestLibrarianStatusFromLedger(await this.store.readLedger(flow.flow_id));
+    if (!rawLibrarianStatus && graphifyRecallConfigured() && flow.status !== "archived") {
+      rawLibrarianStatus = await this.runBeforePhaseHook(flow, flow.phase, "ppirtv_checkin");
+      flow = await this.store.loadFlow(flow.flow_id);
+    }
+    const fiscal = evaluateFiscalPolicy(flow);
+    const persistedFiscal = latestFiscalBlock(flow);
+    const librarianStatus = structuredLibrarianStatus(rawLibrarianStatus);
+    const requiredCooperation = fiscal.required_cooperation.length > 0 ? fiscal.required_cooperation : persistedFiscal.required_cooperation;
+    const gateBlockers = flow.status === "complete" || flow.status === "archived" ? [] : gate.status === "blocked" ? gate.missing : [];
+    const blockers = reconciledBlockers(flow, [...gateBlockers, ...fiscal.blocking_reasons, ...persistedFiscal.blocking_reasons]);
+    const directAction = blockers.length > 0 ? blockedDirectAction(blockers) : checklist.display.direct_action;
+    const checklistStatus = directAction ? withDirectAction(checklist, directAction) : checklist;
+    const backTo = blockers.length > 0 ? fiscalBackTo(flow) : null;
+    const regressCount = countRegressions(flow);
+    const regressLimitReached = regressCount >= FISCAL_CONFIG.maxRegressions;
+    const nextRequiredAction = nextRequiredActionFor(flow, blockers, backTo, regressCount, regressLimitReached);
     return {
       flow_id: flow.flow_id,
       status: flow.status,
       phase: flow.phase,
-      phase_label: checklist.display.phase_label,
-      phase_emoji: checklist.display.phase_emoji,
-      checklist,
+      phase_label: checklistStatus.display.phase_label,
+      phase_emoji: checklistStatus.display.phase_emoji,
+      checklist: checklistStatus,
       tasks: flow.tasks,
       expected_evidence: flow.expected_evidence,
       done_criteria: flow.done_criteria,
@@ -366,8 +416,21 @@ export class FlowEngine {
       meetings: (await this.store.listMeetings(flow.flow_id)).map((meeting) => ({
         meeting_id: meeting.meeting_id,
         type: meeting.type,
+        kind: meeting.kind,
         status: meeting.status,
         question: meeting.question,
+        opened_at: meeting.opened_at,
+        closed_at: meeting.closed_at,
+        participants_required: meeting.participants_required,
+        participants_present: meeting.participants_present,
+        questions: meeting.questions,
+        findings: meeting.findings,
+        decision: meeting.decision,
+        next_required_action: meeting.next_required_action,
+        satisfies_blockers: meeting.satisfies_blockers,
+        created_by: meeting.created_by,
+        evidence_ids: meeting.evidence_ids,
+        turns: meeting.turns,
         cooperators: meeting.cooperators,
         active_credits: meeting.active_credits
       })),
@@ -378,13 +441,31 @@ export class FlowEngine {
       cooperators: flow.cooperators,
       active_credits: flow.active_credits,
       memory_mining: memoryMiningStatus(flow),
-      blockers: gate.status === "blocked" ? gate.missing : [],
-      next_step: nextGoalStep(flow, gate),
+      blockers,
+      next_step: blockers.length > 0 ? fiscalResult(true, blockers).direct_action : nextGoalStep(flow, gate),
+      meeting_required: blockers.includes("required_cooperation"),
+      regress_required: blockers.length > 0 && !regressLimitReached,
+      regress_count: regressCount,
+      max_regressions: FISCAL_CONFIG.maxRegressions,
+      regress_limit_reached: regressLimitReached,
+      locked_by_limit: regressLimitReached,
+      back_to: backTo,
+      next_required_action: nextRequiredAction,
+      can_retry_verdict: blockers.length === 0,
       current_verdict: currentVerdict,
       goal_envelope: flow.goal_binding?.envelope ?? null,
-      aliases: checklist.aliases,
-      display: checklist.display,
-      suggested_cooperation: gate.suggested_cooperation
+      aliases: checklistStatus.aliases,
+      display: {
+        ...checklistStatus.display,
+        direct_action: directAction,
+        librarian: rawLibrarianStatus ?? checklist.display.librarian
+      },
+      suggested_cooperation: gate.suggested_cooperation,
+      required_cooperation: requiredCooperation,
+      fiscal_policy: fiscal,
+      librarian_status: librarianStatus,
+      ppirtv_checkin: ppirtvCheckIn(flow, requiredCooperation, librarianStatus, blockers),
+      ppirtv_checkout: ppirtvCheckOut(flow, librarianStatus, blockers)
     };
   }
 
@@ -469,8 +550,12 @@ export class FlowEngine {
   async goalMeetingOpen(input: {
     flow_id?: string;
     idempotency_key?: string;
-    type: MeetingType;
+    type?: MeetingType;
+    kind?: MeetingKind;
     question: string;
+    participants_required?: string[];
+    created_by?: string;
+    evidence_ids?: string[];
     suggested_cooperators?: Cooperator[];
   }): Promise<Record<string, unknown>> {
     const flow = await this.resolveGoalFlow(input);
@@ -480,20 +565,29 @@ export class FlowEngine {
     const meeting = await this.openMeeting({
       flow_id: flow.flow_id,
       type: input.type,
-      question: input.question
+      kind: input.kind,
+      question: input.question,
+      participants_required: input.participants_required,
+      created_by: input.created_by ?? "goal_meeting_open",
+      evidence_ids: input.evidence_ids
     });
     return {
       ...meeting,
       suggested_cooperators: suggestedCooperators,
-      credit_rule: "suggested_cooperators are not active credits until goal_meeting_record records material=true contributions",
+      credit_rule: "suggested_cooperators are not active credits until goal_meeting_close records material decision and participants",
       status_snapshot: await this.goalStatus({ flow_id: flow.flow_id })
     };
   }
 
-  async goalMeetingRecord(input: Partial<Meeting> & {
+  async goalMeetingAddTurn(input: {
     flow_id?: string;
     idempotency_key?: string;
     meeting_id: string;
+    speaker?: string;
+    question?: string;
+    finding?: string;
+    note?: string;
+    evidence_ids?: string[];
   }): Promise<Record<string, unknown>> {
     const flow = await this.resolveGoalFlow(input);
     assertGoalBinding(flow);
@@ -501,20 +595,35 @@ export class FlowEngine {
     if (meeting.flow_id !== flow.flow_id) {
       throw new Error(`meeting_id ${input.meeting_id} does not belong to GOAL flow ${flow.flow_id}`);
     }
-    assertNoSecretLikePayload(input, "goal_meeting_record");
-    const cooperators = uniqueCooperators(input.cooperators ?? meeting.cooperators);
-    const activeCredits = materialActiveCredits(cooperators, input.active_credits ?? meeting.active_credits);
-    const recorded = await this.recordMeeting({
-      ...input,
-      meeting_id: input.meeting_id,
-      cooperators,
-      active_credits: activeCredits
-    });
+    assertNoSecretLikePayload(input, "goal_meeting_add_turn");
+    const updated = await this.addMeetingTurn(input);
     return {
-      ...recorded,
-      material_cooperators: cooperators.filter((cooperator) => cooperator.material),
-      ignored_active_credits:
-        (input.active_credits ?? []).filter((credit) => !activeCredits.includes(credit)),
+      ...updated,
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id })
+    };
+  }
+
+  async goalMeetingClose(input: Partial<Meeting> & {
+    flow_id?: string;
+    idempotency_key?: string;
+    meeting_id: string;
+    participants_present?: string[];
+    findings?: string[];
+    decision: string;
+    next_required_action?: Record<string, unknown> | null;
+    satisfies_blockers?: string[];
+    evidence_ids?: string[];
+  }): Promise<Record<string, unknown>> {
+    const flow = await this.resolveGoalFlow(input);
+    assertGoalBinding(flow);
+    const meeting = await this.store.loadMeeting(input.meeting_id);
+    if (meeting.flow_id !== flow.flow_id) {
+      throw new Error(`meeting_id ${input.meeting_id} does not belong to GOAL flow ${flow.flow_id}`);
+    }
+    assertNoSecretLikePayload(input, "goal_meeting_close");
+    const closed = await this.closeMeeting(input);
+    return {
+      ...closed,
       status_snapshot: await this.goalStatus({ flow_id: flow.flow_id })
     };
   }
@@ -581,15 +690,23 @@ export class FlowEngine {
     }
 
     const now = nowIso();
+    const memoryRequiredButEmpty = memoryRequiredByFlow(flow) && candidates.length === 0 && written.length === 0;
     const summary: MemoryMiningSummary = {
-      required: candidates.length > 0,
+      required: candidates.length > 0 || memoryRequiredByFlow(flow),
       last_run_at: now,
-      blocked_verdict: blocked.length > 0,
+      write_policy: writePolicy,
+      blocked_verdict: blocked.length > 0 || memoryRequiredButEmpty,
       candidates_count: candidates.length,
       written_count: written.length,
       blocked_count: blocked.length,
       ledger_only_count: ledgerOnly.length,
-      discarded_count: discarded.length
+      discarded_count: discarded.length,
+      memory_required_but_empty: memoryRequiredButEmpty,
+      candidates: candidates.map(memoryCandidateLedgerData),
+      written,
+      ledger_only: ledgerOnly.map((candidate) => candidate.id),
+      discarded: discarded.map((candidate) => candidate.id),
+      blocked: blocked.map((candidate) => ({ id: candidate.id, blocked_reason: candidate.blocked_reason }))
     };
     flow.memory_mining = summary;
     flow.history.push({
@@ -614,7 +731,8 @@ export class FlowEngine {
         ledger_only: ledgerOnly.map((candidate) => candidate.id),
         discarded: discarded.map((candidate) => candidate.id),
         blocked: blocked.map((candidate) => ({ id: candidate.id, blocked_reason: candidate.blocked_reason })),
-        blocked_verdict: summary.blocked_verdict
+        blocked_verdict: summary.blocked_verdict,
+        memory_required_but_empty: summary.memory_required_but_empty
       },
       "dex-code"
     );
@@ -630,7 +748,67 @@ export class FlowEngine {
       discarded,
       blocked,
       unclassified: blocked.length,
-      blocked_verdict: summary.blocked_verdict
+      blocked_verdict: summary.blocked_verdict,
+      memory_required_but_empty: summary.memory_required_but_empty
+    };
+  }
+
+  async goalRegress(input: {
+    flow_id?: string;
+    idempotency_key?: string;
+    to?: Phase;
+    reason: string;
+    meeting_id?: string;
+    evidence_ids?: string[];
+    actor?: string;
+  }): Promise<Record<string, unknown>> {
+    const flow = await this.resolveGoalFlow(input);
+    assertGoalBinding(flow);
+    assertNoSecretLikePayload(input, "goal_regress");
+    if (input.meeting_id) {
+      const meeting = await this.store.loadMeeting(input.meeting_id);
+      if (meeting.flow_id !== flow.flow_id) {
+        throw new Error(`meeting_id ${input.meeting_id} does not belong to GOAL flow ${flow.flow_id}`);
+      }
+    }
+    const to = input.to ?? fiscalBackTo(flow);
+    const returned = await this.returnTo({
+      flow_id: flow.flow_id,
+      to,
+      reason: input.reason,
+      evidence_ids: input.evidence_ids,
+      actor: input.actor ?? "goal_regress"
+    });
+    const updated = await this.store.loadFlow(flow.flow_id);
+    const regressCount = countRegressions(updated);
+    updated.history.push({
+      at: nowIso(),
+      type: "goal_regressed",
+      data: {
+        to,
+        reason: input.reason,
+        meeting_id: input.meeting_id,
+        evidence_ids: input.evidence_ids ?? [],
+        regress_count: regressCount,
+        max_regressions: FISCAL_CONFIG.maxRegressions
+      }
+    });
+    updated.updated_at = nowIso();
+    await this.store.saveFlow(updated);
+    await this.ledger(updated.flow_id, "goal_regressed", {
+      to,
+      reason: input.reason,
+      meeting_id: input.meeting_id,
+      evidence_ids: input.evidence_ids ?? [],
+      regress_count: regressCount,
+      max_regressions: FISCAL_CONFIG.maxRegressions
+    }, input.actor ?? "goal_regress");
+    return {
+      ...returned,
+      regressed: true,
+      regress_count: regressCount,
+      max_regressions: FISCAL_CONFIG.maxRegressions,
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id })
     };
   }
 
@@ -670,6 +848,12 @@ export class FlowEngine {
     rationale: string;
     evidence_ids?: string[];
     residual_risks?: string[];
+    review_artifact_path?: string;
+    review_findings?: string[];
+    attempt_count?: number;
+    regress_count?: number;
+    meeting_id?: string;
+    meeting_ids?: string[];
     next_step: string;
   }): Promise<Record<string, unknown>> {
     requireText(input.flow_id, "flow_id");
@@ -678,8 +862,30 @@ export class FlowEngine {
     for (const risk of input.residual_risks ?? []) {
       assertNoSecretLikeText(risk, "residual_risks");
     }
+    assertNoSecretLikeText(input.review_artifact_path, "review_artifact_path");
+    for (const finding of input.review_findings ?? []) {
+      assertNoSecretLikeText(finding, "review_findings");
+    }
     const flow = await this.store.loadFlow(input.flow_id);
     assertGoalBinding(flow);
+    if (typeof input.regress_count === "number" && input.regress_count > countRegressions(flow)) {
+      const now = nowIso();
+      flow.history.push({
+        at: now,
+        type: "regress_count_reported",
+        data: { regress_count: input.regress_count, source: "goal_verdict" }
+      });
+      flow.updated_at = now;
+      await this.store.saveFlow(flow);
+      await this.ledger(flow.flow_id, "regress_count_reported", { regress_count: input.regress_count, source: "goal_verdict" }, "goal_verdict");
+    }
+    const meetingIds = unique([input.meeting_id, ...(input.meeting_ids ?? [])].filter(Boolean) as string[]);
+    for (const meetingId of meetingIds) {
+      const meeting = await this.store.loadMeeting(meetingId);
+      if (meeting.flow_id !== flow.flow_id) {
+        throw new Error(`meeting_id ${meetingId} does not belong to GOAL flow ${flow.flow_id}`);
+      }
+    }
     const evidenceIds = input.evidence_ids ?? [];
     const existingEvidenceIds = new Set(flow.evidence.map((evidence) => evidence.evidence_id));
     const missingEvidence = evidenceIds.filter((evidenceId) => !existingEvidenceIds.has(evidenceId));
@@ -691,14 +897,19 @@ export class FlowEngine {
     }
     let memoryMining: Record<string, unknown> | null = null;
     if (input.status === "pronto" || input.status === "pronto_com_ressalvas") {
-      memoryMining = await this.mineMemory({
-        flow_id: input.flow_id,
-        auto_classify: true,
-        write_policy: "auto_write"
-      });
-      if (memoryMining.blocked_verdict === true) {
-        throw new Error("MEMORY_MINING_BLOCKED_VERDICT: resolver memory_candidates bloqueados antes do veredito positivo");
-      }
+      memoryMining = hasMemoryMiningRun(flow) ? (flow.memory_mining ?? null) : null;
+    }
+    const fiscalFlow = await this.store.loadFlow(input.flow_id);
+    const fiscal = evaluateFiscalPolicy(fiscalFlow, {
+      ...input,
+      memory_mining: memoryMining
+    });
+    if (fiscal.blocking_reasons.length > 0) {
+      await this.persistFiscalBlock(fiscalFlow, fiscal, "goal_verdict");
+      throw new Error(`PPIRTV_FISCAL_BLOCKED: ${fiscal.blocking_reasons.join(", ")}; required_cooperation=${fiscal.required_cooperation.map((item) => item.name).join("|")}`);
+    }
+    if (memoryMining?.blocked_verdict === true) {
+      throw new Error("MEMORY_MINING_BLOCKED_VERDICT: resolver memory_candidates bloqueados antes do veredito positivo");
     }
     const verdict = await this.recordVerdict({
       flow_id: input.flow_id,
@@ -780,9 +991,18 @@ export class FlowEngine {
     const phase = input.phase ?? flow.phase;
     assertPhase(phase);
     const provided = input.provided ?? {};
+    if (phase === "implementacao") {
+      flow.changed_files = unique([...flow.changed_files, ...stringArray(provided.changed_files)]);
+    }
     const missing = GATE_REQUIREMENTS[phase]
       .filter((requirement) => !hasRequirement(flow, requirement.key, requirement.source, provided))
       .map((requirement) => requirement.key);
+    if (needsReviewCoherence(flow, phase, provided)) {
+      missing.push("review_evidence_coherent");
+    }
+    if (missing.length === 0) {
+      missing.push(...evaluateFiscalPolicy(flow).blocking_reasons);
+    }
     const status = missing.length === 0 ? "passed" : "blocked";
     const record: GateRecord = {
       phase,
@@ -848,8 +1068,12 @@ export class FlowEngine {
     fresh.history.push({ at: now, type: "phase_advanced", data: { from, to, evidence_ids: input.evidence_ids ?? [] } });
     await this.store.saveFlow(fresh);
     await this.ledger(fresh.flow_id, "phase_advanced", { from, to, evidence_ids: input.evidence_ids ?? [] }, input.actor);
-    await this.runBeforePhaseHook(fresh, to, input.actor);
-    return presentGate({ advanced: true, phase: to, from, to, status: fresh.status, next: `gate_${to}`, back_to: null }, fresh);
+    const librarian = await this.runBeforePhaseHook(fresh, to, input.actor);
+    const presented = presentGate({ advanced: true, phase: to, from, to, status: fresh.status, next: `gate_${to}`, back_to: null }, fresh);
+    if (librarian) {
+      presented.display.librarian = librarian;
+    }
+    return presented;
   }
 
   private async runAfterPhaseHook(flow: Flow, phase: Phase, actor?: string): Promise<void> {
@@ -872,9 +1096,15 @@ export class FlowEngine {
     }
   }
 
-  private async runBeforePhaseHook(flow: Flow, phase: Phase, actor?: string): Promise<void> {
+  private async runBeforePhaseHook(flow: Flow, phase: Phase, actor?: string): Promise<RecallVisualStatus | null> {
     try {
       const summary = await this.memoryHooks.beforePhase({ flow, phase });
+      const librarianStatus: RecallVisualStatus = {
+        status: summary.visual_status.librarian,
+        graphify_status: summary.visual_status.graphify,
+        warnings: summary.warnings,
+        recalled_count: summary.items.length
+      };
       await this.ledger(
         flow.flow_id,
         "memory_recalled",
@@ -885,14 +1115,55 @@ export class FlowEngine {
             source: item.source,
             title: item.title,
             path: item.path,
-            score: item.score
+            score: item.score,
+            question: item.question,
+            destination: item.destination,
+            observation: item.observation
           })),
-          warnings: summary.warnings
+          warnings: summary.warnings,
+          librarian_status: summary.visual_status.librarian,
+          graphify_status: summary.visual_status.graphify
         },
         actor ?? "bibliotecario"
       );
+      const stored = await this.store.loadFlow(flow.flow_id);
+      stored.history.push({
+        at: nowIso(),
+        type: "memory_recalled",
+        data: {
+          phase,
+          recalled_count: summary.items.length,
+          warnings: summary.warnings,
+          librarian_status: summary.visual_status.librarian,
+          graphify_status: summary.visual_status.graphify
+        }
+      });
+      stored.updated_at = nowIso();
+      await this.store.saveFlow(stored);
+      return librarianStatus;
     } catch (error) {
+      const failed: RecallVisualStatus = {
+        status: "failed",
+        graphify_status: "failed",
+        warnings: [`bibliotecario_failed: ${error instanceof Error ? error.message : String(error)}`],
+        recalled_count: 0
+      };
       await this.recordMemoryHookWarning(flow.flow_id, "beforePhase", phase, error, actor);
+      const stored = await this.store.loadFlow(flow.flow_id);
+      stored.history.push({
+        at: nowIso(),
+        type: "memory_recalled",
+        data: {
+          phase,
+          recalled_count: 0,
+          warnings: failed.warnings,
+          librarian_status: "failed",
+          graphify_status: "failed"
+        }
+      });
+      stored.updated_at = nowIso();
+      await this.store.saveFlow(stored);
+      return failed;
     }
   }
 
@@ -908,6 +1179,20 @@ export class FlowEngine {
         },
         actor ?? "bibliotecario"
       );
+      const flow = await this.store.loadFlow(flowId);
+      flow.history.push({
+        at: nowIso(),
+        type: "memory_hook_warning",
+        data: {
+          hook,
+          phase,
+          message: error instanceof Error ? error.message : String(error),
+          librarian_status: "failed",
+          graphify_status: "failed"
+        }
+      });
+      flow.updated_at = nowIso();
+      await this.store.saveFlow(flow);
     } catch {
       // The librarian is advisory in v1; hook warning persistence is best effort.
     }
@@ -932,21 +1217,45 @@ export class FlowEngine {
     return presentFlow(flow);
   }
 
-  async openMeeting(input: { flow_id: string; type: MeetingType; question: string }): Promise<Meeting & PresentationEnvelope> {
+  async openMeeting(input: {
+    flow_id: string;
+    type?: MeetingType;
+    kind?: MeetingKind;
+    question: string;
+    participants_required?: string[];
+    created_by?: string;
+    evidence_ids?: string[];
+  }): Promise<Meeting & PresentationEnvelope> {
     requireText(input.question, "question");
     const flow = await this.store.loadFlow(input.flow_id);
     const now = nowIso();
+    const fiscal = evaluateFiscalPolicy(flow);
+    const persistedFiscal = latestFiscalBlock(flow);
+    const blockers = reconciledBlockers(flow, [...fiscal.blocking_reasons, ...persistedFiscal.blocking_reasons]);
+    const regressCount = countRegressions(flow);
+    const kind = input.kind ?? meetingKindForType(input.type) ?? requiredMeetingKind(flow, blockers, regressCount >= FISCAL_CONFIG.maxRegressions);
+    const type = input.type ?? meetingTypeForKind(kind);
     const meeting: Meeting = {
       meeting_id: await this.store.nextId("mtg"),
       flow_id: flow.flow_id,
-      type: input.type,
+      type,
+      kind,
       question: input.question,
       status: "open",
       opened_at: now,
+      participants_required: unique(input.participants_required ?? requiredMeetingParticipants(blockers)),
+      participants_present: [],
       questions: [],
+      findings: [],
       hypotheses: [],
       alternatives: [],
       decisions: [],
+      decision: undefined,
+      next_required_action: null,
+      satisfies_blockers: [],
+      created_by: input.created_by ?? "meeting_open",
+      evidence_ids: input.evidence_ids ?? [],
+      turns: [],
       risks: [],
       next_steps: [],
       affected_areas: [],
@@ -960,10 +1269,72 @@ export class FlowEngine {
     };
     flow.meetings.push(meeting.meeting_id);
     flow.updated_at = now;
-    flow.history.push({ at: now, type: "meeting_opened", data: { meeting_id: meeting.meeting_id, type: meeting.type } });
+    flow.history.push({
+      at: now,
+      type: "meeting_opened",
+      data: {
+        meeting_id: meeting.meeting_id,
+        type: meeting.type,
+        kind: meeting.kind,
+        participants_required: meeting.participants_required,
+        evidence_ids: meeting.evidence_ids
+      }
+    });
     await this.store.saveMeeting(meeting);
     await this.store.saveFlow(flow);
-    await this.ledger(flow.flow_id, "meeting_opened", { meeting_id: meeting.meeting_id, type: meeting.type, question: meeting.question });
+    await this.ledger(flow.flow_id, "meeting_opened", {
+      meeting_id: meeting.meeting_id,
+      type: meeting.type,
+      kind: meeting.kind,
+      question: meeting.question,
+      participants_required: meeting.participants_required,
+      evidence_ids: meeting.evidence_ids
+    });
+    return presentArtifact(meeting as Meeting & Record<string, unknown>, flow);
+  }
+
+  async addMeetingTurn(input: {
+    meeting_id: string;
+    speaker?: string;
+    question?: string;
+    finding?: string;
+    note?: string;
+    evidence_ids?: string[];
+  }): Promise<Meeting & PresentationEnvelope> {
+    const meeting = await this.store.loadMeeting(input.meeting_id);
+    if (meeting.status === "closed") {
+      throw new Error(`meeting_id ${input.meeting_id} is already closed`);
+    }
+    const now = nowIso();
+    const turn = {
+      at: now,
+      speaker: input.speaker,
+      question: input.question,
+      finding: input.finding,
+      note: input.note,
+      evidence_ids: input.evidence_ids ?? []
+    };
+    meeting.turns = [...meeting.turns, turn];
+    meeting.questions = unique([...meeting.questions, ...stringArray(input.question)]);
+    meeting.findings = unique([...meeting.findings, ...stringArray(input.finding), ...stringArray(input.note)]);
+    meeting.evidence_ids = unique([...meeting.evidence_ids, ...(input.evidence_ids ?? [])]);
+    await this.store.saveMeeting(meeting);
+    const flow = await this.store.loadFlow(meeting.flow_id);
+    flow.updated_at = now;
+    flow.history.push({
+      at: now,
+      type: "meeting_turn_added",
+      data: { meeting_id: meeting.meeting_id, speaker: input.speaker, evidence_ids: input.evidence_ids ?? [] }
+    });
+    await this.store.saveFlow(flow);
+    await this.ledger(meeting.flow_id, "meeting_turn_added", {
+      meeting_id: meeting.meeting_id,
+      speaker: input.speaker,
+      question: input.question,
+      finding: input.finding,
+      note: input.note,
+      evidence_ids: input.evidence_ids ?? []
+    });
     return presentArtifact(meeting as Meeting & Record<string, unknown>, flow);
   }
 
@@ -976,6 +1347,11 @@ export class FlowEngine {
     meeting.hypotheses = input.hypotheses ?? meeting.hypotheses;
     meeting.alternatives = input.alternatives ?? meeting.alternatives;
     meeting.decisions = input.decisions ?? meeting.decisions;
+    meeting.decision = input.decision ?? meeting.decision ?? meeting.decisions[0];
+    meeting.findings = input.findings ?? meeting.findings;
+    meeting.participants_present = input.participants_present ?? meeting.participants_present;
+    meeting.satisfies_blockers = input.satisfies_blockers ?? meeting.satisfies_blockers;
+    meeting.evidence_ids = unique([...(input.evidence_ids ?? []), ...meeting.evidence_ids]);
     meeting.risks = input.risks ?? meeting.risks;
     meeting.next_steps = input.next_steps ?? meeting.next_steps;
     meeting.affected_areas = input.affected_areas ?? meeting.affected_areas;
@@ -998,10 +1374,83 @@ export class FlowEngine {
     flow.cooperators = uniqueCooperators([...flow.cooperators, ...meeting.cooperators]);
     flow.active_credits = unique([...flow.active_credits, ...meeting.active_credits]);
     flow.updated_at = now;
-    flow.history.push({ at: now, type: "meeting_recorded", data: { meeting_id: meeting.meeting_id, type: meeting.type } });
+    flow.history.push({
+      at: now,
+      type: "meeting_recorded",
+      data: { meeting_id: meeting.meeting_id, type: meeting.type, kind: meeting.kind }
+    });
     await this.store.saveMeeting(meeting);
     await this.store.saveFlow(flow);
     await this.ledger(meeting.flow_id, "meeting_recorded", meeting as unknown as Record<string, unknown>);
+    return presentArtifact(meeting as Meeting & Record<string, unknown>, flow);
+  }
+
+  async closeMeeting(input: Partial<Meeting> & {
+    meeting_id: string;
+    participants_present?: string[];
+    findings?: string[];
+    decision: string;
+    next_required_action?: Record<string, unknown> | null;
+    satisfies_blockers?: string[];
+    evidence_ids?: string[];
+  }): Promise<Meeting & PresentationEnvelope> {
+    requireText(input.decision, "decision");
+    const meeting = await this.store.loadMeeting(input.meeting_id);
+    const flow = await this.store.loadFlow(meeting.flow_id);
+    const now = nowIso();
+    const participantsPresent = unique(input.participants_present ?? meeting.participants_present);
+    const missingParticipants = meeting.participants_required.filter((participant) => !participantsPresent.includes(participant));
+    const requestedSatisfies = unique(input.satisfies_blockers ?? latestFiscalBlock(flow).blocking_reasons);
+    meeting.status = "closed";
+    meeting.recorded_at = meeting.recorded_at ?? now;
+    meeting.closed_at = now;
+    meeting.questions = input.questions ?? meeting.questions;
+    meeting.findings = unique([...(input.findings ?? []), ...meeting.findings]);
+    meeting.hypotheses = input.hypotheses ?? meeting.hypotheses;
+    meeting.alternatives = input.alternatives ?? meeting.alternatives;
+    meeting.decisions = unique([...(input.decisions ?? []), input.decision, ...meeting.decisions]);
+    meeting.decision = input.decision;
+    meeting.risks = input.risks ?? meeting.risks;
+    meeting.next_steps = input.next_steps ?? meeting.next_steps;
+    meeting.affected_areas = input.affected_areas ?? meeting.affected_areas;
+    meeting.impacts = input.impacts ?? meeting.impacts;
+    meeting.owners = input.owners ?? meeting.owners;
+    meeting.gates_extra = input.gates_extra ?? meeting.gates_extra;
+    meeting.rollback_plan = input.rollback_plan ?? meeting.rollback_plan;
+    meeting.parking_lot = input.parking_lot ?? meeting.parking_lot;
+    meeting.gold_mining = input.gold_mining ?? meeting.gold_mining;
+    meeting.cooperators = input.cooperators ?? meeting.cooperators;
+    meeting.active_credits = input.active_credits ?? meeting.active_credits;
+    meeting.participants_present = participantsPresent;
+    meeting.next_required_action = input.next_required_action ?? null;
+    meeting.evidence_ids = unique([...(input.evidence_ids ?? []), ...meeting.evidence_ids]);
+    meeting.satisfies_blockers =
+      missingParticipants.length === 0 && meeting.decision ? unique(requestedSatisfies) : meeting.satisfies_blockers.filter((blocker) => !requestedSatisfies.includes(blocker));
+    flow.decisions = unique([...flow.decisions, ...meeting.decisions]);
+    flow.risks = unique([...flow.risks, ...meeting.risks]);
+    const meetingPromotedGold = linkParkingToGold(flow, meeting.parking_lot, "meeting_record", meeting.meeting_id, now);
+    meeting.gold_mining = unique([...meeting.gold_mining, ...meetingPromotedGold]);
+    flow.parking_lot = unique([...flow.parking_lot, ...meeting.parking_lot]);
+    flow.gold_mining = unique([...flow.gold_mining, ...meeting.gold_mining]);
+    flow.cooperators = uniqueCooperators([...flow.cooperators, ...meeting.cooperators]);
+    flow.active_credits = unique([...flow.active_credits, ...meeting.active_credits]);
+    flow.updated_at = now;
+    flow.history.push({
+      at: now,
+      type: "meeting_closed",
+      data: {
+        ...meetingClosedLedgerData(meeting),
+        missing_participants: missingParticipants,
+        participants_minimum_satisfied: missingParticipants.length === 0
+      }
+    });
+    await this.store.saveMeeting(meeting);
+    await this.store.saveFlow(flow);
+    await this.ledger(meeting.flow_id, "meeting_closed", {
+      ...meetingClosedLedgerData(meeting),
+      missing_participants: missingParticipants,
+      participants_minimum_satisfied: missingParticipants.length === 0
+    });
     return presentArtifact(meeting as Meeting & Record<string, unknown>, flow);
   }
 
@@ -1046,7 +1495,11 @@ export class FlowEngine {
     await this.store.saveEvidence(evidence);
     await this.store.saveFlow(flow);
     await this.ledger(flow.flow_id, "evidence_attached", { evidence_id: evidence.evidence_id, kind: evidence.kind, title: evidence.title, uri: evidence.uri });
-    return presentArtifact(evidence as Evidence & Record<string, unknown>, flow);
+    const presented = presentArtifact(evidence as Evidence & Record<string, unknown>, flow);
+    const blockers = latestFiscalBlock(flow).blocking_reasons;
+    return flow.status === "blocked" || blockers.length > 0
+      ? withDirectAction(presented, blockedDirectAction(blockers.length > 0 ? blockers : ["flow_blocked"]))
+      : presented;
   }
 
   async renderChecklist(flowId: string): Promise<{
@@ -1055,13 +1508,38 @@ export class FlowEngine {
     markdown: string;
     items: Array<{ label: string; checked: boolean }>;
     operational_principles: PrincipleChecklistItem[];
+    required_cooperation?: Cooperator[];
+    fiscal_policy?: FiscalPolicyResult;
   } & PresentationEnvelope> {
     const flow = await this.store.loadFlow(flowId);
     const items = GATE_REQUIREMENTS[flow.phase].map((requirement) => ({
       label: requirement.label,
       checked: hasRequirement(flow, requirement.key, requirement.source, flow.gates[flow.phase]?.provided ?? {})
     }));
-    const operationalPrinciples = await principleChecklist();
+    const fiscal = evaluateFiscalPolicy(flow);
+    const persistedFiscal = latestFiscalBlock(flow);
+    const blockers = reconciledBlockers(flow, [...fiscal.blocking_reasons, ...persistedFiscal.blocking_reasons]);
+    const operationalPrinciples = (await principleChecklist()).map((item) => {
+      if (item.id === "memoria_sem_lembranca" && memoryRequiredByFlow(flow) && noMemoryWasPromoted(flow)) {
+        return { ...item, checked: false, state: "blocked" as const };
+      }
+      if (item.id === "memoria_sem_lembranca" && !hasMemoryMiningRun(flow)) {
+        return { ...item, checked: false, state: "pending" as const };
+      }
+      if (item.id === "casa_limpa" && (hasHygieneBlocking(flow) || blockers.length > 0)) {
+        return { ...item, checked: false, state: "blocked" as const };
+      }
+      if (item.id === "casa_limpa" && !hasHygieneScan(flow)) {
+        return { ...item, checked: false, state: "pending" as const };
+      }
+      if (item.id === "barata_nunca_esta_sozinha" && fiscal.blocking_reasons.includes("attempt_regress_count")) {
+        return { ...item, checked: false, state: "blocked" as const };
+      }
+      if (item.id === "barata_nunca_esta_sozinha" && fiscal.material && countRegressions(flow) === 0) {
+        return { ...item, checked: false, state: "pending" as const };
+      }
+      return { ...item, state: item.checked ? ("checked" as const) : ("unchecked" as const) };
+    });
     const markdown = [
       `# Checklist PPIRTV - ${flow.flow_id}`,
       "",
@@ -1073,17 +1551,25 @@ export class FlowEngine {
       "",
       ...operationalPrinciples.map((item) => `- [${item.checked ? "x" : " "}] ${item.label}`)
     ].join("\n");
-    return {
-      ...presentChecklist({
+    const presented = presentChecklist({
         flow,
         markdown,
         items,
         visualItems: [
-          ...items.map((item) => ({ ...item, emoji: item.checked ? "✅" : "◻️" })),
-          ...operationalPrinciples.map((item) => ({ label: item.label, checked: item.checked, emoji: item.checked ? "✅" : "⚡" }))
+          ...items.map((item) => ({ ...item, state: item.checked ? ("checked" as const) : ("unchecked" as const), emoji: item.checked ? "✅" : "◻️" })),
+          ...operationalPrinciples.map((item) => ({
+            label: item.label,
+            checked: item.checked,
+            state: item.state,
+            emoji: item.state === "checked" ? "✅" : item.state === "pending" ? "…" : "⚡"
+          }))
         ]
-      }),
-      operational_principles: operationalPrinciples
+      });
+    return {
+      ...(blockers.length > 0 || flow.status === "blocked" ? withDirectAction(presented, blockedDirectAction(blockers.length > 0 ? blockers : ["flow_blocked"])) : presented),
+      operational_principles: operationalPrinciples,
+      required_cooperation: fiscal.required_cooperation,
+      fiscal_policy: fiscal
     };
   }
 
@@ -1138,7 +1624,16 @@ export class FlowEngine {
     return presentArtifact(verdict as Verdict & Record<string, unknown>, flow);
   }
 
-  async hygieneScan(flowId?: string): Promise<{ findings: HygieneFinding[]; rule: string } & Partial<PresentationEnvelope>> {
+  async hygieneScan(flowId?: string): Promise<
+    {
+      findings: HygieneFinding[];
+      blocking_findings: HygieneFinding[];
+      blocking_findings_count: number;
+      hygiene_blocking: boolean;
+      rule: string;
+      required_cooperation?: Cooperator[];
+    } & Partial<PresentationEnvelope>
+  > {
     const findings: HygieneFinding[] = [];
     const flows = flowId ? [await this.store.loadFlow(flowId)] : await this.store.listFlows();
     const root = process.cwd();
@@ -1213,8 +1708,34 @@ export class FlowEngine {
     findings.push(...(await scanTrashWithoutGarimpoGate(root, this.store)));
     findings.push(...(await scanOperationalPrinciples(root)));
 
+    const sortedFindings = findings.sort((a, b) => a.id.localeCompare(b.id));
+    const blockingFindings = sortedFindings.filter(isMaterialHygieneFinding);
+    if (flowId) {
+      const flow = await this.store.loadFlow(flowId);
+      const now = nowIso();
+      flow.history.push({
+        at: now,
+        type: "hygiene_scanned",
+        data: {
+          findings_count: sortedFindings.length,
+          blocking_findings_count: blockingFindings.length,
+          blocking_findings: blockingFindings.map((finding) => finding.id)
+        }
+      });
+      flow.updated_at = now;
+      await this.store.saveFlow(flow);
+      await this.ledger(flow.flow_id, "hygiene_scanned", {
+        findings_count: sortedFindings.length,
+        blocking_findings_count: blockingFindings.length,
+        blocking_findings: blockingFindings.map((finding) => finding.id)
+      });
+    }
+
     return {
-      findings: findings.sort((a, b) => a.id.localeCompare(b.id)),
+      findings: sortedFindings,
+      blocking_findings: blockingFindings,
+      blocking_findings_count: blockingFindings.length,
+      hygiene_blocking: blockingFindings.length > 0,
       rule: "barata nunca esta sozinha",
       aliases: {
         estacionamento: [],
@@ -1224,24 +1745,73 @@ export class FlowEngine {
         cooperators: [],
         active_credits: [],
         direct_action: {
-          available: findings.length > 0,
-          action: findings.length > 0 ? "Tratar achados acionaveis antes do veredito" : "Sem achados de higiene"
+          available: sortedFindings.length > 0,
+          action: sortedFindings.length > 0 ? "Tratar achados acionaveis antes do veredito" : "Sem achados de higiene"
         }
       },
-      suggested_cooperation: findings.length > 0 ? [{ name: "Chato", reason: "avaliar achados de higiene antes de declarar pronto", material: false }] : []
+      suggested_cooperation: [],
+      required_cooperation: blockingFindings.length > 0 ? requiredCoo("hygiene_scan encontrou achados materiais antes do veredito") : []
     };
+  }
+
+  private async persistFiscalBlock(flow: Flow, fiscal: FiscalPolicyResult, source: string): Promise<void> {
+    const now = nowIso();
+    flow.status = "blocked";
+    flow.history.push({
+      at: now,
+      type: "fiscal_policy_blocked",
+      data: {
+        source,
+        blocking_reasons: fiscal.blocking_reasons,
+        memory_required: fiscal.blocking_reasons.includes("memory_required_but_empty"),
+        required_cooperation: fiscal.required_cooperation
+      }
+    });
+    flow.updated_at = now;
+    await this.store.saveFlow(flow);
+    await this.ledger(flow.flow_id, "fiscal_policy_blocked", {
+      source,
+      blocking_reasons: fiscal.blocking_reasons,
+      memory_required: fiscal.blocking_reasons.includes("memory_required_but_empty"),
+      required_cooperation: fiscal.required_cooperation
+    });
   }
 
   async archiveFlow(input: { flow_id: string; reason?: string }): Promise<Flow & PresentationEnvelope> {
     const flow = await this.store.loadFlow(input.flow_id);
+    const wasBlocked = flow.status === "blocked";
+    const preservedBlockers = reconciledBlockers(flow, [
+      ...latestFiscalBlock(flow).blocking_reasons,
+      ...Object.values(flow.gates).flatMap((gate) => (gate?.status === "blocked" ? gate.missing : []))
+    ]);
+    const archivedBlockedFlow = wasBlocked || preservedBlockers.length > 0;
     const now = nowIso();
     flow.status = "archived";
     flow.archived_at = now;
     flow.updated_at = now;
-    flow.history.push({ at: now, type: "flow_archived", data: { reason: input.reason ?? "archived" } });
+    flow.history.push({
+      at: now,
+      type: "flow_archived",
+      data: { reason: input.reason ?? "archived", archived_blocked_flow: archivedBlockedFlow, preserved_blockers: preservedBlockers }
+    });
     await this.store.saveFlow(flow);
-    await this.ledger(flow.flow_id, "flow_archived", { reason: input.reason ?? "archived" });
-    return presentFlow(flow);
+    await this.ledger(flow.flow_id, "flow_archived", {
+      reason: input.reason ?? "archived",
+      archived_blocked_flow: archivedBlockedFlow,
+      preserved_blockers: preservedBlockers
+    });
+    const presented = presentFlow(flow);
+    if (!archivedBlockedFlow) {
+      return presented;
+    }
+    return {
+      ...withDirectAction(
+        presented,
+        blockedArchiveDirectAction(preservedBlockers.length > 0 ? preservedBlockers : ["flow_blocked_before_archive"])
+      ),
+      archived_blocked_flow: archivedBlockedFlow,
+      preserved_blockers: preservedBlockers
+    } as Flow & PresentationEnvelope;
   }
 
   private async findGoalFlowByIdempotencyKey(idempotencyKey: string): Promise<Flow | undefined> {
@@ -1876,6 +2446,876 @@ function hasRequirement(flow: Flow, key: string, source: string, provided: Recor
     default:
       return truthy(provided[key]);
   }
+}
+
+function evaluateFiscalPolicy(flow: Flow, input: FiscalVerdictInput = {}): FiscalPolicyResult {
+  const material = fiscalMateriality(flow, input);
+  const blockingReasons: string[] = [];
+  if (!material) {
+    return fiscalResult(false, []);
+  }
+
+  if (!hasClosedMeetingSatisfying(flow, input, "required_cooperation")) {
+    blockingReasons.push("required_cooperation");
+  }
+  if (memoryRequiredByFlow(flow, input) && noMemoryWasPromoted(flow, input.memory_mining)) {
+    blockingReasons.push("memory_required_but_empty");
+  }
+  if (hasHygieneBlocking(flow)) {
+    blockingReasons.push("hygiene_blocking");
+  }
+  if (codeReviewRequired(flow, input) && !hasReviewEvidence(flow, input)) {
+    blockingReasons.push("review_required");
+  }
+  if (librarianRequired(input) && latestLibrarianStatus(flow)?.status !== "recalled") {
+    blockingReasons.push("librarian_status");
+  }
+  if (recurringRisk(input) && regressLimitReached(flow, input)) {
+    blockingReasons.push("attempt_regress_count");
+  } else if (recurringRisk(input) && !hasEnoughAttempts(flow, input)) {
+    blockingReasons.push("attempt_regress_count");
+  }
+
+  return fiscalResult(true, unique(blockingReasons));
+}
+
+function fiscalResult(material: boolean, blockingReasons: string[]): FiscalPolicyResult {
+  return {
+    material,
+    blocking_reasons: blockingReasons,
+    required_cooperation: material ? requiredCoo(blockingReasons) : [],
+    meeting_policy: {
+      required: material,
+      rotation: [
+        "ancora-fluxo",
+        "chato",
+        "questionador",
+        "entrevista-me",
+        "reuniao",
+        "garimpeiro",
+        "dex-memoria",
+        "estacionamento",
+        "sprinter",
+        "mapeador-implementacao",
+        "duda-dev",
+        "revisor-codigo",
+        "tio-testador",
+        "validador-pronto"
+      ],
+      repertoire: [
+        "E SE falhar?",
+        "pra que?",
+        "por que?",
+        "onde nasce?",
+        "qual origem?",
+        "qual destino?",
+        "qual gatilho?",
+        "precisa lembrar disso?",
+        "qual saida ainda nao foi tentada?",
+        "qual ponto cego esta sendo protegido pelo plano atual?",
+        "estamos seguindo nossos principios?"
+      ],
+      objective: "rotacionar integrantes, provocar desvios uteis, procurar pontos cegos e recomendar regresso/fase correta antes de veredito positivo"
+    },
+    direct_action:
+      blockingReasons.length > 0
+        ? `regressar_para_reuniao_review_memoria: ${blockingReasons.join(", ")}`
+        : "fiscal_policy_clear"
+  };
+}
+
+function requiredCoo(reasonInput: string | string[]): Cooperator[] {
+  const blockingReasons = Array.isArray(reasonInput) ? reasonInput : [];
+  const fallbackReason = Array.isArray(reasonInput) ? "modo fiscal PPIRTV exige mesa COO material por fase" : reasonInput;
+  return [
+    "ancora-fluxo",
+    "chato",
+    "questionador",
+    "entrevista-me",
+    "garimpeiro",
+    "dex-memoria",
+    "estacionamento",
+    "reuniao",
+    "sprinter",
+    "duda-dev",
+    "mapeador-implementacao",
+    "revisor-codigo",
+    "tio-testador",
+    "validador-pronto"
+  ].map((name) => ({ name, reason: cooReason(name, blockingReasons, fallbackReason), material: true }));
+}
+
+function cooReason(name: string, blockers: string[], fallbackReason: string): string {
+  if (name === "revisor-codigo" && blockers.includes("review_required")) {
+    return "obrigatorio por review_required: mudanca/risco de codigo exige artefato ou achados de revisao";
+  }
+  if ((name === "garimpeiro" || name === "dex-memoria") && blockers.includes("memory_required_but_empty")) {
+    return "obrigatorio por memory_required_but_empty: garimpar pepitas e classificar memoria L1/L2 antes de veredito positivo";
+  }
+  if ((name === "reuniao" || name === "sprinter") && blockers.includes("required_cooperation")) {
+    return "obrigatorio por required_cooperation: ressalva material exige reuniao material e trilho/regresso definido";
+  }
+  if (name === "tio-testador" && blockers.some((blocker) => ["hygiene_blocking", "review_required", "attempt_regress_count"].includes(blocker))) {
+    return "obrigatorio por risco de teste/evidencia: provar comportamento antes de qualquer positivo";
+  }
+  if (name === "validador-pronto") {
+    return "obrigatorio antes de qualquer veredito positivo: conferir blockers fiscais e evidencias coerentes";
+  }
+  if (name === "ancora-fluxo") {
+    return "obrigatorio para regresso correto: apontar fase, retorno e proxima acao quando houver bloqueio";
+  }
+  if (name === "chato" || name === "questionador" || name === "entrevista-me") {
+    return "obrigatorio para perguntas de pressao: E SE, pra que, por que, onde, quando, quanto e estamos seguindo os principios?";
+  }
+  if (name === "estacionamento") {
+    return "obrigatorio para registrar saidas nao tentadas, pendencias e pontos cegos sem sumir com contexto";
+  }
+  if (name === "duda-dev" || name === "mapeador-implementacao") {
+    return "obrigatorio para ligar o bloqueio ao contrato, classe/grupo/secao e impacto implementavel";
+  }
+  return fallbackReason;
+}
+
+function fiscalMateriality(flow: Flow, input: FiscalVerdictInput): boolean {
+  if (!flow.goal_binding) {
+    return false;
+  }
+  const text = fiscalText(flow, input);
+  return (
+    input.status === "pronto_com_ressalvas" ||
+    materialRiskText(text) ||
+    memoryRequiredByFlow(flow, input) ||
+    codeReviewRequired(flow, input) ||
+    hasHygieneBlocking(flow) ||
+    recurringRisk(input) ||
+    latestLibrarianStatus(flow)?.status === "failed"
+  );
+}
+
+function fiscalText(flow: Flow, input: FiscalVerdictInput): string {
+  return [
+    flow.goal,
+    flow.context,
+    ...flow.risks,
+    ...flow.uncertainties,
+    ...flow.tasks,
+    ...flow.expected_evidence,
+    ...flow.done_criteria,
+    ...flow.changed_files,
+    input.rationale,
+    input.next_step,
+    ...(input.residual_risks ?? []),
+    ...(input.review_findings ?? [])
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function materialRiskText(text: string): boolean {
+  return /(risco material|risco de produto|regress|erro recorrente|falh|bloque|sem reuniao|sem reunião|sem revisor|sem memoria|sem memória|bibliotecario|bibliotecário|graphify|hygiene|codigo|código|mudanca de codigo|mudança de código|principios|princípios)/i.test(text);
+}
+
+function memoryRequiredByFlow(flow: Flow, input: FiscalVerdictInput = {}): boolean {
+  return (
+    flow.history.some(
+      (event) =>
+        event.type === "fiscal_policy_blocked" &&
+        (event.data.memory_required === true || stringArray(event.data.blocking_reasons).includes("memory_required_but_empty"))
+    ) ||
+    /(memoria|memória|L1|L2|L3|lembranca|lembrança|aprendizado reutilizavel|aprendizado reutilizável|garimpo|pepita)/i.test(fiscalText(flow, input))
+  );
+}
+
+function noMemoryWasPromoted(flow: Flow, memoryMining?: Record<string, unknown> | null): boolean {
+  const status = memoryMining ?? flow.memory_mining;
+  const writtenCount = typeof status?.written_count === "number" ? status.written_count : 0;
+  if (writtenCount > 0) {
+    return false;
+  }
+  const candidatesCount = typeof status?.candidates_count === "number" ? status.candidates_count : 0;
+  const candidates = Array.isArray(status?.candidates) ? status.candidates : [];
+  if (candidatesCount > 0) {
+    return candidates.length === 0;
+  }
+  return true;
+}
+
+function codeReviewRequired(flow: Flow, input: FiscalVerdictInput): boolean {
+  return flow.changed_files.length > 0 || /(codigo|código|mudanca de codigo|mudança de código|diff|review|revisor)/i.test(fiscalText(flow, input));
+}
+
+function hasReviewEvidence(flow: Flow, input: FiscalVerdictInput): boolean {
+  return (
+    truthy(input.review_artifact_path) ||
+    truthy(input.review_findings) ||
+    flow.evidence.some((evidence) => /review|revisor|diff/i.test([evidence.kind, evidence.title, evidence.note, evidence.content].filter(Boolean).join("\n")))
+  );
+}
+
+function hasMaterialMeeting(flow: Flow): boolean {
+  return flow.cooperators.some((cooperator) => cooperator.material) || flow.active_credits.length > 0;
+}
+
+function hasMaterialMeetingOrRegress(flow: Flow): boolean {
+  const recordedMeeting = flow.history.some((event) => event.type === "meeting_recorded");
+  const returned = flow.history.some((event) => event.type === "phase_returned");
+  return returned || (recordedMeeting && hasMaterialMeeting(flow));
+}
+
+function hasClosedMeetingSatisfying(flow: Flow, input: FiscalVerdictInput, blocker: string): boolean {
+  const meetingIds = inputMeetingIds(input);
+  if ((input.status === "pronto" || input.status === "pronto_com_ressalvas") && meetingIds.length === 0) {
+    return false;
+  }
+  return flow.history.some((event) => {
+    if (event.type !== "meeting_closed") {
+      return false;
+    }
+    const eventMeetingId = String(event.data.meeting_id ?? "");
+    if (meetingIds.length > 0 && !meetingIds.includes(eventMeetingId)) {
+      return false;
+    }
+    if (event.data.participants_minimum_satisfied === false) {
+      return false;
+    }
+    if (!truthy(event.data.decision)) {
+      return false;
+    }
+    return stringArray(event.data.satisfies_blockers).includes(blocker);
+  });
+}
+
+function inputMeetingIds(input: FiscalVerdictInput): string[] {
+  return unique([input.meeting_id, ...(input.meeting_ids ?? [])].filter(Boolean) as string[]);
+}
+
+function librarianRequired(input: FiscalVerdictInput): boolean {
+  return /bibliotecario|bibliotecário|graphify|retorno visual/i.test([input.rationale, input.next_step, ...(input.residual_risks ?? [])].filter(Boolean).join("\n"));
+}
+
+function recurringRisk(input: FiscalVerdictInput): boolean {
+  return /(erro recorrente|recorrente|tentativa|regress)/i.test([input.rationale, input.next_step, ...(input.residual_risks ?? [])].filter(Boolean).join("\n"));
+}
+
+function hasEnoughAttempts(flow: Flow, input: FiscalVerdictInput): boolean {
+  const attemptCount = input.attempt_count ?? countHistory(flow, "verdict_recorded");
+  const regressCount = input.regress_count ?? countRegressions(flow);
+  return attemptCount >= 2 || regressCount >= 1 || flow.meetings.length > 0;
+}
+
+function regressLimitReached(flow: Flow, input: FiscalVerdictInput): boolean {
+  return (input.regress_count ?? countRegressions(flow)) >= FISCAL_CONFIG.maxRegressions;
+}
+
+function countHistory(flow: Flow, type: string): number {
+  return flow.history.filter((event) => event.type === type).length;
+}
+
+function countRegressions(flow: Flow): number {
+  const reported = flow.history
+    .filter((event) => event.type === "regress_count_reported" && typeof event.data.regress_count === "number")
+    .map((event) => event.data.regress_count as number);
+  return Math.max(countHistory(flow, "phase_returned"), 0, ...reported);
+}
+
+function hasHygieneBlocking(flow: Flow): boolean {
+  return flow.history.some(
+    (event) => event.type === "hygiene_scanned" && typeof event.data.blocking_findings_count === "number" && event.data.blocking_findings_count > 0
+  );
+}
+
+function hasHygieneScan(flow: Flow): boolean {
+  return flow.history.some((event) => event.type === "hygiene_scanned");
+}
+
+function hasMemoryMiningRun(flow: Flow): boolean {
+  return flow.history.some((event) => event.type === "memory_mined") || Boolean(flow.memory_mining?.last_run_at);
+}
+
+function isMaterialHygieneFinding(finding: HygieneFinding): boolean {
+  return finding.severity === "warning" || finding.severity === "error";
+}
+
+function needsReviewCoherence(flow: Flow, phase: Phase, provided: Record<string, unknown>): boolean {
+  if (phase !== "revisao" || !flow.goal_binding || flow.changed_files.length === 0) {
+    return false;
+  }
+  return truthy(provided.diff_reviewed) && !truthy(provided.review_artifact_path) && !truthy(provided.review_findings);
+}
+
+function latestFiscalBlock(flow: Flow): Pick<FiscalPolicyResult, "blocking_reasons" | "required_cooperation"> {
+  const event = [...flow.history].reverse().find((item) => item.type === "fiscal_policy_blocked");
+  if (!event) {
+    return { blocking_reasons: [], required_cooperation: [] };
+  }
+  const required = Array.isArray(event.data.required_cooperation) ? (event.data.required_cooperation as Cooperator[]) : [];
+  const blockingReasons = reconciledBlockers(flow, stringArray(event.data.blocking_reasons));
+  return {
+    blocking_reasons: blockingReasons,
+    required_cooperation: blockingReasons.includes("required_cooperation") ? required : []
+  };
+}
+
+function reconciledBlockers(flow: Flow, blockers: string[]): string[] {
+  return unique(blockers).filter((reason) => isBlockerStillActive(flow, reason));
+}
+
+function isBlockerStillActive(flow: Flow, reason: string): boolean {
+  if (reason === "required_cooperation") {
+    return !hasClosedMeetingSatisfying(flow, {}, "required_cooperation");
+  }
+  if (reason === "memory_required_but_empty") {
+    return memoryRequiredByFlow(flow) && noMemoryWasPromoted(flow);
+  }
+  return true;
+}
+
+function latestLibrarianStatus(flow: Flow): RecallVisualStatus | null {
+  const event = [...flow.history].reverse().find((item) => item.type === "memory_recalled" || item.type === "memory_hook_warning");
+  if (!event) {
+    return null;
+  }
+  return {
+    status: statusValue(event.data.librarian_status),
+    graphify_status: statusValue(event.data.graphify_status),
+    warnings: stringArray(event.data.warnings ?? event.data.message),
+    recalled_count: typeof event.data.recalled_count === "number" ? event.data.recalled_count : 0
+  };
+}
+
+function latestLibrarianStatusFromLedger(events: Array<{ type: string; data: Record<string, unknown> }>): RecallVisualStatus | null {
+  const event = [...events].reverse().find((item) => item.type === "memory_recalled" || item.type === "memory_hook_warning");
+  if (!event) {
+    return null;
+  }
+  return {
+    status: statusValue(event.data.librarian_status),
+    graphify_status: statusValue(event.data.graphify_status),
+    warnings: stringArray(event.data.warnings ?? event.data.message),
+    recalled_count: typeof event.data.recalled_count === "number" ? event.data.recalled_count : 0
+  };
+}
+
+function blockedDirectAction(blockers: string[]): { available: boolean; action: string } {
+  return {
+    available: true,
+    action: `Bloqueado: ${blockers.join(", ")}`
+  };
+}
+
+function blockedArchiveDirectAction(blockers: string[]): { available: boolean; action: string } {
+  return {
+    available: true,
+    action: `Arquivado com bloqueios preservados: ${blockers.join(", ")}`
+  };
+}
+
+function withDirectAction<T extends { display?: Record<string, unknown> }>(
+  value: T,
+  directAction: { available: boolean; action: string }
+): T {
+  return {
+    ...value,
+    display: {
+      ...(value.display ?? {}),
+      direct_action: directAction
+    }
+  };
+}
+
+function fiscalBackTo(flow: Flow): Phase {
+  return DEFAULT_BACK_TO[flow.phase] ?? "pensamentos";
+}
+
+function meetingKindForType(type?: MeetingType): MeetingKind | undefined {
+  if (!type) {
+    return undefined;
+  }
+  if (type === "convergent") {
+    return "convergente";
+  }
+  if (type === "transversal") {
+    return "transversal";
+  }
+  if (type === "decision") {
+    return "decisao";
+  }
+  return "divergente";
+}
+
+function meetingTypeForKind(kind: MeetingKind): MeetingType {
+  if (kind === "convergente") {
+    return "convergent";
+  }
+  if (kind === "transversal") {
+    return "transversal";
+  }
+  if (kind === "decisao") {
+    return "decision";
+  }
+  return "divergent";
+}
+
+function requiredMeetingKind(flow: Flow, blockers: string[], regressLimitReached: boolean): MeetingKind {
+  if (regressLimitReached) {
+    return "decisao";
+  }
+  if (!hasClosedMeetingKind(flow, "divergente")) {
+    return "divergente";
+  }
+  if (!hasClosedMeetingKind(flow, "convergente")) {
+    return "convergente";
+  }
+  if (
+    blockers.some((blocker) => ["hygiene_blocking", "memory_required_but_empty", "review_required", "librarian_status"].includes(blocker)) &&
+    !hasClosedMeetingKind(flow, "transversal")
+  ) {
+    return "transversal";
+  }
+  return "convergente";
+}
+
+function hasClosedMeetingKind(flow: Flow, kind: MeetingKind): boolean {
+  return flow.history.some((event) => event.type === "meeting_closed" && String(event.data.kind) === kind);
+}
+
+function requiredMeetingParticipants(blockers: string[]): string[] {
+  const participants = ["chato", "questionador", "reuniao", "validador-pronto"];
+  if (blockers.includes("memory_required_but_empty")) {
+    participants.push("garimpeiro", "dex-memoria");
+  }
+  if (blockers.includes("review_required")) {
+    participants.push("revisor-codigo");
+  }
+  if (blockers.includes("hygiene_blocking")) {
+    participants.push("tio-testador");
+  }
+  if (blockers.includes("librarian_status") || blockers.includes("attempt_regress_count")) {
+    participants.push("ancora-fluxo", "ppi");
+  }
+  return unique(participants);
+}
+
+function meetingClosedLedgerData(meeting: Meeting): Record<string, unknown> {
+  return {
+    meeting_id: meeting.meeting_id,
+    flow_id: meeting.flow_id,
+    type: meeting.type,
+    kind: meeting.kind,
+    opened_at: meeting.opened_at,
+    closed_at: meeting.closed_at,
+    participants_required: meeting.participants_required,
+    participants_present: meeting.participants_present,
+    questions: meeting.questions,
+    findings: meeting.findings,
+    decision: meeting.decision,
+    next_required_action: meeting.next_required_action,
+    satisfies_blockers: meeting.satisfies_blockers,
+    created_by: meeting.created_by,
+    evidence_ids: meeting.evidence_ids
+  };
+}
+
+function nextRequiredActionFor(
+  flow: Flow,
+  blockers: string[],
+  backTo: Phase | null,
+  regressCount: number,
+  regressLimitReached: boolean
+): Record<string, unknown> | null {
+  if (blockers.length === 0) {
+    return null;
+  }
+  if (regressLimitReached) {
+    return {
+      type: "open_decision_meeting",
+      tool: "goal_meeting_open",
+      reason: "limite de regressos atingido; abrir reuniao de decisao/validador-pronto em vez de repetir loop de retorno",
+      back_to: backTo,
+      meeting_kind: "decisao",
+      regress_count: regressCount,
+      max_regressions: FISCAL_CONFIG.maxRegressions,
+      locked_by_limit: true,
+      can_retry_verdict: false
+    };
+  }
+  const meetingKind = requiredMeetingKind(flow, blockers, regressLimitReached);
+  if (blockers.includes("required_cooperation") || !hasClosedMeetingKind(flow, meetingKind)) {
+    return {
+      type: "open_meeting",
+      tool: "goal_meeting_open",
+      reason: blockers.includes("required_cooperation")
+        ? "required_cooperation material exige reuniao/regresso rastreavel antes de novo veredito positivo"
+        : `bloqueio material ainda exige reuniao ${meetingKind} antes de nova tentativa`,
+      back_to: backTo,
+      meeting_kind: meetingKind,
+      regress_count: regressCount,
+      max_regressions: FISCAL_CONFIG.maxRegressions,
+      can_retry_verdict: false
+    };
+  }
+  if (blockers.includes("review_required")) {
+    return {
+      type: "attach_review",
+      tool: "evidence_add",
+      reason: "review_required exige review_artifact_path, review_findings ou evidencia de revisao",
+      back_to: backTo,
+      regress_count: regressCount,
+      max_regressions: FISCAL_CONFIG.maxRegressions,
+      can_retry_verdict: false
+    };
+  }
+  if (blockers.includes("memory_required_but_empty")) {
+    return {
+      type: "run_memory_mining",
+      tool: "mm_memory_mining",
+      reason: "memory_required_but_empty exige garimpo/classificacao de memoria antes de veredito positivo",
+      back_to: backTo,
+      regress_count: regressCount,
+      max_regressions: FISCAL_CONFIG.maxRegressions,
+      can_retry_verdict: false
+    };
+  }
+  return {
+    type: "resolve_blockers",
+    tool: "goal_gate_check",
+    reason: `resolver blockers: ${blockers.join(", ")}`,
+    back_to: backTo,
+    regress_count: regressCount,
+    max_regressions: FISCAL_CONFIG.maxRegressions,
+    can_retry_verdict: false
+  };
+}
+
+function structuredLibrarianStatus(raw: RecallVisualStatus | null): StructuredLibrarianStatus {
+  const librarianStatus = raw?.status ?? "disabled";
+  const graphifyConfigured = graphifyRecallConfigured();
+  const graphifyStatus = raw?.graphify_status ?? (graphifyConfigured ? "empty" : "disabled");
+  const librarianFunctionalTested = raw !== null && librarianStatus !== "disabled" && (raw.recalled_count > 0 || raw.warnings.length > 0);
+  const graphifyFunctionalTested =
+    raw !== null && graphifyStatus !== "disabled" && (raw.recalled_count > 0 || raw.warnings.some((warning) => /graphify/i.test(warning)));
+  return {
+    bibliotecario: {
+      enabled: librarianStatus !== "disabled",
+      status: librarianStatus,
+      reason: raw ? librarianReason(librarianStatus) : "await_beforePhase_or_report_disabled",
+      visible: true,
+      functional_tested: librarianFunctionalTested
+    },
+    graphify: {
+      enabled: graphifyConfigured || graphifyStatus !== "disabled",
+      configured: graphifyConfigured,
+      status: graphifyStatus,
+      reason: raw ? graphifyReason(graphifyStatus) : graphifyConfigured ? "configured_awaiting_beforePhase_functional_test" : "optional_disabled_reported",
+      visible: true,
+      functional_tested: graphifyFunctionalTested
+    },
+    warnings: raw?.warnings ?? [],
+    recalled_count: raw?.recalled_count ?? 0,
+    functional_tested: librarianFunctionalTested || graphifyFunctionalTested
+  };
+}
+
+function librarianReason(status: StructuredLibrarianStatus["bibliotecario"]["status"]): string {
+  if (status === "disabled") {
+    return "await_beforePhase_or_report_disabled";
+  }
+  if (status === "recalled") {
+    return "beforePhase_recalled_memory";
+  }
+  if (status === "empty") {
+    return "beforePhase_ran_without_recall_items";
+  }
+  return `beforePhase_${status}`;
+}
+
+function graphifyReason(status: StructuredLibrarianStatus["graphify"]["status"]): string {
+  if (status === "disabled") {
+    return "optional_disabled_reported";
+  }
+  if (status === "recalled") {
+    return "graphify_recalled";
+  }
+  if (status === "empty") {
+    return "graphify_enabled_no_hits";
+  }
+  return `graphify_${status}`;
+}
+
+function checkInTrailAlignment(flow: Flow): Record<string, unknown> {
+  const envelope = flow.goal_binding?.envelope;
+  const mcpCwd = process.cwd();
+  const workspace = envelope?.workspace;
+  return {
+    mcp_cwd: mcpCwd,
+    workspace: workspace ?? null,
+    spt_path: envelope?.spt_path ?? null,
+    goal: flow.goal,
+    evidence_required: envelope?.evidence_required ?? false,
+    required_evidence_count: envelope?.required_evidence.length ?? 0,
+    cwd_matches_workspace: workspace ? path.resolve(mcpCwd) === path.resolve(workspace) : null,
+    adjustment_targets: [
+      "mcp_cwd",
+      "workspace",
+      "spt_path",
+      "goal",
+      "required_evidence",
+      "visible_components",
+      "blockers"
+    ]
+  };
+}
+
+function ppirtvCheckIn(
+  flow: Flow,
+  requiredCooperation: Cooperator[],
+  librarianStatus: StructuredLibrarianStatus,
+  blockers: string[]
+): Record<string, unknown> {
+  const cooVisible = requiredCooperation.length > 0 || flow.cooperators.length > 0;
+  const graphifyStatus = librarianStatus.graphify.status;
+  const meetingRequired = blockers.includes("required_cooperation");
+  const meetingToolAvailable = true;
+  const librarianGraphifyRequired = blockers.includes("librarian_status");
+  const graphifyConfigured = librarianStatus.graphify.configured === true;
+  const graphifyFunctionalPending =
+    (librarianGraphifyRequired || graphifyConfigured) && librarianStatus.graphify.status !== "failed" && !librarianStatus.graphify.functional_tested;
+  const graphifyConfigMismatch = graphifyConfigured && librarianStatus.graphify.status === "disabled";
+  const librarianConfiguredButUntested =
+    librarianGraphifyRequired && librarianStatus.bibliotecario.status !== "failed" && !librarianStatus.bibliotecario.functional_tested;
+  const checkinBlockers = unique([
+    ...blockers,
+    ...(meetingRequired && !meetingToolAvailable ? ["meeting_tool_unavailable"] : []),
+    ...(librarianGraphifyRequired && !librarianStatus.functional_tested ? ["librarian_or_graphify_not_functional"] : []),
+    ...(graphifyConfigMismatch ? ["graphify_config_mismatch"] : []),
+    ...(librarianConfiguredButUntested ? ["bibliotecario_config_mismatch"] : [])
+  ]);
+  const ppiRequired =
+    !cooVisible ||
+    librarianStatus.bibliotecario.status === "failed" ||
+    librarianStatus.graphify.status === "failed" ||
+    checkinBlockers.length > 0;
+  return {
+    phase: flow.phase,
+    mode: flow.goal_binding ? (checkinBlockers.length > 0 ? "goal_fiscal_blocked" : "goal_fiscal_capable") : "advisory",
+    blockers: checkinBlockers,
+    meeting_required: meetingRequired,
+    meeting_tool_available: meetingToolAvailable,
+    regress_required: checkinBlockers.length > 0 && countRegressions(flow) < FISCAL_CONFIG.maxRegressions,
+    initial_adjustment_required: ppiRequired || checkinBlockers.length > 0,
+    trail_alignment: checkInTrailAlignment(flow),
+    components: [
+      { name: "ppirtv", status: "online", visible: true, auto_repair: "already_visible" },
+      {
+        name: "coo",
+        status: cooVisible ? "visible" : "needs_visibility",
+        visible: cooVisible,
+        auto_repair: cooVisible ? "already_visible" : "required_cooperation_generated"
+      },
+      {
+        name: "bibliotecario",
+        status: librarianStatus.bibliotecario.status,
+        visible: librarianStatus.bibliotecario.visible,
+        functional_required: librarianGraphifyRequired,
+        functional_tested: librarianStatus.bibliotecario.functional_tested,
+        needs_adjustment: librarianGraphifyRequired && !librarianStatus.bibliotecario.functional_tested,
+        auto_repair:
+          librarianGraphifyRequired && !librarianStatus.bibliotecario.functional_tested
+            ? "executar beforePhase/recall funcional ou corrigir configuracao antes do trabalho real"
+            : librarianStatus.bibliotecario.reason
+      },
+      {
+        name: "graphify",
+        status: graphifyStatus,
+        visible: librarianStatus.graphify.visible,
+        configured: graphifyConfigured,
+        functional_required: librarianGraphifyRequired,
+        functional_tested: librarianStatus.graphify.functional_tested,
+        needs_adjustment: graphifyFunctionalPending || graphifyConfigMismatch,
+        auto_repair:
+          graphifyFunctionalPending || graphifyConfigMismatch
+            ? `validar Graphify Recall funcional ou corrigir ${RUNTIME_ENV.graphifyRecall} antes do trabalho real`
+            : librarianStatus.graphify.reason
+      },
+      {
+        name: "meeting_tools",
+        status: meetingToolAvailable ? "available" : "unavailable",
+        visible: meetingToolAvailable,
+        auto_repair: meetingToolAvailable ? "goal_meeting_open_add_turn_close_and_goal_regress_exported" : "exportar_tools_de_reuniao_regresso"
+      },
+      {
+        name: "ppi",
+        status: ppiRequired ? "required" : "ready",
+        visible: true,
+        auto_repair: ppiRequired ? "acionar_ppi_para_resolver_visibilidade_ou_configuracao" : "standing_by"
+      }
+    ],
+    ppi_action_required: ppiRequired,
+    direct_action: ppiRequired
+      ? `check-in bloqueado: ${checkinBlockers.join(", ")}`
+      : checkinBlockers.length > 0
+        ? `check-in visivel com bloqueios fiscais: ${checkinBlockers.join(", ")}`
+        : "check-in visivel"
+  };
+}
+
+function ppirtvCheckOut(flow: Flow, librarianStatus: StructuredLibrarianStatus, blockers: string[]): Record<string, unknown> {
+  const latestVerdict = flow.verdicts.at(-1);
+  const closed = flow.status === "complete" || flow.status === "archived";
+  const memoryMining = memoryMiningStatus(flow);
+  const memoryAccountability = memoryCheckoutAccountability(flow, memoryMining);
+  const learningAccountability = learningCheckoutAccountability(flow);
+  const cooperationAccountability = cooperationCheckoutAccountability(flow);
+  const librarianAccountability = librarianCheckoutAccountability(librarianStatus);
+  return {
+    complete: closed,
+    status: flow.status,
+    verdict: latestVerdict?.status ?? null,
+    meetings_count: flow.meetings.length,
+    evidence_count: flow.evidence.length,
+    review_visible: flow.evidence.some((evidence) => /review|revisor|diff/i.test([evidence.kind, evidence.title, evidence.note, evidence.content].filter(Boolean).join("\n"))),
+    tests_visible: flow.evidence.some((evidence) => /test|teste|vitest|npm run check/i.test([evidence.kind, evidence.title, evidence.note, evidence.content].filter(Boolean).join("\n"))),
+    garimpo_count: flow.gold_mining.length,
+    estacionamento_count: flow.parking_lot.length,
+    memory_mining: memoryMining,
+    librarian_status: librarianStatus,
+    memory_accountability: memoryAccountability,
+    learning_accountability: learningAccountability,
+    cooperation_accountability: cooperationAccountability,
+    librarian_accountability: librarianAccountability,
+    prestacao_de_contas: {
+      memoria: memoryAccountability,
+      garimpo: learningAccountability.garimpado,
+      estacionamento: learningAccountability.estacionado,
+      pontos_cegos: learningAccountability.pontos_cegos,
+      cooperadores: cooperationAccountability,
+      bibliotecario: librarianAccountability
+    },
+    residual_risks: latestVerdict?.residual_risks ?? [],
+    direct_action: blockers.length > 0
+      ? `check-out bloqueado: ${blockers.join(", ")}; abrir reuniao/revisor/memoria antes de veredito positivo`
+      : closed
+        ? "fechamento_total_registrado"
+        : "check-out pendente ate veredito/arquivo"
+  };
+}
+
+function memoryCheckoutAccountability(flow: Flow, memoryMining: MemoryMiningSummary): Record<string, unknown> {
+  const raw = (flow.memory_mining ?? {}) as Record<string, unknown>;
+  const written = Array.isArray(raw.written) ? (raw.written as Array<Record<string, unknown>>) : [];
+  const candidates = Array.isArray(raw.candidates) ? (raw.candidates as Array<Record<string, unknown>>) : [];
+  const writtenFiles = unique(written.flatMap((item) => stringArray(item.files)));
+  const layers = memoryLayersFromFiles(writtenFiles);
+  return {
+    required: memoryMining.required,
+    mined: Boolean(memoryMining.last_run_at),
+    last_run_at: memoryMining.last_run_at ?? null,
+    write_policy: memoryMining.write_policy ?? null,
+    written_count: memoryMining.written_count,
+    candidates_count: memoryMining.candidates_count,
+    blocked_count: memoryMining.blocked_count,
+    ledger_only_count: memoryMining.ledger_only_count,
+    discarded_count: memoryMining.discarded_count,
+    memory_required_but_empty: memoryMining.memory_required_but_empty === true,
+    written,
+    candidates,
+    layers,
+    l1_files: layers.L1,
+    l2_files: layers.L2,
+    l3_files: layers.L3,
+    summary:
+      memoryMining.written_count > 0
+        ? `memoria gravada: L1=${layers.L1.length}, L2=${layers.L2.length}, L3=${layers.L3.length}`
+        : memoryMining.candidates_count > 0
+          ? "memoria classificada sem escrita canonica neste checkout"
+          : memoryMining.required
+            ? "memoria exigida, mas nenhum candidato gravado/classificado"
+            : "memoria nao exigida neste flow"
+  };
+}
+
+function memoryLayersFromFiles(files: string[]): Record<"L1" | "L2" | "L3" | "other", string[]> {
+  const layers: Record<"L1" | "L2" | "L3" | "other", string[]> = { L1: [], L2: [], L3: [], other: [] };
+  for (const file of files) {
+    const normalized = file.replace(/\\/g, "/");
+    if (/\/?LEMBRANCA\.md$/i.test(normalized) || /\/?lembranca\.md$/i.test(normalized)) {
+      layers.L1.push(file);
+    } else if (/\/?MEMORIA\.md$/i.test(normalized) || /\/?memoria\.md$/i.test(normalized)) {
+      layers.L2.push(file);
+    } else if (/\/conhecimento\//i.test(normalized) || /\/L3\//i.test(normalized)) {
+      layers.L3.push(file);
+    } else {
+      layers.other.push(file);
+    }
+  }
+  return layers;
+}
+
+function learningCheckoutAccountability(flow: Flow): Record<string, unknown> {
+  const pontosCegos = unique([
+    ...flow.gold_mining.filter((item) => /ponto cego|premissa|ocult|ambig|incert/i.test(item)),
+    ...flow.parking_lot.filter((item) => /ponto cego|premissa|ocult|ambig|incert/i.test(item)),
+    ...flow.goal_learning_links
+      .filter((link) => link.garimpo_vinculado.classificacao === "ponto_cego")
+      .map((link) => link.garimpo_vinculado.pepita ?? link.parking_item)
+  ]);
+  return {
+    garimpado: flow.gold_mining,
+    estacionado: flow.parking_lot,
+    pontos_cegos: pontosCegos,
+    links: flow.goal_learning_links,
+    garimpo_count: flow.gold_mining.length,
+    estacionamento_count: flow.parking_lot.length,
+    pontos_cegos_count: pontosCegos.length
+  };
+}
+
+function cooperationCheckoutAccountability(flow: Flow): Record<string, unknown> {
+  const material = flow.cooperators.filter((cooperator) => cooperator.material);
+  return {
+    material_count: material.length,
+    material,
+    all: flow.cooperators,
+    active_credits: flow.active_credits,
+    merits: material.map((cooperator) => ({
+      name: cooperator.name,
+      reason: cooperator.reason,
+      merit_source: "recorded_material_cooperator",
+      credits: flow.active_credits.filter((credit) => credit.toLowerCase().includes(cooperator.name.toLowerCase()))
+    })),
+    summary:
+      material.length > 0
+        ? `cooperadores materiais: ${material.map((cooperator) => cooperator.name).join(", ")}`
+        : "nenhum cooperador material registrado"
+  };
+}
+
+function librarianCheckoutAccountability(librarianStatus: StructuredLibrarianStatus): Record<string, unknown> {
+  const worked = librarianStatus.functional_tested === true;
+  const graphifyWorked = librarianStatus.graphify.functional_tested === true;
+  return {
+    worked,
+    bibliotecario_worked: librarianStatus.bibliotecario.functional_tested,
+    graphify_worked: graphifyWorked,
+    status: librarianStatus,
+    summary: worked
+      ? "Bibliotecario/Graphify tiveram participacao funcional testada"
+      : graphifyWorked
+        ? "Graphify teve participacao funcional; Bibliotecario nao confirmou recall funcional completo"
+        : `Bibliotecario/Graphify nao tiveram participacao funcional confirmada; graphify=${librarianStatus.graphify.status}, bibliotecario=${librarianStatus.bibliotecario.status}`
+  };
+}
+
+function statusValue(value: unknown): RecallVisualStatus["status"] {
+  const allowed = ["disabled", "recalled", "empty", "missing_graph", "timeout", "failed"] as const;
+  return allowed.includes(value as RecallVisualStatus["status"]) ? (value as RecallVisualStatus["status"]) : "failed";
+}
+
+function stringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map(String);
+  }
+  return value ? [String(value)] : [];
 }
 
 function truthy(value: unknown): boolean {

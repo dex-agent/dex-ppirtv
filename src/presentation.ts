@@ -76,7 +76,7 @@ export function presentArtifact<T extends Record<string, unknown> & { flow_id: s
 export function presentChecklist(input: {
   flow: Flow;
   items: Array<{ label: string; checked: boolean }>;
-  visualItems?: Array<{ label: string; checked: boolean; emoji?: string }>;
+  visualItems?: Array<{ label: string; checked: boolean; state?: "checked" | "unchecked" | "pending" | "blocked"; emoji?: string }>;
   markdown: string;
 }): {
   flow_id: string;
@@ -84,9 +84,11 @@ export function presentChecklist(input: {
   markdown: string;
   items: Array<{ label: string; checked: boolean }>;
 } & PresentationEnvelope {
-  const visualSource: Array<{ label: string; checked: boolean; emoji?: string }> = input.visualItems ?? input.items;
+  const visualSource: Array<{ label: string; checked: boolean; state?: "checked" | "unchecked" | "pending" | "blocked"; emoji?: string }> =
+    input.visualItems ?? input.items;
   const checklist_visual = visualSource.map((item) => ({
     ...item,
+    state: item.state ?? (item.checked ? "checked" : "unchecked"),
     emoji: item.emoji ?? (item.checked ? "✅" : CHECKLIST_EMOJI[input.flow.phase])
   }));
   return {
@@ -108,7 +110,7 @@ export function presentChecklist(input: {
 export function presentationFor(input: GateLike & { checklist_visual?: DisplayEnvelope["checklist_visual"] }): PresentationEnvelope {
   const meta = PHASE_META[input.phase];
   const missing = input.missing ?? [];
-  const directAction = missing.length > 0 ? `Completar: ${missing.join(", ")}` : "Gate pronto para avancar";
+  const directAction = missing.length > 0 ? `Completar: ${missing.join(", ")}` : "Sem bloqueio local; verificar status fiscal antes de avancar";
   const display: DisplayEnvelope = {
     phase_label: meta.label,
     phase_emoji: meta.emoji,

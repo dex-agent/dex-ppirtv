@@ -1,18 +1,34 @@
 import path from "node:path";
-import type { MemoryHookInput, MemoryHookRunner, MemoryHookSummary, MemoryRecallInput, MemoryRecallSummary } from "./memory-types.js";
+import type {
+  MemoryHookInput,
+  MemoryHookRunner,
+  MemoryHookSummary,
+  MemoryRecallInput,
+  MemoryRecallSummary
+} from "./memory-types.js";
+import type { GraphifyRecallProviderOptions, MemoryGraphProvider } from "./memory-graph-provider.js";
+import { graphifyRuntimeConfigFromEnv } from "../config.js";
 import { MemoryRuntimeStore, runtimeRecordId } from "./memory-store.js";
 import { beforePhase } from "./memory-recall.js";
 import { classifyMemoryCandidate, collectMemoryNuggets, resolveDexMemoriaHome } from "./mining-policy.js";
+import { GraphifyRecallProvider } from "./memory-graph-provider.js";
+
+export type MemoryLibrarianOptions = {
+  graphProvider?: MemoryGraphProvider;
+  graphify?: GraphifyRecallProviderOptions;
+};
 
 export class MemoryLibrarian implements MemoryHookRunner {
   readonly runtime: MemoryRuntimeStore;
+  readonly graphProvider: MemoryGraphProvider;
 
-  constructor(runtimeRoot: string) {
+  constructor(runtimeRoot: string, options: MemoryLibrarianOptions = {}) {
     this.runtime = new MemoryRuntimeStore(runtimeRoot);
+    this.graphProvider = options.graphProvider ?? createDefaultGraphProvider(options.graphify);
   }
 
   async beforePhase(input: MemoryRecallInput): Promise<MemoryRecallSummary> {
-    return beforePhase({ ...input, runtime: this.runtime });
+    return beforePhase({ ...input, runtime: this.runtime, graphProvider: this.graphProvider });
   }
 
   async afterPhase(input: MemoryHookInput): Promise<MemoryHookSummary> {
@@ -88,4 +104,11 @@ export class MemoryLibrarian implements MemoryHookRunner {
     });
     return summary;
   }
+}
+
+function createDefaultGraphProvider(options?: GraphifyRecallProviderOptions): MemoryGraphProvider {
+  if (options) {
+    return new GraphifyRecallProvider(options);
+  }
+  return new GraphifyRecallProvider(graphifyRuntimeConfigFromEnv());
 }

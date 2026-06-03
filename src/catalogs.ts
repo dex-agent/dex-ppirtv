@@ -41,6 +41,10 @@ export function meetingsTemplate(): Record<MeetingType, Record<string, unknown>>
     transversal: {
       use_when: ["mudanca cruza areas", "dependencias ocultas", "risco de regressao entre fronteiras"],
       required_output: ["areas afetadas", "impactos", "dono por area", "gates extras", "plano de rollback"]
+    },
+    decision: {
+      use_when: ["regress_count >= 3", "loop ruim", "bloqueio material recorrente"],
+      required_output: ["decisao final de fiscalizacao", "responsavel", "acao obrigatoria", "criterio para destravar ou encerrar"]
     }
   };
 }

@@ -4,6 +4,7 @@
 
 # Runtime state
 .ppirtv/
+graphify-out/
 .agents/
 .codex/
 artifacts/

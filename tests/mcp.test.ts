@@ -95,6 +95,26 @@ describe("PPIRTV MCP stdio server", () => {
       name: "evidence_add",
       arguments: { flow_id: flowId, title: "vitest run", content: "pass", satisfies: ["vitest"] }
     });
+    const meeting = await client!.callTool({
+      name: "goal_meeting_open",
+      arguments: { flow_id: flowId, type: "convergent", question: "Evidencia MCP basta para veredito positivo?" }
+    });
+    await client!.callTool({
+      name: "goal_meeting_close",
+      arguments: {
+        flow_id: flowId,
+        meeting_id: resultOf(meeting).meeting_id,
+        participants_present: ["chato", "validador-pronto", "reuniao", "questionador"],
+        decision: "veredito positivo permitido apos evidencia e validacao material",
+        decisions: ["veredito positivo permitido apos evidencia e validacao material"],
+        satisfies_blockers: ["required_cooperation"],
+        cooperators: [
+          { name: "chato", reason: "pressionou falso pronto antes do veredito", material: true },
+          { name: "validador-pronto", reason: "validou evidencia rastreavel", material: true }
+        ],
+        active_credits: ["chato pressionou falso pronto", "validador-pronto validou evidencia"]
+      }
+    });
     const verdict = await client!.callTool({
       name: "goal_verdict",
       arguments: {
@@ -149,14 +169,36 @@ describe("PPIRTV MCP stdio server", () => {
       }
     });
     const meetingId = resultOf(opened).meeting_id as string;
-    const recorded = await client!.callTool({
-      name: "goal_meeting_record",
+    const turn = await client!.callTool({
+      name: "goal_meeting_add_turn",
       arguments: {
         flow_id: flowId,
         meeting_id: meetingId,
+        speaker: "questionador",
+        question: "E SE a reuniao nao tiver decisao?",
+        finding: "Sem decisao, nao satisfaz blocker material."
+      }
+    });
+    const closed = await client!.callTool({
+      name: "goal_meeting_close",
+      arguments: {
+        flow_id: flowId,
+        meeting_id: meetingId,
+        participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+        decision: "Reuniao MCP fechada com decisao e participantes minimos.",
+        satisfies_blockers: ["required_cooperation"],
         risks: ["credito decorativo"],
         cooperators: [{ name: "Chato", reason: "exigiu evidencia de ledger", material: true }],
         active_credits: ["Chato exigiu evidencia de ledger"]
+      }
+    });
+    const regressed = await client!.callTool({
+      name: "goal_regress",
+      arguments: {
+        flow_id: flowId,
+        to: "pensamentos",
+        meeting_id: meetingId,
+        reason: "Regresso MCP auditavel apos reuniao fechada."
       }
     });
     const gate = await client!.callTool({ name: "goal_gate_check", arguments: { flow_id: flowId } });
@@ -165,14 +207,22 @@ describe("PPIRTV MCP stdio server", () => {
     const resource = await client!.readResource({ uri: `ppirtv://flow/${flowId}/ledger` });
 
     expect((resultOf(opened).suggested_cooperators as Array<Record<string, unknown>>)[0].material).toBe(false);
-    expect(resultOf(recorded).active_credits).toEqual(expect.arrayContaining(["Chato exigiu evidencia de ledger"]));
+    expect(resultOf(turn).turns).toEqual(expect.arrayContaining([expect.objectContaining({ speaker: "questionador" })]));
+    expect(resultOf(closed)).toMatchObject({ status: "closed", decision: "Reuniao MCP fechada com decisao e participantes minimos." });
+    expect(resultOf(closed).active_credits).toEqual(expect.arrayContaining(["Chato exigiu evidencia de ledger"]));
+    expect(resultOf(regressed)).toMatchObject({ regressed: true, regress_count: 1 });
     expect(resultOf(gate).status).toBe("passed");
     expect(resultOf(gate).persisted).toBe(true);
     expect(resultOf(advanced)).toMatchObject({ advanced: true, from: "pensamentos", to: "planejamento" });
     expect(resultOf(status).phase).toBe("planejamento");
     expect(resultOf(status).active_credits).toEqual(expect.arrayContaining(["Chato exigiu evidencia de ledger"]));
+    expect(resultOf(status).meetings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ meeting_id: meetingId, status: "closed", kind: "divergente" })])
+    );
     expect(resource.contents[0]?.text).toContain("meeting_opened");
-    expect(resource.contents[0]?.text).toContain("meeting_recorded");
+    expect(resource.contents[0]?.text).toContain("meeting_turn_added");
+    expect(resource.contents[0]?.text).toContain("meeting_closed");
+    expect(resource.contents[0]?.text).toContain("goal_regressed");
     expect(resource.contents[0]?.text).toContain("gate_checked");
     expect(resource.contents[0]?.text).toContain("phase_advanced");
   });
@@ -199,10 +249,13 @@ describe("PPIRTV MCP stdio server", () => {
       arguments: { flow_id: flowId, type: "divergent", question: "Qual memoria deve ser minerada?" }
     });
     await client!.callTool({
-      name: "goal_meeting_record",
+      name: "goal_meeting_close",
       arguments: {
         flow_id: flowId,
         meeting_id: resultOf(opened).meeting_id,
+        participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+        decision: "Garimpo de memoria fechado pelo fluxo novo.",
+        satisfies_blockers: ["required_cooperation"],
         parking_lot: ["Ponto cego Delphi DUnitX standalone vs provider precisa virar memoria reutilizavel."]
       }
     });
@@ -213,6 +266,16 @@ describe("PPIRTV MCP stdio server", () => {
 
     expect(resultOf(mined).write_policy).toBe("auto_write");
     expect(resultOf(mined).blocked_verdict).toBe(false);
+    expect(resultOf(mined).written).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          files: expect.arrayContaining([
+            path.join(tempRoot, "memories", "temas", "delphi", "LEMBRANCA.md"),
+            path.join(tempRoot, "memories", "temas", "delphi", "MEMORIA.md")
+          ])
+        })
+      ])
+    );
     expect(resultOf(status).goal_learning_links).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

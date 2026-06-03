@@ -2,7 +2,7 @@ import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mc
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { PROMPT_NAMES, RESOURCE_URIS, TOOL_NAMES, gatesTemplate, mcpReference, meetingsTemplate, promptText, resourceText } from "./catalogs.js";
-import { GOAL_VERDICT_POLICIES, MEETING_TYPES, MEMORY_WRITE_POLICIES, PHASES, VERDICTS } from "./domain.js";
+import { GOAL_VERDICT_POLICIES, MEETING_KINDS, MEETING_TYPES, MEMORY_WRITE_POLICIES, PHASES, VERDICTS } from "./domain.js";
 import { FlowEngine } from "./flow-engine.js";
 import { PpirtvStore } from "./store.js";
 
@@ -142,8 +142,12 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
       description: "Open a divergent, convergent or transversal meeting artifact linked to a flow.",
       inputSchema: {
         flow_id: z.string().min(1),
-        type: z.enum(MEETING_TYPES),
-        question: z.string().min(1)
+        type: z.enum(MEETING_TYPES).optional(),
+        kind: z.enum(MEETING_KINDS).optional(),
+        question: z.string().min(1),
+        participants_required: z.array(z.string()).optional(),
+        created_by: z.string().optional(),
+        evidence_ids: z.array(z.string()).optional()
       }
     },
     async (args) => toolResult(await engine.openMeeting(args))
@@ -325,8 +329,12 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
-        type: z.enum(MEETING_TYPES),
+        type: z.enum(MEETING_TYPES).optional(),
+        kind: z.enum(MEETING_KINDS).optional(),
         question: z.string().min(1),
+        participants_required: z.array(z.string()).optional(),
+        created_by: z.string().optional(),
+        evidence_ids: z.array(z.string()).optional(),
         suggested_cooperators: z.array(cooperatorSchema).optional()
       }
     },
@@ -334,17 +342,41 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
   );
 
   server.registerTool(
-    "goal_meeting_record",
+    "goal_meeting_add_turn",
     {
-      description: "Record a live GOAL meeting and material specialist credits when contributions changed the flow.",
+      description: "Add an auditable turn to a live GOAL meeting before it is closed.",
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
         meeting_id: z.string().min(1),
+        speaker: z.string().optional(),
+        question: z.string().optional(),
+        finding: z.string().optional(),
+        note: z.string().optional(),
+        evidence_ids: z.array(z.string()).optional()
+      }
+    },
+    async (args) => toolResult(await engine.goalMeetingAddTurn(args))
+  );
+
+  server.registerTool(
+    "goal_meeting_close",
+    {
+      description: "Close a GOAL meeting with decision, participants and blockers satisfied.",
+      inputSchema: {
+        flow_id: z.string().optional(),
+        idempotency_key: z.string().optional(),
+        meeting_id: z.string().min(1),
+        participants_present: z.array(z.string()).optional(),
+        findings: z.array(z.string()).optional(),
         questions: z.array(z.string()).optional(),
         hypotheses: z.array(z.string()).optional(),
         alternatives: z.array(z.string()).optional(),
         decisions: z.array(z.string()).optional(),
+        decision: z.string().min(1),
+        next_required_action: z.record(z.unknown()).nullable().optional(),
+        satisfies_blockers: z.array(z.string()).optional(),
+        evidence_ids: z.array(z.string()).optional(),
         risks: z.array(z.string()).optional(),
         next_steps: z.array(z.string()).optional(),
         affected_areas: z.array(z.string()).optional(),
@@ -358,7 +390,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         active_credits: z.array(z.string()).optional()
       }
     },
-    async (args) => toolResult(await engine.goalMeetingRecord(args))
+    async (args) => toolResult(await engine.goalMeetingClose(args))
   );
 
   server.registerTool(
@@ -414,10 +446,33 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         rationale: z.string().min(1),
         evidence_ids: z.array(z.string()).optional(),
         residual_risks: z.array(z.string()).optional(),
+        review_artifact_path: z.string().optional(),
+        review_findings: z.array(z.string()).optional(),
+        attempt_count: z.number().int().nonnegative().optional(),
+        regress_count: z.number().int().nonnegative().optional(),
+        meeting_id: z.string().optional(),
+        meeting_ids: z.array(z.string()).optional(),
         next_step: z.string().min(1)
       }
     },
     async (args) => toolResult(await engine.goalVerdict(args))
+  );
+
+  server.registerTool(
+    "goal_regress",
+    {
+      description: "Persist an official GOAL fiscal regress tied to a meeting or blocker.",
+      inputSchema: {
+        flow_id: z.string().optional(),
+        idempotency_key: z.string().optional(),
+        to: z.enum(PHASES).optional(),
+        reason: z.string().min(1),
+        meeting_id: z.string().optional(),
+        evidence_ids: z.array(z.string()).optional(),
+        actor: z.string().optional()
+      }
+    },
+    async (args) => toolResult(await engine.goalRegress(args))
   );
 
   assertRegistered("tool", TOOL_NAMES);

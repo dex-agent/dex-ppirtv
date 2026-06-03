@@ -161,6 +161,26 @@ The server resolves the operational principles contract in this order:
 If a fallback is used, `hygiene_scan` reports it so clients do not mistake a
 default for a project-specific contract.
 
+## Configuration And Contract Registry
+
+Runtime configuration must stay centralized. New environment variables, fiscal
+limits and runtime path defaults belong in `src/config.ts`; MCP tool/prompt
+catalogs belong in `src/domain.ts`; operational principle contract resolution
+belongs in `src/principles.ts`. Avoid reading `process.env` directly from
+feature code. A feature should call the central helper so check-in, status,
+Bibliotecario/Graphify and tests tell the same story.
+
+Contract locations:
+
+1. Shared startup contract:
+   `C:\Users\Administrator\.agents\CONTRACTS\PPIRTV_GOAL_STARTUP_CONTRACT.md`.
+2. Shared human principles:
+   `C:\Users\Administrator\.agents\memories\principles\PRINCIPLES.md`.
+3. Shared operational principles contract:
+   `C:\Users\Administrator\.agents\memories\principles\operational-contract.json`.
+4. Project execution trails:
+   `<WORKSPACE>\.agents\PLAN-TASKS\YYYY-MM-DD-<slug>.md`.
+
 ## Tools
 
 Low-level tools:
@@ -187,7 +207,9 @@ Official GOAL/SPT tools:
 - `goal_gate_check`
 - `goal_advance`
 - `goal_meeting_open`
-- `goal_meeting_record`
+- `goal_meeting_add_turn`
+- `goal_meeting_close`
+- `goal_regress`
 - `evidence_add`
 - `goal_verdict`
 
@@ -200,15 +222,102 @@ Memory and pipeline tools:
 
 1. Validate an SPT with `spt_validate`.
 2. Start or reuse a flow with `goal_start`.
-3. Inspect live state with `goal_status`.
-4. Open and record meetings with `goal_meeting_open` and
-   `goal_meeting_record` when a real decision, risk or ambiguity exists.
+3. Inspect live state with `goal_status`, including `ppirtv_checkin`.
+4. Open, discuss and close meetings with `goal_meeting_open`,
+   `goal_meeting_add_turn` and `goal_meeting_close` when a real decision, risk
+   or ambiguity exists.
 5. Check gates with `goal_gate_check`.
 6. Advance with `goal_advance`.
 7. Attach evidence with `evidence_add`.
 8. Close with `goal_verdict`.
+9. Inspect `ppirtv_checkout` before considering the flow fully closed.
 
-Positive verdicts require traceable evidence.
+Positive verdicts require traceable evidence. In official GOAL/SPT flows, the
+engine can operate in two modes:
+
+- `advisory`: ordinary low-risk flow guidance, where findings are visible but do
+  not automatically block a positive verdict.
+- `fiscal`: material GOAL/SPT risks become blocking policy. This mode is
+  triggered by material residual risk, code changes, recurring/product risk,
+  hygiene blockers, required memory, missing review evidence, or failed
+  Bibliotecario/Graphify visibility.
+
+In fiscal mode, `pronto` and `pronto_com_ressalvas` must not pass just because
+fields are present. The status surfaces these signals:
+
+- `blockers`: current blocking reasons, such as `required_cooperation`,
+  `memory_required_but_empty`, `hygiene_blocking`, `review_required`,
+  `librarian_status`, `review_evidence_coherent` or `attempt_regress_count`.
+- `required_cooperation`: mandatory COO participants for material flows,
+  including `ancora-fluxo`, `chato`, `questionador`, `entrevista-me`,
+  `garimpeiro`, `dex-memoria`, `estacionamento`, `reuniao`, `sprinter`,
+  `duda-dev`, `mapeador-implementacao`, `revisor-codigo`, `tio-testador` and
+  `validador-pronto`. Reasons are tied to the blocker when possible, such as
+  `review_required`, `memory_required_but_empty` or `required_cooperation`.
+- `display.direct_action`: when blockers exist, it must say
+  `Bloqueado: ...`; it must not report `Gate pronto para avancar` with active
+  fiscal blockers. This rule applies recursively to nested payloads such as
+  `goal_status.checklist.display`, `evidence_add.status.checklist.display` and
+  archived blocked flows.
+- `checklist_render`: proof-dependent principles use a tri-state surface. They
+  can be `checked`, `blocked`/`unchecked` or `pending`; missing hygiene or
+  memory proof must not render as green.
+- `fiscal_policy.meeting_policy`: the meeting rotation and provocation
+  repertoire to seek blind spots, untried exits and the correct PPIRTV return
+  phase.
+- `ppirtv_checkin`: beginning-of-flow visibility check. It reports PPIRTV, COO,
+  Bibliotecario, Graphify and PPI as visible/configured/disabled/failed. When a
+  component is not visible, the engine records the auto-repair action it can
+  take or the required PPI action. When fiscal blockers are already known,
+  `ppirtv_checkin.direct_action` reports a visible check-in with blockers
+  instead of presenting the start as clean. It also exposes `trail_alignment`
+  for the pre-flight check of MCP cwd, workspace, SPT path, goal and evidence
+  contract before the flow leaves the initial station.
+- `ppirtv_checkout`: closing summary with verdict, meetings, evidence, review,
+  tests, garimpo, estacionamento, memory mining, librarian status and residual
+  risks. When blocked, `direct_action` lists the blockers and points back to
+  meeting/review/memory before any positive verdict. Archiving a blocked flow
+  preserves the blockers and reports `Arquivado com bloqueios preservados`.
+- `meeting_required`, `regress_required`, `back_to`, `next_required_action` and
+  `can_retry_verdict`: machine-readable fiscal action contract. Material
+  `required_cooperation` must lead to a traceable meeting/regress action before
+  retrying a positive verdict.
+- `goal_meeting_open`, `goal_meeting_add_turn` and `goal_meeting_close`: the
+  executable meeting contract. A meeting is persisted with `meeting_id`,
+  `flow_id`, `kind`, `opened_at`, `closed_at`, `participants_required`,
+  `participants_present`, `questions`, `findings`, `decision`,
+  `next_required_action`, `satisfies_blockers`, `created_by` and
+  `evidence_ids`. A positive fiscal verdict that cites material
+  `required_cooperation` must provide a closed `meeting_id` whose decision and
+  participants satisfy the blocker.
+- `goal_regress`: the executable regress contract. It persists the phase
+  return, links optional meeting/evidence and increments the fiscal anti-loop
+  count. A `regress_count` reported by `goal_verdict` is consumed into flow
+  history so status cannot forget an external loop count.
+- `regress_count`, `max_regressions` and `regress_limit_reached`: anti-loop
+  guard. The default fiscal maximum is 3 regressions; after that the next
+  action becomes an `open_decision_meeting` instead of another blind return.
+- `display.librarian` and `librarian_status`: visual Bibliotecario/Graphify
+  state. `librarian_status` is always structured, with
+  `bibliotecario.status`, `graphify.status`, `graphify.configured` and
+  `functional_tested`. If `PPIRTV_GRAPHIFY_RECALL=1`, Graphify is reported as
+  `configured=true` and `enabled=true`; before a runtime recall proves
+  participation, the reason is `configured_awaiting_beforePhase_functional_test`
+  and check-in can block with `librarian_or_graphify_not_functional` when
+  Graphify is required by risk. This pending functional test is not a
+  `graphify_config_mismatch`; mismatch is reserved for contradictory or invalid
+  configuration. Graphify status is one of `disabled`, `recalled`, `empty`,
+  `missing_graph`, `timeout` or `failed`.
+
+`provided=true` alone is not evidence in fiscal review gates. Code changes need
+`review_artifact_path`, `review_findings` or a review evidence artifact.
+Material recurring risk needs enough attempt/regress/meeting history before a
+positive verdict is accepted.
+
+`hygiene_scan` must not read `.env`. If `.env` is present, the scanner reports
+only an aggregate finding such as `.env:present_not_read` with
+`sensitive_content_read=false`; key names and values must not appear in output,
+ledger or evidence.
 
 ## Multi-Flow Pipelines
 
@@ -229,8 +338,27 @@ useful context before PPIRTV phases and record local learning material after
 them. The v1 uses local runtime files and preserves `mm_memory_mining` as the
 curated promotion path.
 
-`mm_memory_mining` reviews flow learning material, classifies candidates and can
-write valid memory entries according to the active memory contract.
+Graphify Recall can be enabled as an optional relational recall accelerator for
+the Bibliotecario. It is not canonical memory, not a verdict mechanism and not
+a promotion path. Graphify-derived hints are marked with `source: graphify`;
+`graphify-out/` is derived local output and must not be committed.
+
+When Graphify is enabled or expected, the Bibliotecario return exposes a visual
+status instead of hiding failure inside the ledger. Missing graph, timeout,
+empty recall and query failure remain tolerated for flow advancement, but become
+visible fiscal evidence when the user or residual risk requires
+Bibliotecario/Graphify participation before a positive verdict.
+
+`mm_memory_mining` reviews flow learning material, classifies candidates and is
+the only path that writes curated memory automatically. With the default
+`auto_classify=true` and `write_policy=auto_write`, reusable findings,
+recurring trip hazards and prevention rules that classify as writable and
+unblocked are written first, then reported back through `written[].files` so the
+user can edit, complement or correct them. Consumer diagnostics should use
+`write_policy=classify_only`.
+
+Graphify and the Bibliotecario do not promote canonical memory. They can surface
+recall signals; promotion to L1/L2/L3 goes through `mm_memory_mining`.
 
 The tool must not write secrets, private payloads, runtime ledgers or local
 workspace state into public files.

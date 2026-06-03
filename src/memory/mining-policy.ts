@@ -1,4 +1,5 @@
 import path from "node:path";
+import { resolveDexMemoriaHome as resolveConfiguredDexMemoriaHome } from "../config.js";
 import type { Flow, Meeting, MemoryCandidate } from "../domain.js";
 import type { MemoryNugget } from "./memory-types.js";
 
@@ -23,7 +24,7 @@ const RECURRING_SIGNAL_PATTERN = /sempre|nunca|padrao|regra|recorrent|quando|con
 const FORGETTING_COST_PATTERN = /falh|bug|regress|bloque|quebra|falso|secret|token|evidencia|veredito/i;
 
 export function resolveDexMemoriaHome(): string {
-  return path.resolve(process.env.DEX_MEMORIA_HOME || path.join(process.env.USERPROFILE || process.env.HOME || process.cwd(), ".agents", "memories"));
+  return path.resolve(resolveConfiguredDexMemoriaHome());
 }
 
 export function collectMemoryNuggets(flow: Flow, meetings: Meeting[]): MemoryNugget[] {

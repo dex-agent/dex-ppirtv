@@ -1,0 +1,26 @@
+# Runtime, secrets and generated output
+.env
+.env.*
+.ppirtv/
+graphify-out/
+artifacts/
+*.log
+
+# Dependency and build output
+node_modules/
+dist/
+build/
+.venv/
+__pycache__/
+
+# Local agent/private workspace state
+.codex/
+.agents/HISTORICO/
+.agents/ESTACIONAMENTO.md
+
+# Editor and OS noise
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store

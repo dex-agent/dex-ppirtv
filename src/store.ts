@@ -1,6 +1,7 @@
 import { mkdir, readFile, readdir, rename, stat, writeFile, appendFile } from "node:fs/promises";
 import path from "node:path";
 import { existsSync } from "node:fs";
+import { resolvePpirtvHome } from "./config.js";
 import type { Evidence, Flow, LedgerEvent, Meeting } from "./domain.js";
 
 let idSequence = 0;
@@ -12,7 +13,7 @@ export class PpirtvStore {
   readonly evidenceDir: string;
   readonly ledgerPath: string;
 
-  constructor(root = process.env.PPIRTV_HOME ?? path.join(process.cwd(), ".ppirtv")) {
+  constructor(root = resolvePpirtvHome()) {
     this.root = root;
     this.flowsDir = path.join(root, "flows");
     this.meetingsDir = path.join(root, "meetings");
@@ -207,9 +208,31 @@ function normalizeFlow(flow: Flow): Flow {
 }
 
 function normalizeMeeting(meeting: Meeting): Meeting {
+  meeting.kind ??= meetingKindForLegacyType(meeting.type);
+  meeting.participants_required ??= [];
+  meeting.participants_present ??= [];
+  meeting.findings ??= [];
+  meeting.decision ??= meeting.decisions?.[0];
+  meeting.next_required_action ??= null;
+  meeting.satisfies_blockers ??= [];
+  meeting.evidence_ids ??= [];
+  meeting.turns ??= [];
   meeting.parking_lot ??= [];
   meeting.gold_mining ??= [];
   meeting.cooperators ??= [];
   meeting.active_credits ??= [];
   return meeting;
+}
+
+function meetingKindForLegacyType(type: Meeting["type"]): Meeting["kind"] {
+  if (type === "convergent") {
+    return "convergente";
+  }
+  if (type === "transversal") {
+    return "transversal";
+  }
+  if (type === "decision") {
+    return "decisao";
+  }
+  return "divergente";
 }

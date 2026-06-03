@@ -1,6 +1,6 @@
 import type { Flow, Meeting, Phase } from "../domain.js";
 
-export type MemorySource = "runtime" | "curated_l1" | "curated_l2" | "curated_l3";
+export type MemorySource = "runtime" | "curated_l1" | "curated_l2" | "curated_l3" | "graphify";
 
 export type MemoryRecallItem = {
   source: MemorySource;
@@ -8,6 +8,9 @@ export type MemoryRecallItem = {
   snippet: string;
   path?: string;
   score: number;
+  question?: string;
+  destination?: "recall_hint";
+  observation?: string;
 };
 
 export type MemoryRecallSummary = {
@@ -16,6 +19,10 @@ export type MemoryRecallSummary = {
   recalled_at: string;
   items: MemoryRecallItem[];
   warnings: string[];
+  visual_status: {
+    librarian: "disabled" | "recalled" | "empty" | "missing_graph" | "timeout" | "failed";
+    graphify: "disabled" | "recalled" | "empty" | "missing_graph" | "timeout" | "failed";
+  };
 };
 
 export type MemoryRuntimeRecord = {
