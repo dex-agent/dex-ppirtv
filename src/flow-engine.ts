@@ -2777,6 +2777,9 @@ function isBlockerStillActive(flow: Flow, reason: string): boolean {
   if (reason === "memory_required_but_empty") {
     return memoryRequiredByFlow(flow) && noMemoryWasPromoted(flow);
   }
+  if (reason === "review_required") {
+    return !hasReviewEvidence(flow, {});
+  }
   return true;
 }
 
@@ -2968,7 +2971,7 @@ function nextRequiredActionFor(
   }
   const meetingKind = requiredMeetingKind(flow, blockers, regressLimitReached);
   const openMeeting = latestOpenMeeting(meetings, meetingKind) ?? latestOpenMeeting(meetings);
-  if (blockers.includes("required_cooperation") || !hasClosedMeetingKind(flow, meetingKind)) {
+  if (blockers.includes("required_cooperation")) {
     if (blockers.includes("required_cooperation") && openMeeting) {
       return {
         type: "close_existing_meeting",
@@ -2999,9 +3002,7 @@ function nextRequiredActionFor(
       can_retry_verdict: false,
       required_satisfies_blockers: blockers.includes("required_cooperation") ? ["required_cooperation"] : [],
       loop_guard: "execute a sequencia completa e confirme goal_status antes de repetir goal_verdict",
-      required_tool_sequence: blockers.includes("required_cooperation")
-        ? requiredCooperationSequence(flow, "<meeting_id>", meetingKind, blockers, backTo, false)
-        : []
+      required_tool_sequence: requiredCooperationSequence(flow, "<meeting_id>", meetingKind, blockers, backTo, false)
     };
   }
   if (blockers.includes("review_required")) {
@@ -3012,7 +3013,9 @@ function nextRequiredActionFor(
       back_to: backTo,
       regress_count: regressCount,
       max_regressions: FISCAL_CONFIG.maxRegressions,
-      can_retry_verdict: false
+      can_retry_verdict: false,
+      loop_guard: "nao abrir nova reuniao nem repetir goal_verdict enquanto a evidencia de review nao estiver anexada e goal_status nao confirmar a remocao de review_required",
+      required_tool_sequence: reviewRequiredSequence(flow)
     };
   }
   if (blockers.includes("memory_required_but_empty")) {
@@ -3114,6 +3117,45 @@ function requiredCooperationSequence(
     args: { flow_id: flow.flow_id }
   });
   return sequence;
+}
+
+function reviewRequiredSequence(flow: Flow): Array<Record<string, unknown>> {
+  return [
+    {
+      order: 1,
+      tool: "evidence_add",
+      purpose: "anexar revisao explicita com achados reais, riscos, escopo revisado e decisao",
+      args: {
+        flow_id: flow.flow_id,
+        kind: "code_review",
+        title: "Revisao adversarial do SPT / artefatos finais",
+        content:
+          "Escopo revisado: <arquivos/artefatos>. Achados: <lista real>. Riscos: <risco residual>. Decisao: <bloquear/liberar com ressalva>.",
+        satisfies: ["review_required"]
+      },
+      capture: "review_evidence_id"
+    },
+    {
+      order: 2,
+      tool: "goal_status",
+      purpose: "confirmar que review_required saiu dos blockers antes de qualquer veredito",
+      args: { flow_id: flow.flow_id }
+    },
+    {
+      order: 3,
+      tool: "goal_verdict",
+      purpose: "somente se goal_status nao listar review_required; incluir evidence_ids e review_findings reais",
+      only_if: "goal_status.blockers nao contem review_required",
+      args: {
+        flow_id: flow.flow_id,
+        status: "pronto_com_ressalvas",
+        evidence_ids: ["<review_evidence_id>", "<evidence_ids_obrigatorias>"],
+        review_findings: ["<achado real de review>"],
+        rationale: "Veredito apos review explicita e blockers fiscais resolvidos.",
+        next_step: "arquivar ou executar pendencia rastreavel"
+      }
+    }
+  ];
 }
 
 function blockerResolutionGuidance(blockers: string[], nextRequiredAction: Record<string, unknown> | null): Record<string, unknown> | null {

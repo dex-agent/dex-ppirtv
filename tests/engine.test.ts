@@ -1925,6 +1925,68 @@ describe("PPIRTV flow engine", () => {
     );
   });
 
+  it("T25b reconciles review_required after explicit code review evidence without opening another meeting", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-review-required-reconcile", "Review fiscal explicito");
+    await engine.updateFlowFacts(flowId, { changed_files: ["src/flow-engine.ts"] });
+    const opened = await engine.goalMeetingOpen({
+      flow_id: flowId,
+      kind: "convergente",
+      question: "A cooperacao material libera o veredito sem review?"
+    });
+    const meetingId = opened.meeting_id as string;
+    await engine.goalMeetingClose({
+      flow_id: flowId,
+      meeting_id: meetingId,
+      participants_present: ["chato", "questionador", "reuniao", "validador-pronto", "revisor-codigo"],
+      findings: ["Cooperacao material satisfeita; review explicito ainda precisa existir."],
+      decision: "Fechar required_cooperation e exigir review antes de novo veredito.",
+      satisfies_blockers: ["required_cooperation"]
+    });
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Mudanca de codigo com risco material ainda sem review explicito.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["review ainda nao anexado"],
+        meeting_id: meetingId,
+        next_step: "anexar review"
+      })
+    ).rejects.toThrow(/review_required/i);
+
+    const blocked = await engine.goalStatus({ flow_id: flowId });
+    expect(blocked.blockers).toContain("review_required");
+    expect(blocked.next_required_action).toMatchObject({
+      type: "attach_review",
+      tool: "evidence_add",
+      loop_guard: expect.stringContaining("nao abrir nova reuniao"),
+      required_tool_sequence: expect.arrayContaining([
+        expect.objectContaining({ tool: "evidence_add" }),
+        expect.objectContaining({ tool: "goal_status" }),
+        expect.objectContaining({ tool: "goal_verdict", only_if: expect.stringContaining("review_required") })
+      ])
+    });
+    expect((blocked.next_required_action as { required_tool_sequence: Array<Record<string, unknown>> }).required_tool_sequence).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ tool: "goal_meeting_open" })])
+    );
+
+    await engine.addGoalEvidence({
+      flow_id: flowId,
+      kind: "code_review",
+      title: "Revisao adversarial dos artefatos finais",
+      content: "Review feito sobre src/flow-engine.ts. Achado: blocker antigo nao deve ser preservado apos evidencia. Decisao: liberar nova checagem.",
+      satisfies: ["review_required"]
+    });
+    const resolved = await engine.goalStatus({ flow_id: flowId });
+
+    expect(resolved.blockers).not.toContain("review_required");
+    expect(resolved.next_required_action).not.toMatchObject({ type: "attach_review" });
+    expect(resolved.ppirtv_checkout).toMatchObject({
+      resolution_guidance: resolved.blockers.length > 0 ? expect.any(Object) : null
+    });
+  });
+
   it("T26 persists goal_regress and consumes reported regress_count before requiring decision meeting", async () => {
     const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-goal-regress-tool", "Regresso fiscal auditavel");
 
