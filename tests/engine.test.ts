@@ -9,13 +9,30 @@ import { PpirtvStore } from "../src/store.js";
 
 let tempRoot: string;
 let engine: FlowEngine;
+let originalTestEnv: Record<string, string | undefined>;
+
+const TEST_ENV_KEYS = [
+  "PPIRTV_GRAPHIFY_RECALL",
+  "PPIRTV_GRAPHIFY_COMMAND",
+  "PPIRTV_GRAPHIFY_GRAPH_PATH",
+  "PPIRTV_GRAPHIFY_TIMEOUT_MS",
+  "PPIRTV_GRAPHIFY_BUDGET",
+  "PPIRTV_PRINCIPLES_PATH",
+  "USERPROFILE"
+] as const;
 
 beforeEach(async () => {
   tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-engine-"));
+  originalTestEnv = snapshotEnv(TEST_ENV_KEYS);
+  for (const key of TEST_ENV_KEYS) {
+    delete process.env[key];
+  }
+  process.env.USERPROFILE = path.join(tempRoot, "home-without-shared-principles");
   engine = new FlowEngine(new PpirtvStore(tempRoot));
 });
 
 afterEach(async () => {
+  restoreEnvSnapshot(originalTestEnv);
   if (tempRoot.startsWith(os.tmpdir())) {
     await rm(tempRoot, { recursive: true, force: true });
   }
@@ -1231,7 +1248,7 @@ describe("PPIRTV flow engine", () => {
     const gate = await engine.goalGateCheck({
       flow_id: flowId,
       phase: "revisao",
-      provided: { diff_reviewed: true, barata_scan: true, regression_risks: ["risco de regressao"] }
+      provided: { diff_reviewed: true, barata_scan: true, regression_risks: ["risco de regressao"], changed_files: ["src/flow-engine.ts"] }
     });
 
     expect(gate.status).toBe("blocked");
@@ -2862,6 +2879,20 @@ function restoreUserProfile(value: string | undefined): void {
     delete process.env.USERPROFILE;
   } else {
     process.env.USERPROFILE = value;
+  }
+}
+
+function snapshotEnv(keys: readonly string[]): Record<string, string | undefined> {
+  return Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+}
+
+function restoreEnvSnapshot(snapshot: Record<string, string | undefined>): void {
+  for (const [key, value] of Object.entries(snapshot)) {
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
   }
 }
 

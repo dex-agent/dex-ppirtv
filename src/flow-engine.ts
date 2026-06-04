@@ -2746,7 +2746,8 @@ function isMaterialHygieneFinding(finding: HygieneFinding): boolean {
 }
 
 function needsReviewCoherence(flow: Flow, phase: Phase, provided: Record<string, unknown>): boolean {
-  if (phase !== "revisao" || !flow.goal_binding || flow.changed_files.length === 0) {
+  const changedFilesVisible = flow.changed_files.length > 0 || stringArray(provided.changed_files).length > 0;
+  if (phase !== "revisao" || !flow.goal_binding || !changedFilesVisible) {
     return false;
   }
   return truthy(provided.diff_reviewed) && !truthy(provided.review_artifact_path) && !truthy(provided.review_findings);
