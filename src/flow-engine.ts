@@ -75,6 +75,28 @@ type FiscalPolicyResult = {
   direct_action: string;
 };
 
+type LoopMonitor = {
+  loop_id: string;
+  signature: string;
+  blockers: string[];
+  count: number;
+  fiscal_block_count: number;
+  review_regress_count: number;
+  reset_policy: string;
+  escalation: {
+    active: boolean;
+    level:
+      | "monitoring"
+      | "convergence_transversal"
+      | "divergence_transversal"
+      | "research_subagent"
+      | "emergency_meeting"
+      | "bad_loop_review_work";
+    threshold: number | null;
+    label: string;
+  };
+};
+
 export class FlowEngine {
   readonly store: PpirtvStore;
   readonly memoryHooks: MemoryHookRunner;
@@ -396,8 +418,9 @@ export class FlowEngine {
     const regressCount = countRegressions(flow);
     const regressLimitReached = regressCount >= FISCAL_CONFIG.maxRegressions;
     const meetings = await this.store.listMeetings(flow.flow_id);
-    const nextRequiredAction = nextRequiredActionFor(flow, meetings, blockers, backTo, regressCount, regressLimitReached);
-    const resolutionGuidance = blockerResolutionGuidance(blockers, nextRequiredAction);
+    const loopMonitor = fiscalLoopMonitor(flow, blockers);
+    const nextRequiredAction = nextRequiredActionFor(flow, meetings, blockers, backTo, regressCount, regressLimitReached, loopMonitor);
+    const resolutionGuidance = blockerResolutionGuidance(blockers, nextRequiredAction, loopMonitor);
     return {
       flow_id: flow.flow_id,
       status: flow.status,
@@ -452,6 +475,7 @@ export class FlowEngine {
       regress_limit_reached: regressLimitReached,
       locked_by_limit: regressLimitReached,
       back_to: backTo,
+      loop_monitor: loopMonitor,
       next_required_action: nextRequiredAction,
       resolution_guidance: resolutionGuidance,
       can_retry_verdict: blockers.length === 0,
@@ -1766,12 +1790,16 @@ export class FlowEngine {
 
   private async persistFiscalBlock(flow: Flow, fiscal: FiscalPolicyResult, source: string): Promise<void> {
     const now = nowIso();
+    const loopId = blockerLoopId(fiscal.blocking_reasons);
+    const loopSignature = blockerSignature(fiscal.blocking_reasons);
     flow.status = "blocked";
     flow.history.push({
       at: now,
       type: "fiscal_policy_blocked",
       data: {
         source,
+        loop_id: loopId,
+        loop_signature: loopSignature,
         blocking_reasons: fiscal.blocking_reasons,
         memory_required: fiscal.blocking_reasons.includes("memory_required_but_empty"),
         required_cooperation: fiscal.required_cooperation
@@ -1781,6 +1809,8 @@ export class FlowEngine {
     await this.store.saveFlow(flow);
     await this.ledger(flow.flow_id, "fiscal_policy_blocked", {
       source,
+      loop_id: loopId,
+      loop_signature: loopSignature,
       blocking_reasons: fiscal.blocking_reasons,
       memory_required: fiscal.blocking_reasons.includes("memory_required_but_empty"),
       required_cooperation: fiscal.required_cooperation
@@ -2935,10 +2965,15 @@ function nextRequiredActionFor(
   blockers: string[],
   backTo: Phase | null,
   regressCount: number,
-  regressLimitReached: boolean
+  regressLimitReached: boolean,
+  loopMonitor: LoopMonitor | null
 ): Record<string, unknown> | null {
   if (blockers.length === 0) {
     return null;
+  }
+  const loopAction = loopEscalationAction(flow, blockers, backTo, loopMonitor);
+  if (loopAction) {
+    return loopAction;
   }
   if (regressLimitReached) {
     return {
@@ -3119,6 +3154,226 @@ function requiredCooperationSequence(
   return sequence;
 }
 
+function loopEscalationAction(flow: Flow, blockers: string[], backTo: Phase | null, loopMonitor: LoopMonitor | null): Record<string, unknown> | null {
+  if (!loopMonitor?.escalation.active) {
+    return null;
+  }
+  const common = {
+    loop_id: loopMonitor.loop_id,
+    loop_count: loopMonitor.count,
+    blockers,
+    back_to: backTo,
+    can_retry_verdict: false,
+    loop_guard: "nao repetir a mesma acao enquanto loop_monitor.escalation.active=true; executar a sequencia de escalonamento e confirmar goal_status"
+  };
+  if (loopMonitor.count >= 9) {
+    return {
+      ...common,
+      type: "bad_loop_review_work",
+      tool: "evidence_add",
+      reason: "9 ocorrencias na mesma janela sem progresso: acionar estacionamento e garimpeiro, documentar achados e finalizar como LOOP RUIM REVISAR TRABALHO",
+      required_tool_sequence: badLoopReviewSequence(flow, loopMonitor)
+    };
+  }
+  if (loopMonitor.count >= 8) {
+    return {
+      ...common,
+      type: "emergency_meeting",
+      tool: "goal_meeting_open",
+      reason: "8 ocorrencias: abrir reuniao de emergencia com provocacao e especialistas extras em divergencia/convergencia/transversal",
+      required_tool_sequence: emergencyLoopSequence(flow, loopMonitor)
+    };
+  }
+  if (loopMonitor.count >= 6) {
+    return {
+      ...common,
+      type: "research_subagent_request",
+      tool: "subagent_research_request",
+      reason: "6 ocorrencias: pedir pesquisa organizada antes de continuar tentando a mesma correcao",
+      required_tool_sequence: researchLoopSequence(flow, loopMonitor)
+    };
+  }
+  if (loopMonitor.count >= 5) {
+    return {
+      ...common,
+      type: "divergence_transversal_meetings",
+      tool: "goal_meeting_open",
+      reason: "5 ocorrencias: abrir reunioes divergente e transversal para quebrar premissa repetida",
+      required_tool_sequence: loopMeetingSequence(flow, loopMonitor, ["divergente", "transversal"])
+    };
+  }
+  return {
+    ...common,
+    type: "convergence_transversal_meetings",
+    tool: "goal_meeting_open",
+    reason: "3 ocorrencias: abrir reunioes convergente e transversal para decidir recuperacao sem falso-verde",
+    required_tool_sequence: loopMeetingSequence(flow, loopMonitor, ["convergente", "transversal"])
+  };
+}
+
+function loopMeetingSequence(flow: Flow, loopMonitor: LoopMonitor, kinds: MeetingKind[]): Array<Record<string, unknown>> {
+  const participants = requiredMeetingParticipants(loopMonitor.blockers);
+  const sequence: Array<Record<string, unknown>> = kinds.flatMap((kind, index) => {
+    const meetingId = `<${kind}_meeting_id>`;
+    return [
+      {
+        order: index * 3 + 1,
+        tool: "goal_meeting_open",
+        purpose: `abrir reuniao ${kind} para loop_id=${loopMonitor.loop_id}`,
+        args: {
+          flow_id: flow.flow_id,
+          kind,
+          question: `Loop ${loopMonitor.loop_id} repetiu ${loopMonitor.count} vezes. O que muda agora para nao repetir a mesma acao?`,
+          participants_required: participants
+        },
+        capture: meetingId
+      },
+      {
+        order: index * 3 + 2,
+        tool: "goal_meeting_add_turn",
+        purpose: "registrar provocacao material do Chato/Questionador antes do fechamento",
+        args: {
+          flow_id: flow.flow_id,
+          meeting_id: meetingId,
+          speaker: "chato",
+          question: "E SE a proxima tentativa for so repeticao? qual origem, destino, responsavel e evidencia nova?",
+          finding: `loop_id=${loopMonitor.loop_id}; blockers=${loopMonitor.blockers.join(", ")}`
+        }
+      },
+      {
+        order: index * 3 + 3,
+        tool: "goal_meeting_close",
+        purpose: `fechar reuniao ${kind} com decisao e proxima acao diferente`,
+        args: {
+          flow_id: flow.flow_id,
+          meeting_id: meetingId,
+          participants_present: participants,
+          findings: [`Loop ${loopMonitor.loop_id} analisado em reuniao ${kind}.`],
+          decision: "Definir acao nova, evidencia nova ou bloqueio explicito antes de repetir tentativa.",
+          satisfies_blockers: []
+        }
+      }
+    ];
+  });
+  return sequence.concat([{ order: kinds.length * 3 + 1, tool: "goal_status", purpose: "confirmar loop_monitor e blockers apos reunioes", args: { flow_id: flow.flow_id } }]);
+}
+
+function researchLoopSequence(flow: Flow, loopMonitor: LoopMonitor): Array<Record<string, unknown>> {
+  return [
+    {
+      order: 1,
+      tool: "subagent_research_request",
+      purpose: "acionar pesquisador organizado com contexto minimo e salvar pesquisa em .agents/PESQUISA",
+      args: {
+        skill: "pesquisador-organizado",
+        repo: flow.goal_binding?.envelope.workspace ?? "<WORKSPACE>",
+        mission: `Pesquisar causa e saidas para loop ${loopMonitor.loop_id} com blockers ${loopMonitor.blockers.join(", ")} sem ler segredos.`,
+        objective: "troubleshooting",
+        required_outputs: ["relatorio", "raw-notes.md", "sources.json"]
+      }
+    },
+    {
+      order: 2,
+      tool: "evidence_add",
+      purpose: "anexar relatorio da pesquisa como evidencia antes de nova tentativa",
+      args: {
+        flow_id: flow.flow_id,
+        kind: "research_report",
+        title: `Pesquisa organizada para ${loopMonitor.loop_id}`,
+        content: "Anexar caminho do relatorio .agents/PESQUISA e achados principais.",
+        satisfies: ["loop_research_required"]
+      }
+    },
+    { order: 3, tool: "goal_status", purpose: "confirmar se a pesquisa mudou a proxima acao", args: { flow_id: flow.flow_id } }
+  ];
+}
+
+function emergencyLoopSequence(flow: Flow, loopMonitor: LoopMonitor): Array<Record<string, unknown>> {
+  const participants = ["chato", "questionador", "entrevista-me", "reuniao", "garimpeiro", "estacionamento", "revisor-codigo", "tio-testador", "validador-pronto", "ppi"];
+  return [
+    {
+      order: 1,
+      tool: "goal_meeting_open",
+      purpose: "abrir reuniao de emergencia com especialistas extras",
+      args: {
+        flow_id: flow.flow_id,
+        kind: "decisao",
+        question: `EMERGENCIA: loop ${loopMonitor.loop_id} chegou a ${loopMonitor.count}. Que premissa falsa esta mantendo o trabalho preso?`,
+        participants_required: participants
+      },
+      capture: "emergency_meeting_id"
+    },
+    {
+      order: 2,
+      tool: "goal_meeting_add_turn",
+      purpose: "registrar provocacao adversarial de emergencia",
+      args: {
+        flow_id: flow.flow_id,
+        meeting_id: "<emergency_meeting_id>",
+        speaker: "chato",
+        question: "A PERGUNTA PRINCIPAL: estamos seguindo nossos principios ou repetindo ferramenta sem aprendizado?",
+        finding: `loop_id=${loopMonitor.loop_id}; decretar mudanca de estrategia antes de qualquer veredito.`
+      }
+    },
+    {
+      order: 3,
+      tool: "goal_meeting_close",
+      purpose: "fechar emergencia com decisao, estacionamento e acao nova",
+      args: {
+        flow_id: flow.flow_id,
+        meeting_id: "<emergency_meeting_id>",
+        participants_present: participants,
+        findings: [`Loop ${loopMonitor.loop_id} exige emergencia fiscal.`],
+        decision: "Nao repetir a mesma acao; escolher acao nova ou preparar encerramento LOOP RUIM.",
+        satisfies_blockers: []
+      }
+    },
+    { order: 4, tool: "goal_status", purpose: "confirmar estado apos emergencia", args: { flow_id: flow.flow_id } }
+  ];
+}
+
+function badLoopReviewSequence(flow: Flow, loopMonitor: LoopMonitor): Array<Record<string, unknown>> {
+  return [
+    {
+      order: 1,
+      tool: "use_skill",
+      purpose: "acionar estacionamento para selecionar achados, pendencias e pontos cegos vivos",
+      args: { skill: "estacionamento", flow_id: flow.flow_id, loop_id: loopMonitor.loop_id, action: "selecionar achados e pendencias do loop" }
+    },
+    {
+      order: 2,
+      tool: "use_skill",
+      purpose: "acionar garimpeiro para separar ouro, armadilha recorrente e descarte",
+      args: { skill: "garimpeiro", flow_id: flow.flow_id, loop_id: loopMonitor.loop_id, action: "curar achados reutilizaveis do loop" }
+    },
+    {
+      order: 3,
+      tool: "evidence_add",
+      purpose: "documentar encerramento fiscal do loop ruim",
+      args: {
+        flow_id: flow.flow_id,
+        kind: "bad_loop_report",
+        title: "LOOP RUIM REVISAR TRABALHO",
+        content: `loop_id=${loopMonitor.loop_id}; count=${loopMonitor.count}; blockers=${loopMonitor.blockers.join(", ")}; achados estacionados e garimpados antes de finalizar.`,
+        satisfies: ["bad_loop_documented"]
+      }
+    },
+    {
+      order: 4,
+      tool: "goal_verdict",
+      purpose: "finalizar sem falso-verde: decretar bloqueado/nao_pronto",
+      args: {
+        flow_id: flow.flow_id,
+        status: "bloqueado",
+        rationale: "LOOP RUIM REVISAR TRABALHO: limite de repeticao atingido sem progresso suficiente.",
+        evidence_ids: ["<bad_loop_report_evidence_id>"],
+        residual_risks: ["trabalho precisa ser revisado antes de nova tentativa"],
+        next_step: "revisar metodo, contrato e evidencias antes de reabrir"
+      }
+    }
+  ];
+}
+
 function reviewRequiredSequence(flow: Flow): Array<Record<string, unknown>> {
   return [
     {
@@ -3158,16 +3413,109 @@ function reviewRequiredSequence(flow: Flow): Array<Record<string, unknown>> {
   ];
 }
 
-function blockerResolutionGuidance(blockers: string[], nextRequiredAction: Record<string, unknown> | null): Record<string, unknown> | null {
+function blockerResolutionGuidance(
+  blockers: string[],
+  nextRequiredAction: Record<string, unknown> | null,
+  loopMonitor: LoopMonitor | null
+): Record<string, unknown> | null {
   if (blockers.length === 0 || !nextRequiredAction) {
     return null;
   }
   return {
-    summary: "nao repetir goal_verdict enquanto can_retry_verdict=false; executar next_required_action.required_tool_sequence na ordem",
+    summary: loopMonitor?.escalation.active
+      ? "loop fiscal detectado; nao repetir a mesma acao, executar escalonamento por loop_monitor"
+      : "nao repetir goal_verdict enquanto can_retry_verdict=false; executar next_required_action.required_tool_sequence na ordem",
     blockers,
     loop_guard: "se required_cooperation reaparecer, verificar reuniao aberta/fechada e satisfies_blockers antes de abrir nova reuniao",
+    loop_monitor: loopMonitor,
     next_required_action: nextRequiredAction
   };
+}
+
+function fiscalLoopMonitor(flow: Flow, blockers: string[]): LoopMonitor | null {
+  const activeBlockers = unique(blockers).sort();
+  if (activeBlockers.length === 0) {
+    return null;
+  }
+  const signature = blockerSignature(activeBlockers);
+  const loopId = blockerLoopId(activeBlockers);
+  const windowEvents = loopWindowEvents(flow, signature);
+  const fiscalBlockCount = windowEvents.filter(
+    (event) => event.type === "fiscal_policy_blocked" && String(event.data.loop_signature ?? blockerSignature(stringArray(event.data.blocking_reasons))) === signature
+  ).length;
+  const reviewRegressCount = windowEvents.filter((event) => {
+    if (event.type !== "phase_returned" || String(event.data.to) !== "revisao") {
+      return false;
+    }
+    const text = [event.data.reason, ...(Array.isArray(event.data.evidence_ids) ? event.data.evidence_ids : [])].filter(Boolean).join("\n");
+    return /review|revis|block|fiscal/i.test(text);
+  }).length;
+  const count = Math.max(fiscalBlockCount, reviewRegressCount);
+  return {
+    loop_id: loopId,
+    signature,
+    blockers: activeBlockers,
+    count,
+    fiscal_block_count: fiscalBlockCount,
+    review_regress_count: reviewRegressCount,
+    reset_policy: "contagem considera apenas a janela desde o ultimo progresso: evidencia, reuniao fechada, memoria minerada, gate passado, fase avancada, veredito ou blocker diferente",
+    escalation: loopEscalationFor(count)
+  };
+}
+
+function loopWindowEvents(flow: Flow, signature: string): Flow["history"] {
+  const history = flow.history;
+  let start = 0;
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    if (isLoopResetEvent(history[index], signature)) {
+      start = index + 1;
+      break;
+    }
+  }
+  return history.slice(start);
+}
+
+function isLoopResetEvent(event: Flow["history"][number], signature: string): boolean {
+  if (event.type === "fiscal_policy_blocked") {
+    const eventSignature = String(event.data.loop_signature ?? blockerSignature(stringArray(event.data.blocking_reasons)));
+    return eventSignature !== signature;
+  }
+  if (event.type === "gate_checked" && event.data.status === "passed") {
+    return true;
+  }
+  return ["evidence_attached", "meeting_closed", "memory_mined", "phase_advanced", "verdict_recorded", "flow_completed", "flow_archived"].includes(event.type);
+}
+
+function loopEscalationFor(count: number): LoopMonitor["escalation"] {
+  if (count >= 9) {
+    return { active: true, level: "bad_loop_review_work", threshold: 9, label: "LOOP RUIM REVISAR TRABALHO" };
+  }
+  if (count >= 8) {
+    return { active: true, level: "emergency_meeting", threshold: 8, label: "reuniao de emergencia com mais especialistas" };
+  }
+  if (count >= 6) {
+    return { active: true, level: "research_subagent", threshold: 6, label: "acionar pesquisador organizado/subagente" };
+  }
+  if (count >= 5) {
+    return { active: true, level: "divergence_transversal", threshold: 5, label: "reunioes divergente e transversal" };
+  }
+  if (count >= 3) {
+    return { active: true, level: "convergence_transversal", threshold: 3, label: "reunioes convergente e transversal" };
+  }
+  return { active: false, level: "monitoring", threshold: null, label: "monitorando repeticao sem escalonamento" };
+}
+
+function blockerSignature(blockers: string[]): string {
+  return unique(blockers).sort().join("|");
+}
+
+function blockerLoopId(blockers: string[]): string {
+  const token = blockerSignature(blockers)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 90);
+  return `loop_${token || "unknown"}`;
 }
 
 function structuredLibrarianStatus(raw: RecallVisualStatus | null): StructuredLibrarianStatus {

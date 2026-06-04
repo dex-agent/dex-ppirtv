@@ -1987,6 +1987,86 @@ describe("PPIRTV flow engine", () => {
     });
   });
 
+  it("T25c escalates repeated fiscal review loops by loop_id without relying on elapsed time", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-review-loop-escalation", "Escalonamento de loop fiscal");
+    await engine.updateFlowFacts(flowId, { changed_files: ["src/flow-engine.ts"] });
+
+    await repeatFiscalBlock(flowId, evidenceId, 3);
+    const atThree = await engine.goalStatus({ flow_id: flowId });
+    expect(atThree.loop_monitor).toMatchObject({
+      count: 3,
+      escalation: { active: true, level: "convergence_transversal", threshold: 3 }
+    });
+    expect(atThree.next_required_action).toMatchObject({
+      type: "convergence_transversal_meetings",
+      required_tool_sequence: expect.arrayContaining([
+        expect.objectContaining({ tool: "goal_meeting_open", args: expect.objectContaining({ kind: "convergente" }) }),
+        expect.objectContaining({ tool: "goal_meeting_open", args: expect.objectContaining({ kind: "transversal" }) })
+      ])
+    });
+
+    await repeatFiscalBlock(flowId, evidenceId, 2);
+    const atFive = await engine.goalStatus({ flow_id: flowId });
+    expect(atFive.loop_monitor).toMatchObject({ count: 5, escalation: { level: "divergence_transversal", threshold: 5 } });
+    expect(atFive.next_required_action).toMatchObject({
+      type: "divergence_transversal_meetings",
+      required_tool_sequence: expect.arrayContaining([
+        expect.objectContaining({ tool: "goal_meeting_open", args: expect.objectContaining({ kind: "divergente" }) }),
+        expect.objectContaining({ tool: "goal_meeting_open", args: expect.objectContaining({ kind: "transversal" }) })
+      ])
+    });
+
+    await repeatFiscalBlock(flowId, evidenceId, 1);
+    const atSix = await engine.goalStatus({ flow_id: flowId });
+    expect(atSix.loop_monitor).toMatchObject({ count: 6, escalation: { level: "research_subagent", threshold: 6 } });
+    expect(atSix.next_required_action).toMatchObject({
+      type: "research_subagent_request",
+      required_tool_sequence: expect.arrayContaining([expect.objectContaining({ tool: "subagent_research_request" })])
+    });
+
+    await repeatFiscalBlock(flowId, evidenceId, 2);
+    const atEight = await engine.goalStatus({ flow_id: flowId });
+    expect(atEight.loop_monitor).toMatchObject({ count: 8, escalation: { level: "emergency_meeting", threshold: 8 } });
+    expect(atEight.next_required_action).toMatchObject({ type: "emergency_meeting" });
+
+    await repeatFiscalBlock(flowId, evidenceId, 1);
+    const atNine = await engine.goalStatus({ flow_id: flowId });
+    expect(atNine.loop_monitor).toMatchObject({ count: 9, escalation: { level: "bad_loop_review_work", threshold: 9 } });
+    expect(atNine.next_required_action).toMatchObject({
+      type: "bad_loop_review_work",
+      required_tool_sequence: expect.arrayContaining([
+        expect.objectContaining({ tool: "use_skill", args: expect.objectContaining({ skill: "estacionamento" }) }),
+        expect.objectContaining({ tool: "use_skill", args: expect.objectContaining({ skill: "garimpeiro" }) }),
+        expect.objectContaining({ tool: "evidence_add", args: expect.objectContaining({ title: "LOOP RUIM REVISAR TRABALHO" }) })
+      ])
+    });
+  });
+
+  it("T25d resets loop count after progress and starts a new blocker signature at one", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-review-loop-reset", "Reset de loop fiscal");
+    await engine.updateFlowFacts(flowId, { changed_files: ["src/flow-engine.ts"] });
+    await repeatFiscalBlock(flowId, evidenceId, 3);
+    const beforeReset = await engine.goalStatus({ flow_id: flowId });
+    const oldLoopId = (beforeReset.loop_monitor as Record<string, unknown>).loop_id;
+    expect(beforeReset.loop_monitor).toMatchObject({ count: 3, escalation: { active: true } });
+
+    await engine.addGoalEvidence({
+      flow_id: flowId,
+      kind: "code_review",
+      title: "Review explicito reseta loop antigo",
+      content: "Review feito sobre src/flow-engine.ts. Achado real registrado; review_required nao deve continuar contando.",
+      satisfies: ["review_required"]
+    });
+    const afterProgress = await engine.goalStatus({ flow_id: flowId });
+    expect(afterProgress.blockers).not.toContain("review_required");
+    expect(afterProgress.loop_monitor).toMatchObject({ count: 0, escalation: { active: false } });
+
+    await repeatFiscalBlock(flowId, evidenceId, 1);
+    const nextError = await engine.goalStatus({ flow_id: flowId });
+    expect(nextError.loop_monitor).toMatchObject({ count: 1, escalation: { active: false } });
+    expect((nextError.loop_monitor as Record<string, unknown>).loop_id).not.toEqual(oldLoopId);
+  });
+
   it("T26 persists goal_regress and consumes reported regress_count before requiring decision meeting", async () => {
     const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-goal-regress-tool", "Regresso fiscal auditavel");
 
@@ -2863,6 +2943,21 @@ async function startGoalWithEvidence(
     satisfies: ["npm run check"]
   });
   return { flowId, evidenceId: evidence.evidence_id as string, workspace, sptPath };
+}
+
+async function repeatFiscalBlock(flowId: string, evidenceId: string, times: number): Promise<void> {
+  for (let index = 0; index < times; index += 1) {
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Mudanca de codigo com risco material ainda sem cooperacao/review.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["sem reuniao material e sem review explicito"],
+        next_step: "tentar resolver blocker fiscal"
+      })
+    ).rejects.toThrow(/PPIRTV_FISCAL_BLOCKED/i);
+  }
 }
 
 function assertNoFalseGreenDirectAction(payload: unknown, label: string): void {
