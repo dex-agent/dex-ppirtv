@@ -2021,7 +2021,22 @@ describe("PPIRTV flow engine", () => {
     expect(atSix.loop_monitor).toMatchObject({ count: 6, escalation: { level: "research_subagent", threshold: 6 } });
     expect(atSix.next_required_action).toMatchObject({
       type: "research_subagent_request",
-      required_tool_sequence: expect.arrayContaining([expect.objectContaining({ tool: "subagent_research_request" })])
+      required_tool_sequence: expect.arrayContaining([
+        expect.objectContaining({
+          tool: "subagent_research_request",
+          skill_resolution: expect.objectContaining({
+            required_skill: "pesquisador-organizado",
+            if_missing: expect.objectContaining({
+              action: "create_local_skill",
+              target: expect.stringContaining("skills\\pesquisador-organizado\\SKILL.md"),
+              role: expect.stringContaining("Pesquisador Organizado local")
+            }),
+            fallback: expect.objectContaining({
+              merit_rule: expect.stringContaining("nao vira merito automatico")
+            })
+          })
+        })
+      ])
     });
 
     await repeatFiscalBlock(flowId, evidenceId, 2);
@@ -2036,7 +2051,14 @@ describe("PPIRTV flow engine", () => {
       type: "bad_loop_review_work",
       required_tool_sequence: expect.arrayContaining([
         expect.objectContaining({ tool: "use_skill", args: expect.objectContaining({ skill: "estacionamento" }) }),
-        expect.objectContaining({ tool: "use_skill", args: expect.objectContaining({ skill: "garimpeiro" }) }),
+        expect.objectContaining({
+          tool: "use_skill",
+          args: expect.objectContaining({ skill: "garimpeiro" }),
+          skill_resolution: expect.objectContaining({
+            if_missing: expect.objectContaining({ action: "execute_inline_fallback_or_create_local_skill_proposal" }),
+            fallback: expect.objectContaining({ merit_rule: expect.stringContaining("nao vira merito automatico") })
+          })
+        }),
         expect.objectContaining({ tool: "evidence_add", args: expect.objectContaining({ title: "LOOP RUIM REVISAR TRABALHO" }) })
       ])
     });

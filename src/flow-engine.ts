@@ -3259,6 +3259,7 @@ function loopMeetingSequence(flow: Flow, loopMonitor: LoopMonitor, kinds: Meetin
 }
 
 function researchLoopSequence(flow: Flow, loopMonitor: LoopMonitor): Array<Record<string, unknown>> {
+  const workspace = flow.goal_binding?.envelope.workspace ?? "<WORKSPACE>";
   return [
     {
       order: 1,
@@ -3266,11 +3267,12 @@ function researchLoopSequence(flow: Flow, loopMonitor: LoopMonitor): Array<Recor
       purpose: "acionar pesquisador organizado com contexto minimo e salvar pesquisa em .agents/PESQUISA",
       args: {
         skill: "pesquisador-organizado",
-        repo: flow.goal_binding?.envelope.workspace ?? "<WORKSPACE>",
+        repo: workspace,
         mission: `Pesquisar causa e saidas para loop ${loopMonitor.loop_id} com blockers ${loopMonitor.blockers.join(", ")} sem ler segredos.`,
         objective: "troubleshooting",
         required_outputs: ["relatorio", "raw-notes.md", "sources.json"]
-      }
+      },
+      skill_resolution: researcherSkillResolution(workspace)
     },
     {
       order: 2,
@@ -3333,18 +3335,21 @@ function emergencyLoopSequence(flow: Flow, loopMonitor: LoopMonitor): Array<Reco
 }
 
 function badLoopReviewSequence(flow: Flow, loopMonitor: LoopMonitor): Array<Record<string, unknown>> {
+  const workspace = flow.goal_binding?.envelope.workspace ?? "<WORKSPACE>";
   return [
     {
       order: 1,
       tool: "use_skill",
       purpose: "acionar estacionamento para selecionar achados, pendencias e pontos cegos vivos",
-      args: { skill: "estacionamento", flow_id: flow.flow_id, loop_id: loopMonitor.loop_id, action: "selecionar achados e pendencias do loop" }
+      args: { skill: "estacionamento", flow_id: flow.flow_id, loop_id: loopMonitor.loop_id, action: "selecionar achados e pendencias do loop" },
+      skill_resolution: cooperatorSkillResolution(workspace, "estacionamento", "Fila viva de achados, pendencias, pontos cegos e retomada do loop.")
     },
     {
       order: 2,
       tool: "use_skill",
       purpose: "acionar garimpeiro para separar ouro, armadilha recorrente e descarte",
-      args: { skill: "garimpeiro", flow_id: flow.flow_id, loop_id: loopMonitor.loop_id, action: "curar achados reutilizaveis do loop" }
+      args: { skill: "garimpeiro", flow_id: flow.flow_id, loop_id: loopMonitor.loop_id, action: "curar achados reutilizaveis do loop" },
+      skill_resolution: cooperatorSkillResolution(workspace, "garimpeiro", "Curador de aprendizados reutilizaveis, armadilhas recorrentes e descarte honesto.")
     },
     {
       order: 3,
@@ -3372,6 +3377,57 @@ function badLoopReviewSequence(flow: Flow, loopMonitor: LoopMonitor): Array<Reco
       }
     }
   ];
+}
+
+function researcherSkillResolution(workspace: string): Record<string, unknown> {
+  return {
+    required_skill: "pesquisador-organizado",
+    lookup_paths: [
+      "C:\\Users\\Administrator\\.agents\\skills\\pesquisador-organizado\\SKILL.md",
+      "C:\\Users\\Administrator\\.codex\\skills\\pesquisador-organizado\\SKILL.md",
+      `${workspace}\\skills\\pesquisador-organizado\\SKILL.md`
+    ],
+    if_missing: {
+      action: "create_local_skill",
+      target: `${workspace}\\skills\\pesquisador-organizado\\SKILL.md`,
+      role: "Pesquisador Organizado local: pesquisar causas, fontes e saidas para destravar loop ruim, salvar relatorio em .agents/PESQUISA e retornar evidencias rastreaveis.",
+      minimum_contract: [
+        "nao ler .env, config.toml, tokens, cookies, Authorization ou payload sensivel",
+        "usar fontes locais permitidas e web/oficial quando disponivel",
+        "salvar relatorio, raw-notes.md e sources.json em .agents/PESQUISA",
+        "registrar lacunas e nao declarar conclusao forte sem evidencia",
+        "retornar caminhos dos artefatos e achados principais"
+      ],
+      gate: "permitido como fallback local quando a skill global nao existir; registrar evidencia da criacao"
+    },
+    fallback: {
+      action: "execute_local_contract",
+      evidence_required: true,
+      merit_rule: "nao vira merito automatico; material=true somente se pesquisa executada e evidenciada"
+    }
+  };
+}
+
+function cooperatorSkillResolution(workspace: string, skill: string, role: string): Record<string, unknown> {
+  return {
+    required_skill: skill,
+    lookup_paths: [
+      `C:\\Users\\Administrator\\.agents\\skills\\${skill}\\SKILL.md`,
+      `C:\\Users\\Administrator\\.codex\\skills\\${skill}\\SKILL.md`,
+      `${workspace}\\skills\\${skill}\\SKILL.md`
+    ],
+    if_missing: {
+      action: "execute_inline_fallback_or_create_local_skill_proposal",
+      target: `${workspace}\\skills\\${skill}\\SKILL.md`,
+      role,
+      gate: "criar skill local somente se a ausencia bloquear o fluxo ou virar erro recorrente; caso contrario executar fallback resumido"
+    },
+    fallback: {
+      action: "execute_local_summary_contract",
+      evidence_required: true,
+      merit_rule: "nao vira merito automatico; material=true somente se houve contribuicao registrada e evidenciada"
+    }
+  };
 }
 
 function reviewRequiredSequence(flow: Flow): Array<Record<string, unknown>> {
