@@ -337,7 +337,7 @@ async function scanSecretLikeConfig(root: string): Promise<HygieneFinding[]> {
   if (entries.some((entry) => entry.isFile() && entry.name === ".env")) {
     findings.push({
       id: "security:secret_like_config_present",
-      severity: "warning",
+      severity: "info",
       category: "security",
       message: "Arquivo sensivel presente; conteudo nao inspecionado.",
       evidence: [".env:present_not_read"],

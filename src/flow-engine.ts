@@ -395,7 +395,9 @@ export class FlowEngine {
     const backTo = blockers.length > 0 ? fiscalBackTo(flow) : null;
     const regressCount = countRegressions(flow);
     const regressLimitReached = regressCount >= FISCAL_CONFIG.maxRegressions;
-    const nextRequiredAction = nextRequiredActionFor(flow, blockers, backTo, regressCount, regressLimitReached);
+    const meetings = await this.store.listMeetings(flow.flow_id);
+    const nextRequiredAction = nextRequiredActionFor(flow, meetings, blockers, backTo, regressCount, regressLimitReached);
+    const resolutionGuidance = blockerResolutionGuidance(blockers, nextRequiredAction);
     return {
       flow_id: flow.flow_id,
       status: flow.status,
@@ -413,7 +415,7 @@ export class FlowEngine {
         uri: evidence.uri,
         created_at: evidence.created_at
       })),
-      meetings: (await this.store.listMeetings(flow.flow_id)).map((meeting) => ({
+      meetings: meetings.map((meeting) => ({
         meeting_id: meeting.meeting_id,
         type: meeting.type,
         kind: meeting.kind,
@@ -451,6 +453,7 @@ export class FlowEngine {
       locked_by_limit: regressLimitReached,
       back_to: backTo,
       next_required_action: nextRequiredAction,
+      resolution_guidance: resolutionGuidance,
       can_retry_verdict: blockers.length === 0,
       current_verdict: currentVerdict,
       goal_envelope: flow.goal_binding?.envelope ?? null,
@@ -464,8 +467,8 @@ export class FlowEngine {
       required_cooperation: requiredCooperation,
       fiscal_policy: fiscal,
       librarian_status: librarianStatus,
-      ppirtv_checkin: ppirtvCheckIn(flow, requiredCooperation, librarianStatus, blockers),
-      ppirtv_checkout: ppirtvCheckOut(flow, librarianStatus, blockers)
+      ppirtv_checkin: ppirtvCheckIn(flow, requiredCooperation, librarianStatus, blockers, resolutionGuidance),
+      ppirtv_checkout: ppirtvCheckOut(flow, librarianStatus, blockers, resolutionGuidance)
     };
   }
 
@@ -1040,7 +1043,7 @@ export class FlowEngine {
         ? savedGate
         : await this.checkGate({ flow_id: flow.flow_id, phase: flow.phase, provided: input.provided });
     if (effectiveGate.status === "blocked") {
-      return presentGate({
+      const presented = presentGate({
         advanced: false,
         status: "blocked",
         phase: flow.phase,
@@ -1048,6 +1051,13 @@ export class FlowEngine {
         next: effectiveGate.next,
         back_to: effectiveGate.back_to
       }, flow);
+      if (flow.goal_binding && effectiveGate.missing.some((item) => ["required_cooperation", "librarian_status"].includes(item))) {
+        const librarian = await this.runBeforePhaseHook(flow, flow.phase, input.actor ?? "advance_blocked");
+        if (librarian) {
+          presented.display.librarian = librarian;
+        }
+      }
+      return presented;
     }
     const fresh = await this.store.loadFlow(flow.flow_id);
     const from = fresh.phase;
@@ -2719,9 +2729,8 @@ function countRegressions(flow: Flow): number {
 }
 
 function hasHygieneBlocking(flow: Flow): boolean {
-  return flow.history.some(
-    (event) => event.type === "hygiene_scanned" && typeof event.data.blocking_findings_count === "number" && event.data.blocking_findings_count > 0
-  );
+  const latest = [...flow.history].reverse().find((event) => event.type === "hygiene_scanned");
+  return Boolean(latest && typeof latest.data.blocking_findings_count === "number" && latest.data.blocking_findings_count > 0);
 }
 
 function hasHygieneScan(flow: Flow): boolean {
@@ -2918,6 +2927,7 @@ function meetingClosedLedgerData(meeting: Meeting): Record<string, unknown> {
 
 function nextRequiredActionFor(
   flow: Flow,
+  meetings: Meeting[],
   blockers: string[],
   backTo: Phase | null,
   regressCount: number,
@@ -2936,11 +2946,45 @@ function nextRequiredActionFor(
       regress_count: regressCount,
       max_regressions: FISCAL_CONFIG.maxRegressions,
       locked_by_limit: true,
-      can_retry_verdict: false
+      can_retry_verdict: false,
+      required_tool_sequence: [
+        {
+          order: 1,
+          tool: "goal_meeting_open",
+          purpose: "abrir reuniao de decisao; nao repetir goal_verdict enquanto locked_by_limit=true",
+          args: { flow_id: flow.flow_id, kind: "decisao", question: "Decidir saida apos limite de regressos fiscais" },
+          capture: "meeting_id"
+        },
+        {
+          order: 2,
+          tool: "goal_meeting_close",
+          purpose: "fechar decisao com responsaveis e blockers preservados",
+          args: { meeting_id: "<meeting_id>", participants_present: ["chato", "reuniao", "validador-pronto"], decision: "decisao fiscal registrada" }
+        },
+        { order: 3, tool: "goal_status", purpose: "confirmar novo estado antes de qualquer veredito", args: { flow_id: flow.flow_id } }
+      ]
     };
   }
   const meetingKind = requiredMeetingKind(flow, blockers, regressLimitReached);
+  const openMeeting = latestOpenMeeting(meetings, meetingKind) ?? latestOpenMeeting(meetings);
   if (blockers.includes("required_cooperation") || !hasClosedMeetingKind(flow, meetingKind)) {
+    if (blockers.includes("required_cooperation") && openMeeting) {
+      return {
+        type: "close_existing_meeting",
+        tool: "goal_meeting_close",
+        reason: "required_cooperation ja tem reuniao aberta; nao abra outra, registre turno material e feche com satisfies_blockers",
+        back_to: backTo,
+        meeting_id: openMeeting.meeting_id,
+        meeting_kind: openMeeting.kind,
+        required_participants: requiredMeetingParticipants(blockers),
+        required_satisfies_blockers: ["required_cooperation"],
+        regress_count: regressCount,
+        max_regressions: FISCAL_CONFIG.maxRegressions,
+        can_retry_verdict: false,
+        loop_guard: "nao chamar goal_verdict e nao abrir nova reuniao enquanto esta reuniao aberta nao for fechada com materialidade",
+        required_tool_sequence: requiredCooperationSequence(flow, openMeeting.meeting_id, openMeeting.kind, blockers, backTo, true)
+      };
+    }
     return {
       type: "open_meeting",
       tool: "goal_meeting_open",
@@ -2951,7 +2995,12 @@ function nextRequiredActionFor(
       meeting_kind: meetingKind,
       regress_count: regressCount,
       max_regressions: FISCAL_CONFIG.maxRegressions,
-      can_retry_verdict: false
+      can_retry_verdict: false,
+      required_satisfies_blockers: blockers.includes("required_cooperation") ? ["required_cooperation"] : [],
+      loop_guard: "execute a sequencia completa e confirme goal_status antes de repetir goal_verdict",
+      required_tool_sequence: blockers.includes("required_cooperation")
+        ? requiredCooperationSequence(flow, "<meeting_id>", meetingKind, blockers, backTo, false)
+        : []
     };
   }
   if (blockers.includes("review_required")) {
@@ -2984,6 +3033,97 @@ function nextRequiredActionFor(
     regress_count: regressCount,
     max_regressions: FISCAL_CONFIG.maxRegressions,
     can_retry_verdict: false
+  };
+}
+
+function latestOpenMeeting(meetings: Meeting[], kind?: MeetingKind): Meeting | undefined {
+  return [...meetings]
+    .reverse()
+    .find((meeting) => meeting.status !== "closed" && (!kind || meeting.kind === kind));
+}
+
+function requiredCooperationSequence(
+  flow: Flow,
+  meetingId: string,
+  meetingKind: MeetingKind,
+  blockers: string[],
+  backTo: Phase | null,
+  meetingAlreadyOpen: boolean
+): Array<Record<string, unknown>> {
+  const participants = requiredMeetingParticipants(blockers);
+  const sequence: Array<Record<string, unknown>> = [];
+  if (!meetingAlreadyOpen) {
+    sequence.push({
+      order: sequence.length + 1,
+      tool: "goal_meeting_open",
+      purpose: "abrir reuniao material uma unica vez para resolver required_cooperation",
+      args: {
+        flow_id: flow.flow_id,
+        kind: meetingKind,
+        question: "Resolver required_cooperation antes de novo veredito positivo",
+        participants_required: participants
+      },
+      capture: "meeting_id"
+    });
+  }
+  sequence.push(
+    {
+      order: sequence.length + 1,
+      tool: "goal_meeting_add_turn",
+      purpose: "registrar fala material do Chato/Questionador com E SE, por que, origem, destino e principios",
+      args: {
+        flow_id: flow.flow_id,
+        meeting_id: meetingId,
+        speaker: "chato",
+        question: "E SE falhar? por que liberar? qual origem/destino/gatilho? estamos seguindo nossos principios?",
+        finding: "required_cooperation exige decisao material antes de qualquer veredito positivo"
+      }
+    },
+    {
+      order: sequence.length + 2,
+      tool: "goal_meeting_close",
+      purpose: "fechar a reuniao com decisao, participantes materiais e blocker satisfeito",
+      args: {
+        flow_id: flow.flow_id,
+        meeting_id: meetingId,
+        participants_present: participants,
+        findings: ["required_cooperation analisado com materialidade"],
+        decision: "Reuniao material fechada; required_cooperation satisfeito ou pendencia explicitada.",
+        satisfies_blockers: ["required_cooperation"]
+      }
+    }
+  );
+  if (backTo) {
+    sequence.push({
+      order: sequence.length + 1,
+      tool: "goal_regress",
+      purpose: "registrar regresso rastreavel antes de nova tentativa de veredito",
+      args: {
+        flow_id: flow.flow_id,
+        to: backTo,
+        reason: "required_cooperation resolvido por reuniao material; regressar para fase fiscal correta",
+        meeting_id: meetingId
+      }
+    });
+  }
+  sequence.push({
+    order: sequence.length + 1,
+    tool: "goal_status",
+    purpose: "confirmar ausencia de required_cooperation antes de repetir goal_verdict",
+    args: { flow_id: flow.flow_id }
+  });
+  return sequence;
+}
+
+function blockerResolutionGuidance(blockers: string[], nextRequiredAction: Record<string, unknown> | null): Record<string, unknown> | null {
+  if (blockers.length === 0 || !nextRequiredAction) {
+    return null;
+  }
+  return {
+    summary: "nao repetir goal_verdict enquanto can_retry_verdict=false; executar next_required_action.required_tool_sequence na ordem",
+    blockers,
+    loop_guard: "se required_cooperation reaparecer, verificar reuniao aberta/fechada e satisfies_blockers antes de abrir nova reuniao",
+    next_required_action: nextRequiredAction
   };
 }
 
@@ -3070,7 +3210,8 @@ function ppirtvCheckIn(
   flow: Flow,
   requiredCooperation: Cooperator[],
   librarianStatus: StructuredLibrarianStatus,
-  blockers: string[]
+  blockers: string[],
+  resolutionGuidance: Record<string, unknown> | null = null
 ): Record<string, unknown> {
   const cooVisible = requiredCooperation.length > 0 || flow.cooperators.length > 0;
   const graphifyStatus = librarianStatus.graphify.status;
@@ -3102,6 +3243,7 @@ function ppirtvCheckIn(
     meeting_required: meetingRequired,
     meeting_tool_available: meetingToolAvailable,
     regress_required: checkinBlockers.length > 0 && countRegressions(flow) < FISCAL_CONFIG.maxRegressions,
+    resolution_guidance: resolutionGuidance,
     initial_adjustment_required: ppiRequired || checkinBlockers.length > 0,
     trail_alignment: checkInTrailAlignment(flow),
     components: [
@@ -3159,7 +3301,12 @@ function ppirtvCheckIn(
   };
 }
 
-function ppirtvCheckOut(flow: Flow, librarianStatus: StructuredLibrarianStatus, blockers: string[]): Record<string, unknown> {
+function ppirtvCheckOut(
+  flow: Flow,
+  librarianStatus: StructuredLibrarianStatus,
+  blockers: string[],
+  resolutionGuidance: Record<string, unknown> | null = null
+): Record<string, unknown> {
   const latestVerdict = flow.verdicts.at(-1);
   const closed = flow.status === "complete" || flow.status === "archived";
   const memoryMining = memoryMiningStatus(flow);
@@ -3192,8 +3339,9 @@ function ppirtvCheckOut(flow: Flow, librarianStatus: StructuredLibrarianStatus, 
       bibliotecario: librarianAccountability
     },
     residual_risks: latestVerdict?.residual_risks ?? [],
+    resolution_guidance: resolutionGuidance,
     direct_action: blockers.length > 0
-      ? `check-out bloqueado: ${blockers.join(", ")}; abrir reuniao/revisor/memoria antes de veredito positivo`
+      ? `check-out bloqueado: ${blockers.join(", ")}; abrir reuniao/revisor/memoria conforme resolution_guidance antes de veredito positivo`
       : closed
         ? "fechamento_total_registrado"
         : "check-out pendente ate veredito/arquivo"

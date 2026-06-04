@@ -1687,11 +1687,28 @@ describe("PPIRTV flow engine", () => {
         next_required_action: {
           type: "open_meeting",
           tool: "goal_meeting_open",
-          can_retry_verdict: false
+          can_retry_verdict: false,
+          required_tool_sequence: expect.arrayContaining([
+            expect.objectContaining({ tool: "goal_meeting_open" }),
+            expect.objectContaining({ tool: "goal_meeting_add_turn" }),
+            expect.objectContaining({ tool: "goal_meeting_close" }),
+            expect.objectContaining({ tool: "goal_status" })
+          ])
         }
+      });
+      expect(status.resolution_guidance).toMatchObject({
+        loop_guard: expect.stringContaining("required_cooperation"),
+        next_required_action: expect.objectContaining({
+          required_tool_sequence: expect.arrayContaining([
+            expect.objectContaining({ tool: "goal_meeting_close" })
+          ])
+        })
       });
       expect(status.ppirtv_checkin).toMatchObject({
         initial_adjustment_required: true,
+        resolution_guidance: expect.objectContaining({
+          summary: expect.stringContaining("can_retry_verdict=false")
+        }),
         direct_action: expect.stringContaining("check-in bloqueado:"),
         trail_alignment: {
           workspace,
@@ -1712,7 +1729,10 @@ describe("PPIRTV flow engine", () => {
       expect(status.ppirtv_checkout).toMatchObject({
         complete: false,
         status: "blocked",
-        direct_action: expect.stringContaining("check-out bloqueado:")
+        resolution_guidance: expect.objectContaining({
+          loop_guard: expect.stringContaining("required_cooperation")
+        }),
+        direct_action: expect.stringContaining("resolution_guidance")
       });
       expect(status.checklist.display.direct_action.action).toContain("Bloqueado:");
       expect(status.checklist.operational_principles).toEqual(
@@ -1813,6 +1833,24 @@ describe("PPIRTV flow engine", () => {
       question: "Qual evidencia material libera nova tentativa?",
       finding: "Precisa decisao registrada e participantes minimos."
     });
+    const statusWithOpenMeeting = await engine.goalStatus({ flow_id: flowId });
+    expect(statusWithOpenMeeting.next_required_action).toMatchObject({
+      type: "close_existing_meeting",
+      tool: "goal_meeting_close",
+      meeting_id: meetingId,
+      required_satisfies_blockers: ["required_cooperation"],
+      loop_guard: expect.stringContaining("nao chamar goal_verdict")
+    });
+    expect((statusWithOpenMeeting.next_required_action as { required_tool_sequence: Array<Record<string, unknown>> }).required_tool_sequence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ tool: "goal_meeting_add_turn" }),
+        expect.objectContaining({ tool: "goal_meeting_close" }),
+        expect.objectContaining({ tool: "goal_status" })
+      ])
+    );
+    expect((statusWithOpenMeeting.next_required_action as { required_tool_sequence: Array<Record<string, unknown>> }).required_tool_sequence).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ tool: "goal_meeting_open" })])
+    );
     const insufficient = await engine.goalMeetingClose({
       flow_id: flowId,
       meeting_id: meetingId,
@@ -2423,6 +2461,54 @@ describe("PPIRTV flow engine", () => {
     } finally {
       process.chdir(originalCwd);
     }
+  });
+
+  it("reports .env presence without treating unread content as hygiene blocking", async () => {
+    const originalCwd = process.cwd();
+    await writeFile(path.join(tempRoot, ".env"), "NOT_READ_BY_TEST=1\n", "utf8");
+    process.chdir(tempRoot);
+    try {
+      const hygiene = await engine.hygieneScan();
+      const finding = hygiene.findings.find((item) => item.id === "security:secret_like_config_present");
+
+      expect(finding).toMatchObject({
+        category: "security",
+        severity: "info",
+        sensitive_content_read: false
+      });
+      expect(hygiene.blocking_findings).not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: "security:secret_like_config_present" })])
+      );
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("uses the latest hygiene scan when deciding whether hygiene is still blocking", async () => {
+    const flow = await engine.createFlow({
+      goal: "Higiene reavaliada",
+      risks: ["hygiene blocking deve refletir ultimo scan"]
+    });
+    flow.history.push({
+      at: new Date().toISOString(),
+      type: "hygiene_scanned",
+      data: { findings_count: 1, blocking_findings_count: 1, blocking_findings: ["security:old"] }
+    });
+    flow.history.push({
+      at: new Date().toISOString(),
+      type: "hygiene_scanned",
+      data: { findings_count: 0, blocking_findings_count: 0, blocking_findings: [] }
+    });
+    await engine.store.saveFlow(flow);
+
+    const gate = await engine.checkGate({
+      flow_id: flow.flow_id,
+      phase: "pensamentos",
+      provided: { context: "ctx", risks: ["risco"], uncertainties: ["u"] },
+      persist: false
+    });
+
+    expect(gate.missing).not.toContain("hygiene_blocking");
   });
 
   it("warns when LIXEIRA has discarded content without a garimpo gate", async () => {
