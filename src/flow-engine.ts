@@ -3864,12 +3864,14 @@ function ppirtvCheckOut(
   const learningAccountability = learningCheckoutAccountability(flow);
   const cooperationAccountability = cooperationCheckoutAccountability(flow);
   const librarianAccountability = librarianCheckoutAccountability(librarianStatus);
+  const loopAccountability = loopCheckoutAccountability(flow, blockers);
   const utilityAccountability = utilityCheckoutAccountability({
     flow,
     memory: memoryAccountability,
     learning: learningAccountability,
     cooperation: cooperationAccountability,
-    librarian: librarianAccountability
+    librarian: librarianAccountability,
+    loop: loopAccountability
   });
   return {
     complete: closed,
@@ -3887,6 +3889,7 @@ function ppirtvCheckOut(
     learning_accountability: learningAccountability,
     cooperation_accountability: cooperationAccountability,
     librarian_accountability: librarianAccountability,
+    loop_accountability: loopAccountability,
     utility_accountability: utilityAccountability,
     prestacao_de_contas: {
       utilidade: utilityAccountability,
@@ -3895,7 +3898,8 @@ function ppirtvCheckOut(
       estacionamento: learningAccountability.estacionado,
       pontos_cegos: learningAccountability.pontos_cegos,
       cooperadores: cooperationAccountability,
-      bibliotecario: librarianAccountability
+      bibliotecario: librarianAccountability,
+      loops: loopAccountability
     },
     residual_risks: latestVerdict?.residual_risks ?? [],
     resolution_guidance: resolutionGuidance,
@@ -4018,6 +4022,7 @@ function utilityCheckoutAccountability(input: {
   learning: Record<string, unknown>;
   cooperation: Record<string, unknown>;
   librarian: Record<string, unknown>;
+  loop: Record<string, unknown>;
 }): Record<string, unknown> {
   const memoryEditQueue = Array.isArray(input.memory.edit_queue) ? (input.memory.edit_queue as Array<Record<string, unknown>>) : [];
   const warnings = Array.isArray(input.memory.destination_warnings) ? input.memory.destination_warnings.map(String) : [];
@@ -4026,6 +4031,11 @@ function utilityCheckoutAccountability(input: {
   const pontosCegos = stringArray(input.learning.pontos_cegos);
   const materialCount = typeof input.cooperation.material_count === "number" ? input.cooperation.material_count : 0;
   const worked = input.librarian.worked === true;
+  const loopCurrent = input.loop.current as Record<string, unknown> | null;
+  const loopCount = typeof loopCurrent?.count === "number" ? loopCurrent.count : 0;
+  const loopLevel = typeof loopCurrent?.escalation === "object" && loopCurrent.escalation
+    ? String((loopCurrent.escalation as Record<string, unknown>).level ?? "none")
+    : "none";
   return {
     painel: [
       `M memoria: candidates=${input.memory.candidates_count ?? 0}, written=${input.memory.written_count ?? 0}, editaveis=${memoryEditQueue.length}`,
@@ -4033,7 +4043,8 @@ function utilityCheckoutAccountability(input: {
       `E estacionamento: ${estacionado.length}`,
       `P pontos_cegos: ${pontosCegos.length}`,
       `C cooperadores_materiais: ${materialCount}`,
-      `B bibliotecario_graphify: ${worked ? "worked" : "not_confirmed"}`
+      `B bibliotecario_graphify: ${worked ? "worked" : "not_confirmed"}`,
+      `L loops: atual=${loopCount}, nivel=${loopLevel}`
     ],
     edit_queue_count: memoryEditQueue.length,
     edit_queue_sample: memoryEditQueue.slice(0, 8),
@@ -4050,6 +4061,83 @@ function utilityCheckoutAccountability(input: {
           ? "resolver destination_warnings antes de positivo"
           : "checkout tem prestacao de contas consultavel para retomada"
   };
+}
+
+function loopCheckoutAccountability(flow: Flow, blockers: string[]): Record<string, unknown> {
+  const current = blockers.length > 0 ? fiscalLoopMonitor(flow, blockers) : null;
+  const gateChecks = flow.history.filter((event) => event.type === "gate_checked");
+  const blockedGateChecks = gateChecks.filter((event) => event.data.status === "blocked");
+  const gateBlocksBySignature = countBySignature(
+    blockedGateChecks.map((event) => blockerSignature(stringArray(event.data.missing)))
+  );
+  const fiscalBlocks = flow.history.filter((event) => event.type === "fiscal_policy_blocked");
+  const fiscalBlocksBySignature = countBySignature(
+    fiscalBlocks.map((event) => String(event.data.loop_signature ?? blockerSignature(stringArray(event.data.blocking_reasons))))
+  );
+  const loopMeetingIds = new Set<string>();
+  for (const event of flow.history.filter((item) => item.type === "meeting_opened" || item.type === "meeting_turn_added" || item.type === "meeting_closed")) {
+    const data = event.data;
+    const text = [
+      data.question,
+      data.decision,
+      ...stringArray(data.finding),
+      ...stringArray(data.note),
+      ...stringArray(data.findings),
+      ...stringArray(data.questions),
+      ...stringArray(data.decisions)
+    ].filter(Boolean).join("\n");
+    if (/loop_|LOOP RUIM|repetiu \d+ vezes|emergencia/i.test(text)) {
+      const meetingId = typeof data.meeting_id === "string" ? data.meeting_id : null;
+      if (meetingId) {
+        loopMeetingIds.add(meetingId);
+      }
+    }
+  }
+  const researchEvidence = flow.evidence.filter((evidence) => /research|pesquisa/i.test([evidence.kind, evidence.title, evidence.note, evidence.content].filter(Boolean).join("\n")));
+  const badLoopEvidence = flow.evidence.filter((evidence) => /bad_loop|LOOP RUIM REVISAR TRABALHO/i.test([evidence.kind, evidence.title, evidence.note, evidence.content].filter(Boolean).join("\n")));
+  return {
+    current,
+    current_loop_id: current?.loop_id ?? null,
+    current_count: current?.count ?? 0,
+    current_escalation: current?.escalation ?? loopEscalationFor(0),
+    regress_count: countRegressions(flow),
+    phase_returned_count: countHistory(flow, "phase_returned"),
+    reported_regress_count: Math.max(0, ...flow.history
+      .filter((event) => event.type === "regress_count_reported" && typeof event.data.regress_count === "number")
+      .map((event) => event.data.regress_count as number)),
+    gate_checks_count: gateChecks.length,
+    blocked_gate_checks_count: blockedGateChecks.length,
+    blocked_gate_checks_by_signature: gateBlocksBySignature,
+    fiscal_blocks_count: fiscalBlocks.length,
+    fiscal_blocks_by_signature: fiscalBlocksBySignature,
+    loop_meetings_count: loopMeetingIds.size,
+    loop_meeting_ids: [...loopMeetingIds],
+    research_reports_count: researchEvidence.length,
+    research_evidence_ids: researchEvidence.map((evidence) => evidence.evidence_id),
+    bad_loop_reports_count: badLoopEvidence.length,
+    bad_loop_evidence_ids: badLoopEvidence.map((evidence) => evidence.evidence_id),
+    organized_recovery_ladder: [
+      { count: 3, action: "reuniao_convergente_transversal" },
+      { count: 5, action: "reuniao_divergente_transversal" },
+      { count: 6, action: "pesquisador_organizado_subagente" },
+      { count: 8, action: "reuniao_emergencia_especialistas" },
+      { count: 9, action: "estacionamento_garimpeiro_loop_ruim_revisar_trabalho" }
+    ],
+    reset_policy: current?.reset_policy ?? "contagem zera quando ha progresso: evidencia, reuniao fechada, memoria minerada, gate passado, fase avancada, veredito ou blocker diferente",
+    summary: current
+      ? `loop atual ${current.loop_id}: count=${current.count}, gate=${current.gate_block_count}, fiscal=${current.fiscal_block_count}, regress=${current.review_regress_count}, escalonamento=${current.escalation.level}`
+      : "sem loop ativo no checkout"
+  };
+}
+
+function countBySignature(signatures: string[]): Array<{ signature: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const signature of signatures.filter(Boolean)) {
+    counts.set(signature, (counts.get(signature) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([signature, count]) => ({ signature, count }))
+    .sort((left, right) => right.count - left.count || left.signature.localeCompare(right.signature));
 }
 
 function memoryCheckoutAccountability(flow: Flow, memoryMining: MemoryMiningSummary): Record<string, unknown> {

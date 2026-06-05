@@ -2141,6 +2141,30 @@ describe("PPIRTV flow engine", () => {
     });
     const status = await engine.goalStatus({ flow_id: flowId });
     expect(status.next_required_action).toMatchObject({ type: "convergence_transversal_meetings" });
+    const checkout = status.ppirtv_checkout as Record<string, unknown>;
+    const loopAccountability = checkout.loop_accountability as Record<string, unknown>;
+    const prestacao = checkout.prestacao_de_contas as Record<string, unknown>;
+
+    expect(loopAccountability).toMatchObject({
+      current_count: 3,
+      gate_checks_count: expect.any(Number),
+      blocked_gate_checks_count: expect.any(Number),
+      loop_meetings_count: 0,
+      research_reports_count: 0,
+      bad_loop_reports_count: 0,
+      current_escalation: { active: true, level: "convergence_transversal", threshold: 3 },
+      organized_recovery_ladder: expect.arrayContaining([
+        expect.objectContaining({ count: 3, action: "reuniao_convergente_transversal" }),
+        expect.objectContaining({ count: 6, action: "pesquisador_organizado_subagente" }),
+        expect.objectContaining({ count: 9, action: "estacionamento_garimpeiro_loop_ruim_revisar_trabalho" })
+      ])
+    });
+    expect((loopAccountability.current as Record<string, unknown>).gate_block_count).toBe(3);
+    expect(loopAccountability.blocked_gate_checks_count as number).toBeGreaterThanOrEqual(3);
+    expect(loopAccountability.blocked_gate_checks_by_signature as Array<Record<string, unknown>>).toEqual(
+      expect.arrayContaining([expect.objectContaining({ signature: "review_evidence_coherent", count: 3 })])
+    );
+    expect(prestacao.loops).toEqual(loopAccountability);
   });
 
   it("T26 persists goal_regress and consumes reported regress_count before requiring decision meeting", async () => {
