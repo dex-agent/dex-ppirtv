@@ -1264,6 +1264,21 @@ describe("PPIRTV flow engine", () => {
 
     expect(gate.status).toBe("blocked");
     expect(gate.missing).toEqual(expect.arrayContaining(["review_evidence_coherent"]));
+
+    await engine.addGoalEvidence({
+      flow_id: flowId,
+      kind: "parecer_adversarial",
+      title: "Parecer adversarial dos artefatos finais",
+      content: "Findings reais, riscos residuais e decisao de revisao foram registrados.",
+      satisfies: ["review_evidence_coherent"]
+    });
+    const resolved = await engine.goalGateCheck({
+      flow_id: flowId,
+      phase: "revisao",
+      provided: { diff_reviewed: true, barata_scan: true, regression_risks: ["risco de regressao"], changed_files: ["src/flow-engine.ts"] }
+    });
+
+    expect(resolved.missing).not.toContain("review_evidence_coherent");
   });
 
   it("T10 blocks material recurring risk without enough attempts, regressions or meetings", async () => {
@@ -2098,6 +2113,34 @@ describe("PPIRTV flow engine", () => {
     const nextError = await engine.goalStatus({ flow_id: flowId });
     expect(nextError.loop_monitor).toMatchObject({ count: 1, escalation: { active: false } });
     expect((nextError.loop_monitor as Record<string, unknown>).loop_id).not.toEqual(oldLoopId);
+  });
+
+  it("T25e escalates repeated blocked gate checks with the same review missing", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-review-gate-loop-escalation", "Escalonamento de gate de revisao");
+    await engine.goalAdvance({ flow_id: flowId, provided: { context: "ctx", risks: ["risco"], uncertainties: ["u"] } });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { scope_in: ["src"], scope_out: ["fora"], tasks: ["codar"], expected_evidence: ["review"], done_criteria: ["passar"] }
+    });
+    await engine.goalAdvance({ flow_id: flowId, provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] } });
+
+    let gate: Record<string, unknown> = {};
+    for (let index = 0; index < 3; index += 1) {
+      gate = await engine.goalGateCheck({
+        flow_id: flowId,
+        phase: "revisao",
+        provided: { diff_reviewed: true, barata_scan: true, regression_risks: ["risco de regressao"], changed_files: ["src/flow-engine.ts"] }
+      });
+    }
+
+    expect(gate.missing).toContain("review_evidence_coherent");
+    expect(gate.loop_monitor).toMatchObject({
+      count: 3,
+      gate_block_count: 3,
+      escalation: { active: true, level: "convergence_transversal", threshold: 3 }
+    });
+    const status = await engine.goalStatus({ flow_id: flowId });
+    expect(status.next_required_action).toMatchObject({ type: "convergence_transversal_meetings" });
   });
 
   it("T26 persists goal_regress and consumes reported regress_count before requiring decision meeting", async () => {

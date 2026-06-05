@@ -84,6 +84,7 @@ type LoopMonitor = {
   blockers: string[];
   count: number;
   fiscal_block_count: number;
+  gate_block_count: number;
   review_regress_count: number;
   reset_policy: string;
   escalation: {
@@ -402,7 +403,9 @@ export class FlowEngine {
   async goalStatus(input: { flow_id?: string; idempotency_key?: string }): Promise<Record<string, unknown>> {
     let flow = await this.resolveGoalFlow(input);
     const checklist = await this.renderChecklist(flow.flow_id);
-    const gate = await this.checkGate({ flow_id: flow.flow_id, phase: flow.phase, persist: false });
+    const savedGate = flow.gates[flow.phase];
+    const gateProvided = savedGate?.status === "blocked" ? savedGate.provided : {};
+    const gate = await this.checkGate({ flow_id: flow.flow_id, phase: flow.phase, provided: gateProvided, persist: false });
     const currentVerdict = flow.verdicts.at(-1) ?? null;
     let rawLibrarianStatus = latestLibrarianStatus(flow) ?? latestLibrarianStatusFromLedger(await this.store.readLedger(flow.flow_id));
     if (!rawLibrarianStatus && graphifyRecallConfigured() && flow.status !== "archived") {
@@ -1126,7 +1129,12 @@ export class FlowEngine {
       await this.store.saveFlow(flow);
       await this.ledger(flow.flow_id, "gate_checked", record as unknown as Record<string, unknown>);
     }
-    return presentGate(record, flow);
+    const presented = presentGate(record, flow) as GateRecord & PresentationEnvelope & Record<string, unknown>;
+    const loopMonitor = status === "blocked" ? fiscalLoopMonitor(flow, missing) : null;
+    if (loopMonitor) {
+      presented.loop_monitor = loopMonitor;
+    }
+    return presented;
   }
 
   async advance(input: {
@@ -2768,8 +2776,13 @@ function hasReviewEvidence(flow: Flow, input: FiscalVerdictInput): boolean {
   return (
     truthy(input.review_artifact_path) ||
     truthy(input.review_findings) ||
+    hasEvidenceSatisfying(flow, "review_required") ||
     flow.evidence.some((evidence) => /review|revisor|diff/i.test([evidence.kind, evidence.title, evidence.note, evidence.content].filter(Boolean).join("\n")))
   );
+}
+
+function hasEvidenceSatisfying(flow: Flow, key: string): boolean {
+  return flow.evidence.some((evidence) => evidence.gold_mining.includes(`evidence_required:${key}`));
 }
 
 function hasMaterialMeeting(flow: Flow): boolean {
@@ -2860,7 +2873,13 @@ function needsReviewCoherence(flow: Flow, phase: Phase, provided: Record<string,
   if (phase !== "revisao" || !flow.goal_binding || !changedFilesVisible) {
     return false;
   }
-  return truthy(provided.diff_reviewed) && !truthy(provided.review_artifact_path) && !truthy(provided.review_findings);
+  return (
+    truthy(provided.diff_reviewed) &&
+    !truthy(provided.review_artifact_path) &&
+    !truthy(provided.review_findings) &&
+    !hasReviewEvidence(flow, {}) &&
+    !hasEvidenceSatisfying(flow, "review_evidence_coherent")
+  );
 }
 
 function latestFiscalBlock(flow: Flow): Pick<FiscalPolicyResult, "blocking_reasons" | "required_cooperation"> {
@@ -3579,6 +3598,9 @@ function fiscalLoopMonitor(flow: Flow, blockers: string[]): LoopMonitor | null {
   const fiscalBlockCount = windowEvents.filter(
     (event) => event.type === "fiscal_policy_blocked" && String(event.data.loop_signature ?? blockerSignature(stringArray(event.data.blocking_reasons))) === signature
   ).length;
+  const gateBlockCount = windowEvents.filter(
+    (event) => event.type === "gate_checked" && event.data.status === "blocked" && blockerSignature(stringArray(event.data.missing)) === signature
+  ).length;
   const reviewRegressCount = windowEvents.filter((event) => {
     if (event.type !== "phase_returned" || String(event.data.to) !== "revisao") {
       return false;
@@ -3586,15 +3608,16 @@ function fiscalLoopMonitor(flow: Flow, blockers: string[]): LoopMonitor | null {
     const text = [event.data.reason, ...(Array.isArray(event.data.evidence_ids) ? event.data.evidence_ids : [])].filter(Boolean).join("\n");
     return /review|revis|block|fiscal/i.test(text);
   }).length;
-  const count = Math.max(fiscalBlockCount, reviewRegressCount);
+  const count = Math.max(fiscalBlockCount, gateBlockCount, reviewRegressCount);
   return {
     loop_id: loopId,
     signature,
     blockers: activeBlockers,
     count,
     fiscal_block_count: fiscalBlockCount,
+    gate_block_count: gateBlockCount,
     review_regress_count: reviewRegressCount,
-    reset_policy: "contagem considera apenas a janela desde o ultimo progresso: evidencia, reuniao fechada, memoria minerada, gate passado, fase avancada, veredito ou blocker diferente",
+    reset_policy: "contagem considera apenas a janela desde o ultimo progresso: evidencia, reuniao fechada, memoria minerada, gate passado, fase avancada, veredito ou blocker diferente; gate bloqueado repetido conta quando missing tem a mesma assinatura",
     escalation: loopEscalationFor(count)
   };
 }
