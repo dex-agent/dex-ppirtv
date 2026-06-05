@@ -894,9 +894,20 @@ describe("PPIRTV flow engine", () => {
     const status = await engine.goalStatus({ flow_id: flowId });
     const links = status.goal_learning_links as Array<Record<string, Record<string, unknown>>>;
     expect(links.map((link) => link.garimpo_vinculado.classificacao)).toEqual(
-      expect.arrayContaining(["ponto_cego", "armadilha", "heuristica", "nao_promover"])
+      expect.arrayContaining(["ponto_cego", "armadilha", "heuristica", "dica_de_ouro", "nao_promover"])
     );
-    expect(links.some((link) => link.garimpo_vinculado.classificacao === "dica_de_ouro")).toBe(false);
+    expect(links).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          parking_item: "Aprendizado reutilizavel em qualquer projeto sobre evidencia.",
+          garimpo_vinculado: expect.objectContaining({
+            classificacao: "dica_de_ouro",
+            simbolo: "💎",
+            promovido_para_gold_mining: true
+          })
+        })
+      ])
+    );
     const mined = await engine.mineMemory({ flow_id: flowId, write_policy: "classify_only" });
     const candidates = mined.candidates as Array<Record<string, unknown>>;
     expect(candidates).toEqual(expect.arrayContaining([expect.objectContaining({ theme: "delphi", scope: "tema" })]));

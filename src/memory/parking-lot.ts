@@ -11,6 +11,7 @@ const GARIMPO_RULES: Array<{
   { classification: "armadilha", symbol: "⚠️", pattern: /token|api[_-]?key|authorization|password|secret|senha|\.env/i, promote: false, prefix: "" },
   { classification: "armadilha", symbol: "⚠️", pattern: /risco|quebra|regress|falh|bug|bloque|falso|invisivel|duplic/i, promote: true, prefix: "Armadilha observada" },
   { classification: "ponto_cego", symbol: "🕳️", pattern: /ponto cego|ocult|ambig|incert|premissa|desacopl|depend/i, promote: true, prefix: "Ponto cego observado" },
+  { classification: "dica_de_ouro", symbol: "💎", pattern: /dica de ouro|pepita|aprendizado reutiliz[aá]vel|reaproveit|reutiliz|boa decis[aã]o|alto valor|vale lembrar|economiza retrabalho|evita retrabalho|melhor pr[aá]tica/i, promote: true, prefix: "Dica de ouro observada" },
   { classification: "heuristica", symbol: "🔧", pattern: /heuristic|padrao|regra|sempre|nunca|prefer|quando|contrato|validar|verificar/i, promote: true, prefix: "Heuristica pratica" },
   { classification: "nao_promover", symbol: "·", pattern: /avaliar|depois|futuro|talvez|pendente|backlog|proximo ciclo/i, promote: false, prefix: "" }
 ];
