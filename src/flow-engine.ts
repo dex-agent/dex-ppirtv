@@ -499,6 +499,29 @@ export class FlowEngine {
     };
   }
 
+  async goalCheckout(input: { flow_id?: string; idempotency_key?: string }): Promise<Record<string, unknown>> {
+    const status = await this.goalStatus(input);
+    const checkout = status.ppirtv_checkout as Record<string, unknown>;
+    return {
+      flow_id: status.flow_id,
+      status: status.status,
+      phase: status.phase,
+      blockers: status.blockers,
+      direct_action: checkout.direct_action,
+      complete: checkout.complete,
+      verdict: checkout.verdict,
+      memory_accountability: checkout.memory_accountability,
+      learning_accountability: checkout.learning_accountability,
+      cooperation_accountability: checkout.cooperation_accountability,
+      librarian_accountability: checkout.librarian_accountability,
+      utility_accountability: checkout.utility_accountability,
+      prestacao_de_contas: checkout.prestacao_de_contas,
+      residual_risks: checkout.residual_risks,
+      resolution_guidance: checkout.resolution_guidance,
+      ppirtv_checkout: checkout
+    };
+  }
+
   async resumeGoal(input: { flow_id?: string; idempotency_key?: string; note?: string }): Promise<Record<string, unknown>> {
     const flow = await this.resolveGoalFlow(input);
     const now = nowIso();

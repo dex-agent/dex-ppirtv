@@ -2633,6 +2633,7 @@ describe("PPIRTV flow engine", () => {
 
       const status = await engine.goalStatus({ flow_id: flowId });
       const checkout = status.ppirtv_checkout as Record<string, unknown>;
+      const directCheckout = await engine.goalCheckout({ flow_id: flowId });
       const memory = checkout.memory_accountability as Record<string, unknown>;
       const learningCheckout = checkout.learning_accountability as Record<string, unknown>;
       const utility = checkout.utility_accountability as Record<string, unknown>;
@@ -2661,6 +2662,16 @@ describe("PPIRTV flow engine", () => {
         painel: expect.arrayContaining([expect.stringContaining("M memoria")])
       });
       expect((utility.edit_queue_count as number)).toBeGreaterThan(0);
+      expect(directCheckout).toMatchObject({
+        flow_id: flowId,
+        memory_accountability: expect.any(Object),
+        learning_accountability: expect.any(Object),
+        cooperation_accountability: expect.any(Object),
+        librarian_accountability: expect.any(Object),
+        utility_accountability: expect.any(Object),
+        prestacao_de_contas: expect.any(Object)
+      });
+      expect((directCheckout.ppirtv_checkout as Record<string, unknown>).prestacao_de_contas).toEqual(directCheckout.prestacao_de_contas);
     } finally {
       restoreDexMemoriaHome(originalDexMemoriaHome);
     }

@@ -127,6 +127,7 @@ describe("PPIRTV MCP stdio server", () => {
       }
     });
     const status = await client!.callTool({ name: "goal_status", arguments: { idempotency_key: envelope.idempotency_key } });
+    const checkout = await client!.callTool({ name: "ppirtv_checkout", arguments: { idempotency_key: envelope.idempotency_key } });
 
     expect(resultOf(validation).valid).toBe(true);
     expect(resultOf(validation).tasks).toContain("Rodar teste MCP.");
@@ -140,6 +141,22 @@ describe("PPIRTV MCP stdio server", () => {
     expect(resultOf(status).phase_emoji).toBe("🧠");
     expect(((resultOf(verdict).verdict as Record<string, unknown>).status)).toBe("pronto");
     expect((resultOf(status).current_verdict as Record<string, unknown>).status).toBe("pronto");
+    expect(resultOf(checkout)).toMatchObject({
+      flow_id: flowId,
+      complete: true,
+      verdict: "pronto",
+      direct_action: "fechamento_total_registrado",
+      memory_accountability: expect.any(Object),
+      learning_accountability: expect.any(Object),
+      cooperation_accountability: expect.any(Object),
+      librarian_accountability: expect.any(Object),
+      utility_accountability: expect.any(Object),
+      prestacao_de_contas: expect.any(Object)
+    });
+    expect(resultOf(checkout).ppirtv_checkout).toMatchObject({
+      prestacao_de_contas: expect.any(Object),
+      utility_accountability: expect.any(Object)
+    });
   });
 
   it("runs the live GOAL wrappers through MCP", async () => {

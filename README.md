@@ -203,6 +203,7 @@ Official GOAL/SPT tools:
 - `spt_validate`
 - `goal_start`
 - `goal_status`
+- `ppirtv_checkout`
 - `goal_resume`
 - `goal_gate_check`
 - `goal_advance`
@@ -212,6 +213,12 @@ Official GOAL/SPT tools:
 - `goal_regress`
 - `evidence_add`
 - `goal_verdict`
+
+`ppirtv_checkout` is the direct closing/accountability tool. It returns the
+same canonical checkout embedded in `goal_status.ppirtv_checkout`, but promotes
+the important sections to top-level fields so clients and agents do not have to
+remember to unpack nested status payloads. Use it at check-out before declaring
+a GOAL finished.
 
 Memory and pipeline tools:
 

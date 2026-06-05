@@ -281,6 +281,18 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
   );
 
   server.registerTool(
+    "ppirtv_checkout",
+    {
+      description: "Return the canonical PPIRTV closing accountability directly, with memory, learning, cooperation, librarian and utility sections at top level.",
+      inputSchema: {
+        flow_id: z.string().optional(),
+        idempotency_key: z.string().optional()
+      }
+    },
+    async (args) => toolResult(await engine.goalCheckout(args))
+  );
+
+  server.registerTool(
     "goal_resume",
     {
       description: "Resume an existing GOAL/SPT flow by flow_id or idempotency_key without creating a duplicate.",

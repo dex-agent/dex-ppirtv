@@ -441,6 +441,7 @@ export const REQUIRED_TOOLS = [
   "spt_validate",
   "goal_start",
   "goal_status",
+  "ppirtv_checkout",
   "goal_resume",
   "goal_gate_check",
   "goal_advance",
