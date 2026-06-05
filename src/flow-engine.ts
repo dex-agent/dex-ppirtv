@@ -13,6 +13,7 @@ import {
   type GoalEnvelope,
   type HygieneFinding,
   type Meeting,
+  type MemoryCandidate,
   type MeetingKind,
   type MeetingType,
   type MemoryMiningSummary,
@@ -55,6 +56,8 @@ type FiscalVerdictInput = {
   next_step?: string;
   review_artifact_path?: string;
   review_findings?: string[];
+  verdict_parking_lot?: string[];
+  verdict_gold_mining?: string[];
   attempt_count?: number;
   regress_count?: number;
   meeting_id?: string;
@@ -681,8 +684,13 @@ export class FlowEngine {
         candidates: [],
         written: [],
         ledger_only: [],
+        estacionamento: [],
         discarded: [],
         blocked: [],
+        write_decisions: [],
+        edit_queue: [],
+        destination_warnings: [],
+        strong_unwritten_count: 0,
         unclassified: 0,
         blocked_verdict: false
       };
@@ -706,7 +714,8 @@ export class FlowEngine {
     const blocked = candidates.filter((candidate) => candidate.blocked);
     const writable = candidates.filter((candidate) => isWritableCandidate(candidate));
     const ledgerOnly = candidates.filter((candidate) => candidate.scope === "ledger_only");
-    const discarded = candidates.filter((candidate) => candidate.scope === "descartar" || candidate.scope === "estacionamento");
+    const estacionamento = candidates.filter((candidate) => candidate.scope === "estacionamento");
+    const discarded = candidates.filter((candidate) => candidate.scope === "descartar");
     const written: Array<{ candidate_id: string; files: string[] }> = [];
 
     if (writePolicy === "auto_write") {
@@ -717,23 +726,46 @@ export class FlowEngine {
     }
 
     const now = nowIso();
+    const writtenIds = new Set(written.map((item) => item.candidate_id));
+    const strongUnwritten =
+      writePolicy === "auto_write"
+        ? candidates.filter((candidate) => candidate.score.total >= 6 && !writtenIds.has(candidate.id) && !candidate.blocked && candidate.scope !== "estacionamento" && candidate.scope !== "descartar")
+        : [];
+    const writeDecisions = candidates.map((candidate) => memoryWriteDecision(candidate, writePolicy, writtenIds));
+    const editQueue = candidates
+      .filter((candidate) => !writtenIds.has(candidate.id))
+      .map((candidate) => ({
+        candidate_id: candidate.id,
+        title: candidate.title,
+        scope: candidate.scope,
+        layer: candidate.layer,
+        score: candidate.score,
+        suggestion: memoryEditSuggestion(candidate, writePolicy),
+        target_files: candidate.target_files
+      }));
+    const destinationWarnings = strongUnwritten.map((candidate) => `${candidate.id}:${candidate.scope}:${memoryNonWriteReason(candidate, writePolicy, writtenIds)}`);
     const memoryRequiredButEmpty = memoryRequiredByFlow(flow) && candidates.length === 0 && written.length === 0;
     const summary: MemoryMiningSummary = {
       required: candidates.length > 0 || memoryRequiredByFlow(flow),
       last_run_at: now,
       write_policy: writePolicy,
-      blocked_verdict: blocked.length > 0 || memoryRequiredButEmpty,
+      blocked_verdict: blocked.length > 0 || memoryRequiredButEmpty || strongUnwritten.length > 0,
       candidates_count: candidates.length,
       written_count: written.length,
       blocked_count: blocked.length,
       ledger_only_count: ledgerOnly.length,
       discarded_count: discarded.length,
+      strong_unwritten_count: strongUnwritten.length,
       memory_required_but_empty: memoryRequiredButEmpty,
       candidates: candidates.map(memoryCandidateLedgerData),
       written,
       ledger_only: ledgerOnly.map((candidate) => candidate.id),
+      estacionamento: estacionamento.map((candidate) => candidate.id),
       discarded: discarded.map((candidate) => candidate.id),
-      blocked: blocked.map((candidate) => ({ id: candidate.id, blocked_reason: candidate.blocked_reason }))
+      blocked: blocked.map((candidate) => ({ id: candidate.id, blocked_reason: candidate.blocked_reason })),
+      write_decisions: writeDecisions,
+      edit_queue: editQueue,
+      destination_warnings: destinationWarnings
     };
     flow.memory_mining = summary;
     flow.history.push({
@@ -756,8 +788,13 @@ export class FlowEngine {
         candidates: candidates.map(memoryCandidateLedgerData),
         written,
         ledger_only: ledgerOnly.map((candidate) => candidate.id),
+        estacionamento: estacionamento.map((candidate) => candidate.id),
         discarded: discarded.map((candidate) => candidate.id),
         blocked: blocked.map((candidate) => ({ id: candidate.id, blocked_reason: candidate.blocked_reason })),
+        write_decisions: writeDecisions,
+        edit_queue: editQueue,
+        destination_warnings: destinationWarnings,
+        strong_unwritten_count: strongUnwritten.length,
         blocked_verdict: summary.blocked_verdict,
         memory_required_but_empty: summary.memory_required_but_empty
       },
@@ -772,8 +809,13 @@ export class FlowEngine {
       candidates,
       written,
       ledger_only: ledgerOnly,
+      estacionamento,
       discarded,
       blocked,
+      write_decisions: writeDecisions,
+      edit_queue: editQueue,
+      destination_warnings: destinationWarnings,
+      strong_unwritten_count: strongUnwritten.length,
       unclassified: blocked.length,
       blocked_verdict: summary.blocked_verdict,
       memory_required_but_empty: summary.memory_required_but_empty
@@ -877,6 +919,8 @@ export class FlowEngine {
     residual_risks?: string[];
     review_artifact_path?: string;
     review_findings?: string[];
+    verdict_parking_lot?: string[];
+    verdict_gold_mining?: string[];
     attempt_count?: number;
     regress_count?: number;
     meeting_id?: string;
@@ -892,6 +936,12 @@ export class FlowEngine {
     assertNoSecretLikeText(input.review_artifact_path, "review_artifact_path");
     for (const finding of input.review_findings ?? []) {
       assertNoSecretLikeText(finding, "review_findings");
+    }
+    for (const item of input.verdict_parking_lot ?? []) {
+      assertNoSecretLikeText(item, "verdict_parking_lot");
+    }
+    for (const item of input.verdict_gold_mining ?? []) {
+      assertNoSecretLikeText(item, "verdict_gold_mining");
     }
     const flow = await this.store.loadFlow(input.flow_id);
     assertGoalBinding(flow);
@@ -938,16 +988,21 @@ export class FlowEngine {
     if (memoryMining?.blocked_verdict === true) {
       throw new Error("MEMORY_MINING_BLOCKED_VERDICT: resolver memory_candidates bloqueados antes do veredito positivo");
     }
+    const verdictLearning = deriveVerdictLearning(input, flow.evidence.filter((evidence) => evidenceIds.includes(evidence.evidence_id)));
     const verdict = await this.recordVerdict({
       flow_id: input.flow_id,
       status: input.status,
       rationale: input.rationale,
       evidence_ids: evidenceIds,
       residual_risks: input.residual_risks ?? [],
+      review_findings: input.review_findings ?? [],
+      parking_lot: verdictLearning.parking_lot,
+      gold_mining: verdictLearning.gold_mining,
       next_step: input.next_step
     });
     return {
       verdict,
+      verdict_learning: verdictLearning,
       memory_mining: memoryMining,
       status: await this.goalStatus({ flow_id: input.flow_id })
     };
@@ -1613,6 +1668,7 @@ export class FlowEngine {
     rationale: string;
     evidence_ids?: string[];
     residual_risks?: string[];
+    review_findings?: string[];
     parking_lot?: string[];
     gold_mining?: string[];
     cooperators?: Flow["cooperators"];
@@ -1636,6 +1692,7 @@ export class FlowEngine {
       rationale: input.rationale,
       evidence_ids: evidenceIds,
       residual_risks: residualRisks,
+      review_findings: input.review_findings ?? [],
       parking_lot: input.parking_lot ?? [],
       gold_mining: input.gold_mining ?? [],
       cooperators: input.cooperators ?? [],
@@ -3761,6 +3818,13 @@ function ppirtvCheckOut(
   const learningAccountability = learningCheckoutAccountability(flow);
   const cooperationAccountability = cooperationCheckoutAccountability(flow);
   const librarianAccountability = librarianCheckoutAccountability(librarianStatus);
+  const utilityAccountability = utilityCheckoutAccountability({
+    flow,
+    memory: memoryAccountability,
+    learning: learningAccountability,
+    cooperation: cooperationAccountability,
+    librarian: librarianAccountability
+  });
   return {
     complete: closed,
     status: flow.status,
@@ -3777,7 +3841,9 @@ function ppirtvCheckOut(
     learning_accountability: learningAccountability,
     cooperation_accountability: cooperationAccountability,
     librarian_accountability: librarianAccountability,
+    utility_accountability: utilityAccountability,
     prestacao_de_contas: {
+      utilidade: utilityAccountability,
       memoria: memoryAccountability,
       garimpo: learningAccountability.garimpado,
       estacionamento: learningAccountability.estacionado,
@@ -3795,10 +3861,158 @@ function ppirtvCheckOut(
   };
 }
 
+function deriveVerdictLearning(
+  input: FiscalVerdictInput,
+  evidences: Evidence[]
+): { gold_mining: string[]; parking_lot: string[]; review_findings: string[] } {
+  const reviewFindings = input.review_findings ?? [];
+  const explicitGold = input.verdict_gold_mining ?? [];
+  const explicitParking = input.verdict_parking_lot ?? [];
+  const gold = [
+    ...explicitGold,
+    ...reviewFindings.map((finding) => `Achado de review: ${finding}`),
+    ...(isStrongLearningText(input.rationale) ? [`Achado garimpado do veredito: ${input.rationale}`] : [])
+  ];
+  const parking = [
+    ...explicitParking,
+    ...(input.residual_risks ?? []).map((risk) => `Risco residual estacionado: ${risk}`),
+    ...(input.review_artifact_path ? [`Artefato de review para consulta: ${input.review_artifact_path}`] : []),
+    ...evidences.map((evidence) => `Evidencia usada no veredito: ${evidence.title}${evidence.uri ? ` -> ${evidence.uri}` : ""}`)
+  ];
+  return {
+    gold_mining: unique(gold),
+    parking_lot: unique(parking),
+    review_findings: unique(reviewFindings)
+  };
+}
+
+function isStrongLearningText(value: string | undefined): boolean {
+  return Boolean(value && /(falso verde|contrato|princip|harness|canonical|case|CPU|RTX|CUDA|Graphify|MCP|PPIRTV|loop|bloque|regress|falh)/i.test(value));
+}
+
+function memoryWriteDecision(candidate: MemoryCandidate, writePolicy: MemoryWritePolicy, writtenIds: Set<string>): Record<string, unknown> {
+  const written = writtenIds.has(candidate.id);
+  return {
+    candidate_id: candidate.id,
+    title: candidate.title,
+    action: written ? "written" : memoryNonWriteAction(candidate, writePolicy, writtenIds),
+    reason: written ? "written_by_auto_write_policy" : memoryNonWriteReason(candidate, writePolicy, writtenIds),
+    scope: candidate.scope,
+    score: candidate.score.total,
+    editable: !written
+  };
+}
+
+function memoryNonWriteAction(candidate: MemoryCandidate, writePolicy: MemoryWritePolicy, writtenIds: Set<string>): string {
+  if (writtenIds.has(candidate.id)) {
+    return "written";
+  }
+  if (candidate.blocked) {
+    return "blocked";
+  }
+  if (writePolicy === "classify_only") {
+    return "classify_only";
+  }
+  if (candidate.scope === "ledger_only") {
+    return "ledger_only";
+  }
+  if (candidate.scope === "estacionamento") {
+    return "estacionamento";
+  }
+  if (candidate.scope === "descartar") {
+    return "descartar";
+  }
+  return isWritableCandidate(candidate) ? "not_written_unexpected" : "not_writable";
+}
+
+function memoryNonWriteReason(candidate: MemoryCandidate, writePolicy: MemoryWritePolicy, writtenIds: Set<string>): string {
+  if (writtenIds.has(candidate.id)) {
+    return "written_by_auto_write_policy";
+  }
+  if (candidate.blocked) {
+    return candidate.blocked_reason ?? "candidate_blocked";
+  }
+  if (writePolicy === "classify_only") {
+    return "classify_only_policy_requires_user_review_before_write";
+  }
+  if (candidate.scope === "ledger_only") {
+    return "ledger_only_needs_better_scope_or_destination";
+  }
+  if (candidate.scope === "estacionamento") {
+    return "parked_for_later_decision";
+  }
+  if (candidate.scope === "descartar") {
+    return "discard_scope_detected";
+  }
+  return isWritableCandidate(candidate) ? "writable_candidate_not_written" : "score_or_scope_not_writable";
+}
+
+function memoryEditSuggestion(candidate: MemoryCandidate, writePolicy: MemoryWritePolicy): string {
+  if (candidate.blocked) {
+    return `corrigir bloqueio antes de gravar: ${candidate.blocked_reason}`;
+  }
+  if (writePolicy === "classify_only") {
+    return "revisar candidato e aprovar uma rodada auto_write se for memoria canonica";
+  }
+  if (candidate.scope === "ledger_only") {
+    return "dar destino claro: memoria, estacionamento ou descarte justificado";
+  }
+  if (candidate.scope === "estacionamento") {
+    return "decidir se fica pendencia, vira garimpo ou deve ser descartado";
+  }
+  if (candidate.scope === "descartar") {
+    return "confirmar descarte depois de garimpar se ha ouro";
+  }
+  return "melhorar gatilho L1/L2 se o candidato for util";
+}
+
+function utilityCheckoutAccountability(input: {
+  flow: Flow;
+  memory: Record<string, unknown>;
+  learning: Record<string, unknown>;
+  cooperation: Record<string, unknown>;
+  librarian: Record<string, unknown>;
+}): Record<string, unknown> {
+  const memoryEditQueue = Array.isArray(input.memory.edit_queue) ? (input.memory.edit_queue as Array<Record<string, unknown>>) : [];
+  const warnings = Array.isArray(input.memory.destination_warnings) ? input.memory.destination_warnings.map(String) : [];
+  const garimpado = stringArray(input.learning.garimpado);
+  const estacionado = stringArray(input.learning.estacionado);
+  const pontosCegos = stringArray(input.learning.pontos_cegos);
+  const materialCount = typeof input.cooperation.material_count === "number" ? input.cooperation.material_count : 0;
+  const worked = input.librarian.worked === true;
+  return {
+    painel: [
+      `M memoria: candidates=${input.memory.candidates_count ?? 0}, written=${input.memory.written_count ?? 0}, editaveis=${memoryEditQueue.length}`,
+      `G garimpo: ${garimpado.length}`,
+      `E estacionamento: ${estacionado.length}`,
+      `P pontos_cegos: ${pontosCegos.length}`,
+      `C cooperadores_materiais: ${materialCount}`,
+      `B bibliotecario_graphify: ${worked ? "worked" : "not_confirmed"}`
+    ],
+    edit_queue_count: memoryEditQueue.length,
+    edit_queue_sample: memoryEditQueue.slice(0, 8),
+    warnings,
+    samples: {
+      garimpado: garimpado.slice(0, 8),
+      estacionamento: estacionado.slice(0, 8),
+      pontos_cegos: pontosCegos.slice(0, 8)
+    },
+    next_use:
+      memoryEditQueue.length > 0
+        ? "revisar edit_queue antes de nova auto_write ou promocao L1/L2"
+        : warnings.length > 0
+          ? "resolver destination_warnings antes de positivo"
+          : "checkout tem prestacao de contas consultavel para retomada"
+  };
+}
+
 function memoryCheckoutAccountability(flow: Flow, memoryMining: MemoryMiningSummary): Record<string, unknown> {
   const raw = (flow.memory_mining ?? {}) as Record<string, unknown>;
   const written = Array.isArray(raw.written) ? (raw.written as Array<Record<string, unknown>>) : [];
   const candidates = Array.isArray(raw.candidates) ? (raw.candidates as Array<Record<string, unknown>>) : [];
+  const writeDecisions = Array.isArray(raw.write_decisions) ? (raw.write_decisions as Array<Record<string, unknown>>) : [];
+  const editQueue = Array.isArray(raw.edit_queue) ? (raw.edit_queue as Array<Record<string, unknown>>) : [];
+  const destinationWarnings = Array.isArray(raw.destination_warnings) ? raw.destination_warnings.map(String) : [];
   const writtenFiles = unique(written.flatMap((item) => stringArray(item.files)));
   const layers = memoryLayersFromFiles(writtenFiles);
   return {
@@ -3811,9 +4025,14 @@ function memoryCheckoutAccountability(flow: Flow, memoryMining: MemoryMiningSumm
     blocked_count: memoryMining.blocked_count,
     ledger_only_count: memoryMining.ledger_only_count,
     discarded_count: memoryMining.discarded_count,
+    estacionamento_count: memoryMining.estacionamento?.length ?? 0,
+    strong_unwritten_count: memoryMining.strong_unwritten_count ?? 0,
     memory_required_but_empty: memoryMining.memory_required_but_empty === true,
     written,
     candidates,
+    write_decisions: writeDecisions,
+    edit_queue: editQueue,
+    destination_warnings: destinationWarnings,
     layers,
     l1_files: layers.L1,
     l2_files: layers.L2,
@@ -3854,14 +4073,25 @@ function learningCheckoutAccountability(flow: Flow): Record<string, unknown> {
       .filter((link) => link.garimpo_vinculado.classificacao === "ponto_cego")
       .map((link) => link.garimpo_vinculado.pepita ?? link.parking_item)
   ]);
+  const garimpoPorClasse = flow.goal_learning_links.reduce<Record<string, number>>((acc, link) => {
+    const key = link.garimpo_vinculado.classificacao;
+    acc[key] = (acc[key] ?? 0) + 1;
+    return acc;
+  }, {});
+  const conviccaoFraca = flow.goal_learning_links
+    .filter((link) => link.garimpo_vinculado.classificacao === "nao_promover")
+    .map((link) => link.parking_item);
   return {
     garimpado: flow.gold_mining,
     estacionado: flow.parking_lot,
     pontos_cegos: pontosCegos,
     links: flow.goal_learning_links,
+    garimpo_por_classificacao: garimpoPorClasse,
+    conviccao_fraca_ou_frouxa: conviccaoFraca,
     garimpo_count: flow.gold_mining.length,
     estacionamento_count: flow.parking_lot.length,
-    pontos_cegos_count: pontosCegos.length
+    pontos_cegos_count: pontosCegos.length,
+    conviccao_fraca_count: conviccaoFraca.length
   };
 }
 
@@ -3987,7 +4217,12 @@ function memoryMiningStatus(flow: Flow): MemoryMiningSummary {
       written_count: 0,
       blocked_count: 0,
       ledger_only_count: 0,
-      discarded_count: 0
+      discarded_count: 0,
+      estacionamento: [],
+      write_decisions: [],
+      edit_queue: [],
+      destination_warnings: [],
+      strong_unwritten_count: 0
     }
   );
 }

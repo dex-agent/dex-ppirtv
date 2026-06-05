@@ -29,12 +29,12 @@ export function resolveDexMemoriaHome(): string {
 
 export function collectMemoryNuggets(flow: Flow, meetings: Meeting[]): MemoryNugget[] {
   const nuggets: MemoryNugget[] = [];
-  const add = (items: string[], source: "gold_mining" | "parking_lot") => {
+  const add = (items: string[], source: "gold_mining" | "parking_lot", evidenceScore?: number) => {
     for (const item of items) {
       if (!item.trim() || /^evidence_required:/i.test(item.trim())) {
         continue;
       }
-      nuggets.push({ item, source, evidenceScore: source === "gold_mining" ? 1 : 0 });
+      nuggets.push({ item, source, evidenceScore: evidenceScore ?? (source === "gold_mining" ? 1 : 0) });
     }
   };
   add(flow.gold_mining, "gold_mining");
@@ -49,6 +49,16 @@ export function collectMemoryNuggets(flow: Flow, meetings: Meeting[]): MemoryNug
   for (const meeting of meetings) {
     add(meeting.gold_mining, "gold_mining");
     add(meeting.parking_lot, "parking_lot");
+    add(meeting.decisions.map((item) => `Decisao de reuniao: ${item}`), "parking_lot", 1);
+    add(meeting.findings.map((item) => `Achado de reuniao: ${item}`), "parking_lot", 1);
+    add(
+      meeting.turns
+        .flatMap((turn) => [turn.finding, turn.note])
+        .filter((item): item is string => Boolean(item?.trim()))
+        .map((item) => `Turno de reuniao: ${item}`),
+      "parking_lot",
+      1
+    );
   }
   for (const evidence of flow.evidence) {
     add(evidence.gold_mining, "gold_mining");
@@ -57,6 +67,9 @@ export function collectMemoryNuggets(flow: Flow, meetings: Meeting[]): MemoryNug
   for (const verdict of flow.verdicts) {
     add(verdict.gold_mining, "gold_mining");
     add(verdict.parking_lot, "parking_lot");
+    add((verdict.review_findings ?? []).map((item) => `Achado de review: ${item}`), "gold_mining", 2);
+    add(verdict.rationale ? [`Racional de veredito: ${verdict.rationale}`] : [], "parking_lot", 1);
+    add(verdict.residual_risks.map((item) => `Risco residual: ${item}`), "parking_lot", 1);
   }
   const seen = new Set<string>();
   return nuggets.filter((nugget) => {

@@ -3,7 +3,10 @@
 .env.*
 
 # Runtime state
-.ppirtv/
+/.ppirtv/
+/flows/
+/ledger.ndjson
+/memory/
 graphify-out/
 .agents/
 .codex/

@@ -95,8 +95,13 @@ export type MemoryMiningSummary = {
   candidates?: Array<Record<string, unknown>>;
   written?: Array<{ candidate_id: string; files: string[] }>;
   ledger_only?: string[];
+  estacionamento?: string[];
   discarded?: string[];
   blocked?: Array<Record<string, unknown>>;
+  write_decisions?: Array<Record<string, unknown>>;
+  edit_queue?: Array<Record<string, unknown>>;
+  destination_warnings?: string[];
+  strong_unwritten_count?: number;
 };
 
 export type PipelineItem = {
@@ -300,6 +305,7 @@ export type Verdict = {
   rationale: string;
   evidence_ids: string[];
   residual_risks: string[];
+  review_findings: string[];
   parking_lot: string[];
   gold_mining: string[];
   cooperators: Cooperator[];

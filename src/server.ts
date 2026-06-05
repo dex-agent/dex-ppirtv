@@ -448,6 +448,8 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         residual_risks: z.array(z.string()).optional(),
         review_artifact_path: z.string().optional(),
         review_findings: z.array(z.string()).optional(),
+        verdict_parking_lot: z.array(z.string()).optional(),
+        verdict_gold_mining: z.array(z.string()).optional(),
         attempt_count: z.number().int().nonnegative().optional(),
         regress_count: z.number().int().nonnegative().optional(),
         meeting_id: z.string().optional(),

@@ -188,8 +188,18 @@ function normalizeFlow(flow: Flow): Flow {
     written_count: 0,
     blocked_count: 0,
     ledger_only_count: 0,
-    discarded_count: 0
+    discarded_count: 0,
+    estacionamento: [],
+    write_decisions: [],
+    edit_queue: [],
+    destination_warnings: [],
+    strong_unwritten_count: 0
   };
+  flow.memory_mining.estacionamento ??= [];
+  flow.memory_mining.write_decisions ??= [];
+  flow.memory_mining.edit_queue ??= [];
+  flow.memory_mining.destination_warnings ??= [];
+  flow.memory_mining.strong_unwritten_count ??= 0;
   flow.evidence = (flow.evidence ?? []).map((evidence) => ({
     ...evidence,
     parking_lot: evidence.parking_lot ?? [],
@@ -199,6 +209,7 @@ function normalizeFlow(flow: Flow): Flow {
   }));
   flow.verdicts = (flow.verdicts ?? []).map((verdict) => ({
     ...verdict,
+    review_findings: verdict.review_findings ?? [],
     parking_lot: verdict.parking_lot ?? [],
     gold_mining: verdict.gold_mining ?? [],
     cooperators: verdict.cooperators ?? [],

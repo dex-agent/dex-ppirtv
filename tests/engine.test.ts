@@ -2557,6 +2557,144 @@ describe("PPIRTV flow engine", () => {
     }
   });
 
+  it("T33 mines review findings, residual risks and evidence from goal_verdict into editable accountability", async () => {
+    const originalDexMemoriaHome = process.env.DEX_MEMORIA_HOME;
+    const memRoot = path.join(tempRoot, "goal-verdict-learning-memories");
+    process.env.DEX_MEMORIA_HOME = memRoot;
+    try {
+      const { flowId, evidenceId } = await startGoalWithEvidence(
+        "dex-code:test-goal-verdict-learning-accountability",
+        "Veredito deve alimentar achados estacionados e candidatos editaveis"
+      );
+      const opened = await engine.goalMeetingOpen({
+        flow_id: flowId,
+        kind: "divergente",
+        participants_required: ["chato", "questionador", "reuniao", "garimpeiro", "dex-memoria", "estacionamento"],
+        question: "Qual destino dos achados fortes do veredito?"
+      });
+      await engine.goalMeetingClose({
+        flow_id: flowId,
+        meeting_id: opened.meeting_id as string,
+        participants_present: ["chato", "questionador", "reuniao", "garimpeiro", "dex-memoria", "estacionamento"],
+        decision: "Achados fortes precisam aparecer no checkout com destino editavel.",
+        satisfies_blockers: ["required_cooperation"],
+        cooperators: [
+          { name: "chato", reason: "cobrou destino dos achados fortes", material: true },
+          { name: "garimpeiro", reason: "separou pepita de pendencia", material: true }
+        ],
+        active_credits: ["chato cobrou destino dos achados", "garimpeiro separou pepita de pendencia"]
+      });
+
+      const verdict = await engine.goalVerdict({
+        flow_id: flowId,
+        status: "nao_pronto",
+        rationale: "Harness comparou canonical_examples com cases e criou falso verde no contrato PPIRTV.",
+        evidence_ids: [evidenceId],
+        meeting_id: opened.meeting_id as string,
+        review_findings: [
+          "Falso verde: harness v2 validava canonical_examples mas o consumo real usava cases/case_count/results.",
+          "Diagnostico de hardware: CPU estava ocupada enquanto RTX 5090 ficava sem uso por configuracao de runtime."
+        ],
+        residual_risks: ["Risco residual: novo ensaio precisa provar caminho real antes de liberar treino."],
+        verdict_parking_lot: ["Pendente: transformar o achado de runtime GPU em checklist de preflight quando houver evidencia suficiente."],
+        verdict_gold_mining: ["Dica PPIRTV: falso verde de harness nasce quando exemplo canonico e caminho real divergem."],
+        next_step: "rodar classificacao controlada e revisar fila editavel"
+      });
+      const learning = verdict.verdict_learning as Record<string, unknown>;
+      expect(learning.gold_mining as string[]).toEqual(expect.arrayContaining([expect.stringContaining("canonical_examples")]));
+      expect(learning.parking_lot as string[]).toEqual(expect.arrayContaining([expect.stringContaining("Evidencia usada no veredito")]));
+
+      const mined = await engine.mineMemory({ flow_id: flowId, auto_classify: true, write_policy: "classify_only" });
+      const candidates = mined.candidates as Array<Record<string, unknown>>;
+      expect(candidates).toEqual(expect.arrayContaining([expect.objectContaining({ title: expect.stringContaining("canonical_examples") })]));
+      expect(candidates).toEqual(expect.arrayContaining([expect.objectContaining({ title: expect.stringContaining("RTX 5090") })]));
+      expect(mined).toMatchObject({
+        write_policy: "classify_only",
+        written: [],
+        blocked_verdict: false,
+        edit_queue: expect.any(Array),
+        write_decisions: expect.any(Array)
+      });
+      expect((mined.edit_queue as unknown[]).length).toBeGreaterThan(0);
+      expect(mined.write_decisions as Array<Record<string, unknown>>).toEqual(
+        expect.arrayContaining([expect.objectContaining({ action: "classify_only", reason: "classify_only_policy_requires_user_review_before_write" })])
+      );
+
+      const status = await engine.goalStatus({ flow_id: flowId });
+      const checkout = status.ppirtv_checkout as Record<string, unknown>;
+      const memory = checkout.memory_accountability as Record<string, unknown>;
+      const learningCheckout = checkout.learning_accountability as Record<string, unknown>;
+      const utility = checkout.utility_accountability as Record<string, unknown>;
+      const learningLinks = learningCheckout.links as Array<Record<string, Record<string, unknown>>>;
+      expect(memory.edit_queue as unknown[]).not.toEqual([]);
+      expect(learningCheckout.garimpado as string[]).toEqual(expect.arrayContaining([expect.stringContaining("falso verde")]));
+      expect(learningCheckout.estacionado as string[]).toEqual(expect.arrayContaining([expect.stringContaining("Evidencia usada no veredito")]));
+      expect(learningCheckout.garimpo_por_classificacao as Record<string, number>).toMatchObject({
+        armadilha: expect.any(Number),
+        nao_promover: expect.any(Number)
+      });
+      expect(learningLinks).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            parking_item: expect.stringContaining("Evidencia usada no veredito"),
+            garimpo_vinculado: expect.objectContaining({
+              classificacao: expect.any(String),
+              promovido_para_gold_mining: expect.any(Boolean)
+            })
+          })
+        ])
+      );
+      expect((learningCheckout.conviccao_fraca_ou_frouxa as string[]).length).toBeGreaterThan(0);
+      expect(utility).toMatchObject({
+        edit_queue_count: expect.any(Number),
+        painel: expect.arrayContaining([expect.stringContaining("M memoria")])
+      });
+      expect((utility.edit_queue_count as number)).toBeGreaterThan(0);
+    } finally {
+      restoreDexMemoriaHome(originalDexMemoriaHome);
+    }
+  });
+
+  it("T34 blocks auto_write when a strong candidate is left without a canonical destination", async () => {
+    const originalDexMemoriaHome = process.env.DEX_MEMORIA_HOME;
+    const memRoot = path.join(tempRoot, "strong-unwritten-warnings");
+    process.env.DEX_MEMORIA_HOME = memRoot;
+    try {
+      const { flowId } = await startGoalWithEvidence(
+        "dex-code:test-strong-unwritten-memory-warning",
+        "Auto write precisa avisar quando nao grava candidato forte"
+      );
+      await engine.attachEvidence({
+        flow_id: flowId,
+        kind: "code_review",
+        title: "Review de destino de memoria",
+        gold_mining: ["ledger_only: contrato PPIRTV com falso verde recorrente precisa destino explicito antes de pronto."]
+      });
+
+      const mined = await engine.mineMemory({ flow_id: flowId, auto_classify: true, write_policy: "auto_write" });
+      expect(mined).toMatchObject({
+        written: [],
+        blocked_verdict: true,
+        strong_unwritten_count: 1,
+        destination_warnings: expect.arrayContaining([expect.stringContaining("ledger_only")])
+      });
+      expect(mined.write_decisions as Array<Record<string, unknown>>).toEqual(
+        expect.arrayContaining([expect.objectContaining({ action: "ledger_only", reason: "ledger_only_needs_better_scope_or_destination" })])
+      );
+
+      const status = await engine.goalStatus({ flow_id: flowId });
+      const checkout = status.ppirtv_checkout as Record<string, unknown>;
+      const memory = checkout.memory_accountability as Record<string, unknown>;
+      expect(memory).toMatchObject({
+        strong_unwritten_count: 1,
+        destination_warnings: expect.arrayContaining([expect.stringContaining("ledger_only")]),
+        edit_queue: expect.any(Array)
+      });
+    } finally {
+      restoreDexMemoriaHome(originalDexMemoriaHome);
+    }
+  });
+
   it("does not validate SPT files outside .agents/PLAN-TASKS", async () => {
     const workspace = path.join(tempRoot, "workspace");
     await mkdir(workspace, { recursive: true });

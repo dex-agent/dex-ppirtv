@@ -357,6 +357,24 @@ unblocked are written first, then reported back through `written[].files` so the
 user can edit, complement or correct them. Consumer diagnostics should use
 `write_policy=classify_only`.
 
+When candidates are not written, the response must still explain the destination
+instead of returning a silent `written=[]`. `write_decisions` records the action
+and reason for each candidate (`written`, `classify_only`, `ledger_only`,
+`estacionamento`, `descartar`, `blocked` or `not_writable`), and `edit_queue`
+lists candidates the user can improve, approve, park or discard. In
+`auto_write`, a strong unwritten candidate without a canonical destination
+raises `blocked_verdict=true` with `destination_warnings`.
+
+`goal_verdict` can carry learning explicitly through `review_findings`,
+`verdict_gold_mining` and `verdict_parking_lot`. Review findings and rationale
+feed future memory mining, while residual risks and evidence references are
+parked with garimpo linked by the Estacionamento/Garimpeiro contract.
+
+`ppirtv_checkout` includes `utility_accountability`: a compact panel of memory
+candidates/writes/editables, garimpo, estacionamento, blind spots, material
+cooperators and Bibliotecario/Graphify status. This is the fiscal proof that the
+MCP produced useful, inspectable state rather than cosmetic layers.
+
 Graphify and the Bibliotecario do not promote canonical memory. They can surface
 recall signals; promotion to L1/L2/L3 goes through `mm_memory_mining`.
 
