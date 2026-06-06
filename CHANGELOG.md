@@ -33,6 +33,9 @@ escopo, evidencias e lacunas quando existirem.
 - O runtime deixou de descartar silenciosamente campos top-level do contrato v4.
 - `version: "1.0"` deixa de ser convertido implicitamente para numero sem
   preservar `numeric_version`.
+- `docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md` deixou de listar
+  `goal_meeting_record` como tool oficial e passou a apontar para o contrato
+  vivo `goal_meeting_add_turn`/`goal_meeting_close`/`goal_regress`.
 
 ### Interno
 

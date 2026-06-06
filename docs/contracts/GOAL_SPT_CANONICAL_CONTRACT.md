@@ -23,25 +23,29 @@ As tools oficiais para clientes como `dex-code` sao:
 - `spt_validate`
 - `goal_start`
 - `goal_status`
+- `ppirtv_checkout`
 - `goal_resume`
 - `goal_gate_check`
 - `goal_advance`
 - `goal_meeting_open`
-- `goal_meeting_record`
+- `goal_meeting_add_turn`
+- `goal_meeting_close`
+- `goal_regress`
 - `evidence_add`
 - `goal_verdict`
 - `mm_memory_mining`
 - `mm_pipeline_run`
 
 Tools internas como `flow_create`, `flow_advance`, `gate_check`,
-`evidence_attach` e `verdict_record` continuam existindo por compatibilidade,
-mas nao devem ser usadas como substituto silencioso das tools oficiais de
-`/GOAL`.
+`meeting_open`, `meeting_record`, `evidence_attach` e `verdict_record`
+continuam existindo por compatibilidade, mas nao devem ser usadas como
+substituto silencioso das tools oficiais de `/GOAL`.
 
 As wrappers vivas `goal_gate_check`, `goal_advance`, `goal_meeting_open` e
-`goal_meeting_record` encapsulam explicitamente as tools internas antigas para
-clientes oficiais. O cliente deve preferir `goal_*` para gates, avancos e
-reunioes de GOAL.
+`goal_meeting_add_turn`/`goal_meeting_close` encapsulam explicitamente as tools
+internas antigas para clientes oficiais. O cliente deve preferir `goal_*` para
+gates, avancos e reunioes de GOAL. A antiga wrapper `goal_meeting_record` nao
+faz parte do contrato fiscal novo.
 
 `mm_memory_mining` fecha o ciclo de aprendizados do flow. `mm_pipeline_run`
 orquestra varios flows PPIRTV em sequencia quando o usuario pedir mais de um
@@ -271,7 +275,8 @@ Fluxo canonico:
 6. Considerar GOAL ativo apenas se `goal_start` retornar `flow_id`.
 7. Abrir reunioes vivas com `goal_meeting_open` quando houver incerteza,
    decisao, divergencia ou risco material.
-8. Registrar contribuicoes e decisoes com `goal_meeting_record`.
+8. Registrar contribuicoes com `goal_meeting_add_turn` e fechar decisoes com
+   `goal_meeting_close`.
 9. Rodar gates persistidos com `goal_gate_check`.
 10. Avancar fases com `goal_advance`.
 11. Acompanhar com `goal_status`.
@@ -413,9 +418,10 @@ um SPT/flow:
 ## Especialistas vivos e creditos
 
 Especialistas podem aparecer como `suggested_cooperators` em reunioes, mas isso
-nao vira credito material. Credito ativo so nasce em `goal_meeting_record`,
-`evidence_add` ou `goal_verdict` quando `cooperators[].material=true` e a
-contribuicao mudou decisao, risco, teste, documentacao ou veredito.
+nao vira credito material. Credito ativo so nasce no ciclo
+`goal_meeting_add_turn`/`goal_meeting_close`, em `evidence_add` ou em
+`goal_verdict` quando `cooperators[].material=true` e a contribuicao mudou
+decisao, risco, teste, documentacao ou veredito.
 
 `goal_status` deve expor cooperadores, creditos ativos, estacionamento
 (`parking_lot`), garimpo (`gold_mining`), `goal_learning_links` e
