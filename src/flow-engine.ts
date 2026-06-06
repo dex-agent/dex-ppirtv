@@ -41,7 +41,15 @@ import {
   type MemoryHookRunner
 } from "./memory/index.js";
 import { presentArtifact, presentChecklist, presentFlow, presentGate } from "./presentation.js";
-import { principleChecklist, scanOperationalPrinciples, type PrincipleChecklistItem } from "./principles.js";
+import {
+  finalReportModel,
+  gateFinalOutput,
+  operationalContractMeta,
+  principleChecklist,
+  readyDefinition,
+  scanOperationalPrinciples,
+  type PrincipleChecklistItem
+} from "./principles.js";
 import { PpirtvStore } from "./store.js";
 import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured } from "./config.js";
 
@@ -517,6 +525,10 @@ export class FlowEngine {
       learning_accountability: checkout.learning_accountability,
       cooperation_accountability: checkout.cooperation_accountability,
       librarian_accountability: checkout.librarian_accountability,
+      contract_accountability: checkout.contract_accountability,
+      ready_definition: checkout.ready_definition,
+      gate_final_output: checkout.gate_final_output,
+      final_report_model: checkout.final_report_model,
       utility_accountability: checkout.utility_accountability,
       prestacao_de_contas: checkout.prestacao_de_contas,
       residual_risks: checkout.residual_risks,
@@ -1628,6 +1640,9 @@ export class FlowEngine {
     markdown: string;
     items: Array<{ label: string; checked: boolean }>;
     operational_principles: PrincipleChecklistItem[];
+    ready_definition: string[];
+    gate_final_output: string[];
+    final_report_model: string[];
     required_cooperation?: Cooperator[];
     fiscal_policy?: FiscalPolicyResult;
   } & PresentationEnvelope> {
@@ -1660,6 +1675,9 @@ export class FlowEngine {
       }
       return { ...item, state: item.checked ? ("checked" as const) : ("unchecked" as const) };
     });
+    const readyItems = readyDefinition();
+    const gateOutputItems = gateFinalOutput();
+    const reportModelItems = finalReportModel();
     const markdown = [
       `# Checklist PPIRTV - ${flow.flow_id}`,
       "",
@@ -1669,7 +1687,15 @@ export class FlowEngine {
       "",
       "## Principios operacionais",
       "",
-      ...operationalPrinciples.map((item) => `- [${item.checked ? "x" : " "}] ${item.label}`)
+      ...operationalPrinciples.map((item) => `- [${item.checked ? "x" : " "}] ${item.label}${item.default_severity ? ` (${item.default_severity})` : ""}`),
+      "",
+      "## Definicao de pronto",
+      "",
+      ...(readyItems.length > 0 ? readyItems.map((item) => `- ${item}`) : ["- Validar objetivo, evidencias, bloqueios, riscos e proximas acoes antes de declarar pronto."]),
+      "",
+      "## Gate Final PPIRTV",
+      "",
+      ...(gateOutputItems.length > 0 ? gateOutputItems.map((item) => `- ${item}`) : ["- Declarar principios acionados, evidencias, bloqueios, validacao e risco restante."])
     ].join("\n");
     const presented = presentChecklist({
         flow,
@@ -1688,6 +1714,9 @@ export class FlowEngine {
     return {
       ...(blockers.length > 0 || flow.status === "blocked" ? withDirectAction(presented, blockedDirectAction(blockers.length > 0 ? blockers : ["flow_blocked"])) : presented),
       operational_principles: operationalPrinciples,
+      ready_definition: readyItems,
+      gate_final_output: gateOutputItems,
+      final_report_model: reportModelItems,
       required_cooperation: fiscal.required_cooperation,
       fiscal_policy: fiscal
     };
@@ -3865,6 +3894,12 @@ function ppirtvCheckOut(
   const cooperationAccountability = cooperationCheckoutAccountability(flow);
   const librarianAccountability = librarianCheckoutAccountability(librarianStatus);
   const loopAccountability = loopCheckoutAccountability(flow, blockers);
+  const contractAccountability = {
+    ...operationalContractMeta(),
+    ready_definition: readyDefinition(),
+    gate_final_output: gateFinalOutput(),
+    final_report_model: finalReportModel()
+  };
   const utilityAccountability = utilityCheckoutAccountability({
     flow,
     memory: memoryAccountability,
@@ -3890,6 +3925,10 @@ function ppirtvCheckOut(
     cooperation_accountability: cooperationAccountability,
     librarian_accountability: librarianAccountability,
     loop_accountability: loopAccountability,
+    contract_accountability: contractAccountability,
+    ready_definition: contractAccountability.ready_definition,
+    gate_final_output: contractAccountability.gate_final_output,
+    final_report_model: contractAccountability.final_report_model,
     utility_accountability: utilityAccountability,
     prestacao_de_contas: {
       utilidade: utilityAccountability,
@@ -3899,7 +3938,8 @@ function ppirtvCheckOut(
       pontos_cegos: learningAccountability.pontos_cegos,
       cooperadores: cooperationAccountability,
       bibliotecario: librarianAccountability,
-      loops: loopAccountability
+      loops: loopAccountability,
+      contrato_operacional: contractAccountability
     },
     residual_risks: latestVerdict?.residual_risks ?? [],
     resolution_guidance: resolutionGuidance,

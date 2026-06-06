@@ -6,14 +6,25 @@ import { RUNTIME_ENV, resolveConfiguredPrinciplesPath, resolveUserHome } from ".
 import type { HygieneFinding } from "./domain.js";
 
 export type PrincipleSeverity = "info" | "warning" | "error";
+export type ContractVersion = number | string;
+export type OperationalSeverityLevel = "INFO" | "WARN" | "BLOCK";
 
 export type OperationalPrinciple = {
   id: string;
+  legacy_id?: string;
+  name?: string;
   label: string;
   summary: string;
+  trigger: string[];
+  required_actions: string[];
+  evidence: string[];
+  blocks_ready_when: string[];
+  default_severity?: OperationalSeverityLevel;
   severity: PrincipleSeverity;
   checklist_label: string;
   applies_to: string[];
+  trace_destination: string[];
+  same_error_definition?: string[];
 };
 
 export type MemoryLayer = {
@@ -24,12 +35,29 @@ export type MemoryLayer = {
 };
 
 export type OperationalContract = {
-  version: number;
+  version: ContractVersion;
+  numeric_version?: number;
+  principles_revision?: string;
+  updated_at?: string;
   source: string;
+  canonical_source?: string;
+  canonical_contract?: string;
+  canonical_repo_copy?: string;
+  contract_role?: string;
+  rule?: string;
+  sync_rule?: string;
   principles: OperationalPrinciple[];
+  ready_definition: string[];
+  gate_final_output: string[];
   memory_layers: MemoryLayer[];
   prompt_guidance: string[];
   hygiene_checks: string[];
+  ai_application?: AiApplication;
+  traceable_destination_definition?: TraceableDestinationDefinition;
+  operational_severity?: OperationalSeverityContract;
+  operational_trash_definition?: OperationalTrashDefinition;
+  sync_contract?: SyncContract;
+  final_report_model: string[];
 };
 
 export type PrincipleChecklistItem = {
@@ -38,6 +66,49 @@ export type PrincipleChecklistItem = {
   checked: boolean;
   state?: "checked" | "unchecked" | "pending" | "blocked";
   severity: PrincipleSeverity;
+  name?: string;
+  summary: string;
+  trigger: string[];
+  required_actions: string[];
+  evidence: string[];
+  blocks_ready_when: string[];
+  default_severity?: OperationalSeverityLevel;
+  applies_to: string[];
+  trace_destination: string[];
+  same_error_definition?: string[];
+};
+
+export type AiApplication = {
+  rule?: string;
+  required_fields: string[];
+  execution_format: string[];
+};
+
+export type TraceableDestinationDefinition = {
+  rule?: string;
+  valid_examples: string[];
+  blocks_ready_when: string[];
+};
+
+export type OperationalSeverityContract = {
+  rule?: string;
+  levels: Partial<Record<OperationalSeverityLevel, string>>;
+  default_by_principle: Record<string, string>;
+  runtime_mapping: Partial<Record<OperationalSeverityLevel, PrincipleSeverity>>;
+};
+
+export type OperationalTrashDefinition = {
+  principle_id?: string;
+  includes: string[];
+  rule?: string;
+};
+
+export type SyncContract = {
+  human_source?: string;
+  derived_contract?: string;
+  repo_human_copy?: string;
+  repo_contract_copy?: string;
+  rules: string[];
 };
 
 type ContractOrigin = "env" | "shared" | "local" | "harness" | "missing";
@@ -56,9 +127,12 @@ const DEFAULT_CONTRACT: OperationalContract = {
   version: 1,
   source: "principles/PRINCIPLES.md",
   principles: [],
+  ready_definition: [],
+  gate_final_output: [],
   memory_layers: [],
   prompt_guidance: [],
-  hygiene_checks: []
+  hygiene_checks: [],
+  final_report_model: []
 };
 
 export async function loadOperationalContract(root = process.cwd()): Promise<OperationalContract> {
@@ -168,6 +242,37 @@ export function promptGuidance(root = process.cwd()): string[] {
   return loadOperationalContractSync(root).prompt_guidance;
 }
 
+export function readyDefinition(root = process.cwd()): string[] {
+  return loadOperationalContractSync(root).ready_definition;
+}
+
+export function gateFinalOutput(root = process.cwd()): string[] {
+  return loadOperationalContractSync(root).gate_final_output;
+}
+
+export function finalReportModel(root = process.cwd()): string[] {
+  return loadOperationalContractSync(root).final_report_model;
+}
+
+export function operationalTrashDefinition(root = process.cwd()): OperationalTrashDefinition | undefined {
+  return loadOperationalContractSync(root).operational_trash_definition;
+}
+
+export function operationalContractMeta(root = process.cwd()): Record<string, unknown> {
+  const contract = loadOperationalContractSync(root);
+  return {
+    version: contract.version,
+    numeric_version: contract.numeric_version ?? null,
+    principles_revision: contract.principles_revision ?? null,
+    updated_at: contract.updated_at ?? null,
+    source: contract.source,
+    canonical_source: contract.canonical_source ?? null,
+    canonical_contract: contract.canonical_contract ?? null,
+    canonical_repo_copy: contract.canonical_repo_copy ?? null,
+    contract_role: contract.contract_role ?? null
+  };
+}
+
 export async function resolveOperationalContract(root = process.cwd()): Promise<OperationalContractResolution> {
   const resolution = resolveOperationalContractPath(root);
   if (!resolution.contractPath || !existsSync(resolution.contractPath)) {
@@ -268,14 +373,27 @@ function sourcePathFor(resolution: OperationalContractResolution, source: string
 }
 
 function checklistFromContract(contract: OperationalContract, sourceText: string): PrincipleChecklistItem[] {
-  return contract.principles.map((principle) => ({
-    id: principle.id,
-    label: principle.checklist_label,
-    checked:
-      sourceText.toLowerCase().includes(principle.label.toLowerCase()) &&
-      (principle.id !== "memoria_sem_lembranca" || hasMemoryLayers(sourceText)),
-    severity: principle.severity
-  }));
+  return contract.principles.map((principle) => {
+    const operationalId = principle.legacy_id ?? principle.id;
+    return {
+      id: operationalId,
+      label: principle.checklist_label,
+      checked:
+        sourceText.toLowerCase().includes(principle.label.toLowerCase()) &&
+        (operationalId !== "memoria_sem_lembranca" || hasMemoryLayers(sourceText)),
+      severity: principle.severity,
+      name: principle.name,
+      summary: principle.summary,
+      trigger: principle.trigger,
+      required_actions: principle.required_actions,
+      evidence: principle.evidence,
+      blocks_ready_when: principle.blocks_ready_when,
+      default_severity: principle.default_severity,
+      applies_to: principle.applies_to,
+      trace_destination: principle.trace_destination,
+      same_error_definition: principle.same_error_definition
+    };
+  });
 }
 
 function hasMemoryLayers(text: string): boolean {
@@ -379,12 +497,29 @@ async function safeReaddir(target: string) {
 function normalizeContract(value: unknown): OperationalContract {
   const input = value as Partial<OperationalContract>;
   return {
-    version: typeof input.version === "number" ? input.version : DEFAULT_CONTRACT.version,
+    version: typeof input.version === "number" || typeof input.version === "string" ? input.version : DEFAULT_CONTRACT.version,
+    numeric_version: typeof input.numeric_version === "number" ? input.numeric_version : undefined,
+    principles_revision: optionalString(input.principles_revision),
+    updated_at: optionalString(input.updated_at),
     source: typeof input.source === "string" ? input.source : DEFAULT_CONTRACT.source,
-    principles: Array.isArray(input.principles) ? input.principles.filter(isPrinciple) : [],
+    canonical_source: optionalString(input.canonical_source),
+    canonical_contract: optionalString(input.canonical_contract),
+    canonical_repo_copy: optionalString(input.canonical_repo_copy),
+    contract_role: optionalString(input.contract_role),
+    rule: optionalString(input.rule),
+    sync_rule: optionalString(input.sync_rule),
+    principles: Array.isArray(input.principles) ? input.principles.filter(isPrinciple).map(normalizePrinciple) : [],
+    ready_definition: stringArray(input.ready_definition),
+    gate_final_output: stringArray(input.gate_final_output),
     memory_layers: Array.isArray(input.memory_layers) ? input.memory_layers.filter(isMemoryLayer) : [],
-    prompt_guidance: Array.isArray(input.prompt_guidance) ? input.prompt_guidance.filter((item): item is string => typeof item === "string") : [],
-    hygiene_checks: Array.isArray(input.hygiene_checks) ? input.hygiene_checks.filter((item): item is string => typeof item === "string") : []
+    prompt_guidance: stringArray(input.prompt_guidance),
+    hygiene_checks: stringArray(input.hygiene_checks),
+    ai_application: normalizeAiApplication(input.ai_application),
+    traceable_destination_definition: normalizeTraceableDestinationDefinition(input.traceable_destination_definition),
+    operational_severity: normalizeOperationalSeverity(input.operational_severity),
+    operational_trash_definition: normalizeOperationalTrashDefinition(input.operational_trash_definition),
+    sync_contract: normalizeSyncContract(input.sync_contract),
+    final_report_model: stringArray(input.final_report_model)
   };
 }
 
@@ -393,12 +528,143 @@ function isPrinciple(value: unknown): value is OperationalPrinciple {
   return Boolean(
     candidate &&
       typeof candidate.id === "string" &&
+      (candidate.legacy_id === undefined || typeof candidate.legacy_id === "string") &&
       typeof candidate.label === "string" &&
       typeof candidate.summary === "string" &&
       ["info", "warning", "error"].includes(candidate.severity) &&
       typeof candidate.checklist_label === "string" &&
       Array.isArray(candidate.applies_to)
   );
+}
+
+function normalizePrinciple(principle: OperationalPrinciple): OperationalPrinciple {
+  return {
+    ...principle,
+    name: optionalString(principle.name),
+    trigger: stringArray(principle.trigger),
+    required_actions: stringArray(principle.required_actions),
+    evidence: stringArray(principle.evidence),
+    blocks_ready_when: stringArray(principle.blocks_ready_when),
+    default_severity: normalizeOperationalSeverityLevel(principle.default_severity),
+    applies_to: stringArray(principle.applies_to),
+    trace_destination: stringArray(principle.trace_destination),
+    same_error_definition: stringArray(principle.same_error_definition)
+  };
+}
+
+function normalizeAiApplication(value: unknown): AiApplication | undefined {
+  const record = asRecord(value);
+  if (!record) {
+    return undefined;
+  }
+  return {
+    rule: optionalString(record.rule),
+    required_fields: stringArray(record.required_fields),
+    execution_format: stringArray(record.execution_format)
+  };
+}
+
+function normalizeTraceableDestinationDefinition(value: unknown): TraceableDestinationDefinition | undefined {
+  const record = asRecord(value);
+  if (!record) {
+    return undefined;
+  }
+  return {
+    rule: optionalString(record.rule),
+    valid_examples: stringArray(record.valid_examples),
+    blocks_ready_when: stringArray(record.blocks_ready_when)
+  };
+}
+
+function normalizeOperationalSeverity(value: unknown): OperationalSeverityContract | undefined {
+  const record = asRecord(value);
+  if (!record) {
+    return undefined;
+  }
+  return {
+    rule: optionalString(record.rule),
+    levels: severityStringMap(record.levels),
+    default_by_principle: stringRecord(record.default_by_principle),
+    runtime_mapping: runtimeSeverityMap(record.runtime_mapping)
+  };
+}
+
+function normalizeOperationalTrashDefinition(value: unknown): OperationalTrashDefinition | undefined {
+  const record = asRecord(value);
+  if (!record) {
+    return undefined;
+  }
+  return {
+    principle_id: optionalString(record.principle_id),
+    includes: stringArray(record.includes),
+    rule: optionalString(record.rule)
+  };
+}
+
+function normalizeSyncContract(value: unknown): SyncContract | undefined {
+  const record = asRecord(value);
+  if (!record) {
+    return undefined;
+  }
+  return {
+    human_source: optionalString(record.human_source),
+    derived_contract: optionalString(record.derived_contract),
+    repo_human_copy: optionalString(record.repo_human_copy),
+    repo_contract_copy: optionalString(record.repo_contract_copy),
+    rules: stringArray(record.rules)
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function normalizeOperationalSeverityLevel(value: unknown): OperationalSeverityLevel | undefined {
+  return value === "INFO" || value === "WARN" || value === "BLOCK" ? value : undefined;
+}
+
+function severityStringMap(value: unknown): Partial<Record<OperationalSeverityLevel, string>> {
+  const record = asRecord(value);
+  if (!record) {
+    return {};
+  }
+  return {
+    INFO: optionalString(record.INFO),
+    WARN: optionalString(record.WARN),
+    BLOCK: optionalString(record.BLOCK)
+  };
+}
+
+function stringRecord(value: unknown): Record<string, string> {
+  const record = asRecord(value);
+  if (!record) {
+    return {};
+  }
+  return Object.fromEntries(Object.entries(record).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+}
+
+function runtimeSeverityMap(value: unknown): Partial<Record<OperationalSeverityLevel, PrincipleSeverity>> {
+  const record = asRecord(value);
+  if (!record) {
+    return {};
+  }
+  return {
+    INFO: normalizeRuntimeSeverity(record.INFO),
+    WARN: normalizeRuntimeSeverity(record.WARN),
+    BLOCK: normalizeRuntimeSeverity(record.BLOCK)
+  };
+}
+
+function normalizeRuntimeSeverity(value: unknown): PrincipleSeverity | undefined {
+  return value === "info" || value === "warning" || value === "error" ? value : undefined;
 }
 
 function isMemoryLayer(value: unknown): value is MemoryLayer {

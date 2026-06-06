@@ -151,11 +151,17 @@ describe("PPIRTV MCP stdio server", () => {
       cooperation_accountability: expect.any(Object),
       librarian_accountability: expect.any(Object),
       utility_accountability: expect.any(Object),
+      contract_accountability: expect.any(Object),
+      ready_definition: expect.any(Array),
+      gate_final_output: expect.any(Array),
+      final_report_model: expect.any(Array),
       prestacao_de_contas: expect.any(Object)
     });
     expect(resultOf(checkout).ppirtv_checkout).toMatchObject({
       prestacao_de_contas: expect.any(Object),
-      utility_accountability: expect.any(Object)
+      utility_accountability: expect.any(Object),
+      contract_accountability: expect.any(Object),
+      final_report_model: expect.any(Array)
     });
   });
 
@@ -467,8 +473,12 @@ describe("PPIRTV MCP stdio server", () => {
     const display = result.display as Record<string, unknown>;
 
     expect(result.markdown).toContain("Checklist PPIRTV");
+    expect(result.markdown).toContain("Gate Final PPIRTV");
     expect(Array.isArray(result.items)).toBe(true);
     expect(Array.isArray(result.operational_principles)).toBe(true);
+    expect(Array.isArray(result.ready_definition)).toBe(true);
+    expect(Array.isArray(result.gate_final_output)).toBe(true);
+    expect(Array.isArray(result.final_report_model)).toBe(true);
     expect(display.phase_emoji).toBe("🧠");
     expect(Array.isArray(display.checklist_visual)).toBe(true);
     expect((display.checklist_visual as unknown[]).length).toBeGreaterThan((result.items as unknown[]).length);
@@ -481,6 +491,9 @@ describe("PPIRTV MCP stdio server", () => {
     const text = prompt.messages[0]?.content.type === "text" ? prompt.messages[0].content.text : "";
     expect(text).toContain("flow_demo");
     expect(text).toContain("Principios operacionais");
+    expect(text).toContain("Modelo de relatorio final PPIRTV");
+    expect(text).toContain("Status final: pronto | parcial | bloqueado");
+    expect(text).toContain("goal_verdict");
     expect(text).toContain("L1");
     expect(text).toContain("PLAN-TASKS");
 

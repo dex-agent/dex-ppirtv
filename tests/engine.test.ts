@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FlowEngine } from "../src/flow-engine.js";
 import { promptText } from "../src/catalogs.js";
 import { MemoryLibrarian, type MemoryGraphProvider, type MemoryHookRunner } from "../src/memory/index.js";
+import { loadOperationalContractSync } from "../src/principles.js";
 import { PpirtvStore } from "../src/store.js";
 
 let tempRoot: string;
@@ -2978,6 +2979,115 @@ describe("PPIRTV flow engine", () => {
       const checklist = await engine.renderChecklist(flow.flow_id);
 
       expect(checklist.operational_principles.map((item) => item.id)).toEqual(["custom_env_contract"]);
+    } finally {
+      restoreEnv(originalEnv);
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("preserves operational-contract v4 metadata and principle details", async () => {
+    const originalCwd = process.cwd();
+    const originalEnv = process.env.PPIRTV_PRINCIPLES_PATH;
+    const contractDir = path.join(tempRoot, "contracts-v4");
+    await mkdir(contractDir, { recursive: true });
+    await writeFile(
+      path.join(contractDir, "operational-contract.json"),
+      JSON.stringify({
+        version: "1.0",
+        numeric_version: 4,
+        principles_revision: "2026-06-06.9",
+        updated_at: "2026-06-06",
+        source: "PRINCIPLES.md",
+        canonical_source: "$env:USERPROFILE\\.agents\\memories\\principles\\PRINCIPLES.md",
+        canonical_contract: "$env:USERPROFILE\\.agents\\memories\\principles\\operational-contract.json",
+        contract_role: "operationalizacao derivada dos principios humanos",
+        principles: [
+          {
+            id: "P7",
+            legacy_id: "gate_do_quando",
+            name: "Gate do Quando",
+            label: "Gate do Quando",
+            summary: "Acao futura precisa de quando.",
+            trigger: ["acao futura declarada"],
+            required_actions: ["exigir data, gatilho, cadencia ou responsavel"],
+            evidence: ["quando verificavel registrado"],
+            blocks_ready_when: ["acao futura sem quando"],
+            default_severity: "BLOCK",
+            severity: "error",
+            checklist_label: "Gate do Quando verificado",
+            applies_to: ["checklist_render", "ppirtv_checkout", "prompts"],
+            trace_destination: ["verdict_parking_lot", "SPT"]
+          }
+        ],
+        ready_definition: ["objetivo atendido", "acoes futuras tem quando"],
+        gate_final_output: ["Princípios acionados", "Evidências", "Risco restante"],
+        memory_layers: [],
+        prompt_guidance: ["o que sem quando nao vira plano executavel"],
+        hygiene_checks: [],
+        ai_application: {
+          rule: "aplicar principios como gates",
+          required_fields: ["Gatilho", "Acao obrigatoria", "Evidencia"],
+          execution_format: ["Princípio acionado", "Ação executada"]
+        },
+        traceable_destination_definition: {
+          rule: "precisa poder ser encontrado depois",
+          valid_examples: ["teste", "contrato operacional"],
+          blocks_ready_when: ["destino nao recuperavel"]
+        },
+        operational_severity: {
+          rule: "severidade por gatilho",
+          levels: { INFO: "registrar", WARN: "declarar risco", BLOCK: "nao declarar pronto" },
+          default_by_principle: { P7: "BLOCK" },
+          runtime_mapping: { INFO: "info", WARN: "warning", BLOCK: "error" }
+        },
+        operational_trash_definition: {
+          principle_id: "P4",
+          includes: ["arquivo temporario", "codigo morto"],
+          rule: "garimpar antes de remover"
+        },
+        sync_contract: {
+          human_source: "PRINCIPLES.md",
+          derived_contract: "operational-contract.json",
+          rules: ["PRINCIPLES.md e fonte humana canonica"]
+        },
+        final_report_model: ["Objetivo atendido", "Status final: pronto | parcial | bloqueado"]
+      }),
+      "utf8"
+    );
+    await writeFile(path.join(contractDir, "PRINCIPLES.md"), "# Gate do Quando\n\nL1 memoria.md L2 memoria.md L3 conhecimento/\n", "utf8");
+    process.env.PPIRTV_PRINCIPLES_PATH = path.join(contractDir, "operational-contract.json");
+    process.chdir(tempRoot);
+    try {
+      const contract = loadOperationalContractSync(tempRoot);
+      const flow = await engine.createFlow({ goal: "Contrato v4" });
+      const checklist = await engine.renderChecklist(flow.flow_id);
+
+      expect(contract.version).toBe("1.0");
+      expect(contract.numeric_version).toBe(4);
+      expect(contract.principles_revision).toBe("2026-06-06.9");
+      expect(contract.ready_definition).toContain("acoes futuras tem quando");
+      expect(contract.final_report_model).toContain("Status final: pronto | parcial | bloqueado");
+      expect(contract.operational_severity?.runtime_mapping.BLOCK).toBe("error");
+      expect(contract.principles[0]).toMatchObject({
+        id: "P7",
+        legacy_id: "gate_do_quando",
+        default_severity: "BLOCK",
+        trigger: ["acao futura declarada"],
+        required_actions: ["exigir data, gatilho, cadencia ou responsavel"],
+        evidence: ["quando verificavel registrado"],
+        blocks_ready_when: ["acao futura sem quando"],
+        trace_destination: ["verdict_parking_lot", "SPT"]
+      });
+      expect(checklist.operational_principles[0]).toMatchObject({
+        id: "gate_do_quando",
+        default_severity: "BLOCK",
+        required_actions: ["exigir data, gatilho, cadencia ou responsavel"],
+        blocks_ready_when: ["acao futura sem quando"],
+        trace_destination: ["verdict_parking_lot", "SPT"]
+      });
+      expect(checklist.ready_definition).toContain("objetivo atendido");
+      expect(checklist.gate_final_output).toContain("Evidências");
+      expect(checklist.final_report_model).toContain("Status final: pronto | parcial | bloqueado");
     } finally {
       restoreEnv(originalEnv);
       process.chdir(originalCwd);

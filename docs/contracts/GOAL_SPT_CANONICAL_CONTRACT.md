@@ -1,0 +1,496 @@
+# GOAL/SPT Canonical Contract
+
+Status: vivo
+Owner: dex-PPIRTV
+Data: 2026-05-24
+
+Este contrato define o formato canonico para criar prompts `/GOAL`,
+`GoalEnvelope` e Trilhos `SPEC-PLAN-TASKs` executaveis pelo `dex-ppirtv`.
+
+## Fronteira /goal e /GOAL
+
+`/goal` do CodeWhale e contexto ou meta de sessao. Ele ajuda o cliente a manter
+o objetivo humano visivel, mas nao inicia execucao PPIRTV.
+
+`/GOAL` PPIRTV so esta ativo depois de uma chamada real bem-sucedida para a
+tool oficial `goal_start`. Texto do modelo, checklist manual ou chamada a tools
+antigas nao substituem `goal_start`.
+
+## Tools oficiais
+
+As tools oficiais para clientes como `dex-code` sao:
+
+- `spt_validate`
+- `goal_start`
+- `goal_status`
+- `goal_resume`
+- `goal_gate_check`
+- `goal_advance`
+- `goal_meeting_open`
+- `goal_meeting_record`
+- `evidence_add`
+- `goal_verdict`
+- `mm_memory_mining`
+- `mm_pipeline_run`
+
+Tools internas como `flow_create`, `flow_advance`, `gate_check`,
+`evidence_attach` e `verdict_record` continuam existindo por compatibilidade,
+mas nao devem ser usadas como substituto silencioso das tools oficiais de
+`/GOAL`.
+
+As wrappers vivas `goal_gate_check`, `goal_advance`, `goal_meeting_open` e
+`goal_meeting_record` encapsulam explicitamente as tools internas antigas para
+clientes oficiais. O cliente deve preferir `goal_*` para gates, avancos e
+reunioes de GOAL.
+
+`mm_memory_mining` fecha o ciclo de aprendizados do flow. `mm_pipeline_run`
+orquestra varios flows PPIRTV em sequencia quando o usuario pedir mais de um
+SPT, mais de um flow ou execucao em lote no mesmo ciclo. Multi-flow nao e
+obrigatorio para GOALs comuns de um unico SPT e nao substitui edicao de codigo,
+compilacao, teste externo ou evidencia real quando o SPT exigir.
+
+O Bibliotecario e a camada de memoria operacional do `dex-ppirtv`. Ele roda
+como hook de apoio em avancos de fase: `afterPhase` registra aprendizados,
+candidatos e estacionamento ao sair da fase; `beforePhase` recupera lembrancas
+uteis ao entrar na proxima fase. Na v1, ele nao bloqueia, nao decide veredito,
+nao promove memoria canonica sozinho e nao substitui `mm_memory_mining`.
+Falha do Bibliotecario deve virar warning rastreavel, nao quebra de
+`goal_advance` ou `flow_advance`.
+
+Graphify Recall, quando existir, e apenas acelerador opcional de lembranca do
+Bibliotecario. Ele nao e memoria canonica, nao altera L1/L2/L3, nao substitui
+`rg` para busca exata e todo achado dele deve ser marcado como `source:
+graphify` para permitir medicao separada.
+
+## Trilho/SPT canonico
+
+Um Trilho canonico e um arquivo Markdown salvo em:
+
+```text
+<workspace>\.agents\PLAN-TASKS\YYYY-MM-DD-<slug>.md
+```
+
+Ele precisa ser legivel por humanos e extraivel pelo `spt_validate`. O arquivo
+deve conter, no minimo:
+
+- titulo `# ...`
+- `Tipo: SPEC-PLAN-TASKs`
+- `Status:`
+- `Owner:`
+- `Data:`
+- `Workspace:`
+- `Origem:`
+- `## GoalEnvelope`
+- `## Contexto`
+- `## Problema`
+- `## Decisao`
+- `## Escopo`
+- `## Fora de escopo`
+- `## SPEC`
+- `## PLAN`
+- `## TASKs`
+- `## Expected Evidence`
+- `## Done Criteria`
+- `## Riscos`
+- `## Gates`
+- `## Validacao`
+- `## Prompt /GOAL de execucao`
+
+SPT bonito em Markdown, mas sem campos extraiveis, e invalido para execucao
+canonica.
+
+### Revisao PPI do Trilho
+
+`ppi` pode ser usado como revisor e formatador operacional do SPT antes de
+`goal_start`, especialmente quando houver campo faltante, escopo difuso,
+risco de memoria/governanca/segredo/runtime, ou quando `spt_validate` retornar
+`valid=false`.
+
+O acionamento de `ppi` pode ser automatico nesses casos, mas ele nao substitui
+`spt_validate`, nao inicia `/GOAL` sozinho e nao cria decisao de execucao sem
+Trilho. O papel dele e devolver o menor ajuste verificavel: preencher campos
+canonicos, cortar escopo, explicitar evidencias, reforcar gates e apontar a
+proxima acao minima.
+
+Veredito esperado do PPI:
+
+- `PPI: pode avancar`
+- `PPI: voltar para Pensamentos`
+- `PPI: voltar para Planejamento`
+- `PPI: bloquear`
+
+## Trilho Multi-Flow / Pipeline SPT
+
+Um Trilho Multi-Flow e um SPT coordenador que descreve uma fila de trabalhos
+menores. Ele tambem deve ser salvo em `.agents\PLAN-TASKS` e seguir o formato
+canonico acima.
+
+Use Trilho Multi-Flow somente quando o pedido envolver mais de um SPT, mais de
+um flow, uma fila de trabalhos ou execucao em lote. Para um unico SPT, mantenha
+o fluxo canonico simples: Trilho -> `spt_validate` -> `goal_start` -> gates ->
+evidencias -> `goal_verdict`.
+
+O Trilho coordenador pode usar `mm_pipeline_run` para criar e executar flows
+PPIRTV independentes em sequencia. Cada item do pipeline deve ter, no minimo:
+
+- `goal`
+- `scope_in`
+- `scope_out`
+- `tasks`
+- `expected_evidence`
+- `done_criteria`
+
+Quando houver SPT filho para um item, o Trilho coordenador deve apontar o
+`spt_path` desse filho no proprio Markdown do coordenador ou na documentacao do
+item. O SPT filho tambem deve existir em `.agents\PLAN-TASKS` e passar em
+`spt_validate` antes de ser tratado como execucao canonica de codigo real.
+
+Regras:
+
+- `mm_pipeline_run` pronto significa que a orquestracao PPIRTV do pipeline
+  passou; nao significa que codigo real foi editado, compilado ou testado.
+- Se os flows forem gerados antes dos SPTs filhos, o resultado e relatorio
+  operacional de pipeline, nao execucao canonica completa de cada SPT filho.
+- Para codigo real, cada item precisa de evidencia propria: patch aplicado,
+  validacao de encoding quando houver Delphi legado, compilacao/teste ou
+  limitacao explicita, e `goal_verdict` com `evidence_ids`.
+- Se `stop_on_failure=true`, falha em um item deixa os seguintes como
+  `pending`.
+- Se `auto_memory_mining=true`, a mineracao deve ocorrer depois do veredito do
+  item para enxergar `gold_mining` e `parking_lot` registrados nele.
+- Bloqueio de mineracao pos-veredito deve retornar item `bloqueado`, sem sucesso
+  falso.
+
+O Trilho coordenador deve registrar depois da execucao:
+
+- `pipeline_id`
+- `flow_ids`
+- status por item
+- evidencias e comandos reais, quando existirem
+- bloqueios e itens `pending`
+- riscos residuais
+- proximo passo por item
+
+Regra dura:
+
+```text
+mm_pipeline_run PRONTO nao significa codigo real PRONTO.
+```
+
+## GoalEnvelope
+
+`GoalEnvelope` e o payload estruturado enviado pelo cliente para `goal_start`:
+
+```json
+{
+  "workspace": "<absolute-workspace-path>",
+  "spt_path": "<absolute-spt-path>",
+  "objective": "<clear-objective>",
+  "idempotency_key": "<project-or-repo>:<date-slug>",
+  "evidence_required": true,
+  "required_evidence": [],
+  "requested_verdict_policy": "evidence_required",
+  "source": "<origin>"
+}
+```
+
+Regras:
+
+- `workspace` deve ser absoluto e existir.
+- `spt_path` deve apontar para um arquivo dentro de `.agents\PLAN-TASKS`.
+- `objective` deve nomear o resultado esperado do ciclo.
+- `idempotency_key` deve ser estavel para retry e nao pode duplicar flows.
+- `evidence_required=true` exige evidencia rastreavel antes de conclusao
+  positiva.
+- `required_evidence` lista evidencias esperadas para o veredito.
+- `requested_verdict_policy=evidence_required` faz `goal_verdict` recusar
+  `pronto` e `pronto_com_ressalvas` sem `evidence_ids` existentes.
+- `source` identifica a origem, por exemplo `dex-code`.
+
+## Campos de ledger
+
+Ao iniciar um GOAL com `goal_start`, o flow e o ledger precisam preservar:
+
+- `workspace`
+- `spt_path`
+- `objective`
+- `flow_id`
+- `idempotency_key`
+- `evidence_required`
+- `required_evidence`
+- `requested_verdict_policy`
+- `source`
+- `tasks`
+- `expected_evidence`
+- `done_criteria`
+
+`tasks`, `expected_evidence` e `done_criteria` sao obrigatorios antes de sair
+da fase Planejamento.
+
+Eventos de memoria operacional tambem podem aparecer no ledger quando houver
+avanco de fase:
+
+- `memory_hook_recorded`: resultado de `afterPhase` para a fase que esta
+  sendo encerrada;
+- `memory_recalled`: resultado de `beforePhase` para a nova fase;
+- `memory_hook_warning`: falha tolerada do Bibliotecario ou provider auxiliar;
+- `memory_mined`: permanece reservado para `mm_memory_mining`.
+
+Quando Graphify Recall participar, os itens de `memory_recalled` devem manter
+marcadores minimos e sanitizados:
+
+- `source: graphify`
+- `question`
+- `path`
+- `destination`
+- `observation`
+
+Nao registrar payload bruto sensivel, `.env`, tokens, Authorization headers ou
+runtime privado em artefato publico.
+
+## Fases PPIRTV
+
+| Fase | Nome | Gate minimo |
+| --- | --- | --- |
+| 🧠 | Pensamentos | objetivo, contexto, riscos e incertezas |
+| 🗂️ | Planejamento | escopo, fora de escopo, tasks, expected_evidence e done_criteria |
+| 🛠️ | Implementação | mudanca executada ou bloqueio objetivo e arquivos alterados |
+| 🔎 | Revisão | diff revisado, barata scan e riscos de regressao |
+| 🧪 | Teste | teste real ou limitacao explicita e evidencia anexada |
+| ✅ | Validação | veredito, risco residual, proximo passo e casa limpa |
+
+## Validacao
+
+Fluxo canonico:
+
+1. Criar Trilho em `.agents\PLAN-TASKS`.
+2. Montar `GoalEnvelope`.
+3. Chamar `spt_validate`.
+4. Se `valid=false`, corrigir o SPT. Nao iniciar GOAL.
+5. Chamar `goal_start`.
+6. Considerar GOAL ativo apenas se `goal_start` retornar `flow_id`.
+7. Abrir reunioes vivas com `goal_meeting_open` quando houver incerteza,
+   decisao, divergencia ou risco material.
+8. Registrar contribuicoes e decisoes com `goal_meeting_record`.
+9. Rodar gates persistidos com `goal_gate_check`.
+10. Avancar fases com `goal_advance`.
+11. Acompanhar com `goal_status`.
+12. Conferir `ppirtv_checkin`: PPIRTV, COO, Bibliotecario, Graphify e PPI
+    precisam aparecer como visiveis/configurados/desabilitados/falhando. Se algo
+    nao estiver visivel, o motor deve registrar o ajuste possivel ou acionar PPI
+    com acao concreta.
+13. Conferir a telemetria do Bibliotecario no ledger ou no retorno do turno
+    quando o cliente a expuser.
+14. Minerar memoria com `mm_memory_mining` quando houver garimpo ou
+    estacionamento relevante.
+15. Registrar evidencias reais com `evidence_add`, seguindo o contrato minimo
+    de evidencia.
+16. Chamar `goal_verdict` com `evidence_ids` rastreaveis.
+17. Conferir `ppirtv_checkout` antes de declarar fechamento total.
+
+### Modo advisory e modo fiscal
+
+O PPIRTV pode operar como orientador (`advisory`) em fluxos leves. Em GOALs
+oficiais com risco material, ele vira fiscal/bloqueante.
+
+O modo fiscal e acionado por sinais como:
+
+- `pronto_com_ressalvas` com risco material;
+- risco de produto, regressao ou erro recorrente;
+- mudanca de codigo sem review material;
+- `hygiene_scan` com warning/error material;
+- memoria L1/L2/L3 exigida sem promocao ou candidato;
+- Bibliotecario/Graphify exigido, vazio, ausente ou falhando;
+- tentativa de passar gate com `provided=true` sem evidencia coerente.
+
+Quando fiscal, o motor deve expor:
+
+- `blockers`;
+- `required_cooperation`;
+- `fiscal_policy.meeting_policy`;
+- `ppirtv_checkin`;
+- `ppirtv_checkout`;
+- `librarian_status`;
+- `memory_mining.memory_required_but_empty`, quando aplicavel.
+
+Se `blockers` existir, `display.direct_action` deve apontar o bloqueio real,
+por exemplo `Bloqueado: required_cooperation, review_required`; nao pode
+mostrar `Gate pronto para avancar`. A regra vale recursivamente para
+subpayloads como checklist, evidence/status e archive de flow bloqueado.
+
+`librarian_status` deve ser estruturado sempre, inclusive quando desabilitado,
+com `bibliotecario.status`, `graphify.status` e `functional_tested`. Estado
+ausente/null e falso silencio operacional. `disabled` significa reportado, nao
+participacao funcional.
+
+`ppirtv_checkin` e obrigatorio no inicio: deve conferir PPIRTV, COO,
+Bibliotecario, Graphify e PPI, ajustar o que puder tornar visivel e expor
+`initial_adjustment_required`/`direct_action` quando houver bloqueio fiscal.
+Tambem deve expor `trail_alignment` para conferir MCP cwd, workspace, SPT,
+objetivo e contrato de evidencia antes de partir.
+
+`ppirtv_checkout` e obrigatorio no fim: deve preservar blockers, evidencias,
+reunioes, review, testes, garimpo, memoria e destino. Arquivar flow bloqueado
+nao transforma bloqueio em sucesso; deve dizer que foi arquivado com bloqueios
+preservados.
+
+`required_cooperation` material deve gerar contrato acionavel:
+`meeting_required`, `regress_required`, `back_to`, `next_required_action` e
+`can_retry_verdict=false` ate existir reuniao/regresso rastreavel ou decisao
+material equivalente.
+
+Para evitar loop ruim, o maximo fiscal inicial e 3 regressos por flow. Ao
+atingir `max_regressions`, o motor deve marcar `regress_limit_reached=true` e
+exigir `next_required_action.type="open_decision_meeting"` em vez de mandar
+regressar novamente.
+
+`checklist_render` deve tratar principios dependentes de prova como tri-state:
+`checked`, `blocked`/`unchecked` ou `pending`. Hygiene, memoria, regresso e
+review nao podem nascer verdes sem evidencia material.
+
+`hygiene_scan` nao deve abrir `.env`. A presenca de `.env` deve ser reportada
+somente como indicador agregado, por exemplo `.env:present_not_read`, com
+`sensitive_content_read=false`, sem nome de chave e sem valor.
+
+`pronto_com_ressalvas` nao pode ser aceito quando a propria ressalva confessa
+ausencia dos fiscais que deveriam decidir a ressalva.
+
+### COO obrigatorio e reuniao viva
+
+Em GOAL material, COO nao e opcional. A mesa minima obrigatoria deve aparecer em
+`required_cooperation` conforme fase e risco:
+
+- `ancora-fluxo`: indica fase correta, regresso e cooperadores da fase;
+- `chato`: pressiona lacunas, falso pronto e contradicoes;
+- `questionador`: testa premissas e perguntas principais;
+- `entrevista-me`: extrai contexto faltante;
+- `garimpeiro`: separa ruido, ponto cego, dica de ouro e memoria candidata;
+- `dex-memoria`: classifica/promove memoria exigida pelo contrato L1/L2/L3;
+- `estacionamento`: segura itens vivos que ainda nao devem virar pronto;
+- `reuniao`: conduz divergencia, convergencia e transversalidade;
+- `sprinter`: transforma decisao em Trilho executavel;
+- `duda-dev`: implementa codigo real quando a fatia estiver recortada;
+- `mapeador-implementacao`: preserva escopo, invariantes e ordem tecnica;
+- `revisor-codigo`: valida diff, riscos e review material;
+- `tio-testador`: prova comportamento executado;
+- `validador-pronto`: fecha veredito com evidencia.
+
+A politica de reuniao deve rotacionar integrantes e repertorio. A mesa precisa
+provocar, desviar, procurar pontos cegos e buscar saidas nao tentadas; reuniao
+decorativa ou sempre com a mesma voz nao substitui gate.
+
+### Contrato minimo de evidencia
+
+Toda evidencia registrada com `evidence_add` ou anexada a um Trilho deve
+informar, no proprio conteudo ou metadados:
+
+- data e hora da coleta, preferencialmente em ISO 8601;
+- origem da evidencia: comando, ferramenta, usuario, screenshot, teste, build,
+  MCP ou arquivo;
+- objetivo validado;
+- `spt_path` ou nome do Trilho/SPT;
+- `flow_id`;
+- fase PPIRTV relacionada;
+- comando ou procedimento executado, quando houver;
+- resultado observado;
+- limitacao ou risco residual, quando houver.
+
+Evidencia sem data/hora, origem, objetivo, SPT/Trilho e `flow_id` e fraca para
+veredito positivo. Pode ser usada como anotacao auxiliar, mas nao deve sustentar
+`pronto` ou `pronto_com_ressalvas` sozinha.
+
+Fluxo multi-flow, somente quando solicitado ou quando o objetivo tiver mais de
+um SPT/flow:
+
+1. Criar o Trilho coordenador.
+2. Criar ou validar os SPTs filhos quando o item representar codigo real.
+3. Chamar `mm_pipeline_run` com a fila.
+4. Registrar `pipeline_id`, `flow_ids`, status por item e evidencias no Trilho
+   coordenador.
+5. Para item que exige codigo real, continuar no SPT filho ate haver patch,
+   validacao e veredito proprio com evidencia rastreavel.
+
+## Especialistas vivos e creditos
+
+Especialistas podem aparecer como `suggested_cooperators` em reunioes, mas isso
+nao vira credito material. Credito ativo so nasce em `goal_meeting_record`,
+`evidence_add` ou `goal_verdict` quando `cooperators[].material=true` e a
+contribuicao mudou decisao, risco, teste, documentacao ou veredito.
+
+`goal_status` deve expor cooperadores, creditos ativos, estacionamento
+(`parking_lot`), garimpo (`gold_mining`), `goal_learning_links` e
+`memory_mining` quando existirem. Reuniao decorativa sem registro util nao
+substitui gate, evidencia nem decisao rastreavel.
+
+Em GOALs oficiais, Estela e Gabi trabalham juntas: item em `parking_lot` deve
+receber garimpo vinculado. Se houver pepita, o flow preserva o item estacionado,
+promove a pepita para `gold_mining` e registra o rastro estruturado em
+`goal_learning_links`.
+
+`goal_verdict` positivo deve reutilizar a prestacao de contas mais recente de
+`mm_memory_mining` e nao pode promover `write_policy=classify_only` para
+`auto_write`. Se memoria for exigida e ainda nao tiver sido minerada
+explicitamente, o veredito bloqueia e pede a acao de memoria em vez de escrever
+por efeito colateral. Candidate util sem rota valida bloqueia o veredito.
+
+### Auto-gravacao de memoria
+
+- Somente `mm_memory_mining` pode escrever memoria curada L1/L2/L3.
+- Default operacional: `auto_classify=true`, `write_policy=auto_write`.
+- `goal_verdict` nao escreve L1/L2/L3 implicitamente; ele consome a mineracao
+  existente e preserva `classify_only` quando esse foi o modo executado.
+- `goal_verdict` pode registrar `review_findings`, `verdict_gold_mining` e
+  `verdict_parking_lot`; esses campos alimentam garimpo, estacionamento e a
+  proxima rodada de `mm_memory_mining`, sem escrever memoria por efeito
+  colateral.
+- Achado que merece memoria de reuso, tropeço recorrente ou prevencao de erro
+  deve ser gravado automaticamente quando classificado como writable e nao
+  bloqueado; o usuario e informado depois com os arquivos gravados para poder
+  editar, complementar ou corrigir.
+- `written=[]` nunca pode ser silencioso. A resposta deve expor
+  `write_decisions`, `edit_queue` e, se aplicavel, `destination_warnings`.
+- Todo item estacionado deve ter garimpo vinculado em
+  `goal_learning_links.garimpo_vinculado`, separando `ponto_cego`,
+  `dica_de_ouro`, `armadilha`, `heuristica` e `nao_promover`.
+- Diagnostico e validacao controlada de consumidor devem usar
+  `write_policy=classify_only`.
+- `auto_classify=false` com `write_policy=auto_write` e invalido.
+- Graphify e Bibliotecario nao promovem memoria canonica.
+- Escrita L1/L2/L3 exige candidato classificado como writable e nao bloqueado.
+- Nada entra em L2 sem gatilho L1; nada entra em L3 sem ancora L2.
+- Se memoria for exigida e nada for escrito/classificado, expor
+  `memory_required_but_empty=true`.
+
+`auto_classify=false` nao e atalho para gravar sem classificacao: ele desliga a
+classificacao/escrita automatica e so pode ser usado com
+`write_policy=classify_only`. Candidate sem evidencia minima nao vira memoria
+curada; item de `parking_lot` precisa de promocao rastreavel ou evidencia real
+para escrever L1/L2.
+
+## Auto-continuacao
+
+Auto-continuacao deve ser:
+
+- visivel para o usuario;
+- limitada por objetivo, fase ou budget;
+- cancelavel por nova instrucao;
+- rastreavel por status, evidencias e proximo passo.
+
+Ela nao pode executar SPT inteiro de forma invisivel por hook.
+
+## Erros esperados
+
+- `BLOQUEADO_TOOLS_AUSENTES`: alguma tool oficial nao apareceu em `list_tools`.
+- `SPT_INVALIDO`: `spt_validate` retornou campos faltantes.
+- `GOAL_NAO_ATIVO`: ainda nao houve `goal_start` real com `flow_id`.
+- `EVIDENCIA_AUSENTE`: tentativa de veredito positivo sem `evidence_ids`.
+- `MEMORY_MINING_BLOCKED_VERDICT`: mineracao encontrou candidate util sem rota
+  valida antes de veredito positivo.
+- `MEMORY_HOOK_WARNING`: Bibliotecario ou provider auxiliar falhou de forma
+  tolerada durante `beforePhase` ou `afterPhase`.
+- `GRAPHIFY_RECALL_UNAVAILABLE`: Graphify Recall estava habilitado ou esperado,
+  mas nao havia grafo, executavel, resposta valida ou tempo suficiente.
+- `PIPELINE_ITEM_BLOCKED`: item do `mm_pipeline_run` bloqueou em gate ou
+  mineracao pos-veredito.
+- `PIPELINE_PRONTO_NAO_CODIGO_PRONTO`: pipeline completou orquestracao, mas a
+  execucao de codigo real ainda nao tem evidencia propria.

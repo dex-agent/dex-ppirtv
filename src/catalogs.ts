@@ -1,6 +1,6 @@
 import type { FlowEngine } from "./flow-engine.js";
 import { GATE_REQUIREMENTS, REQUIRED_PROMPTS, REQUIRED_RESOURCES, REQUIRED_TOOLS, type MeetingType } from "./domain.js";
-import { promptGuidance } from "./principles.js";
+import { finalReportModel, gateFinalOutput, operationalTrashDefinition, promptGuidance, readyDefinition } from "./principles.js";
 
 export const TOOL_NAMES = [...REQUIRED_TOOLS];
 export const PROMPT_NAMES = [...REQUIRED_PROMPTS];
@@ -151,14 +151,19 @@ export function promptText(name: string, args: Record<string, unknown>): string 
       "Antes de descartar, mover para LIXEIRA, fechar estacionamento ou eliminar material antigo, garimpe aprendizados, evidencias e memorias uteis.",
       "Nunca crie L3 sem L2 e L1; nunca crie L2 sem L1.",
       "Separe achados acionaveis, ressalvas e itens fora de escopo.",
+      operationalTrashGuidanceText(),
       guidance,
       "Use estacionamento/garimpo como aliases humanos para parking_lot/gold_mining."
     ].join("\n"),
     "final-verdict": [
       `Prepare veredito final para ${flowId}.`,
       "Compare objetivo, implementacao, evidencias, testes, risco residual e proximo passo.",
-      "Use verdict_record. Sem evidencia, registre ressalva ou nao_pronto.",
+      "Use goal_verdict para fluxo GOAL/SPT oficial; use verdict_record apenas para flow legado/manual.",
+      "Sem evidencia, registre ressalva ou nao_pronto.",
       "Se houve decisao de implementacao sem SPEC-PLAN-TASKs salvo em .agents\\PLAN-TASKS, declare que o plano ainda nao virou trilho PPIRTV.",
+      readyDefinitionText(),
+      gateFinalOutputText(),
+      finalReportModelText(),
       guidance,
       "Creditos ativos so devem aparecer quando houver contribuicao material registrada."
     ].join("\n")
@@ -176,4 +181,44 @@ function principleGuidanceText(): string {
     return "Principios: consulte fonte viva do projeto antes de executar.";
   }
   return ["Principios operacionais:", ...guidance.map((item) => `- ${item}`)].join("\n");
+}
+
+function readyDefinitionText(): string {
+  const items = readyDefinition();
+  if (items.length === 0) {
+    return "Definicao de pronto: validar objetivo, evidencias, bloqueios, riscos e acoes futuras antes de declarar pronto.";
+  }
+  return ["Definicao de pronto:", ...items.map((item) => `- ${item}`)].join("\n");
+}
+
+function gateFinalOutputText(): string {
+  const items = gateFinalOutput();
+  if (items.length === 0) {
+    return "Gate Final PPIRTV: declarar principios acionados, evidencias, bloqueios, validacao e risco restante.";
+  }
+  return ["Gate Final PPIRTV:", ...items.map((item) => `- ${item}`)].join("\n");
+}
+
+function finalReportModelText(): string {
+  const items = finalReportModel();
+  if (items.length === 0) {
+    return "Modelo de relatorio final PPIRTV: informe objetivo atendido, arquivos alterados, evidencias, validacao, risco restante e status final.";
+  }
+  return ["Modelo de relatorio final PPIRTV:", "```text", "PPIRTV:", ...items.map(reportModelLine), "```"].join("\n");
+}
+
+function reportModelLine(item: string): string {
+  return item.includes(":") ? `- ${item}` : `- ${item}:`;
+}
+
+function operationalTrashGuidanceText(): string {
+  const definition = operationalTrashDefinition();
+  if (!definition || definition.includes.length === 0) {
+    return "Lixo operacional: remover ou justificar temporarios, codigo morto, docs contraditorias e artefatos sem destino depois de garimpar aprendizados uteis.";
+  }
+  return [
+    "Lixo operacional inclui:",
+    ...definition.includes.map((item) => `- ${item}`),
+    definition.rule ? `Regra: ${definition.rule}` : "Regra: antes de remover, garimpar evidencias e aprendizados uteis."
+  ].join("\n");
 }

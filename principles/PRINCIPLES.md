@@ -1,11 +1,181 @@
 # Principios do dex-PPIRTV
 
+Status: vigente
+Principles-Revision: `2026-06-06.9`
+Last-Updated: `2026-06-06`
+Canonical-Source: `$env:USERPROFILE\.agents\memories\principles\PRINCIPLES.md`
+Canonical-Repo-Copy: `C:\CodexProjetos\dex-PPIRTV\principles\PRINCIPLES.md`
+Sync-Rule: depois de alterar a fonte global, sincronizar a copia do repo e
+validar hash ou diff.
+
 > Principio orienta a decisao; contrato operacionaliza o principio; se o
 > contrato ficou errado, atualiza-se o contrato com rastreabilidade. Os
 > principios nao mudam por erro de implementacao.
 
 Principios nao substituem o fluxo; eles explicam por que o fluxo existe e
 quando ele deve bloquear, retornar ou registrar aprendizado.
+
+## Como a IA deve aplicar estes princípios
+
+Os principios devem ser aplicados como gates de decisao, nao como frases
+decorativas. Ao encontrar uma situacao coberta por um principio, a IA deve
+traduzir o principio em verificacao operacional antes de avancar.
+
+Para cada principio acionado, identificar:
+
+1. Gatilho — quando o principio entra em acao.
+2. Acao obrigatoria — o que deve ser feito.
+3. Evidencia — qual prova mostra que o principio foi cumprido.
+4. Bloqueio — em qual situacao a execucao nao pode ser declarada pronta.
+5. Destino rastreavel — onde registrar aprendizado, erro recorrente, decisao
+   ou descarte.
+
+Formato obrigatorio de execucao:
+
+```text
+Princípio acionado:
+Ação executada:
+Evidência:
+Risco restante:
+Destino rastreável, se aplicável:
+```
+
+## Definição de pronto
+
+Uma tarefa so pode ser declarada pronta quando:
+
+1. o objetivo foi atendido;
+2. os principios acionados foram verificados;
+3. os bloqueios foram resolvidos ou declarados;
+4. a validacao possivel foi executada;
+5. aprendizados uteis tiveram destino rastreavel;
+6. acoes futuras declaram `quando`;
+7. riscos restantes foram declarados.
+
+Se qualquer item obrigatorio faltar, o veredito correto e `nao pronto` ou
+`pronto com ressalvas`, com evidencia e proximo passo rastreavel.
+
+## Destino rastreável
+
+Destino rastreavel e qualquer artefato recuperavel no futuro por caminho, nome,
+tag, gatilho, ancora ou referencia explicita.
+
+Exemplos validos:
+
+- teste;
+- contrato operacional;
+- napkin tatico;
+- memoria L1/L2/L3;
+- skill atualizada;
+- HANDOFF;
+- documentacao viva;
+- estacionamento com `quando`;
+- descarte justificado.
+
+Um destino rastreavel precisa poder ser encontrado depois. Se nao puder ser
+recuperado, nao conta como destino.
+
+## Severidade operacional
+
+Severidade orienta a decisao; nao substitui o principio nem reduz bloqueios ja
+existentes. O contrato operacional pode detalhar a aplicacao.
+
+INFO:
+Registrar se aplicavel, sem bloquear a execucao.
+
+WARN:
+Declarar risco antes de finalizar. Pode permitir continuidade se houver
+justificativa.
+
+BLOCK:
+Nao declarar pronto ate resolver, registrar destino rastreavel ou justificar
+formalmente.
+
+| Principio | Severidade padrao |
+| --- | --- |
+| Barata nunca esta sozinha | WARN; BLOCK se erro critico ou sistemico |
+| Memoria sem lembranca e entulho inutil | BLOCK quando criar ou atualizar memoria |
+| Ouro garimpado se guarda, trilha aberta na mata se marca | WARN; BLOCK se aprendizado critico nao foi registrado |
+| Casa suja e baguncada chama baratas | WARN; BLOCK se o lixo afeta execucao, memoria ou validacao |
+| Nunca comecamos pelo final nem pelo meio | BLOCK antes de acao tecnica |
+| Erro repetido tres vezes bloqueia pronto | BLOCK |
+| Gate do Quando | BLOCK para plano, decisao ou acao futura |
+
+## Gate Final PPIRTV
+
+Antes de declarar uma tarefa como pronta, executar este checklist:
+
+1. Barata nunca esta sozinha
+   Encontrei erro, warning, falha, comportamento estranho ou inconsistencia?
+   Se sim, procurei ocorrencias correlatas?
+
+2. Memoria sem lembranca e entulho inutil
+   Criei ou atualizei memoria?
+   Se sim, existe gatilho L1 apontando para ancora L2?
+   Se existe L3, ela e recuperavel por L2 e L1?
+
+3. Ouro garimpado se guarda, trilha aberta na mata se marca
+   Algum aprendizado util apareceu durante a tarefa?
+   Se sim, ele foi registrado em artefato rastreavel?
+   Scripts auxiliares, arquivos temporarios e trilhas descartadas foram
+   removidos ou justificados?
+
+4. Casa suja e baguncada chama baratas
+   Depois da correcao, ficou lixo operacional?
+   Existem temporarios, codigo morto, docs contraditorias, caminhos mortos,
+   indentacao quebrada ou codigo dentro de codigo?
+
+5. Nunca comecamos pelo final nem pelo meio
+   Antes de executar, consultei `napkin.md`, L1, L2, skills, documentacao viva
+   ou contrato aplicavel?
+   Se nao consultei, expliquei por que nao se aplicava?
+
+6. Erro repetido tres vezes bloqueia pronto
+   Este erro, tropeco ou falso verde apareceu pela terceira vez?
+   Se sim, criei destino rastreavel: teste, contrato, memoria, skill, napkin
+   tatico, estacionamento ou descarte justificado?
+
+7. Gate do Quando
+   Algum item promete acao futura?
+   Se sim, ele tem data, gatilho, cadencia, condicao, janela de revisao,
+   vencimento, dependencia ou responsavel?
+
+Saida obrigatoria:
+
+```text
+PPIRTV:
+- Princípios acionados:
+- Evidências:
+- Itens não aplicáveis:
+- Bloqueios encontrados:
+- Destino rastreável criado:
+- Validação executada:
+- Risco restante:
+```
+
+Se houver bloqueio critico, nao declarar pronto.
+
+## Modelo de relatorio final PPIRTV
+
+O Gate Final PPIRTV e verificacao antes do veredito. O relatorio final e a
+saida preenchida depois da verificacao, para registrar evidencia, risco e
+status.
+
+```text
+PPIRTV:
+- Objetivo atendido:
+- Arquivos alterados:
+- Princípios acionados:
+- Evidências:
+- Validação executada:
+- O que não foi validado:
+- Bloqueios encontrados:
+- Destino rastreável criado:
+- Lixo operacional removido:
+- Ações futuras com quando:
+- Risco restante:
+- Status final: pronto | parcial | bloqueado
+```
 
 ## 1. Barata nunca esta sozinha
 
@@ -45,6 +215,16 @@ Apos cada correcao, verificar se nao ficou lixo operacional: scripts temporarios
 indentacao inconsistente, codigo morto, codigo dentro de codigo, docs
 contraditorias ou caminhos mortos.
 
+### O que conta como lixo operacional
+
+Lixo operacional inclui arquivo temporario, script auxiliar descartavel, codigo
+morto, comentario enganoso, implementacao duplicada, documentacao contraditoria,
+caminho inexistente, backup abandonado, log irrelevante, pasta vazia sem funcao
+e artefato de teste sem destino.
+
+Antes de remover qualquer material, garimpar aprendizados, evidencias e
+memorias uteis.
+
 Sub-regra de higiene:
 
 ```text
@@ -74,10 +254,36 @@ Na terceira ocorrencia do mesmo erro, problema ou tropeco, nao declarar pronto
 ate existir um destino rastreavel: teste, contrato operacional, napkin tatico,
 memoria L1/L2/L3, skill atualizada, estacionamento ou descarte justificado.
 
+### O que conta como mesmo erro
+
+Considera-se o mesmo erro quando houver repeticao de causa, sintoma,
+ferramenta, arquivo, padrao de falha, falso verde, recuperacao incorreta ou
+tropeco operacional equivalente.
+
+A repeticao nao precisa ser textualmente identica. Basta indicar que o metodo de
+recuperacao, teste, contrato ou memoria voltou a falhar de modo equivalente.
+
 O erro deve morar no dominio certo, como projeto, tema ou global. Marcadores
 curtos como `#erro-recorrente`, `#falso-verde`, `#encoding`, `#fallback` e
 `#evidencia-visual` ajudam a busca transversal, mas nao substituem memoria
 recuperavel nem justificam criar deposito generico de erros.
+
+## 7. Gate do Quando
+
+Um `o que` sem `quando` nao vira plano executavel.
+
+SPT, memoria, estacionamento, pesquisa, governanca ou decisao que promete acao
+futura precisa declarar data, gatilho, cadencia, condicao, janela de revisao,
+vencimento, dependencia desbloqueadora ou responsavel pela retomada.
+
+Sem `quando`, o item pode ser ideia, hipotese ou estacionamento, mas nao
+`pronto`, plano executavel ou regra promovida.
+
+Frase martelo:
+
+```text
+Um o que? sem um Quando... é NUNCA!!..
+```
 
 ## Contrato editavel
 
@@ -93,5 +299,14 @@ O contrato operacional derivado fica em:
 $env:USERPROFILE\.agents\memories\principles\operational-contract.json
 ```
 
-Atualize o contrato quando a operacionalizacao estiver errada, mantendo este
-arquivo como fonte humana dos principios.
+### Regra de sincronizacao
+
+`PRINCIPLES.md` e a fonte humana canonica. `operational-contract.json` e o
+contrato operacional derivado e editavel.
+
+Se o contrato operacional estiver errado, atualize o contrato com
+rastreabilidade. Os principios nao mudam por erro de implementacao.
+
+Toda mudanca no contrato precisa indicar qual principio operacionaliza. Se um
+principio for alterado conscientemente, revise o contrato derivado antes de
+declarar pronto.

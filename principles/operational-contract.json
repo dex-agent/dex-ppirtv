@@ -1,55 +1,355 @@
 {
-  "version": 1,
+  "version": "1.0",
+  "numeric_version": 4,
+  "principles_revision": "2026-06-06.9",
+  "updated_at": "2026-06-06",
   "source": "principles/PRINCIPLES.md",
+  "canonical_source": "$env:USERPROFILE\\.agents\\memories\\principles\\PRINCIPLES.md",
+  "canonical_contract": "$env:USERPROFILE\\.agents\\memories\\principles\\operational-contract.json",
+  "canonical_repo_copy": "C:\\CodexProjetos\\dex-PPIRTV\\principles\\operational-contract.json",
+  "contract_role": "operationalizacao derivada dos principios humanos",
+  "rule": "se o contrato divergir da fonte canonica, corrigir o contrato sem alterar o principio",
+  "sync_rule": "Depois de alterar a fonte global, sincronizar a copia do repo e validar hash ou diff; se PRINCIPLES.md mudar conscientemente, revisar este contrato derivado antes de declarar pronto.",
   "principles": [
     {
-      "id": "barata_nunca_esta_sozinha",
+      "id": "P1",
+      "legacy_id": "barata_nunca_esta_sozinha",
+      "name": "Barata nunca esta sozinha",
       "label": "Barata nunca esta sozinha",
       "summary": "Ao encontrar um problema, procurar ocorrencias vizinhas antes de seguir.",
+      "trigger": [
+        "erro encontrado",
+        "warning encontrado",
+        "falha encontrada",
+        "comportamento estranho",
+        "inconsistencia operacional"
+      ],
+      "required_actions": [
+        "procurar ocorrencias correlatas antes de seguir",
+        "varrer padroes vizinhos do mesmo problema"
+      ],
+      "evidence": [
+        "busca ou verificacao executada",
+        "ocorrencias correlatas listadas ou ausencia justificada"
+      ],
+      "blocks_ready_when": [
+        "houve erro ou comportamento estranho e nenhuma busca vizinha foi feita"
+      ],
+      "default_severity": "WARN",
       "severity": "warning",
       "checklist_label": "Problemas encontrados foram varridos ao redor",
-      "applies_to": ["hygiene_scan", "checklist_render", "prompts"]
+      "applies_to": [
+        "hygiene_scan",
+        "checklist_render",
+        "prompts"
+      ],
+      "trace_destination": [
+        "teste",
+        "contrato",
+        "memoria",
+        "napkin tatico",
+        "estacionamento",
+        "descarte justificado"
+      ]
     },
     {
-      "id": "memoria_sem_lembranca",
+      "id": "P2",
+      "legacy_id": "memoria_sem_lembranca",
+      "name": "Memoria sem lembranca e entulho inutil",
       "label": "Memoria sem lembranca e entulho inutil",
-      "summary": "L1 dispara L2; L2 aponta para L3 quando for preciso aprofundar.",
-      "severity": "warning",
+      "summary": "L1 dispara L2; L2 aponta para L3 quando for preciso aprofundar. Criar ou atualizar memoria sem recuperacao bloqueia pronto.",
+      "trigger": [
+        "memoria criada",
+        "memoria atualizada",
+        "aprendizado reutilizavel",
+        "conhecimento L3 criado"
+      ],
+      "required_actions": [
+        "garantir gatilho L1 antes de L2",
+        "garantir ancora L2 antes de L3",
+        "manter L3 recuperavel por L2 e L1"
+      ],
+      "evidence": [
+        "lembranca.md aponta para memoria.md",
+        "memoria.md aponta para conhecimento quando houver L3",
+        "gatilho curto recupera a memoria"
+      ],
+      "blocks_ready_when": [
+        "existe L2 sem L1",
+        "existe L3 sem L2",
+        "memoria detalhada nao tem gatilho de recuperacao",
+        "memoria criada ou atualizada sem L1 recuperavel apontando para ancora L2"
+      ],
+      "default_severity": "BLOCK",
+      "severity": "error",
       "checklist_label": "Memoria L1/L2/L3 esta recuperavel por gatilhos",
-      "applies_to": ["hygiene_scan", "checklist_render", "prompts"]
+      "applies_to": [
+        "hygiene_scan",
+        "checklist_render",
+        "prompts"
+      ],
+      "trace_destination": [
+        "lembranca.md",
+        "memoria.md",
+        "conhecimento/",
+        "memory_candidate",
+        "descarte justificado"
+      ]
     },
     {
-      "id": "ouro_garimpado_se_guarda",
+      "id": "P3",
+      "legacy_id": "ouro_garimpado_se_guarda",
+      "name": "Ouro garimpado se guarda, trilha aberta na mata se marca",
       "label": "Ouro garimpado se guarda, trilha aberta na mata se marca",
       "summary": "Aprendizado reutilizavel vira artefato rastreavel; entulho sai no mesmo turno.",
-      "severity": "info",
+      "trigger": [
+        "aprendizado util apareceu",
+        "caminho certo foi descoberto",
+        "trilha errada consumiu tempo",
+        "arquivo temporario foi criado"
+      ],
+      "required_actions": [
+        "registrar aprendizado util em artefato rastreavel",
+        "marcar trilha operacional relevante",
+        "remover ou justificar entulho operacional"
+      ],
+      "evidence": [
+        "artefato rastreavel atualizado",
+        "temporarios removidos ou justificados",
+        "trilha certa documentada"
+      ],
+      "blocks_ready_when": [
+        "aprendizado reutilizavel ficou apenas na conversa",
+        "scripts auxiliares ou temporarios ficaram sem justificativa",
+        "aprendizado critico nao foi registrado em destino rastreavel"
+      ],
+      "default_severity": "WARN",
+      "severity": "warning",
       "checklist_label": "Pepitas e trilhas foram registradas; entulho obvio foi removido",
-      "applies_to": ["hygiene_scan", "checklist_render", "prompts"]
+      "applies_to": [
+        "hygiene_scan",
+        "checklist_render",
+        "prompts"
+      ],
+      "trace_destination": [
+        "documentacao",
+        "HANDOFF",
+        "memoria",
+        "estacionamento",
+        "historico",
+        "descarte justificado"
+      ]
     },
     {
-      "id": "casa_limpa",
+      "id": "P4",
+      "legacy_id": "casa_limpa",
+      "name": "Casa suja e baguncada chama baratas",
       "label": "Casa suja e baguncada chama baratas",
       "summary": "Apos mexer, verificar sujeira operacional, docs e residuos; antes de descartar, garimpar aprendizados, evidencias e memorias uteis.",
+      "trigger": [
+        "correcao concluida",
+        "arquivo editado",
+        "higiene operacional",
+        "descarte ou limpeza"
+      ],
+      "required_actions": [
+        "verificar lixo operacional depois da mudanca",
+        "garimpar aprendizado antes de descartar",
+        "remover ou justificar residuos",
+        "nao aplicar limpeza agressiva sem garimpo previo"
+      ],
+      "evidence": [
+        "busca por temporarios, codigo morto ou docs contraditorias",
+        "nenhum ouro foi descartado sem garimpo",
+        "residuos removidos ou registrados"
+      ],
+      "blocks_ready_when": [
+        "ficou lixo operacional sem justificativa",
+        "houve descarte sem garimpo previo",
+        "docs ou caminhos ficaram contraditorios",
+        "lixo operacional afeta execucao, memoria ou validacao"
+      ],
+      "default_severity": "WARN",
       "severity": "warning",
       "checklist_label": "Casa limpa verificada; nenhum ouro foi jogado no lixo antes do garimpo",
-      "applies_to": ["hygiene_scan", "checklist_render", "prompts"]
+      "applies_to": [
+        "hygiene_scan",
+        "checklist_render",
+        "prompts"
+      ],
+      "trace_destination": [
+        "LIXEIRA",
+        "estacionamento",
+        "memoria",
+        "documentacao",
+        "descarte justificado"
+      ]
     },
     {
-      "id": "comecar_pelo_inicio",
+      "id": "P5",
+      "legacy_id": "comecar_pelo_inicio",
+      "name": "Nunca comecamos pelo final nem pelo meio",
       "label": "Nunca comecamos pelo final nem pelo meio",
-      "summary": "Consultar napkin, L1, L2, skills e docs vivas antes de executar.",
-      "severity": "warning",
+      "summary": "Consultar napkin, L1, L2, skills, contrato e docs vivas antes de executar acao tecnica nao trivial.",
+      "trigger": [
+        "diagnostico nao trivial",
+        "implementacao",
+        "review",
+        "automacao",
+        "operacao local relevante"
+      ],
+      "required_actions": [
+        "consultar fonte viva antes de executar",
+        "carregar L1, L2, skills, napkin ou contrato aplicavel",
+        "explicar quando a consulta nao se aplica"
+      ],
+      "evidence": [
+        "fontes consultadas listadas",
+        "contrato aplicavel citado",
+        "motivo de nao aplicabilidade declarado"
+      ],
+      "blocks_ready_when": [
+        "tarefa nao trivial comecou por execucao sem fonte viva",
+        "falta contexto, escopo, evidencia ou criterio de pronto",
+        "acao tecnica iniciou antes de consultar contrato aplicavel sem justificativa"
+      ],
+      "default_severity": "BLOCK",
+      "severity": "error",
       "checklist_label": "Contexto inicial consultado antes da acao tecnica",
-      "applies_to": ["checklist_render", "prompts"]
+      "applies_to": [
+        "checklist_render",
+        "prompts"
+      ],
+      "trace_destination": [
+        "napkin.md",
+        "AGENTS.md",
+        "ACTIVE",
+        "HANDOFF",
+        "PLAN-TASKS",
+        "contrato aplicavel"
+      ]
     },
     {
-      "id": "erro_repetido_bloqueia_pronto",
+      "id": "P6",
+      "legacy_id": "erro_repetido_bloqueia_pronto",
+      "name": "Erro repetido tres vezes bloqueia pronto",
       "label": "Erro repetido tres vezes bloqueia pronto",
       "summary": "Na terceira ocorrencia do mesmo erro, registrar destino rastreavel antes de declarar pronto.",
-      "severity": "blocking",
+      "trigger": [
+        "mesmo erro pela terceira vez",
+        "tropeco repetido",
+        "falso verde recorrente",
+        "falha repetida de metodo"
+      ],
+      "required_actions": [
+        "bloquear pronto",
+        "criar destino rastreavel",
+        "registrar a falha no dominio correto",
+        "nao exigir identidade textual quando o modo de falha for equivalente"
+      ],
+      "evidence": [
+        "terceira ocorrencia identificada",
+        "destino rastreavel criado",
+        "dominio correto registrado"
+      ],
+      "blocks_ready_when": [
+        "erro repetido tres vezes nao tem teste, contrato, memoria, skill, napkin, estacionamento ou descarte justificado"
+      ],
+      "default_severity": "BLOCK",
+      "severity": "error",
       "checklist_label": "Erros recorrentes foram convertidos em teste, contrato, memoria, napkin, skill, estacionamento ou descarte justificado",
-      "applies_to": ["hygiene_scan", "gate_check", "checklist_render", "prompts"]
+      "applies_to": [
+        "hygiene_scan",
+        "gate_check",
+        "checklist_render",
+        "prompts"
+      ],
+      "trace_destination": [
+        "teste",
+        "contrato operacional",
+        "napkin tatico",
+        "memoria L1/L2/L3",
+        "skill atualizada",
+        "estacionamento",
+        "descarte justificado"
+      ],
+      "same_error_definition": [
+        "repeticao de causa",
+        "repeticao de sintoma",
+        "repeticao de ferramenta",
+        "repeticao de arquivo",
+        "repeticao de padrao de falha",
+        "falso verde recorrente",
+        "recuperacao incorreta recorrente",
+        "tropeco operacional equivalente"
+      ]
+    },
+    {
+      "id": "P7",
+      "legacy_id": "gate_do_quando",
+      "name": "Gate do Quando",
+      "label": "Gate do Quando",
+      "summary": "Um o que sem quando nao vira plano executavel; acao futura precisa de data, gatilho, cadencia, condicao, revisao, vencimento, dependencia ou responsavel pela retomada.",
+      "trigger": [
+        "plano promete acao futura",
+        "SPT ou GOAL acionavel",
+        "memoria promete retomada",
+        "estacionamento",
+        "pesquisa vira plano",
+        "governanca ou decisao acionavel"
+      ],
+      "required_actions": [
+        "exigir quando verificavel",
+        "registrar data, gatilho, cadencia, condicao, janela, vencimento, dependencia ou responsavel",
+        "rebaixar item sem quando para ideia, hipotese, estacionamento ou ressalva"
+      ],
+      "evidence": [
+        "quando declarado",
+        "gatilho ou janela de retomada registrado",
+        "responsavel ou dependencia explicitado quando aplicavel"
+      ],
+      "blocks_ready_when": [
+        "acao futura nao declara quando",
+        "plano executavel tem apenas o que",
+        "estacionamento nao tem gatilho de retorno"
+      ],
+      "default_severity": "BLOCK",
+      "severity": "error",
+      "checklist_label": "Planos, SPTs, memorias, estacionamentos, pesquisas e decisoes acionaveis declaram quando ou ficam como ideia/hipotese/estacionamento",
+      "applies_to": [
+        "gate_check",
+        "checklist_render",
+        "prompts"
+      ],
+      "trace_destination": [
+        "SPT",
+        "GOAL",
+        "memoria",
+        "estacionamento",
+        "governanca",
+        "decisao",
+        "HANDOFF",
+        "ACTIVE"
+      ]
     }
+  ],
+  "ready_definition": [
+    "objetivo atendido",
+    "principios acionados verificados",
+    "bloqueios resolvidos ou declarados",
+    "validacao possivel executada",
+    "aprendizados uteis com destino rastreavel",
+    "acoes futuras com quando",
+    "riscos restantes declarados"
+  ],
+  "gate_final_output": [
+    "Principios acionados",
+    "Evidencias",
+    "Itens nao aplicaveis",
+    "Bloqueios encontrados",
+    "Destino rastreavel criado",
+    "Validacao executada",
+    "Risco restante"
   ],
   "memory_layers": [
     {
@@ -72,22 +372,134 @@
     }
   ],
   "prompt_guidance": [
-    "Antes de executar, consulte fonte viva do projeto, L1, L2, skills e docs relevantes.",
+    "Antes de executar, consulte fonte viva do projeto, L1, L2, skills, contrato aplicavel e docs relevantes.",
     "Use L1 como gatilho, L2 como ancora operacional e L3 apenas sob demanda.",
-    "Se uma memoria detalhada nao tiver gatilho de recuperacao, trate como risco de entulho.",
+    "Se uma memoria detalhada nao tiver gatilho de recuperacao, trate como risco bloqueante ao criar ou atualizar memoria.",
     "Na higiene, antes de descartar, mover para LIXEIRA, fechar estacionamento ou eliminar material antigo, garimpe aprendizados, evidencias e memorias uteis.",
     "Nao podemos jogar ouro no lixo: nunca criar L3 sem L2 e L1; nunca criar L2 sem L1.",
-    "Se o mesmo erro apareceu tres vezes, bloqueie pronto ate haver destino rastreavel: teste, contrato, memoria, napkin, skill, estacionamento ou descarte justificado.",
+    "Se o mesmo erro apareceu tres vezes ou de modo operacionalmente equivalente, bloqueie pronto ate haver destino rastreavel.",
+    "Gate do Quando: se ha o que acionavel ou promessa futura, exija data, gatilho, cadencia, condicao, janela de revisao, vencimento, dependencia desbloqueadora ou responsavel pela retomada.",
+    "Sem quando, o item pode ser ideia, hipotese ou estacionamento, mas nao pronto, plano executavel ou regra promovida.",
+    "O Gate Final PPIRTV e verificacao antes do veredito; o modelo de relatorio final e a saida depois da verificacao.",
     "Nao registre secrets em ledger, evidencia, prompts ou docs versionadas.",
     "Preserve campos MCP existentes; principios orientam bloqueio, retorno e aprendizado."
   ],
   "hygiene_checks": [
     "principles_source_exists",
     "principles_source_mentions_contract",
+    "principles_revision_matches_contract_revision",
     "memory_layers_documented",
     "memory_layer_files_are_linked",
     "hygiene_discards_are_garimped_before_trash",
+    "traceable_destination_exists_for_learning_error_decision_or_discard",
+    "severity_matches_operational_table",
+    "final_gate_output_present",
+    "final_report_model_present",
     "repeated_errors_have_traceable_destination",
+    "actionable_items_have_when_gate",
     "secret_like_config_values"
+  ],
+  "ai_application": {
+    "rule": "principios devem ser aplicados como gates de decisao, nao como frases decorativas",
+    "required_fields": [
+      "gatilho",
+      "acao obrigatoria",
+      "evidencia",
+      "bloqueio",
+      "destino rastreavel"
+    ],
+    "execution_format": [
+      "Principio acionado",
+      "Acao executada",
+      "Evidencia",
+      "Risco restante",
+      "Destino rastreavel, se aplicavel"
+    ]
+  },
+  "traceable_destination_definition": {
+    "rule": "destino rastreavel e qualquer artefato recuperavel no futuro por caminho, nome, tag, gatilho, ancora ou referencia explicita",
+    "valid_examples": [
+      "teste",
+      "contrato operacional",
+      "napkin tatico",
+      "memoria L1/L2/L3",
+      "skill atualizada",
+      "HANDOFF",
+      "documentacao viva",
+      "estacionamento com quando",
+      "descarte justificado"
+    ],
+    "blocks_ready_when": [
+      "o destino nao pode ser encontrado depois",
+      "aprendizado, erro, decisao ou descarte ficou sem caminho, nome, tag, gatilho, ancora ou referencia explicita"
+    ]
+  },
+  "operational_severity": {
+    "rule": "severidade orienta a decisao; nao substitui o principio nem reduz bloqueios ja existentes",
+    "levels": {
+      "INFO": "registrar se aplicavel, sem bloquear a execucao",
+      "WARN": "declarar risco antes de finalizar; pode permitir continuidade se houver justificativa",
+      "BLOCK": "nao declarar pronto ate resolver, registrar destino rastreavel ou justificar formalmente"
+    },
+    "default_by_principle": {
+      "P1": "WARN; BLOCK se erro critico ou sistemico",
+      "P2": "BLOCK quando criar ou atualizar memoria",
+      "P3": "WARN; BLOCK se aprendizado critico nao foi registrado",
+      "P4": "WARN; BLOCK se o lixo afeta execucao, memoria ou validacao",
+      "P5": "BLOCK antes de acao tecnica",
+      "P6": "BLOCK",
+      "P7": "BLOCK para plano, decisao ou acao futura"
+    },
+    "runtime_mapping": {
+      "INFO": "info",
+      "WARN": "warning",
+      "BLOCK": "error"
+    }
+  },
+  "operational_trash_definition": {
+    "principle_id": "P4",
+    "includes": [
+      "arquivo temporario",
+      "script auxiliar descartavel",
+      "codigo morto",
+      "comentario enganoso",
+      "implementacao duplicada",
+      "documentacao contraditoria",
+      "caminho inexistente",
+      "backup abandonado",
+      "log irrelevante",
+      "pasta vazia sem funcao",
+      "artefato de teste sem destino"
+    ],
+    "rule": "antes de remover qualquer material, garimpar aprendizados, evidencias e memorias uteis"
+  },
+  "sync_contract": {
+    "human_source": "$env:USERPROFILE\\.agents\\memories\\principles\\PRINCIPLES.md",
+    "derived_contract": "$env:USERPROFILE\\.agents\\memories\\principles\\operational-contract.json",
+    "repo_human_copy": "C:\\CodexProjetos\\dex-PPIRTV\\principles\\PRINCIPLES.md",
+    "repo_contract_copy": "C:\\CodexProjetos\\dex-PPIRTV\\principles\\operational-contract.json",
+    "rules": [
+      "PRINCIPLES.md e a fonte humana canonica",
+      "operational-contract.json e derivado e editavel",
+      "se o contrato operacional estiver errado, atualiza-se o contrato",
+      "os principios nao mudam por erro de implementacao",
+      "toda mudanca no contrato precisa manter rastreabilidade",
+      "se um principio for alterado conscientemente, o contrato deve ser revisado",
+      "se o contrato for alterado, deve indicar qual principio operacionaliza"
+    ]
+  },
+  "final_report_model": [
+    "Objetivo atendido",
+    "Arquivos alterados",
+    "Principios acionados",
+    "Evidencias",
+    "Validacao executada",
+    "O que nao foi validado",
+    "Bloqueios encontrados",
+    "Destino rastreavel criado",
+    "Lixo operacional removido",
+    "Acoes futuras com quando",
+    "Risco restante",
+    "Status final: pronto | parcial | bloqueado"
   ]
 }

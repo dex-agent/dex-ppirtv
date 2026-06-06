@@ -24,7 +24,9 @@ REFERENCE.md
 SPEC.md
 SPRINTS.md
 TASKS.md
-docs/
+docs/*
+!docs/contracts/
+!docs/contracts/**
 examples/
 skills/
 setup-ppirtv-repo.ps1
