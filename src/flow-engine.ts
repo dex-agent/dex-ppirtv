@@ -412,7 +412,9 @@ export class FlowEngine {
     let flow = await this.resolveGoalFlow(input);
     const checklist = await this.renderChecklist(flow.flow_id);
     const savedGate = flow.gates[flow.phase];
-    const gateProvided = savedGate?.status === "blocked" ? savedGate.provided : {};
+    const gateProvided = savedGate?.status === "blocked" || (savedGate?.status === "passed" && officialGoalNeedsCanonicalVerdict(flow))
+      ? savedGate.provided
+      : {};
     const gate = await this.checkGate({ flow_id: flow.flow_id, phase: flow.phase, provided: gateProvided, persist: false });
     const currentVerdict = flow.verdicts.at(-1) ?? null;
     let rawLibrarianStatus = latestLibrarianStatus(flow) ?? latestLibrarianStatusFromLedger(await this.store.readLedger(flow.flow_id));
@@ -586,15 +588,22 @@ export class FlowEngine {
     assertGoalBinding(flow);
     assertNoSecretLikePayload(input.provided, "provided");
     const savedGate = flow.gates[flow.phase];
-    const gate =
-      !input.provided && savedGate?.status === "passed"
-        ? presentGate(savedGate as GateRecord & Record<string, unknown>, flow)
-        : await this.checkGate({
-            flow_id: flow.flow_id,
-            phase: flow.phase,
-            provided: input.provided,
-            persist: true
-          });
+    const shouldReuseSavedGate =
+      !input.provided &&
+      ((savedGate?.status === "passed" && !officialGoalNeedsCanonicalVerdict(flow)) ||
+        (savedGate?.status === "blocked" && officialGoalNeedsCanonicalVerdict(flow)));
+    const providedForGate =
+      !input.provided && savedGate?.status === "passed" && officialGoalNeedsCanonicalVerdict(flow)
+        ? savedGate.provided
+        : input.provided;
+    const gate = shouldReuseSavedGate
+      ? presentGate(savedGate as GateRecord & Record<string, unknown>, flow)
+      : await this.checkGate({
+          flow_id: flow.flow_id,
+          phase: flow.phase,
+          provided: providedForGate,
+          persist: true
+        });
     if (gate.status === "blocked") {
       return {
         ...gate,
@@ -1160,10 +1169,17 @@ export class FlowEngine {
       throw new Error(`Flow ${flow.flow_id} is archived`);
     }
     const savedGate = flow.gates[flow.phase];
-    const effectiveGate =
-      !input.provided && savedGate?.status === "passed"
-        ? savedGate
-        : await this.checkGate({ flow_id: flow.flow_id, phase: flow.phase, provided: input.provided });
+    const shouldReuseSavedGate =
+      !input.provided &&
+      ((savedGate?.status === "passed" && !officialGoalNeedsCanonicalVerdict(flow)) ||
+        (savedGate?.status === "blocked" && officialGoalNeedsCanonicalVerdict(flow)));
+    const providedForGate =
+      !input.provided && savedGate?.status === "passed" && officialGoalNeedsCanonicalVerdict(flow)
+        ? savedGate.provided
+        : input.provided;
+    const effectiveGate = shouldReuseSavedGate
+      ? savedGate
+      : await this.checkGate({ flow_id: flow.flow_id, phase: flow.phase, provided: providedForGate });
     if (effectiveGate.status === "blocked") {
       const presented = presentGate({
         advanced: false,
@@ -2577,6 +2593,9 @@ function hasRequirement(flow: Flow, key: string, source: string, provided: Recor
     return flow.evidence.length > 0 || truthy(provided[key]);
   }
   if (source === "verdict") {
+    if (officialGoalNeedsCanonicalVerdict(flow)) {
+      return false;
+    }
     return flow.verdicts.length > 0 || truthy(provided[key]);
   }
   switch (key) {
@@ -2603,6 +2622,10 @@ function hasRequirement(flow: Flow, key: string, source: string, provided: Recor
     default:
       return truthy(provided[key]);
   }
+}
+
+function officialGoalNeedsCanonicalVerdict(flow: Flow): boolean {
+  return Boolean(flow.goal_binding && flow.phase === "validacao" && flow.verdicts.length === 0);
 }
 
 function evaluateFiscalPolicy(flow: Flow, input: FiscalVerdictInput = {}): FiscalPolicyResult {
@@ -3103,6 +3126,34 @@ function nextRequiredActionFor(
   if (loopAction) {
     return loopAction;
   }
+  if (blockers.includes("verdict") && officialGoalNeedsCanonicalVerdict(flow)) {
+    return {
+      type: "goal_verdict_required",
+      tool: "goal_verdict",
+      reason: "validacao exige veredito canonico registrado por goal_verdict antes de completar GOAL oficial",
+      other_blockers: blockers.filter((blocker) => blocker !== "verdict"),
+      back_to: backTo,
+      regress_count: regressCount,
+      max_regressions: FISCAL_CONFIG.maxRegressions,
+      can_retry_verdict: true,
+      required_tool_sequence: [
+        {
+          order: 1,
+          tool: "goal_verdict",
+          purpose: "registrar veredito canonico com evidence_ids antes de completar ou arquivar",
+          args: {
+            flow_id: flow.flow_id,
+            status: "pronto_com_ressalvas",
+            rationale: "<racional com evidencia>",
+            evidence_ids: ["<evidence_id>"],
+            residual_risks: ["<risco residual ou nenhum>"],
+            next_step: "<proximo passo com quando>"
+          }
+        },
+        { order: 2, tool: "goal_status", purpose: "confirmar current_verdict antes de qualquer archive", args: { flow_id: flow.flow_id } }
+      ]
+    };
+  }
   if (regressLimitReached) {
     return {
       type: "open_decision_meeting",
@@ -3513,11 +3564,11 @@ function researcherSkillResolution(workspace: string): Record<string, unknown> {
     lookup_paths: [
       "C:\\Users\\Administrator\\.agents\\skills\\pesquisador-organizado\\SKILL.md",
       "C:\\Users\\Administrator\\.codex\\skills\\pesquisador-organizado\\SKILL.md",
-      `${workspace}\\skills\\pesquisador-organizado\\SKILL.md`
+      `${workspace}\\.agents\\skills\\pesquisador-organizado\\SKILL.md`
     ],
     if_missing: {
       action: "create_local_skill",
-      target: `${workspace}\\skills\\pesquisador-organizado\\SKILL.md`,
+      target: `${workspace}\\.agents\\skills\\pesquisador-organizado\\SKILL.md`,
       role: "Pesquisador Organizado local: pesquisar causas, fontes e saidas para destravar loop ruim, salvar relatorio em .agents/PESQUISA e retornar evidencias rastreaveis.",
       minimum_contract: [
         "nao ler .env, config.toml, tokens, cookies, Authorization ou payload sensivel",
@@ -3542,11 +3593,11 @@ function cooperatorSkillResolution(workspace: string, skill: string, role: strin
     lookup_paths: [
       `C:\\Users\\Administrator\\.agents\\skills\\${skill}\\SKILL.md`,
       `C:\\Users\\Administrator\\.codex\\skills\\${skill}\\SKILL.md`,
-      `${workspace}\\skills\\${skill}\\SKILL.md`
+      `${workspace}\\.agents\\skills\\${skill}\\SKILL.md`
     ],
     if_missing: {
       action: "execute_inline_fallback_or_create_local_skill_proposal",
-      target: `${workspace}\\skills\\${skill}\\SKILL.md`,
+      target: `${workspace}\\.agents\\skills\\${skill}\\SKILL.md`,
       role,
       gate: "criar skill local somente se a ausencia bloquear o fluxo ou virar erro recorrente; caso contrario executar fallback resumido"
     },

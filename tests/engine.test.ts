@@ -988,6 +988,176 @@ describe("PPIRTV flow engine", () => {
     expect(status.blockers).toEqual(["scope_in", "scope_out"]);
   });
 
+  it("blocks official GOAL completion when validation only has provided verdict text", async () => {
+    const workspace = path.join(tempRoot, "validation-provided-verdict");
+    const sptPath = path.join(workspace, ".agents", "PLAN-TASKS", "validation-provided-verdict.md");
+    const flow = await engine.createFlow({
+      goal: "Validacao com texto de veredito",
+      context: "ctx",
+      risks: ["baixo"],
+      uncertainties: ["u"]
+    });
+    flow.goal_binding = {
+      envelope: {
+        workspace,
+        spt_path: sptPath,
+        objective: flow.goal,
+        idempotency_key: "dex-code:test-validation-provided-verdict",
+        evidence_required: true,
+        required_evidence: ["npm run check"],
+        requested_verdict_policy: "evidence_required",
+        source: "dex-code"
+      },
+      started_at: new Date().toISOString(),
+      last_seen_at: new Date().toISOString()
+    };
+    await engine.store.saveFlow(flow);
+    const flowId = flow.flow_id;
+    await engine.updateFlowFacts(flowId, {
+      scope: { in: ["validar texto de veredito"], out: ["alterar contrato MCP publico"] },
+      tasks: ["percorrer validacao"],
+      expected_evidence: ["npm run check"],
+      done_criteria: ["veredito canonico registrado antes de completar"],
+      changed_files: ["docs/status.md"]
+    });
+    await engine.addGoalEvidence({
+      flow_id: flowId,
+      title: "npm run check",
+      content: "pass",
+      satisfies: ["npm run check"]
+    });
+    await engine.addGoalEvidence({
+      flow_id: flowId,
+      kind: "code_review",
+      title: "Review do fluxo de validacao",
+      content: "Review executado para isolar o requisito de veredito canonico.",
+      satisfies: ["review_required"]
+    });
+    const meeting = await engine.goalMeetingOpen({
+      flow_id: flowId,
+      type: "convergent",
+      question: "O veredito textual pode substituir evento canonico?",
+      participants_required: ["Chato", "questionador", "reuniao", "validador-pronto"]
+    });
+    await engine.goalMeetingClose({
+      flow_id: flowId,
+      meeting_id: meeting.meeting_id as string,
+      participants_present: ["Chato", "questionador", "reuniao", "validador-pronto"],
+      decision: "Veredito textual nao substitui evento canonico.",
+      satisfies_blockers: ["required_cooperation"]
+    });
+
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { implementation_done: true, changed_files: ["docs/status.md"] }
+    });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { diff_reviewed: true, barata_scan: true, regression_risks: ["provided verdict nao e evento canonico"] }
+    });
+    await engine.goalAdvance({ flow_id: flowId, provided: { test_executed: true } });
+
+    const validationGate = await engine.goalGateCheck({
+      flow_id: flowId,
+      phase: "validacao",
+      provided: {
+        verdict: "pronto_com_ressalvas",
+        residual_risks: ["veredito canonico pendente"],
+        next_step: "chamar goal_verdict antes de completar",
+        clean_house: true
+      }
+    });
+    const advanced = await engine.goalAdvance({ flow_id: flowId });
+    const status = await engine.goalStatus({ flow_id: flowId });
+    const ledger = await engine.store.readLedger(flowId);
+
+    expect(validationGate.status).toBe("blocked");
+    expect(validationGate.missing).toContain("verdict");
+    expect(advanced).toMatchObject({ advanced: false, blocked: true, status: "blocked" });
+    expect(status).toMatchObject({
+      status: "blocked",
+      phase: "validacao",
+      current_verdict: null,
+      next_required_action: {
+        type: "goal_verdict_required",
+        tool: "goal_verdict",
+        can_retry_verdict: true
+      }
+    });
+    expect(ledger.map((event) => event.type)).not.toContain("verdict_recorded");
+    expect(ledger.map((event) => event.type)).not.toContain("flow_completed");
+  });
+
+  it("keeps goal_verdict_required after goal_advance on a stale validation gate", async () => {
+    const workspace = path.join(tempRoot, "stale-validation-gate");
+    const sptPath = path.join(workspace, ".agents", "PLAN-TASKS", "stale-validation-gate.md");
+    const flow = await engine.createFlow({
+      goal: "Stale validation gate",
+      context: "ctx",
+      risks: ["baixo"],
+      uncertainties: ["u"]
+    });
+    flow.goal_binding = {
+      envelope: {
+        workspace,
+        spt_path: sptPath,
+        objective: flow.goal,
+        idempotency_key: "dex-code:test-stale-validation-gate",
+        evidence_required: true,
+        required_evidence: ["npm run check"],
+        requested_verdict_policy: "evidence_required",
+        source: "dex-code"
+      },
+      started_at: new Date().toISOString(),
+      last_seen_at: new Date().toISOString()
+    };
+    flow.phase = "validacao";
+    flow.gates.validacao = {
+      phase: "validacao",
+      status: "passed",
+      checked_at: new Date().toISOString(),
+      provided: {
+        verdict: "pronto_com_ressalvas",
+        residual_risks: ["veredito canonico pendente"],
+        next_step: "chamar goal_verdict antes de completar",
+        clean_house: true
+      },
+      missing: [],
+      next: "advance_to_complete",
+      back_to: null
+    };
+    await engine.store.saveFlow(flow);
+
+    const before = await engine.goalStatus({ flow_id: flow.flow_id });
+    const advanced = await engine.goalAdvance({ flow_id: flow.flow_id });
+    const after = advanced.status_snapshot as Record<string, unknown>;
+    const ledger = await engine.store.readLedger(flow.flow_id);
+
+    expect(before).toMatchObject({
+      phase: "validacao",
+      current_verdict: null,
+      next_required_action: {
+        type: "goal_verdict_required",
+        tool: "goal_verdict",
+        can_retry_verdict: true
+      }
+    });
+    expect(advanced).toMatchObject({ advanced: false, blocked: true, status: "blocked" });
+    expect(after).toMatchObject({
+      phase: "validacao",
+      current_verdict: null,
+      next_required_action: {
+        type: "goal_verdict_required",
+        tool: "goal_verdict",
+        can_retry_verdict: true
+      }
+    });
+    expect(ledger.map((event) => event.type)).not.toContain("verdict_recorded");
+    expect(ledger.map((event) => event.type)).not.toContain("flow_completed");
+  });
+
   it("reports actionable canonical SPT gaps", async () => {
     const workspace = path.join(tempRoot, "workspace");
     const dir = path.join(workspace, ".agents", "PLAN-TASKS");
@@ -2053,9 +2223,14 @@ describe("PPIRTV flow engine", () => {
           tool: "subagent_research_request",
           skill_resolution: expect.objectContaining({
             required_skill: "pesquisador-organizado",
+            lookup_paths: [
+              "C:\\Users\\Administrator\\.agents\\skills\\pesquisador-organizado\\SKILL.md",
+              "C:\\Users\\Administrator\\.codex\\skills\\pesquisador-organizado\\SKILL.md",
+              expect.stringContaining(".agents\\skills\\pesquisador-organizado\\SKILL.md")
+            ],
             if_missing: expect.objectContaining({
               action: "create_local_skill",
-              target: expect.stringContaining("skills\\pesquisador-organizado\\SKILL.md"),
+              target: expect.stringContaining(".agents\\skills\\pesquisador-organizado\\SKILL.md"),
               role: expect.stringContaining("Pesquisador Organizado local")
             }),
             fallback: expect.objectContaining({
@@ -2082,6 +2257,11 @@ describe("PPIRTV flow engine", () => {
           tool: "use_skill",
           args: expect.objectContaining({ skill: "garimpeiro" }),
           skill_resolution: expect.objectContaining({
+            lookup_paths: expect.arrayContaining([
+              "C:\\Users\\Administrator\\.agents\\skills\\garimpeiro\\SKILL.md",
+              "C:\\Users\\Administrator\\.codex\\skills\\garimpeiro\\SKILL.md",
+              expect.stringContaining(".agents\\skills\\garimpeiro\\SKILL.md")
+            ]),
             if_missing: expect.objectContaining({ action: "execute_inline_fallback_or_create_local_skill_proposal" }),
             fallback: expect.objectContaining({ merit_rule: expect.stringContaining("nao vira merito automatico") })
           })

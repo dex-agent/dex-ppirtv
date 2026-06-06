@@ -165,6 +165,125 @@ describe("PPIRTV MCP stdio server", () => {
     });
   });
 
+  it("keeps goal_verdict_required over MCP when validation only has provided verdict text", async () => {
+    await connectClient();
+    const workspace = path.join(tempRoot, "workspace-verdict-required");
+    const sptPath = await writeFakeSpt(workspace);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Bloquear falso pronto MCP em validacao",
+      idempotency_key: "dex-code:mcp-goal-verdict-required",
+      evidence_required: true,
+      required_evidence: ["vitest"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code"
+    };
+
+    const started = await client!.callTool({ name: "goal_start", arguments: envelope });
+    const flowId = resultOf(started).flow_id as string;
+    const evidence = await client!.callTool({
+      name: "evidence_add",
+      arguments: { flow_id: flowId, title: "vitest fiscal", content: "pass", satisfies: ["vitest"] }
+    });
+    await client!.callTool({
+      name: "evidence_add",
+      arguments: {
+        flow_id: flowId,
+        kind: "code_review",
+        title: "review fiscal",
+        content: "review confirmou que provided.verdict nao substitui goal_verdict",
+        satisfies: ["review_required"]
+      }
+    });
+    const meeting = await client!.callTool({
+      name: "goal_meeting_open",
+      arguments: { flow_id: flowId, type: "convergent", question: "Validacao sem veredito canonico pode completar?" }
+    });
+    await client!.callTool({
+      name: "goal_meeting_close",
+      arguments: {
+        flow_id: flowId,
+        meeting_id: resultOf(meeting).meeting_id,
+        participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+        decision: "GOAL oficial precisa de goal_verdict canonico antes de completar.",
+        satisfies_blockers: ["required_cooperation"],
+        cooperators: [{ name: "chato", reason: "bloqueou falso pronto fiscal", material: true }],
+        active_credits: ["chato bloqueou falso pronto fiscal"]
+      }
+    });
+    await client!.callTool({ name: "goal_advance", arguments: { flow_id: flowId } });
+    await client!.callTool({ name: "goal_advance", arguments: { flow_id: flowId } });
+    await client!.callTool({
+      name: "goal_advance",
+      arguments: { flow_id: flowId, provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] } }
+    });
+    await client!.callTool({
+      name: "goal_advance",
+      arguments: {
+        flow_id: flowId,
+        provided: { diff_reviewed: true, barata_scan: true, regression_risks: ["provided.verdict nao e veredito canonico"] }
+      }
+    });
+    await client!.callTool({
+      name: "goal_advance",
+      arguments: { flow_id: flowId, provided: { test_executed: true, evidence: resultOf(evidence).evidence_id } }
+    });
+
+    const gate = await client!.callTool({
+      name: "goal_gate_check",
+      arguments: {
+        flow_id: flowId,
+        phase: "validacao",
+        provided: {
+          verdict: "pronto_com_ressalvas",
+          residual_risks: ["veredito canonico pendente"],
+          next_step: "chamar goal_verdict antes de completar",
+          clean_house: true
+        }
+      }
+    });
+    const advanced = await client!.callTool({ name: "goal_advance", arguments: { flow_id: flowId } });
+    const status = await client!.callTool({ name: "goal_status", arguments: { flow_id: flowId } });
+    const checkout = await client!.callTool({ name: "ppirtv_checkout", arguments: { flow_id: flowId } });
+    const ledger = await client!.readResource({ uri: `ppirtv://flow/${flowId}/ledger` });
+    const ledgerText = ledger.contents[0]?.text ?? "";
+
+    expect(resultOf(gate)).toMatchObject({ status: "blocked", missing: ["verdict"] });
+    expect(resultOf(advanced)).toMatchObject({
+      advanced: false,
+      blocked: true,
+      status: "blocked",
+      missing: ["verdict"],
+      status_snapshot: {
+        next_required_action: {
+          type: "goal_verdict_required",
+          tool: "goal_verdict"
+        }
+      }
+    });
+    expect(resultOf(status)).toMatchObject({
+      phase: "validacao",
+      current_verdict: null,
+      next_required_action: {
+        type: "goal_verdict_required",
+        tool: "goal_verdict"
+      }
+    });
+    expect(resultOf(checkout).ppirtv_checkout).toMatchObject({
+      complete: false,
+      verdict: null,
+      resolution_guidance: {
+        next_required_action: {
+          type: "goal_verdict_required",
+          tool: "goal_verdict"
+        }
+      }
+    });
+    expect(ledgerText).not.toContain("verdict_recorded");
+    expect(ledgerText).not.toContain("flow_completed");
+  });
+
   it("runs the live GOAL wrappers through MCP", async () => {
     await connectClient();
     const workspace = path.join(tempRoot, "workspace");

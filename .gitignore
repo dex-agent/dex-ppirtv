@@ -4,6 +4,8 @@
 
 # Runtime state
 /.ppirtv/
+/.tmp/
+/.temp/
 /flows/
 /ledger.ndjson
 /memory/
