@@ -428,6 +428,13 @@ decisao, risco, teste, documentacao ou veredito.
 `memory_mining` quando existirem. Reuniao decorativa sem registro util nao
 substitui gate, evidencia nem decisao rastreavel.
 
+`goal_status` e `ppirtv_checkout` podem expor `blocker_diagnostics` como campo
+aditivo. Esse diagnostico deve separar blocker de gate de fase
+(`phase_gate_requirements`) de blocker fiscal/material
+(`fiscal_material_policy`) e indicar a origem por blocker. Diagnostico nao
+altera a regra de bloqueio: GOAL oficial continua sem concluir sem veredito
+canonico, evidencia e gates satisfeitos.
+
 Em GOALs oficiais, Estela e Gabi trabalham juntas: item em `parking_lot` deve
 receber garimpo vinculado. Se houver pepita, o flow preserva o item estacionado,
 promove a pepita para `gold_mining` e registra o rastro estruturado em

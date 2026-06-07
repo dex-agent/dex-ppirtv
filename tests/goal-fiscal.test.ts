@@ -21,6 +21,146 @@ afterEach(async () => {
 });
 
 describe("GOAL fiscal canonical verdict boundary", () => {
+  it("keeps suggested cooperators recoverable without turning them into material presence", async () => {
+    const flow = await createOfficialValidationFlow("official-suggested-cooperators");
+
+    const opened = await engine.goalMeetingOpen({
+      flow_id: flow.flow_id,
+      kind: "convergente",
+      question: "Confirmar cooperadores indicados antes do veredito fiscal",
+      suggested_cooperators: [
+        { name: "ppi", reason: "protege metodo PPIRTV", material: true },
+        { name: "chato", reason: "pressiona falso pronto", material: true }
+      ]
+    });
+    const status = await engine.goalStatus({ flow_id: flow.flow_id });
+    const checkout = await engine.goalCheckout({ flow_id: flow.flow_id });
+
+    expect(opened.suggested_cooperators).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "ppi", material: false }),
+        expect.objectContaining({ name: "chato", material: false })
+      ])
+    );
+    expect(status.meetings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          meeting_id: opened.meeting_id,
+          suggested_cooperators: expect.arrayContaining([
+            expect.objectContaining({ name: "ppi", material: false }),
+            expect.objectContaining({ name: "chato", material: false })
+          ]),
+          participants_present: [],
+          cooperators: [],
+          active_credits: []
+        })
+      ])
+    );
+    expect((checkout.ppirtv_checkout as Record<string, unknown>).cooperation_accountability).toMatchObject({
+      suggested_count: 2,
+      suggested: expect.arrayContaining([
+        expect.objectContaining({ name: "ppi", material: false }),
+        expect.objectContaining({ name: "chato", material: false })
+      ]),
+      material_count: 0,
+      active_credits: []
+    });
+  });
+
+  it("diagnoses required_cooperation when a closed meeting lacks required participants", async () => {
+    const flow = await createOfficialFiscalFlow("official-missing-participants");
+    const opened = await engine.goalMeetingOpen({
+      flow_id: flow.flow_id,
+      kind: "convergente",
+      question: "Fechar cooperacao fiscal"
+    });
+    const evidence = await engine.addGoalEvidence({
+      flow_id: flow.flow_id,
+      title: "Evidencia fiscal",
+      content: "Teste de cooperacao fiscal com participantes insuficientes."
+    });
+
+    const closed = await engine.goalMeetingClose({
+      flow_id: flow.flow_id,
+      meeting_id: opened.meeting_id as string,
+      participants_present: ["chato"],
+      decision: "Tentativa insuficiente de fechar required_cooperation.",
+      satisfies_blockers: ["required_cooperation"]
+    });
+    await expect(
+      engine.goalVerdict({
+        flow_id: flow.flow_id,
+        status: "pronto_com_ressalvas",
+        rationale: "Tentativa com participantes insuficientes.",
+        evidence_ids: [evidence.evidence_id],
+        residual_risks: ["participantes insuficientes"],
+        meeting_id: opened.meeting_id as string,
+        next_step: "Fechar nova reuniao com participantes obrigatorios agora."
+      })
+    ).rejects.toThrow(/required_cooperation/i);
+    const status = await engine.goalStatus({ flow_id: flow.flow_id });
+    const checkout = await engine.goalCheckout({ flow_id: flow.flow_id });
+
+    expect(closed.satisfies_blockers).not.toContain("required_cooperation");
+    expect(status.blockers).toContain("required_cooperation");
+    expect(status.blocker_diagnostics).toMatchObject({
+      required_cooperation: {
+        missing_participants: expect.arrayContaining(["questionador", "reuniao", "validador-pronto"]),
+        insufficient_meeting_ids: expect.arrayContaining([opened.meeting_id])
+      }
+    });
+    expect((checkout.blocker_diagnostics as Record<string, unknown>).required_cooperation).toMatchObject({
+      missing_participants: expect.arrayContaining(["questionador", "reuniao", "validador-pronto"]),
+      insufficient_meeting_ids: expect.arrayContaining([opened.meeting_id])
+    });
+  });
+
+  it("points goal_verdict to an eligible meeting when meeting_id is omitted", async () => {
+    const flow = await createOfficialFiscalFlow("official-eligible-meeting");
+    const opened = await engine.goalMeetingOpen({
+      flow_id: flow.flow_id,
+      kind: "convergente",
+      question: "Fechar cooperacao fiscal completa"
+    });
+    const evidence = await engine.addGoalEvidence({
+      flow_id: flow.flow_id,
+      title: "Evidencia fiscal",
+      content: "Teste de cooperacao fiscal com meeting_id elegivel."
+    });
+
+    await engine.goalMeetingClose({
+      flow_id: flow.flow_id,
+      meeting_id: opened.meeting_id as string,
+      participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+      decision: "Reuniao material fechada; required_cooperation satisfeito.",
+      satisfies_blockers: ["required_cooperation"]
+    });
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flow.flow_id,
+        status: "pronto_com_ressalvas",
+        rationale: "Tentativa sem meeting_id deve orientar o operador.",
+        evidence_ids: [evidence.evidence_id],
+        residual_risks: ["sem meeting_id no veredito"],
+        next_step: "Repetir goal_verdict agora com meeting_id."
+      })
+    ).rejects.toThrow(/required_cooperation/i);
+
+    const status = await engine.goalStatus({ flow_id: flow.flow_id });
+    expect(status.next_required_action).toMatchObject({
+      type: "provide_meeting_id_for_verdict",
+      tool: "goal_verdict",
+      eligible_meeting_ids: [opened.meeting_id]
+    });
+    expect(status.blocker_diagnostics).toMatchObject({
+      required_cooperation: {
+        eligible_meeting_ids: [opened.meeting_id],
+        missing_for_verdict: ["meeting_id"]
+      }
+    });
+  });
+
   it("blocks official GOAL validation when provided verdict text is not canonical", async () => {
     const flow = await createOfficialValidationFlow("official-provided-verdict");
 
@@ -219,6 +359,13 @@ async function createOfficialValidationFlow(idempotencyKey: string): Promise<Flo
     last_seen_at: new Date().toISOString()
   };
   flow.phase = "validacao";
+  await engine.store.saveFlow(flow);
+  return flow;
+}
+
+async function createOfficialFiscalFlow(idempotencyKey: string): Promise<Flow> {
+  const flow = await createOfficialValidationFlow(idempotencyKey);
+  flow.phase = "pensamentos";
   await engine.store.saveFlow(flow);
   return flow;
 }

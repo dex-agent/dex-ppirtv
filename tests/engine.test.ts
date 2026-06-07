@@ -7,6 +7,7 @@ import { promptText } from "../src/catalogs.js";
 import { MemoryLibrarian, type MemoryGraphProvider, type MemoryHookRunner } from "../src/memory/index.js";
 import { loadOperationalContractSync } from "../src/principles.js";
 import { PpirtvStore } from "../src/store.js";
+import { exportRedactedDiagnosticBundle } from "../src/diagnostic-bundle.js";
 
 let tempRoot: string;
 let engine: FlowEngine;
@@ -632,6 +633,65 @@ describe("PPIRTV flow engine", () => {
     expect(Array.isArray(hygiene.findings)).toBe(true);
   });
 
+  it("classifies evidence quality without blocking legacy evidence", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-evidence-quality", "Classificar qualidade de evidencia");
+    const weak = await engine.addGoalEvidence({
+      flow_id: flowId,
+      title: "print solto"
+    });
+    const strong = await engine.addGoalEvidence({
+      flow_id: flowId,
+      title: "npm run check",
+      content:
+        "Origem: terminal local. Objetivo: validar suite. Fase: teste. Procedimento: npm run check. Resultado observado: pass. Limitacao: ambiente local.",
+      satisfies: ["npm run check"]
+    });
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+    const evidence = status.evidence as Array<Record<string, unknown>>;
+    const weakQuality = evidence.find((item) => item.evidence_id === weak.evidence_id)?.evidence_quality as Record<string, unknown>;
+    const strongQuality = evidence.find((item) => item.evidence_id === strong.evidence_id)?.evidence_quality as Record<string, unknown>;
+    const checkout = status.ppirtv_checkout as Record<string, unknown>;
+    const evidenceAccountability = checkout.evidence_accountability as Record<string, unknown>;
+
+    expect(weakQuality).toMatchObject({ status: "weak", blocking: false });
+    expect(strongQuality).toMatchObject({ status: "strong", blocking: false });
+    expect(evidenceAccountability).toMatchObject({
+      total: expect.any(Number),
+      weak_count: expect.any(Number),
+      strong_count: expect.any(Number),
+      blocks_ready: false
+    });
+    expect((evidenceAccountability.items as Array<Record<string, unknown>>).map((item) => item.evidence_id)).toEqual(
+      expect.arrayContaining([weak.evidence_id, strong.evidence_id])
+    );
+  });
+
+  it("exports a redacted diagnostic bundle without reading env files", async () => {
+    await writeFile(path.join(tempRoot, ".env"), "API_KEY=SHOULD_NOT_READ\n", "utf8");
+    const flow = await engine.createFlow({
+      goal: "Diagnostico redatado",
+      context: "ctx",
+      risks: ["risco"],
+      uncertainties: ["lacuna"]
+    });
+    await engine.attachEvidence({
+      flow_id: flow.flow_id,
+      kind: "log",
+      title: "runtime log",
+      content: "Authorization: Bearer abcdefghijklmnop"
+    });
+    const bundle = await exportRedactedDiagnosticBundle(engine.store, { flow_id: flow.flow_id, include_evidence_content: true });
+    const text = JSON.stringify(bundle);
+
+    expect(bundle.flow).toMatchObject({ flow_id: flow.flow_id, status: "active" });
+    expect(bundle.evidence[0]).toMatchObject({ content: "Authorization: Bearer [redacted]" });
+    expect(bundle.limitations).toEqual(expect.arrayContaining([expect.stringContaining("redacted snapshot")]));
+    expect(bundle.redactions_applied).toContain("Authorization");
+    expect(text).not.toContain("abcdefghijklmnop");
+    expect(text).not.toContain("SHOULD_NOT_READ");
+  });
+
   it("starts GOAL/SPT flows idempotently after validating a local SPT", async () => {
     const workspace = path.join(tempRoot, "workspace");
     const sptPath = await writeFakeSpt(workspace);
@@ -986,6 +1046,71 @@ describe("PPIRTV flow engine", () => {
     const status = blocked.status_snapshot as Record<string, unknown>;
     expect(status.phase).toBe("planejamento");
     expect(status.blockers).toEqual(["scope_in", "scope_out"]);
+  });
+
+  it("diagnoses planning blockers separately from fiscal material blockers", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-blocker-diagnostics-planning", "Diagnosticar blocker de planejamento");
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.updateFlowFacts(flowId, { scope: { in: [], out: [] } });
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+    const diagnostics = status.blocker_diagnostics as Record<string, unknown>;
+    const checkout = await engine.goalCheckout({ flow_id: flowId });
+
+    expect(status.phase).toBe("planejamento");
+    expect(status.blockers).toEqual(["scope_in", "scope_out"]);
+    expect(diagnostics).toMatchObject({
+      policy: "phase_gate_requirements",
+      fiscal_mode_active: false,
+      gate_blockers: ["scope_in", "scope_out"],
+      fiscal_blockers: [],
+      persisted_fiscal_blockers: []
+    });
+    expect(diagnostics.blocker_families).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ blocker: "scope_in", family: "planning_requirement", source: ["phase_gate"] }),
+        expect.objectContaining({ blocker: "scope_out", family: "planning_requirement", source: ["phase_gate"] })
+      ])
+    );
+    expect((checkout.blocker_diagnostics as Record<string, unknown>).policy).toBe("phase_gate_requirements");
+  });
+
+  it("diagnoses fiscal material blockers without confusing them with planning gaps", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-blocker-diagnostics-fiscal", "Diagnosticar blocker fiscal");
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Risco material sem reuniao material registrada.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["sem reuniao material"],
+        next_step: "abrir reuniao material agora antes de novo veredito"
+      })
+    ).rejects.toThrow(/PPIRTV_FISCAL_BLOCKED.*required_cooperation/i);
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+    const diagnostics = status.blocker_diagnostics as Record<string, unknown>;
+    const checkout = await engine.goalCheckout({ flow_id: flowId });
+
+    expect(status.blockers).toEqual(expect.arrayContaining(["required_cooperation"]));
+    expect(diagnostics).toMatchObject({
+      policy: "fiscal_material_policy",
+      fiscal_mode_active: true,
+      gate_blockers: [],
+      fiscal_blockers: [],
+      persisted_fiscal_blockers: ["required_cooperation"]
+    });
+    expect(diagnostics.blocker_families).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          blocker: "required_cooperation",
+          family: "fiscal_cooperation",
+          source: ["persisted_fiscal_block"]
+        })
+      ])
+    );
+    expect((checkout.blocker_diagnostics as Record<string, unknown>).policy).toBe("fiscal_material_policy");
   });
 
   it("blocks official GOAL completion when validation only has provided verdict text", async () => {

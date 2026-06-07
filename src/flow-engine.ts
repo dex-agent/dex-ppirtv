@@ -7,6 +7,7 @@ import {
   PHASES,
   type Cooperator,
   type Evidence,
+  type EvidenceQuality,
   type Flow,
   type GateRecord,
   type GoalBinding,
@@ -84,6 +85,26 @@ type FiscalPolicyResult = {
     objective: string;
   };
   direct_action: string;
+};
+
+type BlockerDiagnostics = {
+  source: "goal_status";
+  phase: Phase;
+  policy: "none" | "phase_gate_requirements" | "fiscal_material_policy" | "mixed";
+  fiscal_mode_active: boolean;
+  gate_status: GateRecord["status"];
+  gate_blockers: string[];
+  fiscal_blockers: string[];
+  persisted_fiscal_blockers: string[];
+  effective_blockers: string[];
+  blocker_families: Array<{
+    blocker: string;
+    family: string;
+    source: string[];
+  }>;
+  interpretation: string;
+  why_fiscal_mode_not_active: string[];
+  required_cooperation?: Record<string, unknown>;
 };
 
 type LoopMonitor = {
@@ -426,14 +447,18 @@ export class FlowEngine {
     const persistedFiscal = latestFiscalBlock(flow);
     const librarianStatus = structuredLibrarianStatus(rawLibrarianStatus);
     const requiredCooperation = fiscal.required_cooperation.length > 0 ? fiscal.required_cooperation : persistedFiscal.required_cooperation;
+    const meetings = await this.store.listMeetings(flow.flow_id);
     const gateBlockers = flow.status === "complete" || flow.status === "archived" ? [] : gate.status === "blocked" ? gate.missing : [];
-    const blockers = reconciledBlockers(flow, [...gateBlockers, ...fiscal.blocking_reasons, ...persistedFiscal.blocking_reasons]);
+    const baseBlockers = reconciledBlockers(flow, [...gateBlockers, ...fiscal.blocking_reasons, ...persistedFiscal.blocking_reasons]);
+    const blockers = gateBlockers.length === 0 && requiredCooperationNeedsMeetingIdRetry(flow, meetings)
+      ? unique([...baseBlockers, "required_cooperation"])
+      : baseBlockers;
+    const blockerDiagnostics = blockerDiagnosticsFor(flow, meetings, gate, gateBlockers, fiscal, persistedFiscal, blockers);
     const directAction = blockers.length > 0 ? blockedDirectAction(blockers) : checklist.display.direct_action;
     const checklistStatus = directAction ? withDirectAction(checklist, directAction) : checklist;
     const backTo = blockers.length > 0 ? fiscalBackTo(flow) : null;
     const regressCount = countRegressions(flow);
     const regressLimitReached = regressCount >= FISCAL_CONFIG.maxRegressions;
-    const meetings = await this.store.listMeetings(flow.flow_id);
     const loopMonitor = fiscalLoopMonitor(flow, blockers);
     const nextRequiredAction = nextRequiredActionFor(flow, meetings, blockers, backTo, regressCount, regressLimitReached, loopMonitor);
     const resolutionGuidance = blockerResolutionGuidance(blockers, nextRequiredAction, loopMonitor);
@@ -452,7 +477,8 @@ export class FlowEngine {
         kind: evidence.kind,
         title: evidence.title,
         uri: evidence.uri,
-        created_at: evidence.created_at
+        created_at: evidence.created_at,
+        evidence_quality: classifyEvidenceQuality(evidence)
       })),
       meetings: meetings.map((meeting) => ({
         meeting_id: meeting.meeting_id,
@@ -464,6 +490,7 @@ export class FlowEngine {
         closed_at: meeting.closed_at,
         participants_required: meeting.participants_required,
         participants_present: meeting.participants_present,
+        suggested_cooperators: meeting.suggested_cooperators,
         questions: meeting.questions,
         findings: meeting.findings,
         decision: meeting.decision,
@@ -483,6 +510,7 @@ export class FlowEngine {
       active_credits: flow.active_credits,
       memory_mining: memoryMiningStatus(flow),
       blockers,
+      blocker_diagnostics: blockerDiagnostics,
       next_step: blockers.length > 0 ? fiscalResult(true, blockers).direct_action : nextGoalStep(flow, gate),
       meeting_required: blockers.includes("required_cooperation"),
       regress_required: blockers.length > 0 && !regressLimitReached,
@@ -508,7 +536,7 @@ export class FlowEngine {
       fiscal_policy: fiscal,
       librarian_status: librarianStatus,
       ppirtv_checkin: ppirtvCheckIn(flow, requiredCooperation, librarianStatus, blockers, resolutionGuidance),
-      ppirtv_checkout: ppirtvCheckOut(flow, librarianStatus, blockers, resolutionGuidance)
+      ppirtv_checkout: ppirtvCheckOut(flow, librarianStatus, blockers, resolutionGuidance, blockerDiagnostics)
     };
   }
 
@@ -531,6 +559,8 @@ export class FlowEngine {
       ready_definition: checkout.ready_definition,
       gate_final_output: checkout.gate_final_output,
       final_report_model: checkout.final_report_model,
+      evidence_accountability: checkout.evidence_accountability,
+      blocker_diagnostics: checkout.blocker_diagnostics,
       utility_accountability: checkout.utility_accountability,
       prestacao_de_contas: checkout.prestacao_de_contas,
       residual_risks: checkout.residual_risks,
@@ -645,6 +675,7 @@ export class FlowEngine {
       kind: input.kind,
       question: input.question,
       participants_required: input.participants_required,
+      suggested_cooperators: suggestedCooperators,
       created_by: input.created_by ?? "goal_meeting_open",
       evidence_ids: input.evidence_ids
     });
@@ -1029,7 +1060,7 @@ export class FlowEngine {
       memory_mining: memoryMining
     });
     if (fiscal.blocking_reasons.length > 0) {
-      await this.persistFiscalBlock(fiscalFlow, fiscal, "goal_verdict");
+      await this.persistFiscalBlock(fiscalFlow, fiscal, "goal_verdict", input);
       throw new Error(`PPIRTV_FISCAL_BLOCKED: ${fiscal.blocking_reasons.join(", ")}; required_cooperation=${fiscal.required_cooperation.map((item) => item.name).join("|")}`);
     }
     if (memoryMining?.blocked_verdict === true) {
@@ -1366,13 +1397,14 @@ export class FlowEngine {
   }
 
   async openMeeting(input: {
-    flow_id: string;
-    type?: MeetingType;
-    kind?: MeetingKind;
-    question: string;
-    participants_required?: string[];
-    created_by?: string;
-    evidence_ids?: string[];
+      flow_id: string;
+      type?: MeetingType;
+      kind?: MeetingKind;
+      question: string;
+      participants_required?: string[];
+      suggested_cooperators?: Cooperator[];
+      created_by?: string;
+      evidence_ids?: string[];
   }): Promise<Meeting & PresentationEnvelope> {
     requireText(input.question, "question");
     const flow = await this.store.loadFlow(input.flow_id);
@@ -1393,6 +1425,7 @@ export class FlowEngine {
       opened_at: now,
       participants_required: unique(input.participants_required ?? requiredMeetingParticipants(blockers)),
       participants_present: [],
+      suggested_cooperators: normalizeSuggestedCooperators(input.suggested_cooperators ?? []),
       questions: [],
       findings: [],
       hypotheses: [],
@@ -1425,6 +1458,7 @@ export class FlowEngine {
         type: meeting.type,
         kind: meeting.kind,
         participants_required: meeting.participants_required,
+        suggested_cooperators: meeting.suggested_cooperators,
         evidence_ids: meeting.evidence_ids
       }
     });
@@ -1436,6 +1470,7 @@ export class FlowEngine {
       kind: meeting.kind,
       question: meeting.question,
       participants_required: meeting.participants_required,
+      suggested_cooperators: meeting.suggested_cooperators,
       evidence_ids: meeting.evidence_ids
     });
     return presentArtifact(meeting as Meeting & Record<string, unknown>, flow);
@@ -1921,10 +1956,12 @@ export class FlowEngine {
     };
   }
 
-  private async persistFiscalBlock(flow: Flow, fiscal: FiscalPolicyResult, source: string): Promise<void> {
+  private async persistFiscalBlock(flow: Flow, fiscal: FiscalPolicyResult, source: string, input: FiscalVerdictInput = {}): Promise<void> {
     const now = nowIso();
     const loopId = blockerLoopId(fiscal.blocking_reasons);
     const loopSignature = blockerSignature(fiscal.blocking_reasons);
+    const meetings = await this.store.listMeetings(flow.flow_id);
+    const requiredCooperation = requiredCooperationDiagnostics(flow, meetings, fiscal.blocking_reasons, input);
     flow.status = "blocked";
     flow.history.push({
       at: now,
@@ -1935,7 +1972,8 @@ export class FlowEngine {
         loop_signature: loopSignature,
         blocking_reasons: fiscal.blocking_reasons,
         memory_required: fiscal.blocking_reasons.includes("memory_required_but_empty"),
-        required_cooperation: fiscal.required_cooperation
+        required_cooperation: fiscal.required_cooperation,
+        required_cooperation_diagnostics: requiredCooperation
       }
     });
     flow.updated_at = now;
@@ -1946,7 +1984,8 @@ export class FlowEngine {
       loop_signature: loopSignature,
       blocking_reasons: fiscal.blocking_reasons,
       memory_required: fiscal.blocking_reasons.includes("memory_required_but_empty"),
-      required_cooperation: fiscal.required_cooperation
+      required_cooperation: fiscal.required_cooperation,
+      required_cooperation_diagnostics: requiredCooperation
     });
   }
 
@@ -2874,6 +2913,47 @@ function inputMeetingIds(input: FiscalVerdictInput): string[] {
   return unique([input.meeting_id, ...(input.meeting_ids ?? [])].filter(Boolean) as string[]);
 }
 
+function requiredCooperationDiagnostics(
+  flow: Flow,
+  meetings: Meeting[],
+  blockers: string[],
+  input: FiscalVerdictInput = {}
+): Record<string, unknown> {
+  const suggested = uniqueCooperators(meetings.flatMap((meeting) => meeting.suggested_cooperators ?? []));
+  const eligible = meetings.filter(
+    (meeting) =>
+      meeting.status === "closed" &&
+      meeting.satisfies_blockers.includes("required_cooperation") &&
+      missingParticipantsFor(meeting).length === 0 &&
+      truthy(meeting.decision)
+  );
+  const insufficient = meetings.filter(
+    (meeting) => meeting.status === "closed" && meeting.participants_required.length > 0 && missingParticipantsFor(meeting).length > 0
+  );
+  const latestPersisted = latestFiscalBlockEvent(flow)?.event.data.required_cooperation_diagnostics as Record<string, unknown> | undefined;
+  const inputMissingMeetingId =
+    (input.status === "pronto" || input.status === "pronto_com_ressalvas") && inputMeetingIds(input).length === 0 && eligible.length > 0;
+  const persistedMissingForVerdict = stringArray(latestPersisted?.missing_for_verdict);
+  const missingForVerdict = unique([...(inputMissingMeetingId ? ["meeting_id"] : []), ...persistedMissingForVerdict]);
+  const participantsRequired = requiredMeetingParticipants(blockers);
+  const missingParticipants = unique(insufficient.flatMap((meeting) => missingParticipantsFor(meeting)));
+  return {
+    suggested_count: suggested.length,
+    suggested,
+    participants_required: participantsRequired,
+    open_meeting_ids: meetings.filter((meeting) => meeting.status !== "closed").map((meeting) => meeting.meeting_id),
+    eligible_meeting_ids: eligible.map((meeting) => meeting.meeting_id),
+    insufficient_meeting_ids: insufficient.map((meeting) => meeting.meeting_id),
+    missing_participants: missingParticipants,
+    missing_for_verdict: missingForVerdict,
+    distinction: "suggested_cooperators nao sao active_credits nem participants_present; required_cooperation exige participants_present e meeting_id no goal_verdict positivo"
+  };
+}
+
+function missingParticipantsFor(meeting: Meeting): string[] {
+  return meeting.participants_required.filter((participant) => !meeting.participants_present.includes(participant));
+}
+
 function librarianRequired(input: FiscalVerdictInput): boolean {
   return /bibliotecario|bibliotecário|graphify|retorno visual/i.test([input.rationale, input.next_step, ...(input.residual_risks ?? [])].filter(Boolean).join("\n"));
 }
@@ -2935,7 +3015,7 @@ function needsReviewCoherence(flow: Flow, phase: Phase, provided: Record<string,
 }
 
 function latestFiscalBlock(flow: Flow): Pick<FiscalPolicyResult, "blocking_reasons" | "required_cooperation"> {
-  const event = [...flow.history].reverse().find((item) => item.type === "fiscal_policy_blocked");
+  const event = latestFiscalBlockEvent(flow)?.event;
   if (!event) {
     return { blocking_reasons: [], required_cooperation: [] };
   }
@@ -2962,6 +3042,153 @@ function isBlockerStillActive(flow: Flow, reason: string): boolean {
     return !hasReviewEvidence(flow, {});
   }
   return true;
+}
+
+function latestFiscalBlockEvent(flow: Flow): { event: Flow["history"][number]; index: number } | null {
+  for (let index = flow.history.length - 1; index >= 0; index -= 1) {
+    const event = flow.history[index];
+    if (event.type === "fiscal_policy_blocked") {
+      return { event, index };
+    }
+  }
+  return null;
+}
+
+function requiredCooperationNeedsMeetingIdRetry(flow: Flow, meetings: Meeting[]): boolean {
+  const latest = latestFiscalBlockEvent(flow);
+  if (!latest) {
+    return false;
+  }
+  const latestDiagnostics = latest.event.data.required_cooperation_diagnostics as Record<string, unknown> | undefined;
+  const missingForVerdict = stringArray(latestDiagnostics?.missing_for_verdict);
+  if (!missingForVerdict.includes("meeting_id")) {
+    return false;
+  }
+  const verdictRecordedAfterBlock = flow.history.slice(latest.index + 1).some((event) => event.type === "verdict_recorded");
+  if (verdictRecordedAfterBlock) {
+    return false;
+  }
+  return stringArray(requiredCooperationDiagnostics(flow, meetings, ["required_cooperation"]).eligible_meeting_ids).length > 0;
+}
+
+function blockerDiagnosticsFor(
+  flow: Flow,
+  meetings: Meeting[],
+  gate: GateRecord,
+  gateBlockers: string[],
+  fiscal: FiscalPolicyResult,
+  persistedFiscal: Pick<FiscalPolicyResult, "blocking_reasons" | "required_cooperation">,
+  effectiveBlockers: string[]
+): BlockerDiagnostics {
+  const fiscalBlockers = reconciledBlockers(flow, fiscal.blocking_reasons);
+  const persistedFiscalBlockers = reconciledBlockers(flow, persistedFiscal.blocking_reasons);
+  const fiscalModeActive = fiscal.material || persistedFiscalBlockers.length > 0;
+  const hasGateBlockers = gateBlockers.length > 0;
+  const hasFiscalBlockers = fiscalBlockers.length > 0 || persistedFiscalBlockers.length > 0;
+  const policy = hasGateBlockers && hasFiscalBlockers
+    ? "mixed"
+    : hasFiscalBlockers
+      ? "fiscal_material_policy"
+      : hasGateBlockers
+        ? "phase_gate_requirements"
+        : "none";
+
+  const diagnostics: BlockerDiagnostics = {
+    source: "goal_status",
+    phase: flow.phase,
+    policy,
+    fiscal_mode_active: fiscalModeActive,
+    gate_status: gate.status,
+    gate_blockers: gateBlockers,
+    fiscal_blockers: fiscalBlockers,
+    persisted_fiscal_blockers: persistedFiscalBlockers,
+    effective_blockers: effectiveBlockers,
+    blocker_families: effectiveBlockers.map((blocker) => ({
+      blocker,
+      family: blockerFamily(blocker),
+      source: blockerSources(blocker, gateBlockers, fiscalBlockers, persistedFiscalBlockers)
+    })),
+    interpretation: blockerInterpretation(policy, fiscalModeActive),
+    why_fiscal_mode_not_active: fiscalModeActive ? [] : whyFiscalModeNotActive(flow)
+  };
+  if (effectiveBlockers.includes("required_cooperation")) {
+    diagnostics.required_cooperation = requiredCooperationDiagnostics(flow, meetings, effectiveBlockers);
+  }
+  return diagnostics;
+}
+
+function blockerSources(
+  blocker: string,
+  gateBlockers: string[],
+  fiscalBlockers: string[],
+  persistedFiscalBlockers: string[]
+): string[] {
+  const sources: string[] = [];
+  if (gateBlockers.includes(blocker)) {
+    sources.push("phase_gate");
+  }
+  if (fiscalBlockers.includes(blocker)) {
+    sources.push("current_fiscal_policy");
+  }
+  if (persistedFiscalBlockers.includes(blocker)) {
+    sources.push("persisted_fiscal_block");
+  }
+  return sources;
+}
+
+function blockerFamily(blocker: string): string {
+  if (["scope_in", "scope_out", "tasks", "expected_evidence", "done_criteria"].includes(blocker)) {
+    return "planning_requirement";
+  }
+  if (["context", "risks", "uncertainties", "goal"].includes(blocker)) {
+    return "thought_requirement";
+  }
+  if (["implementation_done", "changed_files"].includes(blocker)) {
+    return "implementation_requirement";
+  }
+  if (["diff_reviewed", "barata_scan", "regression_risks"].includes(blocker)) {
+    return "review_requirement";
+  }
+  if (blocker === "test_executed") {
+    return "test_requirement";
+  }
+  if (["verdict", "residual_risks", "next_step", "clean_house"].includes(blocker)) {
+    return blocker === "verdict" ? "canonical_verdict" : "validation_requirement";
+  }
+  if (blocker === "required_cooperation") {
+    return "fiscal_cooperation";
+  }
+  if (blocker === "memory_required_but_empty") {
+    return "fiscal_memory";
+  }
+  if (["hygiene_blocking", "review_required", "librarian_status", "attempt_regress_count"].includes(blocker)) {
+    return "fiscal_material";
+  }
+  return "unknown";
+}
+
+function blockerInterpretation(policy: BlockerDiagnostics["policy"], fiscalModeActive: boolean): string {
+  if (policy === "mixed") {
+    return "ha requisitos de fase e bloqueios fiscais ativos; resolver ambos antes de declarar pronto";
+  }
+  if (policy === "fiscal_material_policy") {
+    return "bloqueio vem da politica fiscal/material; nao e falta comum de campo de fase";
+  }
+  if (policy === "phase_gate_requirements") {
+    return fiscalModeActive
+      ? "bloqueio atual vem do gate de fase, embora a politica fiscal esteja em modo material sem blocker ativo"
+      : "bloqueio vem de requisito do gate da fase atual; completar campos exigidos antes de avancar";
+  }
+  return "sem bloqueio efetivo no status atual";
+}
+
+function whyFiscalModeNotActive(flow: Flow): string[] {
+  const reasons: string[] = [];
+  if (!flow.goal_binding) {
+    reasons.push("flow sem goal_binding oficial");
+  }
+  reasons.push("sem sinal material ativo no texto, evidencias, memoria, higiene, review, regressao ou bibliotecario");
+  return reasons;
 }
 
 function latestLibrarianStatus(flow: Flow): RecallVisualStatus | null {
@@ -3186,6 +3413,40 @@ function nextRequiredActionFor(
   const meetingKind = requiredMeetingKind(flow, blockers, regressLimitReached);
   const openMeeting = latestOpenMeeting(meetings, meetingKind) ?? latestOpenMeeting(meetings);
   if (blockers.includes("required_cooperation")) {
+    const cooperationDiagnostics = requiredCooperationDiagnostics(flow, meetings, blockers);
+    const eligibleMeetingIds = stringArray(cooperationDiagnostics.eligible_meeting_ids);
+    const missingForVerdict = stringArray(cooperationDiagnostics.missing_for_verdict);
+    if (eligibleMeetingIds.length > 0 && missingForVerdict.includes("meeting_id")) {
+      return {
+        type: "provide_meeting_id_for_verdict",
+        tool: "goal_verdict",
+        reason: "required_cooperation ja tem reuniao elegivel; repetir goal_verdict informando meeting_id",
+        back_to: backTo,
+        eligible_meeting_ids: eligibleMeetingIds,
+        required_satisfies_blockers: ["required_cooperation"],
+        regress_count: regressCount,
+        max_regressions: FISCAL_CONFIG.maxRegressions,
+        can_retry_verdict: true,
+        loop_guard: "nao abrir nova reuniao; usar um eligible_meeting_id no goal_verdict",
+        required_tool_sequence: [
+          {
+            order: 1,
+            tool: "goal_verdict",
+            purpose: "repetir veredito positivo com meeting_id da reuniao que satisfez required_cooperation",
+            args: {
+              flow_id: flow.flow_id,
+              meeting_id: eligibleMeetingIds[0],
+              status: "pronto_com_ressalvas",
+              rationale: "<racional com evidencia>",
+              evidence_ids: ["<evidence_id>"],
+              residual_risks: ["<risco residual ou nenhum>"],
+              next_step: "<proximo passo com quando>"
+            }
+          },
+          { order: 2, tool: "goal_status", purpose: "confirmar ausencia de required_cooperation", args: { flow_id: flow.flow_id } }
+        ]
+      };
+    }
     if (blockers.includes("required_cooperation") && openMeeting) {
       return {
         type: "close_existing_meeting",
@@ -3935,7 +4196,8 @@ function ppirtvCheckOut(
   flow: Flow,
   librarianStatus: StructuredLibrarianStatus,
   blockers: string[],
-  resolutionGuidance: Record<string, unknown> | null = null
+  resolutionGuidance: Record<string, unknown> | null = null,
+  blockerDiagnostics: BlockerDiagnostics | null = null
 ): Record<string, unknown> {
   const latestVerdict = flow.verdicts.at(-1);
   const closed = flow.status === "complete" || flow.status === "archived";
@@ -3945,6 +4207,7 @@ function ppirtvCheckOut(
   const cooperationAccountability = cooperationCheckoutAccountability(flow);
   const librarianAccountability = librarianCheckoutAccountability(librarianStatus);
   const loopAccountability = loopCheckoutAccountability(flow, blockers);
+  const evidenceAccountability = evidenceCheckoutAccountability(flow);
   const contractAccountability = {
     ...operationalContractMeta(),
     ready_definition: readyDefinition(),
@@ -3965,6 +4228,7 @@ function ppirtvCheckOut(
     verdict: latestVerdict?.status ?? null,
     meetings_count: flow.meetings.length,
     evidence_count: flow.evidence.length,
+    evidence_accountability: evidenceAccountability,
     review_visible: flow.evidence.some((evidence) => /review|revisor|diff/i.test([evidence.kind, evidence.title, evidence.note, evidence.content].filter(Boolean).join("\n"))),
     tests_visible: flow.evidence.some((evidence) => /test|teste|vitest|npm run check/i.test([evidence.kind, evidence.title, evidence.note, evidence.content].filter(Boolean).join("\n"))),
     garimpo_count: flow.gold_mining.length,
@@ -3984,6 +4248,7 @@ function ppirtvCheckOut(
     prestacao_de_contas: {
       utilidade: utilityAccountability,
       memoria: memoryAccountability,
+      evidencias: evidenceAccountability,
       garimpo: learningAccountability.garimpado,
       estacionamento: learningAccountability.estacionado,
       pontos_cegos: learningAccountability.pontos_cegos,
@@ -3994,12 +4259,81 @@ function ppirtvCheckOut(
     },
     residual_risks: latestVerdict?.residual_risks ?? [],
     resolution_guidance: resolutionGuidance,
+    blocker_diagnostics: blockerDiagnostics,
     direct_action: blockers.length > 0
       ? `check-out bloqueado: ${blockers.join(", ")}; abrir reuniao/revisor/memoria conforme resolution_guidance antes de veredito positivo`
       : closed
         ? "fechamento_total_registrado"
         : "check-out pendente ate veredito/arquivo"
   };
+}
+
+function evidenceCheckoutAccountability(flow: Flow): Record<string, unknown> {
+  const items = flow.evidence.map((evidence) => ({
+    evidence_id: evidence.evidence_id,
+    title: evidence.title,
+    kind: evidence.kind,
+    quality: classifyEvidenceQuality(evidence)
+  }));
+  const weakCount = items.filter((item) => item.quality.status === "weak").length;
+  const missingContextCount = items.filter((item) => item.quality.status === "missing_context").length;
+  const strongCount = items.filter((item) => item.quality.status === "strong").length;
+  return {
+    total: items.length,
+    strong_count: strongCount,
+    weak_count: weakCount,
+    missing_context_count: missingContextCount,
+    legacy_unclassified_count: items.filter((item) => item.quality.status === "legacy_unclassified").length,
+    blocks_ready: items.some((item) => item.quality.blocking),
+    policy: "aditivo: evidencia fraca e visivel como WARN; nao bloqueia legado neste corte",
+    items
+  };
+}
+
+function classifyEvidenceQuality(evidence: Evidence): EvidenceQuality {
+  if (!evidence.created_at) {
+    return {
+      status: "legacy_unclassified",
+      blocking: false,
+      reasons: ["evidencia legada sem metadados suficientes para classificacao forte"],
+      missing_fields: []
+    };
+  }
+  const text = [evidence.kind, evidence.title, evidence.uri, evidence.content, evidence.note, ...evidence.gold_mining].filter(Boolean).join("\n");
+  const checks = {
+    origin: /origem|origin|source/i.test(text),
+    objective: /objetivo|objective|goal/i.test(text),
+    phase: /fase|phase|pensamentos|planejamento|implementacao|revisao|teste|validacao/i.test(text),
+    procedure: /procedimento|procedure|comando|command|npm|vitest|teste|test/i.test(text),
+    observed_result: /resultado|result|observado|observed|pass|passed|fail|failed|falh/i.test(text),
+    limitation: /limitacao|limitação|limitation|risco|ressalva|residual/i.test(text),
+    flow_reference: Boolean(evidence.flow_id)
+  };
+  const missingFields = Object.entries(checks)
+    .filter(([, checked]) => !checked)
+    .map(([field]) => field);
+  const hasTrace = Boolean(evidence.uri || evidence.content || evidence.note || evidence.gold_mining.length > 0);
+  const status = !hasTrace || missingFields.length >= 4 ? "weak" : missingFields.length <= 1 ? "strong" : "missing_context";
+  return {
+    status,
+    blocking: false,
+    reasons: evidenceQualityReasons(status, hasTrace, missingFields),
+    missing_fields: missingFields
+  };
+}
+
+function evidenceQualityReasons(status: EvidenceQuality["status"], hasTrace: boolean, missingFields: string[]): string[] {
+  const reasons: string[] = [];
+  if (!hasTrace) {
+    reasons.push("sem conteudo, nota, uri ou satisfacao rastreavel");
+  }
+  if (missingFields.length > 0) {
+    reasons.push(`campos ausentes: ${missingFields.join(", ")}`);
+  }
+  if (status === "strong") {
+    reasons.push("evidencia contem contexto operacional suficiente para auditoria inicial");
+  }
+  return reasons;
 }
 
 function deriveVerdictLearning(
@@ -4322,7 +4656,10 @@ function learningCheckoutAccountability(flow: Flow): Record<string, unknown> {
 
 function cooperationCheckoutAccountability(flow: Flow): Record<string, unknown> {
   const material = flow.cooperators.filter((cooperator) => cooperator.material);
+  const suggested = suggestedCooperatorsForFlow(flow);
   return {
+    suggested_count: suggested.length,
+    suggested,
     material_count: material.length,
     material,
     all: flow.cooperators,
@@ -4336,8 +4673,22 @@ function cooperationCheckoutAccountability(flow: Flow): Record<string, unknown> 
     summary:
       material.length > 0
         ? `cooperadores materiais: ${material.map((cooperator) => cooperator.name).join(", ")}`
-        : "nenhum cooperador material registrado"
+        : suggested.length > 0
+          ? "cooperadores sugeridos registrados; nenhum credito material automatico"
+          : "nenhum cooperador material registrado"
   };
+}
+
+function suggestedCooperatorsForFlow(flow: Flow): Cooperator[] {
+  return uniqueCooperators(
+    flow.history.flatMap((event) => {
+      if (event.type !== "meeting_opened") {
+        return [];
+      }
+      const suggested = event.data.suggested_cooperators;
+      return Array.isArray(suggested) ? (suggested as Cooperator[]) : [];
+    })
+  );
 }
 
 function librarianCheckoutAccountability(librarianStatus: StructuredLibrarianStatus): Record<string, unknown> {

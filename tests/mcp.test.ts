@@ -346,6 +346,7 @@ describe("PPIRTV MCP stdio server", () => {
     const gate = await client!.callTool({ name: "goal_gate_check", arguments: { flow_id: flowId } });
     const advanced = await client!.callTool({ name: "goal_advance", arguments: { flow_id: flowId } });
     const status = await client!.callTool({ name: "goal_status", arguments: { flow_id: flowId } });
+    const checkout = await client!.callTool({ name: "ppirtv_checkout", arguments: { flow_id: flowId } });
     const resource = await client!.readResource({ uri: `ppirtv://flow/${flowId}/ledger` });
 
     expect((resultOf(opened).suggested_cooperators as Array<Record<string, unknown>>)[0].material).toBe(false);
@@ -359,8 +360,22 @@ describe("PPIRTV MCP stdio server", () => {
     expect(resultOf(status).phase).toBe("planejamento");
     expect(resultOf(status).active_credits).toEqual(expect.arrayContaining(["Chato exigiu evidencia de ledger"]));
     expect(resultOf(status).meetings).toEqual(
-      expect.arrayContaining([expect.objectContaining({ meeting_id: meetingId, status: "closed", kind: "divergente" })])
+      expect.arrayContaining([
+        expect.objectContaining({
+          meeting_id: meetingId,
+          status: "closed",
+          kind: "divergente",
+          suggested_cooperators: expect.arrayContaining([expect.objectContaining({ name: "Chato", material: false })])
+        })
+      ])
     );
+    expect(resultOf(checkout).ppirtv_checkout).toMatchObject({
+      cooperation_accountability: {
+        suggested_count: 1,
+        material_count: 1,
+        suggested: expect.arrayContaining([expect.objectContaining({ name: "Chato", material: false })])
+      }
+    });
     expect(resource.contents[0]?.text).toContain("meeting_opened");
     expect(resource.contents[0]?.text).toContain("meeting_turn_added");
     expect(resource.contents[0]?.text).toContain("meeting_closed");
@@ -477,6 +492,72 @@ describe("PPIRTV MCP stdio server", () => {
         })
       ])
     );
+  });
+
+  it("returns structured MCP error envelopes without removing human-readable text", async () => {
+    await connectClient();
+
+    const missingGoal = await client!.callTool({ name: "goal_status", arguments: {} });
+    expect((missingGoal as { isError?: boolean }).isError).toBe(true);
+    expect(JSON.stringify(missingGoal)).toContain("flow_id or idempotency_key is required");
+    expect(resultOf(missingGoal).error).toMatchObject({
+      code: "GOAL_NAO_ATIVO",
+      recoverable: true,
+      next_required_action: {
+        tool: "goal_start"
+      },
+      contract_source: "docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md"
+    });
+
+    const workspace = path.join(tempRoot, "workspace-mcp-error-envelope");
+    const sptPath = await writeFakeSpt(workspace);
+    const started = await client!.callTool({
+      name: "goal_start",
+      arguments: {
+        workspace,
+        spt_path: sptPath,
+        objective: "Validar envelope de erro MCP",
+        idempotency_key: "dex-code:mcp-error-envelope",
+        evidence_required: true,
+        required_evidence: ["vitest"],
+        requested_verdict_policy: "evidence_required",
+        source: "dex-code"
+      }
+    });
+    const flowId = resultOf(started).flow_id as string;
+    const missingEvidence = await client!.callTool({
+      name: "goal_verdict",
+      arguments: {
+        flow_id: flowId,
+        status: "pronto",
+        rationale: "Tentativa positiva sem evidencia",
+        next_step: "anexar evidencia antes de tentar novamente"
+      }
+    });
+    expect((missingEvidence as { isError?: boolean }).isError).toBe(true);
+    expect(JSON.stringify(missingEvidence)).toContain("goal_verdict requires traceable evidence_ids");
+    expect(resultOf(missingEvidence).error).toMatchObject({
+      code: "EVIDENCIA_AUSENTE",
+      recoverable: true,
+      next_required_action: {
+        tool: "evidence_add"
+      }
+    });
+
+    const secretBlocked = await client!.callTool({
+      name: "evidence_add",
+      arguments: {
+        flow_id: flowId,
+        title: "secret evidence",
+        content: "Authorization: Bearer abcdefghijklmnop"
+      }
+    });
+    expect((secretBlocked as { isError?: boolean }).isError).toBe(true);
+    expect(JSON.stringify(secretBlocked)).not.toContain("abcdefghijklmnop");
+    expect(resultOf(secretBlocked).error).toMatchObject({
+      code: "SENSITIVE_CONTENT_BLOCKED",
+      recoverable: false
+    });
   });
 
   it("runs five PPIRTV flows sequentially through mm_pipeline_run over MCP", async () => {

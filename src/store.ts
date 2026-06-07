@@ -222,6 +222,7 @@ function normalizeMeeting(meeting: Meeting): Meeting {
   meeting.kind ??= meetingKindForLegacyType(meeting.type);
   meeting.participants_required ??= [];
   meeting.participants_present ??= [];
+  meeting.suggested_cooperators ??= [];
   meeting.findings ??= [];
   meeting.decision ??= meeting.decisions?.[0];
   meeting.next_required_action ??= null;

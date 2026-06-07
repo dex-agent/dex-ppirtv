@@ -81,7 +81,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         uncertainties: z.array(z.string()).optional()
       }
     },
-    async (args) => toolResult(await engine.createFlow(args))
+    async (args) => toolResponse(() => engine.createFlow(args))
   );
 
   server.registerTool(
@@ -90,7 +90,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
       description: "Return the current state of a flow by flow_id.",
       inputSchema: { flow_id: z.string().min(1) }
     },
-    async ({ flow_id }) => toolResult(await engine.status(flow_id))
+    async ({ flow_id }) => toolResponse(() => engine.status(flow_id))
   );
 
   server.registerTool(
@@ -104,7 +104,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         actor: z.string().optional()
       }
     },
-    async (args) => toolResult(await engine.advance(args))
+    async (args) => toolResponse(() => engine.advance(args))
   );
 
   server.registerTool(
@@ -119,7 +119,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         actor: z.string().optional()
       }
     },
-    async (args) => toolResult(await engine.returnTo(args))
+    async (args) => toolResponse(() => engine.returnTo(args))
   );
 
   server.registerTool(
@@ -133,7 +133,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         persist: z.boolean().optional()
       }
     },
-    async (args) => toolResult(await engine.checkGate(args))
+    async (args) => toolResponse(() => engine.checkGate(args))
   );
 
   server.registerTool(
@@ -150,7 +150,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         evidence_ids: z.array(z.string()).optional()
       }
     },
-    async (args) => toolResult(await engine.openMeeting(args))
+    async (args) => toolResponse(() => engine.openMeeting(args))
   );
 
   server.registerTool(
@@ -176,7 +176,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         active_credits: z.array(z.string()).optional()
       }
     },
-    async (args) => toolResult(await engine.recordMeeting(args))
+    async (args) => toolResponse(() => engine.recordMeeting(args))
   );
 
   server.registerTool(
@@ -196,7 +196,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         active_credits: z.array(z.string()).optional()
       }
     },
-    async (args) => toolResult(await engine.attachEvidence(args))
+    async (args) => toolResponse(() => engine.attachEvidence(args))
   );
 
   server.registerTool(
@@ -205,7 +205,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
       description: "Render the visual checklist for the flow current phase.",
       inputSchema: { flow_id: z.string().min(1) }
     },
-    async ({ flow_id }) => toolResult(await engine.renderChecklist(flow_id))
+    async ({ flow_id }) => toolResponse(() => engine.renderChecklist(flow_id))
   );
 
   server.registerTool(
@@ -225,7 +225,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         next_step: z.string().min(1)
       }
     },
-    async (args) => toolResult(await engine.recordVerdict(args))
+    async (args) => toolResponse(() => engine.recordVerdict(args))
   );
 
   server.registerTool(
@@ -234,7 +234,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
       description: "Scan for clean-house findings and apply the barata nunca esta sozinha rule.",
       inputSchema: { flow_id: z.string().optional() }
     },
-    async ({ flow_id }) => toolResult(await engine.hygieneScan(flow_id))
+    async ({ flow_id }) => toolResponse(() => engine.hygieneScan(flow_id))
   );
 
   server.registerTool(
@@ -243,7 +243,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
       description: "Archive a flow after verdict or with an explicit reason.",
       inputSchema: { flow_id: z.string().min(1), reason: z.string().optional() }
     },
-    async (args) => toolResult(await engine.archiveFlow(args))
+    async (args) => toolResponse(() => engine.archiveFlow(args))
   );
 
   server.registerTool(
@@ -256,7 +256,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         objective: z.string().optional()
       }
     },
-    async (args) => toolResult(await engine.validateSpt(args))
+    async (args) => toolResponse(() => engine.validateSpt(args))
   );
 
   server.registerTool(
@@ -265,7 +265,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
       description: "Start or reuse an official GOAL/SPT execution flow from dex-code.",
       inputSchema: goalEnvelopeSchema
     },
-    async (args) => toolResult(await engine.startGoal(args))
+    async (args) => toolResponse(() => engine.startGoal(args))
   );
 
   server.registerTool(
@@ -277,7 +277,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         idempotency_key: z.string().optional()
       }
     },
-    async (args) => toolResult(await engine.goalStatus(args))
+    async (args) => toolResponse(() => engine.goalStatus(args))
   );
 
   server.registerTool(
@@ -289,7 +289,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         idempotency_key: z.string().optional()
       }
     },
-    async (args) => toolResult(await engine.goalCheckout(args))
+    async (args) => toolResponse(() => engine.goalCheckout(args))
   );
 
   server.registerTool(
@@ -302,7 +302,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         note: z.string().optional()
       }
     },
-    async (args) => toolResult(await engine.resumeGoal(args))
+    async (args) => toolResponse(() => engine.resumeGoal(args))
   );
 
   server.registerTool(
@@ -317,7 +317,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         persist: z.boolean().optional()
       }
     },
-    async (args) => toolResult(await engine.goalGateCheck(args))
+    async (args) => toolResponse(() => engine.goalGateCheck(args))
   );
 
   server.registerTool(
@@ -331,7 +331,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         evidence_ids: z.array(z.string()).optional()
       }
     },
-    async (args) => toolResult(await engine.goalAdvance(args))
+    async (args) => toolResponse(() => engine.goalAdvance(args))
   );
 
   server.registerTool(
@@ -350,7 +350,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         suggested_cooperators: z.array(cooperatorSchema).optional()
       }
     },
-    async (args) => toolResult(await engine.goalMeetingOpen(args))
+    async (args) => toolResponse(() => engine.goalMeetingOpen(args))
   );
 
   server.registerTool(
@@ -368,7 +368,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         evidence_ids: z.array(z.string()).optional()
       }
     },
-    async (args) => toolResult(await engine.goalMeetingAddTurn(args))
+    async (args) => toolResponse(() => engine.goalMeetingAddTurn(args))
   );
 
   server.registerTool(
@@ -402,7 +402,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         active_credits: z.array(z.string()).optional()
       }
     },
-    async (args) => toolResult(await engine.goalMeetingClose(args))
+    async (args) => toolResponse(() => engine.goalMeetingClose(args))
   );
 
   server.registerTool(
@@ -415,7 +415,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         write_policy: z.enum(MEMORY_WRITE_POLICIES).default("auto_write")
       }
     },
-    async (args) => toolResult(await engine.mineMemory(args))
+    async (args) => toolResponse(() => engine.mineMemory(args))
   );
 
   server.registerTool(
@@ -428,7 +428,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         auto_memory_mining: z.boolean().default(true)
       }
     },
-    async (args) => toolResult(await engine.runPipeline(args))
+    async (args) => toolResponse(() => engine.runPipeline(args))
   );
 
   server.registerTool(
@@ -445,7 +445,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         satisfies: z.array(z.string()).optional()
       }
     },
-    async (args) => toolResult(await engine.addGoalEvidence(args))
+    async (args) => toolResponse(() => engine.addGoalEvidence(args))
   );
 
   server.registerTool(
@@ -469,7 +469,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         next_step: z.string().min(1)
       }
     },
-    async (args) => toolResult(await engine.goalVerdict(args))
+    async (args) => toolResponse(() => engine.goalVerdict(args))
   );
 
   server.registerTool(
@@ -486,7 +486,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         actor: z.string().optional()
       }
     },
-    async (args) => toolResult(await engine.goalRegress(args))
+    async (args) => toolResponse(() => engine.goalRegress(args))
   );
 
   assertRegistered("tool", TOOL_NAMES);
@@ -580,11 +580,107 @@ function registerPrompts(server: McpServer): void {
   assertRegistered("prompt", PROMPT_NAMES);
 }
 
+async function toolResponse(operation: () => Promise<unknown>) {
+  try {
+    return toolResult(await operation());
+  } catch (error) {
+    return toolErrorResult(error);
+  }
+}
+
 function toolResult(value: unknown) {
   return {
     content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
     structuredContent: { result: value }
   };
+}
+
+function toolErrorResult(error: unknown) {
+  const envelope = classifyToolError(error);
+  const value = { error: envelope };
+  return {
+    isError: true,
+    content: [{ type: "text" as const, text: `${envelope.code}: ${envelope.message}\n${JSON.stringify(value, null, 2)}` }],
+    structuredContent: { result: value }
+  };
+}
+
+function classifyToolError(error: unknown) {
+  const rawMessage = error instanceof Error ? error.message : String(error);
+  const message = redactSecretLikeText(rawMessage);
+  const base = {
+    message,
+    details: { original_error: message },
+    contract_source: "docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md"
+  };
+  if (/^Invalid SPT for goal_start:/i.test(message)) {
+    return {
+      ...base,
+      code: "SPT_INVALIDO",
+      recoverable: true,
+      next_required_action: { type: "corrigir_spt", tool: "spt_validate" }
+    };
+  }
+  if (/flow_id or idempotency_key is required|No flow found for idempotency_key|not bound to an official GOAL|Call goal_start first/i.test(message)) {
+    return {
+      ...base,
+      code: "GOAL_NAO_ATIVO",
+      recoverable: true,
+      next_required_action: { type: "goal_start_required", tool: "goal_start" }
+    };
+  }
+  if (/goal_verdict requires traceable evidence_ids|Unknown evidence_ids/i.test(message)) {
+    return {
+      ...base,
+      code: "EVIDENCIA_AUSENTE",
+      recoverable: true,
+      next_required_action: { type: "attach_traceable_evidence", tool: "evidence_add" }
+    };
+  }
+  if (/AUTO_CLASSIFY_DISABLED_AUTO_WRITE/i.test(message)) {
+    return {
+      ...base,
+      code: "MEMORY_MINING_INPUT_INVALID",
+      recoverable: true,
+      next_required_action: { type: "adjust_memory_mining_policy", tool: "mm_memory_mining" }
+    };
+  }
+  if (/MEMORY_MINING_BLOCKED_VERDICT/i.test(message)) {
+    return {
+      ...base,
+      code: "MEMORY_MINING_BLOCKED_VERDICT",
+      recoverable: true,
+      next_required_action: { type: "resolve_memory_candidates", tool: "mm_memory_mining" }
+    };
+  }
+  if (/PPIRTV_FISCAL_BLOCKED/i.test(message)) {
+    return {
+      ...base,
+      code: "PPIRTV_FISCAL_BLOCKED",
+      recoverable: true,
+      next_required_action: { type: "resolve_fiscal_blockers", tool: "goal_status" }
+    };
+  }
+  if (/secret-like|Authorization|Bearer|token|api[_-]?key|password|secret/i.test(rawMessage)) {
+    return {
+      ...base,
+      code: "SENSITIVE_CONTENT_BLOCKED",
+      recoverable: false,
+      next_required_action: null
+    };
+  }
+  return {
+    ...base,
+    code: "PPIRTV_TOOL_ERROR",
+    recoverable: false,
+    next_required_action: null
+  };
+}
+
+function redactSecretLikeText(value: string): string {
+  return value
+    .replace(/Authorization:\s*Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Authorization: Bearer [REDACTED]")
+    .replace(/\b(api[_-]?key|token|password|secret)\s*[:=]\s*[^,\s;]+/gi, "$1=[REDACTED]");
 }
 
 function resourceResult(uri: string, value: unknown) {

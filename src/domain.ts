@@ -253,6 +253,14 @@ export type Evidence = {
   cooperators: Cooperator[];
   active_credits: string[];
   created_at: string;
+  evidence_quality?: EvidenceQuality;
+};
+
+export type EvidenceQuality = {
+  status: "strong" | "weak" | "missing_context" | "legacy_unclassified";
+  blocking: boolean;
+  reasons: string[];
+  missing_fields: string[];
 };
 
 export type Meeting = {
@@ -267,6 +275,7 @@ export type Meeting = {
   closed_at?: string;
   participants_required: string[];
   participants_present: string[];
+  suggested_cooperators: Cooperator[];
   questions: string[];
   findings: string[];
   hypotheses: string[];
