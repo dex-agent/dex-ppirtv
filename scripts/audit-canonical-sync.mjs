@@ -69,7 +69,7 @@ function assertFilePairsInSync(pairs) {
 function assertLocalAuthorityPointers() {
   const agentsPath = path.join(repoRoot, "AGENTS.md");
   const napkinPath = path.join(repoRoot, ".codex", "napkin.md");
-  const bridgePath = path.join(repoRoot, "docs", "12-GOAL-EXECUTION-BRIDGE.md");
+  const bridgePath = path.join(repoRoot, "docs", "contracts", "GOAL_EXECUTION_BRIDGE.md");
 
   if (existsSync(agentsPath)) {
     const agentsText = readUtf8(agentsPath);

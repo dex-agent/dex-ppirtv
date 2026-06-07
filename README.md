@@ -66,6 +66,19 @@ npm run check
 
 `npm run check` builds the TypeScript project and runs the Vitest suite.
 
+Run the end-to-end MCP smoke:
+
+```bash
+npm run test:e2e
+```
+
+Export a redacted diagnostic bundle for an existing flow after build:
+
+```bash
+npm run build
+npm run diagnostic:bundle -- --flow-id <flow_id> --ppirtv-home <path-to-.ppirtv>
+```
+
 ## Run
 
 ```bash
@@ -388,6 +401,24 @@ recall signals; promotion to L1/L2/L3 goes through `mm_memory_mining`.
 The tool must not write secrets, private payloads, runtime ledgers or local
 workspace state into public files.
 
+## Diagnostics
+
+`npm run diagnostic:bundle` exports a redacted PPIRTV runtime snapshot for one
+flow. It is intended for support across machines when the raw `.ppirtv` runtime
+must not be shared.
+
+The diagnostic bundle is not proof that product code was edited, built or
+tested. It is only a redacted snapshot of PPIRTV orchestration state.
+
+When `goal_verdict` returns `PPIRTV_FISCAL_BLOCKED`, the minimal diagnostic
+sequence is:
+
+1. call `goal_status` with the same `flow_id` or `idempotency_key`;
+2. inspect `blocker_diagnostics` and `next_required_action`;
+3. use `ppirtv_checkout` before retrying the final verdict;
+4. provide the missing evidence, meeting, `meeting_id` or cooperation required
+   by the diagnostics.
+
 ## Security Notes
 
 - Do not commit `.env` files.
@@ -415,6 +446,6 @@ Current public documentation is intentionally small:
 | Priority | Document | Purpose | Status |
 | --- | --- | --- | --- |
 | Immediate | `README.md` | Public setup, tool map and safety boundary | Current |
-| Short term | `SECURITY.md` | Public vulnerability and secret-handling policy | Planned |
-| Short term | `CONTRIBUTING.md` | Public contribution and test workflow | Planned |
+| Immediate | `SECURITY.md` | Public vulnerability and secret-handling policy | Current |
+| Immediate | `CONTRIBUTING.md` | Public contribution and test workflow | Current |
 | Later | Generated tool reference | Public schemas derived from the MCP server | Planned |

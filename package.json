@@ -12,9 +12,10 @@
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "audit:canonical": "node scripts/audit-canonical-sync.mjs",
+    "diagnostic:bundle": "node scripts/export-diagnostic-bundle.mjs",
     "smoke:mcp-tools": "node scripts/smoke-mcp-tools.mjs",
     "test": "vitest run",
-    "test:e2e": "vitest run tests/e2e.test.ts",
+    "test:e2e": "npm run build && vitest run tests/e2e.test.ts",
     "check": "npm run audit:canonical && npm run build && npm test"
   },
   "keywords": [
