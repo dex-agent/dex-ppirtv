@@ -1,4 +1,4 @@
-# Local environment and secrets
+﻿# Local environment and secrets
 .env
 .env.*
 
@@ -46,3 +46,6 @@ desktop.ini
 .DS_Store
 .vscode/
 .idea/
+skills/dex-agent/
+.agents/CONTACTS.local.json
+

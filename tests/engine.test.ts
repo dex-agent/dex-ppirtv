@@ -1634,12 +1634,21 @@ describe("PPIRTV flow engine", () => {
     const checkin = status.ppirtv_checkin as Record<string, unknown>;
     const components = checkin.components as Array<Record<string, unknown>>;
 
+    // bibliotecario pode reportar "recalled" quando há curated L1/L2 no workspace real
+    const librarianStatuses = new Set(["empty", "recalled"]);
     expect(components).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ name: "bibliotecario", status: "empty", visible: true }),
-        expect.objectContaining({ name: "graphify", status: "empty", visible: true })
+        expect.objectContaining({ name: "bibliotecario", visible: true }),
+        expect.objectContaining({ name: "graphify", status: "empty", visible: true }),
+        expect.objectContaining({ name: "ppirtv", status: "online", visible: true }),
+        expect.objectContaining({ name: "coo", visible: false }),
+        expect.objectContaining({ name: "meeting_tools", visible: true }),
+        expect.objectContaining({ name: "ppi", visible: true })
       ])
     );
+    const bibliotecario = components.find((c) => c.name === "bibliotecario");
+    expect(bibliotecario).toBeDefined();
+    expect(librarianStatuses.has(bibliotecario!.status as string)).toBe(true);
   });
 
   it("T13 exposes check-out with final evidence, meetings, tests and verdict", async () => {
