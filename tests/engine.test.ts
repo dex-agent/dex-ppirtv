@@ -3059,6 +3059,150 @@ describe("PPIRTV flow engine", () => {
     }
   });
 
+  it("T34a downgrades pronto to pronto_com_ressalvas when next_step promises future action without quando", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-gate-do-quando-sem-quando",
+      "Gate do Quando rebaixa veredito sem quando"
+    );
+    const opened = await engine.goalMeetingOpen({
+      flow_id: flowId,
+      kind: "divergente",
+      participants_required: ["ppi", "chato"],
+      question: "O next_step sem quando deve bloquear pronto?"
+    });
+    await engine.goalMeetingClose({
+      flow_id: flowId,
+      meeting_id: opened.meeting_id as string,
+      participants_present: ["ppi", "chato"],
+      decision: "Gate do Quando deve rebaixar pronto para pronto_com_ressalvas quando next_step promete acao futura sem quando.",
+      satisfies_blockers: ["required_cooperation"],
+      cooperators: [
+        { name: "ppi", reason: "fiscalizou Gate do Quando no veredito", material: true }
+      ],
+      active_credits: ["ppi fiscalizou Gate do Quando"]
+    });
+
+    const verdict = await engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto",
+      rationale: "Implementacao concluida com evidencias.",
+      evidence_ids: [evidenceId],
+      meeting_id: opened.meeting_id as string,
+      next_step: "implementar correcao depois"
+    });
+    const vr = verdict.verdict as Record<string, unknown>;
+    expect(vr.status).toBe("pronto_com_ressalvas");
+    const learning = verdict.verdict_learning as Record<string, unknown>;
+    expect(learning.gold_mining as string[]).toEqual(
+      expect.arrayContaining([expect.stringContaining("Gate do Quando")])
+    );
+  });
+
+  it("T34b keeps pronto when next_step has a quando (date/trigger)", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-gate-do-quando-com-quando-data",
+      "Gate do Quando respeita quando presente"
+    );
+    const opened = await engine.goalMeetingOpen({
+      flow_id: flowId,
+      kind: "divergente",
+      participants_required: ["ppi", "chato"],
+      question: "O next_step com data mantem pronto?"
+    });
+    await engine.goalMeetingClose({
+      flow_id: flowId,
+      meeting_id: opened.meeting_id as string,
+      participants_present: ["ppi", "chato"],
+      decision: "Gate do Quando nao deve rebaixar quando next_step tem data, gatilho ou responsavel.",
+      satisfies_blockers: ["required_cooperation"],
+      cooperators: [
+        { name: "ppi", reason: "confirmou que data no next_step satisfaz o gate", material: true }
+      ],
+      active_credits: ["ppi confirmou gate do quando com data"]
+    });
+
+    const verdict = await engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto",
+      rationale: "Implementacao concluida.",
+      evidence_ids: [evidenceId],
+      meeting_id: opened.meeting_id as string,
+      next_step: "implementar correcao na segunda-feira"
+    });
+    const vr = verdict.verdict as Record<string, unknown>;
+    expect(vr.status).toBe("pronto");
+  });
+
+  it("T34c keeps pronto when next_step has a quando (trigger word)", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-gate-do-quando-com-quando-gatilho",
+      "Gate do Quando respeita gatilho condicional"
+    );
+    const opened = await engine.goalMeetingOpen({
+      flow_id: flowId,
+      kind: "divergente",
+      participants_required: ["ppi", "chato"],
+      question: "O next_step com gatilho condicional mantem pronto?"
+    });
+    await engine.goalMeetingClose({
+      flow_id: flowId,
+      meeting_id: opened.meeting_id as string,
+      participants_present: ["ppi", "chato"],
+      decision: "Gate do Quando nao deve rebaixar quando next_step tem gatilho condicional.",
+      satisfies_blockers: ["required_cooperation"],
+      cooperators: [
+        { name: "ppi", reason: "confirmou que gatilho condicional satisfaz o gate", material: true }
+      ],
+      active_credits: ["ppi confirmou gate do quando com gatilho condicional"]
+    });
+
+    const verdict = await engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto",
+      rationale: "Implementacao concluida.",
+      evidence_ids: [evidenceId],
+      meeting_id: opened.meeting_id as string,
+      next_step: "corrigir quando houver nova evidencia de falha"
+    });
+    const vr = verdict.verdict as Record<string, unknown>;
+    expect(vr.status).toBe("pronto");
+  });
+
+  it("T34d keeps pronto when next_step is a note without future action", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-gate-do-quando-nota-sem-acao",
+      "Gate do Quando ignora nota sem acao futura"
+    );
+    const opened = await engine.goalMeetingOpen({
+      flow_id: flowId,
+      kind: "divergente",
+      participants_required: ["ppi", "chato"],
+      question: "Nota sem verbo de acao deve ser ignorada pelo gate?"
+    });
+    await engine.goalMeetingClose({
+      flow_id: flowId,
+      meeting_id: opened.meeting_id as string,
+      participants_present: ["ppi", "chato"],
+      decision: "Gate do Quando nao deve interpretar nota descritiva como acao futura.",
+      satisfies_blockers: ["required_cooperation"],
+      cooperators: [
+        { name: "ppi", reason: "confirmou que nota sem acao nao dispara o gate", material: true }
+      ],
+      active_credits: ["ppi confirmou nota sem acao nao dispara gate"]
+    });
+
+    const verdict = await engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto",
+      rationale: "Sprint concluida. Evidencias anexadas.",
+      evidence_ids: [evidenceId],
+      meeting_id: opened.meeting_id as string,
+      next_step: "sprint finalizada"
+    });
+    const vr = verdict.verdict as Record<string, unknown>;
+    expect(vr.status).toBe("pronto");
+  });
+
   it("T34 blocks auto_write when a strong candidate is left without a canonical destination", async () => {
     const originalDexMemoriaHome = process.env.DEX_MEMORIA_HOME;
     const memRoot = path.join(tempRoot, "strong-unwritten-warnings");

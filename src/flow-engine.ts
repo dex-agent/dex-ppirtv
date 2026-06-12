@@ -1066,10 +1066,21 @@ export class FlowEngine {
     if (memoryMining?.blocked_verdict === true) {
       throw new Error("MEMORY_MINING_BLOCKED_VERDICT: resolver memory_candidates bloqueados antes do veredito positivo");
     }
+    let effectiveStatus = input.status;
+    let quandoRessalva: string | null = null;
+    if (input.status === "pronto") {
+      quandoRessalva = missingQuandoGate(input.next_step);
+      if (quandoRessalva) {
+        effectiveStatus = "pronto_com_ressalvas";
+      }
+    }
     const verdictLearning = deriveVerdictLearning(input, flow.evidence.filter((evidence) => evidenceIds.includes(evidence.evidence_id)));
+    if (quandoRessalva) {
+      verdictLearning.gold_mining.push(quandoRessalva);
+    }
     const verdict = await this.recordVerdict({
       flow_id: input.flow_id,
-      status: input.status,
+      status: effectiveStatus,
       rationale: input.rationale,
       evidence_ids: evidenceIds,
       residual_risks: input.residual_risks ?? [],
@@ -4363,6 +4374,27 @@ function deriveVerdictLearning(
 
 function isStrongLearningText(value: string | undefined): boolean {
   return Boolean(value && /(falso verde|contrato|princip|harness|canonical|case|CPU|RTX|CUDA|Graphify|MCP|PPIRTV|loop|bloque|regress|falh)/i.test(value));
+}
+
+const FUTURE_ACTION_PATTERN = /\b(resolv|corrig|implement|valid|revis|test|cri|abr|execut|fa[cz]|ajust|migr|refator|document|submet|envia|public|deploy|build|compil|rodar?|investig|diagnostic|analis|medir|monitor|otimiz|limp|remove|substitu|atualiz|configur|instal|deslig|liga)\w*\b|depois|mais tarde|futuro|pr[oó]ximo|em breve|oportunamente|quando der|abrir issue|criar PR|submeter PR|ver iss|olhar iss|pensar em/i;
+const QUANDO_INDICATOR = /\b(202[0-9]|20[3-9][0-9]|janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|semana que vem|amanh[ãa]|segunda|ter[çc]a|quarta|quinta|sexta|s[áa]bado|domingo|quando|ao receber|assim que|no momento em que|semanalmente|diariamente|a cada|todo dia|toda semana|depende de|bloqueado por|revisar em|validar ap[óo]s|daqui a|vence|prazo|at[ée] |respons[áa]vel|gatilho|cad[êe]ncia|janela de|condi[çc][ãa]o de|crit[ée]rio de|desbloquead|retomad)/i;
+
+function hasFutureAction(text: string): boolean {
+  return FUTURE_ACTION_PATTERN.test(text);
+}
+
+function hasQuando(text: string): boolean {
+  return QUANDO_INDICATOR.test(text);
+}
+
+function missingQuandoGate(nextStep: string): string | null {
+  if (!nextStep || !hasFutureAction(nextStep)) {
+    return null;
+  }
+  if (hasQuando(nextStep)) {
+    return null;
+  }
+  return "Gate do Quando: next_step promete acao futura sem quando verificavel (data, gatilho, cadencia, condicao, janela, vencimento, dependencia ou responsavel). Veredito rebaixado para pronto_com_ressalvas.";
 }
 
 function memoryWriteDecision(candidate: MemoryCandidate, writePolicy: MemoryWritePolicy, writtenIds: Set<string>): Record<string, unknown> {
