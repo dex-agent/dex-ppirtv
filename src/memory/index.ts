@@ -6,3 +6,4 @@ export * from "./memory-hooks.js";
 export * from "./memory-graph-provider.js";
 export * from "./parking-lot.js";
 export * from "./mining-policy.js";
+export * from "./post-write-validation.js";

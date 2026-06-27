@@ -105,6 +105,19 @@ Minimal MCP server configuration shape:
 
 Do not point `PPIRTV_HOME` at a public or versioned directory.
 
+When validating a repo-local Codex MCP config, a direct smoke with
+`--config-toml` proves only the selected server. If a parent workspace may also
+expose a PPIRTV server, audit the parent config too:
+
+```bash
+npm run smoke:mcp-tools -- --config-toml "<child>/.codex/config.toml" --server dex_ppirtv --audit-config-toml "<parent>/.codex/config.toml" --flow-smoke
+```
+
+An enabled PPIRTV-like server with a different `cwd` or `PPIRTV_HOME` is
+reported as `ppirtv_config_conflict`. A disabled inherited server is reported as
+`disabled_ppirtv_config_visible`, which means restart or revalidate stale Codex
+clients before treating the environment as clean.
+
 ## Quick Start
 
 Example MCP server configuration:
@@ -186,11 +199,11 @@ Bibliotecario/Graphify and tests tell the same story.
 Contract locations:
 
 1. Shared startup contract:
-   `C:\Users\Administrator\.agents\CONTRACTS\PPIRTV_GOAL_STARTUP_CONTRACT.md`.
+   `$env:USERPROFILE\.agents\CONTRACTS\PPIRTV_GOAL_STARTUP_CONTRACT.md`.
 2. Shared human principles:
-   `C:\Users\Administrator\.agents\memories\principles\PRINCIPLES.md`.
+   `$env:USERPROFILE\.agents\memories\principles\PRINCIPLES.md`.
 3. Shared operational principles contract:
-   `C:\Users\Administrator\.agents\memories\principles\operational-contract.json`.
+   `$env:USERPROFILE\.agents\memories\principles\operational-contract.json`.
 4. Project execution trails:
    `<WORKSPACE>\.agents\PLAN-TASKS\YYYY-MM-DD-<slug>.md`.
 
@@ -236,6 +249,7 @@ a GOAL finished.
 Memory and pipeline tools:
 
 - `mm_memory_mining`
+- `mm_memory_candidate_resolve`
 - `mm_pipeline_run`
 
 ## Typical GOAL/SPT Flow
@@ -249,8 +263,11 @@ Memory and pipeline tools:
 5. Check gates with `goal_gate_check`.
 6. Advance with `goal_advance`.
 7. Attach evidence with `evidence_add`.
-8. Close with `goal_verdict`.
-9. Inspect `ppirtv_checkout` before considering the flow fully closed.
+8. Run `mm_memory_mining` when there is learning material to classify.
+9. If strong candidates remain without destination, resolve them with
+   `mm_memory_candidate_resolve`.
+10. Close with `goal_verdict`.
+11. Inspect `ppirtv_checkout` before considering the flow fully closed.
 
 Positive verdicts require traceable evidence. In official GOAL/SPT flows, the
 engine can operate in two modes:
@@ -384,6 +401,31 @@ and reason for each candidate (`written`, `classify_only`, `ledger_only`,
 lists candidates the user can improve, approve, park or discard. In
 `auto_write`, a strong unwritten candidate without a canonical destination
 raises `blocked_verdict=true` with `destination_warnings`.
+
+`mm_memory_candidate_resolve` is the explicit recovery action for strong
+`ledger_only` or otherwise unwritten candidates that block `goal_verdict`. It
+records a traceable destination for one or more `candidate_ids`:
+`promote`, `park`, `discard` or `accept_ledger_only`. `park` requires `when`,
+all actions require `rationale`, and positive `goal_verdict` remains blocked
+until `strong_unwritten_count=0` or every strong candidate has a recorded
+destination. The tool stores the resolution in flow history/ledger, re-runs
+`mm_memory_mining`, and surfaces resolved candidates in `write_decisions` and
+`candidate_resolutions`.
+
+After `mm_memory_mining auto_write`, written memory is not treated as
+consolidated merely because files changed. The mining result separates
+`memory_written`, `memory_validated` and `memory_consolidated`. Post-write
+validation is scoped to the files touched by that run and checks the governed
+L1/L2/L3 chain expected by `consciencia-memorias`: L1 links to L2, L2 links
+back to L1, and auto-written memories create a minimal L3 note plus
+`conhecimento/INDEX.md` so L2 and L3 can point to each other. New automatic
+memories also carry the review marker `PPIRTV-MM-AUTO-WRITE-REVIEW`
+so maintainers can later locate and review them with `consciencia-memorias`.
+Post-write findings are also copied to the flow parking lot with the file, line,
+code and retry condition, so they do not disappear as technical warnings.
+This does not rewrite or invalidate the existing vault by default; legacy
+memories are only gated when they are part of the current write or an explicit
+review.
 
 `goal_verdict` can carry learning explicitly through `review_findings`,
 `verdict_gold_mining` and `verdict_parking_lot`. Review findings and rationale

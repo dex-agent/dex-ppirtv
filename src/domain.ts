@@ -57,6 +57,10 @@ export type MemoryWritePolicy = (typeof MEMORY_WRITE_POLICIES)[number];
 
 export type MemoryCandidateScope = "global" | "tema" | "projeto" | "ledger_only" | "estacionamento" | "descartar";
 export type MemoryCandidateLayer = "L1" | "L2" | "L3";
+export const MEMORY_CANDIDATE_RESOLUTION_ACTIONS = ["promote", "park", "discard", "accept_ledger_only"] as const;
+export type MemoryCandidateResolutionAction = (typeof MEMORY_CANDIDATE_RESOLUTION_ACTIONS)[number];
+export const MEMORY_CANDIDATE_PROMOTE_SCOPES = ["global", "tema", "projeto"] as const;
+export type MemoryCandidatePromoteScope = (typeof MEMORY_CANDIDATE_PROMOTE_SCOPES)[number];
 
 export type MemoryCandidate = {
   id: string;
@@ -76,9 +80,52 @@ export type MemoryCandidate = {
   confidence: "baixa" | "media" | "alta";
   l1_gatilho: string;
   l2_bloco: string;
+  l3_bloco?: string;
+  l3_index_entry?: string;
   target_files: string[];
   blocked: boolean;
   blocked_reason: string | null;
+};
+
+export type MemoryCandidateResolution = {
+  resolution_id: string;
+  candidate_id: string;
+  action: MemoryCandidateResolutionAction;
+  rationale: string;
+  when?: string;
+  target_scope?: MemoryCandidatePromoteScope;
+  theme?: string;
+  candidate_title?: string;
+  candidate_scope?: MemoryCandidateScope;
+  candidate_score?: number;
+  traceable: boolean;
+  created_at: string;
+  source: "mm_memory_candidate_resolve";
+};
+
+export type MemoryPostWriteValidationFinding = {
+  code: string;
+  message: string;
+  file?: string;
+  line?: number;
+  candidate_id?: string;
+};
+
+export type MemoryPostWriteValidation = {
+  required: boolean;
+  status: "not_required" | "passed" | "failed";
+  validator: "consciencia-memorias-post-write";
+  validated_at?: string;
+  evidence_id?: string;
+  touched_files: string[];
+  l1_files: string[];
+  l2_files: string[];
+  l3_files: string[];
+  checked_triggers: string[];
+  recall_proof: Array<Record<string, unknown>>;
+  findings: MemoryPostWriteValidationFinding[];
+  parking_lot: string[];
+  commands_required: string[];
 };
 
 export type MemoryMiningSummary = {
@@ -102,6 +149,13 @@ export type MemoryMiningSummary = {
   edit_queue?: Array<Record<string, unknown>>;
   destination_warnings?: string[];
   strong_unwritten_count?: number;
+  resolved_candidate_ids?: string[];
+  resolved_strong_unwritten_count?: number;
+  candidate_resolutions?: MemoryCandidateResolution[];
+  memory_written?: boolean;
+  memory_validated?: boolean;
+  memory_consolidated?: boolean;
+  memory_post_write_validation?: MemoryPostWriteValidation;
 };
 
 export type PipelineItem = {
@@ -349,6 +403,7 @@ export type Flow = {
   verdicts: Verdict[];
   gates: Partial<Record<Phase, GateRecord>>;
   memory_mining?: MemoryMiningSummary;
+  memory_candidate_resolutions?: MemoryCandidateResolution[];
   history: Array<{
     at: string;
     type: string;
@@ -458,6 +513,7 @@ export const REQUIRED_TOOLS = [
   "goal_meeting_add_turn",
   "goal_meeting_close",
   "mm_memory_mining",
+  "mm_memory_candidate_resolve",
   "mm_pipeline_run",
   "evidence_add",
   "goal_verdict",

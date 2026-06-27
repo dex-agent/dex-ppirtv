@@ -22,6 +22,8 @@ const LEDGER_ONLY_PATTERN = /ledger[-_ ]only|somente ledger/i;
 const GLOBAL_SCOPE_PATTERN = /global|cross-project|reutilizavel em qualquer projeto|qualquer repo/i;
 const RECURRING_SIGNAL_PATTERN = /sempre|nunca|padrao|regra|recorrent|quando|contrato|gate|validar|verificar/i;
 const FORGETTING_COST_PATTERN = /falh|bug|regress|bloque|quebra|falso|secret|token|evidencia|veredito/i;
+export const AUTO_WRITE_REVIEW_MARKER = "PPIRTV-MM-AUTO-WRITE-REVIEW";
+export const AUTO_WRITE_REVIEW_TAGS = ["#ppirtv/mm-auto-write", "#ppirtv/consciencia-memorias", "#ppirtv/revisar-memoria"] as const;
 
 export function resolveDexMemoriaHome(): string {
   return path.resolve(resolveConfiguredDexMemoriaHome());
@@ -104,7 +106,9 @@ export function classifyMemoryCandidate(input: {
     targetFiles,
     workspace: input.workspace
   });
-  const l1 = `[${memorySlug(title)}] ${title}.`;
+  const slug = memorySlug(title);
+  const anchor = memoryAnchor(title);
+  const l1 = `[${slug}] ${title}.`;
   const l2 = [
     `## ${title}`,
     "",
@@ -128,6 +132,79 @@ export function classifyMemoryCandidate(input: {
     target_files: targetFiles,
     blocked: Boolean(blockedReason),
     blocked_reason: blockedReason
+  };
+}
+
+export function governAutoWriteCandidate(candidate: MemoryCandidate, flowId: string): MemoryCandidate {
+  if (candidate.target_files.length < 2) {
+    return candidate;
+  }
+  const [l1Path, l2Path] = candidate.target_files;
+  const anchor = memoryAnchor(candidate.title);
+  const localizador = memorySlug(candidate.title);
+  const l1Base = path.basename(l1Path ?? "LEMBRANCA.md", ".md");
+  const l2Base = path.basename(l2Path ?? "MEMORIA.md");
+  const l2Note = path.basename(l2Base, ".md");
+  const l3FileName = `${anchor}.md`;
+  const l3Note = path.basename(l3FileName, ".md");
+  const l3Dir = path.join(path.dirname(l2Path ?? l1Path ?? "."), "conhecimento");
+  const l3IndexPath = path.join(l3Dir, "INDEX.md");
+  const l3Path = path.join(l3Dir, l3FileName);
+  const tags = AUTO_WRITE_REVIEW_TAGS.join(" ");
+  const l1 = [
+    `- [${localizador}] ${candidate.title}. ${tags} -> revisar com consciencia-memorias (${AUTO_WRITE_REVIEW_MARKER}) -> [memoria](${l2Base}#${anchor}) / [[${l2Note}#^${anchor}|memoria]] ^${anchor}`
+  ].join("\n");
+  const l2 = [
+    `## ${candidate.title} {#${anchor}}`,
+    `^${anchor}`,
+    `Localizador: \`${localizador}\``,
+    `Tags: ${tags}`,
+    `Aliases: ${candidate.title}, ${AUTO_WRITE_REVIEW_MARKER}, mm_memory_mining auto_write`,
+    `Obsidian: L1 [[${l1Base}#^${anchor}|${localizador}]]`,
+    `L3 relacionada: [conhecimento/${l3FileName}](conhecimento/${l3FileName})`,
+    `Obsidian: L3 [[${l3Note}#^${anchor}|conhecimento]]`,
+    "",
+    `OrigemAuto: mm_memory_mining`,
+    `Flow: \`${flowId}\``,
+    `Candidate: \`${candidate.id}\``,
+    `ReviewStatus: pending_consciencia_memorias`,
+    `ReviewMarker: \`${AUTO_WRITE_REVIEW_MARKER}\``,
+    "",
+    `Problema: ${candidate.l2_bloco.match(/Problema: (.+)/)?.[1] ?? candidate.title}`,
+    "Mecanismo: aprendizado classificado automaticamente a partir do flow PPIRTV; escrito em formato governado, mas ainda precisa de validacao pos-write.",
+    `Verificacao: origem=${candidate.source}; score=${candidate.score.total}; post_write=validate-memory-tags + validate-memory-links -RequireObsidian + Finder/rg.`,
+    "Prevencao: nao tratar written_count > 0 como memoria consolidada sem validacao L1<->L2 e, quando houver L3, L2<->L3.",
+    "",
+    "Ligacoes:",
+    `- L1: [[${l1Base}#^${anchor}|${localizador}]]`,
+    `- L3: [conhecimento/${l3FileName}](conhecimento/${l3FileName}) / [[${l3Note}#^${anchor}|conhecimento]]`,
+    `- Revisao futura: \`${AUTO_WRITE_REVIEW_MARKER}\``
+  ].join("\n");
+  const l3 = [
+    `# ${candidate.title}`,
+    `^${anchor}`,
+    "",
+    `Localizador: \`${localizador}\``,
+    `Tags: ${tags}`,
+    `L2 relacionada: ../${l2Base}#${anchor}`,
+    `Obsidian: L2 [[${l2Note}#^${anchor}|${candidate.title}]]`,
+    "",
+    `OrigemAuto: mm_memory_mining`,
+    `Flow: \`${flowId}\``,
+    `Candidate: \`${candidate.id}\``,
+    `ReviewStatus: pending_consciencia_memorias`,
+    `ReviewMarker: \`${AUTO_WRITE_REVIEW_MARKER}\``,
+    "",
+    "Nota: L3 minimo criado para manter cadeia L1<->L2<->L3 validavel; aprofundar manualmente somente se houver material reutilizavel suficiente."
+  ].join("\n");
+  const l3IndexEntry = `- [${candidate.title}](${l3FileName}) / [[${l3Note}#^${anchor}|${candidate.title}]]`;
+  return {
+    ...candidate,
+    l1_gatilho: l1,
+    l2_bloco: l2,
+    l3_bloco: l3,
+    l3_index_entry: l3IndexEntry,
+    target_files: uniqueStrings([...candidate.target_files, l3IndexPath, l3Path])
   };
 }
 
@@ -260,6 +337,21 @@ function memorySlug(title: string): string {
     .toUpperCase()
     .slice(0, 32);
   return slug || "MEMORY-CANDIDATE";
+}
+
+export function memoryAnchor(title: string): string {
+  const anchor = title
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase()
+    .slice(0, 64);
+  return anchor || "memory-candidate";
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values));
 }
 
 function isInsideOrEqual(parent: string, child: string): boolean {

@@ -4,7 +4,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FlowEngine } from "../src/flow-engine.js";
 import { promptText } from "../src/catalogs.js";
-import { MemoryLibrarian, type MemoryGraphProvider, type MemoryHookRunner } from "../src/memory/index.js";
+import { validateMemoryPostWrite, type MemoryGraphProvider, MemoryLibrarian, type MemoryHookRunner } from "../src/memory/index.js";
+import { AUTO_WRITE_REVIEW_MARKER, AUTO_WRITE_REVIEW_TAGS, memoryAnchor } from "../src/memory/mining-policy.js";
 import { loadOperationalContractSync } from "../src/principles.js";
 import { PpirtvStore } from "../src/store.js";
 import { exportRedactedDiagnosticBundle } from "../src/diagnostic-bundle.js";
@@ -857,24 +858,242 @@ describe("PPIRTV flow engine", () => {
       const memoryStatus = (await engine.goalStatus({ flow_id: flowId })).memory_mining as Record<string, unknown>;
       const lembranca = await readFile(path.join(memRoot, "temas", "delphi", "LEMBRANCA.md"), "utf8");
       const memoria = await readFile(path.join(memRoot, "temas", "delphi", "MEMORIA.md"), "utf8");
+      const l3File = written[0]?.files.find((file) => file.replace(/\\/g, "/").includes("/conhecimento/") && !file.endsWith("INDEX.md"));
+      const l3Index = written[0]?.files.find((file) => file.replace(/\\/g, "/").endsWith("/conhecimento/INDEX.md"));
+      const conhecimento = await readFile(l3File!, "utf8");
       const ledger = await engine.store.readLedger(flowId);
 
       expect(mined.write_policy).toBe("auto_write");
       expect(mined.blocked_verdict).toBe(false);
+      expect(mined).toMatchObject({
+        memory_written: true,
+        memory_validated: true,
+        memory_consolidated: true,
+        memory_post_write_validation: expect.objectContaining({
+          status: "passed",
+          validator: "consciencia-memorias-post-write",
+          evidence_id: expect.stringMatching(/^evd_/),
+          checked_triggers: expect.arrayContaining(["PPIRTV-MM-AUTO-WRITE-REVIEW"]),
+          l3_files: expect.arrayContaining([expect.stringContaining("conhecimento")])
+        })
+      });
       expect(written.length).toBeGreaterThan(0);
       expect(written[0]?.files).toEqual(
         expect.arrayContaining([
           path.join(memRoot, "temas", "delphi", "LEMBRANCA.md"),
-          path.join(memRoot, "temas", "delphi", "MEMORIA.md")
+          path.join(memRoot, "temas", "delphi", "MEMORIA.md"),
+          expect.stringContaining(path.join("conhecimento", "INDEX.md"))
         ])
       );
+      expect(l3File).toBeTruthy();
+      expect(l3Index).toBeTruthy();
       expect(lembranca).toContain("DUnitX standalone");
+      expect(lembranca).toContain("PPIRTV-MM-AUTO-WRITE-REVIEW");
+      expect(lembranca).toContain("#ppirtv/mm-auto-write");
+      expect(lembranca).toContain("[memoria]");
+      expect(lembranca).toContain("[[MEMORIA#^");
       expect(memoria).toContain("Delphi DUnitX standalone");
+      expect(memoria).toContain("{#");
+      expect(memoria).toContain("ReviewStatus: pending_consciencia_memorias");
+      expect(memoria).toContain("Obsidian: L1");
+      expect(memoria).toContain("Obsidian: L3");
+      expect(conhecimento).toContain("L2 relacionada: ../MEMORIA.md#");
+      expect(conhecimento).toContain("Obsidian: L2 [[MEMORIA#^");
       expect(memoryStatus.written_count).toBeGreaterThan(0);
+      expect(memoryStatus).toMatchObject({
+        memory_written: true,
+        memory_validated: true,
+        memory_consolidated: true
+      });
       expect(ledger.map((event) => event.type)).toContain("memory_mined");
     } finally {
       restoreDexMemoriaHome(originalDexMemoriaHome);
     }
+  });
+
+  it("blocks written memory from being treated as consolidated when post-write L1/L2 links fail", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-post-write-validation-blocks",
+      "Memoria escrita nao pode virar consolidada sem links bidirecionais"
+    );
+    const workspace = path.join(tempRoot, "broken-post-write-memory");
+    const l1Path = path.join(workspace, "LEMBRANCA.md");
+    const l2Path = path.join(workspace, "MEMORIA.md");
+    await mkdir(workspace, { recursive: true });
+    await writeFile(l1Path, "- [PPIRTV-MEMORY-MINING-VALIDA-POS-WRITE] gatilho sem links governados.\n", "utf8");
+    await writeFile(
+      l2Path,
+      [
+        "## Memoria escrita sem anchor",
+        "Localizador: `PPIRTV-MEMORY-MINING-VALIDA-POS-WRITE`",
+        "Tags: #ppirtv/mm-auto-write",
+        "Aliases: memoria fraca"
+      ].join("\n"),
+      "utf8"
+    );
+    const candidate = {
+      id: "mc_1",
+      title: "Memoria escrita sem anchor",
+      source: "gold_mining" as const,
+      scope: "projeto" as const,
+      layer: "L2" as const,
+      has_l1: true,
+      score: { reaproveitamento: 2, evidencia: 2, custo_esquecimento: 1, transferibilidade: 1, total: 6 },
+      confidence: "media" as const,
+      l1_gatilho: "[PPIRTV-MEMORY-MINING-VALIDA-POS-WRITE] Memoria escrita sem anchor.",
+      l2_bloco: "## Memoria escrita sem anchor\nProblema: falta anchor",
+      target_files: [l1Path, l2Path],
+      blocked: false,
+      blocked_reason: null
+    };
+    const validation = await validateMemoryPostWrite({
+      written: [{ candidate_id: candidate.id, files: [l1Path, l2Path] }],
+      candidates: [candidate],
+      validatedAt: new Date().toISOString()
+    });
+
+    expect(validation).toMatchObject({
+      status: "failed",
+      validator: "consciencia-memorias-post-write",
+      findings: expect.arrayContaining([
+        expect.objectContaining({ code: "l2-heading-missing-anchor", file: l2Path }),
+        expect.objectContaining({ code: "l1-missing-obsidian-block-link", file: l1Path })
+      ]),
+      parking_lot: expect.arrayContaining([
+        expect.stringContaining("Achado pos-write memoria estacionado: l2-heading-missing-anchor"),
+        expect.stringContaining("Quando: corrigir links/anchors L1<->L2/L3")
+      ])
+    });
+
+    const flow = await engine.store.loadFlow(flowId);
+    flow.gold_mining.push("PPIRTV-MEMORY-MINING-VALIDA-POS-WRITE precisa bloquear falso verde.");
+    flow.memory_mining = {
+      required: true,
+      last_run_at: new Date().toISOString(),
+      write_policy: "auto_write",
+      blocked_verdict: true,
+      candidates_count: 1,
+      written_count: 1,
+      blocked_count: 0,
+      ledger_only_count: 0,
+      discarded_count: 0,
+      memory_required_but_empty: false,
+      candidates: [{ id: candidate.id, title: candidate.title, score: candidate.score, scope: candidate.scope }],
+      written: [{ candidate_id: candidate.id, files: [l1Path, l2Path] }],
+      write_decisions: [{ candidate_id: candidate.id, action: "written", reason: "written_by_auto_write_policy" }],
+      edit_queue: [],
+      destination_warnings: validation.findings.map((finding) => `post_write_validation:${finding.code}:${finding.file}`),
+      strong_unwritten_count: 0,
+      memory_written: true,
+      memory_validated: false,
+      memory_consolidated: false,
+      memory_post_write_validation: validation
+    };
+    await engine.store.saveFlow(flow);
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+    const diagnostics = status.blocker_diagnostics as Record<string, unknown>;
+    const memoryRequired = diagnostics.memory_required as Record<string, unknown>;
+    const checkout = status.ppirtv_checkout as Record<string, unknown>;
+    const memoryAccountability = checkout.memory_accountability as Record<string, unknown>;
+
+    expect(diagnostics.effective_blockers).toEqual(expect.arrayContaining(["memory_required_but_empty", "memory_mining_blocked_verdict"]));
+    expect(memoryRequired).toMatchObject({
+      memory_written: true,
+      memory_validated: false,
+      memory_consolidated: false
+    });
+    expect(memoryAccountability).toMatchObject({
+      memory_written: true,
+      memory_validated: false,
+      memory_consolidated: false
+    });
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Memoria escrita sem anchor nao pode sustentar consolidacao.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["validacao pos-write falhou"],
+        next_step: "revisar com consciencia-memorias quando os findings forem corrigidos"
+      })
+    ).rejects.toThrow(/memory_required_but_empty|MEMORY_MINING_BLOCKED_VERDICT/i);
+  });
+
+  it("blocks written memory from being treated as consolidated when touched L2 anchors or block ids are duplicated", async () => {
+    const workspace = path.join(tempRoot, "duplicate-post-write-memory");
+    const l1Path = path.join(workspace, "LEMBRANCA.md");
+    const l2Path = path.join(workspace, "MEMORIA.md");
+    const l3Dir = path.join(workspace, "conhecimento");
+    const candidateTitle = "Memoria pos-write com anchor duplicada";
+    const anchor = memoryAnchor(candidateTitle);
+    const l3Path = path.join(l3Dir, `${anchor}.md`);
+    const localizer = "PPIRTV-MEMORY-MINING-VALIDA-POS-WRITE";
+    await mkdir(l3Dir, { recursive: true });
+    await writeFile(
+      l1Path,
+      [
+        `- [${localizer}] ${candidateTitle}. Tags: ${AUTO_WRITE_REVIEW_TAGS.join(" ")} ${AUTO_WRITE_REVIEW_MARKER}`,
+        `  L2: [${candidateTitle}](MEMORIA.md#${anchor}) / [[MEMORIA#^${anchor}|memoria]] ^${anchor}`
+      ].join("\n"),
+      "utf8"
+    );
+    await writeFile(
+      l2Path,
+      [
+        `## ${candidateTitle} {#${anchor}}`,
+        `^${anchor}`,
+        `Localizador: \`${localizer}\``,
+        `Tags: ${AUTO_WRITE_REVIEW_TAGS.join(" ")}`,
+        `Aliases: ${candidateTitle}, ${AUTO_WRITE_REVIEW_MARKER}`,
+        `Obsidian: L1 [[LEMBRANCA#^${anchor}|${localizer}]]`,
+        `L3 relacionada: [conhecimento/${anchor}.md](conhecimento/${anchor}.md)`,
+        `Obsidian: L3 [[${anchor}#^${anchor}|conhecimento]]`,
+        "OrigemAuto: mm_memory_mining",
+        "ReviewStatus: pending_consciencia_memorias",
+        `ReviewMarker: \`${AUTO_WRITE_REVIEW_MARKER}\``,
+        "",
+        `## ${candidateTitle} duplicada {#${anchor}}`,
+        `^${anchor}`,
+        "Duplicidade reconstruida a partir do backup PPIRTV-MEMORY-MINING-VALIDA-POS-WRITE."
+      ].join("\n"),
+      "utf8"
+    );
+    await writeFile(
+      l3Path,
+      [`# ${candidateTitle}`, "", `Volta L2: [${candidateTitle}](../MEMORIA.md#${anchor}) / [[MEMORIA#^${anchor}|memoria]]`].join("\n"),
+      "utf8"
+    );
+    const candidate = {
+      id: "mc_duplicate",
+      title: candidateTitle,
+      source: "gold_mining" as const,
+      scope: "projeto" as const,
+      layer: "L2" as const,
+      has_l1: true,
+      score: { reaproveitamento: 2, evidencia: 2, custo_esquecimento: 1, transferibilidade: 1, total: 6 },
+      confidence: "media" as const,
+      l1_gatilho: `[${localizer}] ${candidateTitle}.`,
+      l2_bloco: `## ${candidateTitle}\nProblema: duplicidade`,
+      target_files: [l1Path, l2Path, l3Path],
+      blocked: false,
+      blocked_reason: null
+    };
+
+    const validation = await validateMemoryPostWrite({
+      written: [{ candidate_id: candidate.id, files: [l1Path, l2Path, l3Path] }],
+      candidates: [candidate],
+      validatedAt: new Date().toISOString()
+    });
+
+    expect(validation.status).toBe("failed");
+    expect(validation.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "l2-duplicate-heading-anchor", file: l2Path }),
+        expect.objectContaining({ code: "l2-duplicate-block-id", file: l2Path })
+      ])
+    );
+    expect(validation.parking_lot).toEqual(expect.arrayContaining([expect.stringContaining("l2-duplicate-heading-anchor")]));
   });
 
   it("gives auto_classify a real contract and keeps weak parking candidates out of memory", async () => {
@@ -910,6 +1129,147 @@ describe("PPIRTV flow engine", () => {
         score: expect.objectContaining({ evidencia: 0 })
       });
       expect(mined.written).toEqual([]);
+    } finally {
+      restoreDexMemoriaHome(originalDexMemoriaHome);
+    }
+  });
+
+  it("surfaces strong ledger-only memory candidates as effective blockers before retrying goal_verdict", async () => {
+    const originalDexMemoriaHome = process.env.DEX_MEMORIA_HOME;
+    const memRoot = path.join(tempRoot, "strong-ledger-only-memories");
+    process.env.DEX_MEMORIA_HOME = memRoot;
+    try {
+      const { flowId, evidenceId } = await startGoalWithEvidence(
+        "dex-code:test-strong-ledger-only-blocker",
+        "Resolver mineracao de memoria com candidatos fortes sem destino"
+      );
+      const meeting = await engine.goalMeetingOpen({
+        flow_id: flowId,
+        type: "transversal",
+        question: "Como resolver candidatos fortes sem destino?",
+        participants_required: ["chato", "questionador", "reuniao", "validador-pronto"]
+      });
+      await engine.goalMeetingClose({
+        flow_id: flowId,
+        meeting_id: meeting.meeting_id as string,
+        participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+        decision: "A memoria canonica escrita nao elimina candidatos fortes sem destino.",
+        satisfies_blockers: ["required_cooperation"],
+        findings: [
+          "Quando contrato bloquear, validar gate antes do veredito positivo.",
+          "Quando veredito falhar, registrar origem e procedimento antes de repetir."
+        ],
+        gold_mining: ["Ponto cego Delphi DUnitX standalone vs provider precisa virar memoria reutilizavel."]
+      });
+
+      const mined = await engine.mineMemory({ flow_id: flowId, auto_classify: true, write_policy: "auto_write" });
+      const status = await engine.goalStatus({ flow_id: flowId });
+      const diagnostics = status.blocker_diagnostics as Record<string, unknown>;
+      const nextAction = status.next_required_action as Record<string, unknown>;
+
+      expect(mined).toMatchObject({
+        blocked_verdict: true,
+        strong_unwritten_count: 2
+      });
+      expect((mined.written as unknown[]).length).toBeGreaterThan(0);
+      expect(diagnostics.effective_blockers).toEqual(expect.arrayContaining(["memory_mining_blocked_verdict"]));
+      expect(nextAction).toMatchObject({
+        type: "resolve_memory_candidates",
+        tool: "mm_memory_candidate_resolve",
+        can_retry_verdict: false
+      });
+      expect(String(nextAction.reason)).toContain("strong_unwritten_count");
+      await expect(
+        engine.goalVerdict({
+          flow_id: flowId,
+          status: "pronto",
+          rationale: "Memoria escrita parcialmente, mas ainda ha candidatos fortes sem destino.",
+          evidence_ids: [evidenceId],
+          meeting_id: meeting.meeting_id as string,
+          residual_risks: [],
+          next_step: "arquivar quando goal_status nao listar blockers"
+        })
+      ).rejects.toThrow(/MEMORY_MINING_BLOCKED_VERDICT.*mm_memory_candidate_resolve/i);
+    } finally {
+      restoreDexMemoriaHome(originalDexMemoriaHome);
+    }
+  });
+
+  it("resolves strong ledger-only candidates with a traceable ledger-only decision before goal_verdict", async () => {
+    const originalDexMemoriaHome = process.env.DEX_MEMORIA_HOME;
+    const memRoot = path.join(tempRoot, "resolved-ledger-only-memories");
+    process.env.DEX_MEMORIA_HOME = memRoot;
+    try {
+      const { flowId, evidenceId } = await startGoalWithEvidence(
+        "dex-code:test-resolve-ledger-only-candidates",
+        "Resolver candidatos fortes ledger-only com destino rastreavel"
+      );
+      const meeting = await engine.goalMeetingOpen({
+        flow_id: flowId,
+        type: "transversal",
+        question: "Como registrar destino rastreavel para candidatos fortes?",
+        participants_required: ["chato", "questionador", "reuniao", "validador-pronto"]
+      });
+      await engine.goalMeetingClose({
+        flow_id: flowId,
+        meeting_id: meeting.meeting_id as string,
+        participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+        decision: "Ledger-only forte pode ser aceito apenas com regra explicita e auditavel.",
+        satisfies_blockers: ["required_cooperation"],
+        findings: [
+          "Quando veredito falhar, registrar origem e procedimento antes de repetir.",
+          "Quando candidato forte for apenas ledger, declarar se fica ledger-only nao bloqueante."
+        ],
+        gold_mining: ["Ponto cego Delphi DUnitX standalone vs provider precisa virar memoria reutilizavel."]
+      });
+
+      const mined = await engine.mineMemory({ flow_id: flowId, auto_classify: true, write_policy: "auto_write" });
+      const candidateIds = (mined.destination_warnings as string[]).map((warning) => warning.split(":")[0]);
+
+      expect(candidateIds).toHaveLength(2);
+      await expect(
+        engine.resolveMemoryCandidates({
+          flow_id: flowId,
+          candidate_ids: [candidateIds[0]],
+          action: "park",
+          rationale: "Estacionar precisa de quando para ser destino rastreavel."
+        })
+      ).rejects.toThrow(/when/);
+
+      const resolved = await engine.resolveMemoryCandidates({
+        flow_id: flowId,
+        candidate_ids: candidateIds,
+        action: "accept_ledger_only",
+        rationale: "Candidatos fortes ficam no ledger como aprendizado local deste flow; nao viram memoria canonica porque faltou destino L1/L2 reutilizavel."
+      });
+      const resolvedMining = resolved.memory_mining as Record<string, unknown>;
+      const status = await engine.goalStatus({ flow_id: flowId });
+      const diagnostics = status.blocker_diagnostics as Record<string, unknown>;
+
+      expect(resolvedMining).toMatchObject({
+        blocked_verdict: false,
+        strong_unwritten_count: 0,
+        resolved_strong_unwritten_count: 2,
+        resolved_candidate_ids: expect.arrayContaining(candidateIds)
+      });
+      expect(diagnostics.effective_blockers).not.toContain("memory_mining_blocked_verdict");
+      expect(resolvedMining.write_decisions as Array<Record<string, unknown>>).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ candidate_id: candidateIds[0], action: "resolved_accept_ledger_only", editable: false }),
+          expect.objectContaining({ candidate_id: candidateIds[1], action: "resolved_accept_ledger_only", editable: false })
+        ])
+      );
+
+      const verdict = await engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Candidatos fortes receberam destino rastreavel antes do veredito.",
+        evidence_ids: [evidenceId],
+        meeting_id: meeting.meeting_id as string,
+        residual_risks: ["ledger-only aceito como decisao local rastreavel"],
+        next_step: "arquivar quando goal_status permanecer sem memory_mining_blocked_verdict"
+      });
+      expect(verdict.verdict).toMatchObject({ status: "pronto_com_ressalvas" });
     } finally {
       restoreDexMemoriaHome(originalDexMemoriaHome);
     }
@@ -1415,21 +1775,28 @@ describe("PPIRTV flow engine", () => {
   });
 
   it("T3 consumes hygiene warning as a blocker before a positive verdict", async () => {
+    const originalCwd = process.cwd();
     const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-fiscal-t3", "Higiene bloqueia veredito");
-    await engine.updateFlowFacts(flowId, { tasks: ["task sem evidencia material suficiente"] });
-    const hygiene = await engine.hygieneScan(flowId);
+    await writeFile(path.join(tempRoot, "README.md"), "Fixture com path fixo C:\\Users\\Someone\\repo para higiene.\n", "utf8");
+    process.chdir(tempRoot);
+    try {
+      await engine.updateFlowFacts(flowId, { tasks: ["task sem evidencia material suficiente"] });
+      const hygiene = await engine.hygieneScan(flowId);
 
-    expect(hygiene.blocking_findings_count).toBeGreaterThan(0);
-    await expect(
-      engine.goalVerdict({
-        flow_id: flowId,
-        status: "pronto",
-        rationale: "Tentando concluir com hygiene warning pendente.",
-        evidence_ids: [evidenceId],
-        residual_risks: [],
-        next_step: "arquivar"
-      })
-    ).rejects.toThrow(/hygiene_blocking/i);
+      expect(hygiene.blocking_findings_count).toBeGreaterThan(0);
+      await expect(
+        engine.goalVerdict({
+          flow_id: flowId,
+          status: "pronto",
+          rationale: "Tentando concluir com hygiene warning pendente.",
+          evidence_ids: [evidenceId],
+          residual_risks: [],
+          next_step: "arquivar"
+        })
+      ).rejects.toThrow(/hygiene_blocking/i);
+    } finally {
+      process.chdir(originalCwd);
+    }
   });
 
   it("T4 marks memory_required_but_empty when required learning has no promoted candidates", async () => {
@@ -1882,6 +2249,69 @@ describe("PPIRTV flow engine", () => {
     expect(checkout.direct_action).toEqual(expect.stringContaining("required_cooperation"));
     expect(checkout.direct_action).toEqual(expect.stringContaining("review_required"));
     expect(checkout.direct_action).toEqual(expect.stringContaining("abrir reuniao/revisor/memoria"));
+  });
+
+  it("routes memory_required_but_empty to canonical mm_memory_mining after evidence and material meeting", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-memory-required-route",
+      "Memoria externa validada ainda exige mineracao canonica"
+    );
+    const opened = await engine.goalMeetingOpen({
+      flow_id: flowId,
+      kind: "divergente",
+      participants_required: ["chato", "questionador", "reuniao", "garimpeiro", "dex-memoria", "validador-pronto"],
+      question: "A evidencia externa de L1/L2 resolve o fiscal interno?"
+    });
+    await engine.goalMeetingClose({
+      flow_id: flowId,
+      meeting_id: opened.meeting_id as string,
+      participants_present: ["chato", "questionador", "reuniao", "garimpeiro", "dex-memoria", "validador-pronto"],
+      decision: "Evidencia externa e valida, mas o flow ainda precisa de mm_memory_mining canonico.",
+      satisfies_blockers: ["required_cooperation"],
+      cooperators: [
+        { name: "dex-memoria", reason: "validou que L1/L2 externo nao e promocao canonica do flow", material: true },
+        { name: "garimpeiro", reason: "separou evidencia externa de mining interno", material: true }
+      ],
+      active_credits: ["dex-memoria separou memoria externa de mining canonico", "garimpeiro classificou a pendencia"]
+    });
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Memorias L1/L2 foram validadas fora do PPIRTV.",
+        evidence_ids: [evidenceId],
+        meeting_id: opened.meeting_id as string,
+        residual_risks: ["memoria L1/L2 externa validada, mas sem mm_memory_mining no flow"],
+        next_step: "rodar mm_memory_mining agora"
+      })
+    ).rejects.toThrow(/memory_required_but_empty/i);
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+    const diagnostics = status.blocker_diagnostics as Record<string, unknown>;
+    const memoryDiagnostics = diagnostics.memory_required as Record<string, unknown>;
+    const nextAction = status.next_required_action as Record<string, unknown>;
+    const sequence = nextAction.required_tool_sequence as Array<Record<string, unknown>>;
+
+    expect(status.blockers as string[]).toContain("memory_required_but_empty");
+    expect(status.blockers as string[]).not.toContain("required_cooperation");
+    expect(nextAction).toMatchObject({
+      type: "run_memory_mining",
+      tool: "mm_memory_mining",
+      can_retry_verdict: false
+    });
+    expect(sequence[0]).toMatchObject({
+      tool: "mm_memory_mining",
+      args: { flow_id: flowId, auto_classify: true, write_policy: "auto_write" }
+    });
+    expect(sequence[1]).toMatchObject({ tool: "goal_status", args: { flow_id: flowId } });
+    expect(memoryDiagnostics).toMatchObject({
+      required: true,
+      mined: false,
+      written_count: 0,
+      candidates_count: 0,
+      memory_required_but_empty: true
+    });
   });
 
   it("T21 reproduces the dex-code-kimi consumer validation without completing a material ressalva", async () => {
@@ -2359,8 +2789,8 @@ describe("PPIRTV flow engine", () => {
           skill_resolution: expect.objectContaining({
             required_skill: "pesquisador-organizado",
             lookup_paths: [
-              "C:\\Users\\Administrator\\.agents\\skills\\pesquisador-organizado\\SKILL.md",
-              "C:\\Users\\Administrator\\.codex\\skills\\pesquisador-organizado\\SKILL.md",
+              "$env:USERPROFILE\\.agents\\skills\\pesquisador-organizado\\SKILL.md",
+              "$env:USERPROFILE\\.codex\\skills\\pesquisador-organizado\\SKILL.md",
               expect.stringContaining(".agents\\skills\\pesquisador-organizado\\SKILL.md")
             ],
             if_missing: expect.objectContaining({
@@ -2393,8 +2823,8 @@ describe("PPIRTV flow engine", () => {
           args: expect.objectContaining({ skill: "garimpeiro" }),
           skill_resolution: expect.objectContaining({
             lookup_paths: expect.arrayContaining([
-              "C:\\Users\\Administrator\\.agents\\skills\\garimpeiro\\SKILL.md",
-              "C:\\Users\\Administrator\\.codex\\skills\\garimpeiro\\SKILL.md",
+              "$env:USERPROFILE\\.agents\\skills\\garimpeiro\\SKILL.md",
+              "$env:USERPROFILE\\.codex\\skills\\garimpeiro\\SKILL.md",
               expect.stringContaining(".agents\\skills\\garimpeiro\\SKILL.md")
             ]),
             if_missing: expect.objectContaining({ action: "execute_inline_fallback_or_create_local_skill_proposal" }),
@@ -2621,6 +3051,43 @@ describe("PPIRTV flow engine", () => {
         process.env.PPIRTV_GRAPHIFY_RECALL = previousGraphifyRecall;
       }
     }
+  });
+
+  it("does not block a positive P1 verdict for librarian_status when Graphify/Bibliotecario is explicitly out of scope", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-librarian-p2-out-of-scope",
+      "Executar P1 sem exigir Graphify P2"
+    );
+    const flow = await engine.store.loadFlow(flowId);
+    flow.scope.out = Array.from(new Set([...flow.scope.out, "Graphify/Bibliotecario P2/out-of-scope nesta rodada P1"]));
+    await engine.store.saveFlow(flow);
+    const meeting = await engine.goalMeetingOpen({
+      flow_id: flowId,
+      type: "decision",
+      question: "Graphify P2 deve bloquear P1?"
+    });
+    const meetingId = meeting.meeting_id as string;
+    await engine.goalMeetingClose({
+      flow_id: flowId,
+      meeting_id: meetingId,
+      participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+      findings: ["Graphify/Bibliotecario foi declarado fora do corte P1 no scope_out."],
+      decision: "Fechar P1 com ressalva rastreada; Graphify fica estacionado para rodada P2.",
+      satisfies_blockers: ["required_cooperation"]
+    });
+
+    const verdict = await engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto_com_ressalvas",
+      rationale: "P1 validado; Graphify/Bibliotecario permanece P2/out-of-scope conforme scope_out.",
+      evidence_ids: [evidenceId],
+      residual_risks: ["Graphify/Bibliotecario P2/out-of-scope, estacionado para rodada propria."],
+      meeting_id: meetingId,
+      next_step: "Retomar Graphify quando abrir o SPT P2 de grafo/bibliotecario."
+    });
+
+    expect(verdict.verdict).toMatchObject({ status: "pronto_com_ressalvas" });
+    expect((verdict.status as { blockers: string[] }).blockers).not.toContain("librarian_status");
   });
 
   it("T27b goal_status probes Graphify when configured even before goal_advance", async () => {

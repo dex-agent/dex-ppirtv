@@ -157,6 +157,14 @@ describe("PPIRTV MCP stdio server", () => {
       final_report_model: expect.any(Array),
       prestacao_de_contas: expect.any(Object)
     });
+    expect(resultOf(checkout).memory_accountability).toMatchObject({
+      required: false,
+      memory_required_but_empty: false,
+      memory_written: false,
+      memory_validated: false,
+      memory_consolidated: false
+    });
+    expect((resultOf(checkout).blocker_diagnostics as Record<string, unknown>).effective_blockers).toEqual([]);
     expect(resultOf(checkout).ppirtv_checkout).toMatchObject({
       prestacao_de_contas: expect.any(Object),
       utility_accountability: expect.any(Object),
@@ -543,6 +551,61 @@ describe("PPIRTV MCP stdio server", () => {
         tool: "evidence_add"
       }
     });
+
+    const evidence = await client!.callTool({
+      name: "evidence_add",
+      arguments: {
+        flow_id: flowId,
+        kind: "note",
+        title: "validacao estruturada",
+        content: "validadores externos verdes e L1/L2 confirmados por finder"
+      }
+    });
+    const meeting = await client!.callTool({
+      name: "goal_meeting_open",
+      arguments: {
+        flow_id: flowId,
+        kind: "divergente",
+        participants_required: ["chato", "questionador", "reuniao", "garimpeiro", "dex-memoria", "validador-pronto"],
+        question: "Memoria externa validada resolve memoria canonica do flow?"
+      }
+    });
+    await client!.callTool({
+      name: "goal_meeting_close",
+      arguments: {
+        flow_id: flowId,
+        meeting_id: resultOf(meeting).meeting_id,
+        participants_present: ["chato", "questionador", "reuniao", "garimpeiro", "dex-memoria", "validador-pronto"],
+        decision: "Ainda precisa de mm_memory_mining canonico no flow.",
+        satisfies_blockers: ["required_cooperation"]
+      }
+    });
+    const memoryBlocked = await client!.callTool({
+      name: "goal_verdict",
+      arguments: {
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Memoria L1/L2 externa validada fora do PPIRTV.",
+        evidence_ids: [resultOf(evidence).evidence_id],
+        meeting_id: resultOf(meeting).meeting_id,
+        residual_risks: ["memoria L1/L2 externa validada sem mm_memory_mining canonico"],
+        next_step: "rodar mm_memory_mining agora"
+      }
+    });
+    expect((memoryBlocked as { isError?: boolean }).isError).toBe(true);
+    expect(JSON.stringify(memoryBlocked)).toContain("memory_required_but_empty");
+    expect(resultOf(memoryBlocked).error).toMatchObject({
+      code: "PPIRTV_FISCAL_BLOCKED",
+      recoverable: true,
+      next_required_action: {
+        type: "run_memory_mining",
+        tool: "mm_memory_mining"
+      }
+    });
+    const memoryAction = resultOf(memoryBlocked).error.next_required_action as Record<string, unknown>;
+    const memorySequence = memoryAction.required_tool_sequence as Array<{ args?: Record<string, unknown> }>;
+    expect(memorySequence[0]?.args?.flow_id).toBe(flowId);
+    expect(memorySequence[1]?.args?.flow_id).toBe(flowId);
 
     const secretBlocked = await client!.callTool({
       name: "evidence_add",

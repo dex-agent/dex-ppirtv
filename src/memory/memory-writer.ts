@@ -3,13 +3,33 @@ import path from "node:path";
 import type { MemoryCandidate } from "../domain.js";
 
 export async function writeMemoryCandidate(candidate: MemoryCandidate): Promise<string[]> {
-  const [l1Path, l2Path] = candidate.target_files;
+  const [l1Path, l2Path, ...extraPaths] = candidate.target_files;
   if (!l1Path || !l2Path) {
     return [];
   }
   await appendUniqueBlock(l1Path, candidate.l1_gatilho);
   await appendUniqueBlock(l2Path, candidate.l2_bloco);
-  return [l1Path, l2Path];
+  const touched = [l1Path, l2Path];
+  for (const filePath of extraPaths) {
+    const block = memoryExtraBlock(candidate, filePath);
+    if (!block) {
+      continue;
+    }
+    await appendUniqueBlock(filePath, block);
+    touched.push(filePath);
+  }
+  return touched;
+}
+
+function memoryExtraBlock(candidate: MemoryCandidate, filePath: string): string | null {
+  const normalized = filePath.replace(/\\/g, "/").toLowerCase();
+  if (normalized.endsWith("/conhecimento/index.md")) {
+    return candidate.l3_index_entry ?? null;
+  }
+  if (normalized.includes("/conhecimento/")) {
+    return candidate.l3_bloco ?? null;
+  }
+  return null;
 }
 
 async function appendUniqueBlock(filePath: string, block: string): Promise<void> {

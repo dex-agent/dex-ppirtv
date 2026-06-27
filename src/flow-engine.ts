@@ -15,9 +15,14 @@ import {
   type HygieneFinding,
   type Meeting,
   type MemoryCandidate,
+  type MemoryCandidatePromoteScope,
+  type MemoryCandidateResolution,
+  type MemoryCandidateResolutionAction,
+  type MemoryCandidateScope,
   type MeetingKind,
   type MeetingType,
   type MemoryMiningSummary,
+  type MemoryPostWriteValidation,
   type MemoryWritePolicy,
   type PipelineFlowResult,
   type PipelineItem,
@@ -33,11 +38,13 @@ import {
   assertNoSecretLikeText,
   classifyMemoryCandidate,
   collectMemoryNuggets,
+  governAutoWriteCandidate,
   isWritableCandidate,
   linkParkingToGold,
   MemoryLibrarian,
   memoryCandidateLedgerData,
   resolveDexMemoriaHome,
+  validateMemoryPostWrite,
   writeMemoryCandidate,
   type MemoryHookRunner
 } from "./memory/index.js";
@@ -55,6 +62,8 @@ import { PpirtvStore } from "./store.js";
 import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured } from "./config.js";
 
 const DEFAULT_SCOPE: Scope = { in: [], out: [] };
+const MEMORY_MINING_BLOCKED_VERDICT_REASON = "memory_mining_blocked_verdict";
+const USER_PROFILE_POINTER = "$env:USERPROFILE";
 
 type RecallVisualStatus = NonNullable<PresentationEnvelope["display"]["librarian"]>;
 
@@ -87,6 +96,16 @@ type FiscalPolicyResult = {
   direct_action: string;
 };
 
+type ResolveMemoryCandidatesInput = {
+  flow_id: string;
+  candidate_ids: string[];
+  action: MemoryCandidateResolutionAction;
+  rationale: string;
+  when?: string;
+  target_scope?: MemoryCandidatePromoteScope;
+  theme?: string;
+};
+
 type BlockerDiagnostics = {
   source: "goal_status";
   phase: Phase;
@@ -96,6 +115,7 @@ type BlockerDiagnostics = {
   gate_blockers: string[];
   fiscal_blockers: string[];
   persisted_fiscal_blockers: string[];
+  memory_mining_blockers: string[];
   effective_blockers: string[];
   blocker_families: Array<{
     blocker: string;
@@ -105,6 +125,8 @@ type BlockerDiagnostics = {
   interpretation: string;
   why_fiscal_mode_not_active: string[];
   required_cooperation?: Record<string, unknown>;
+  memory_required?: Record<string, unknown>;
+  memory_mining?: Record<string, unknown>;
 };
 
 type LoopMonitor = {
@@ -449,11 +471,12 @@ export class FlowEngine {
     const requiredCooperation = fiscal.required_cooperation.length > 0 ? fiscal.required_cooperation : persistedFiscal.required_cooperation;
     const meetings = await this.store.listMeetings(flow.flow_id);
     const gateBlockers = flow.status === "complete" || flow.status === "archived" ? [] : gate.status === "blocked" ? gate.missing : [];
-    const baseBlockers = reconciledBlockers(flow, [...gateBlockers, ...fiscal.blocking_reasons, ...persistedFiscal.blocking_reasons]);
+    const memoryMiningBlockers = memoryMiningVerdictBlockers(flow);
+    const baseBlockers = reconciledBlockers(flow, [...gateBlockers, ...fiscal.blocking_reasons, ...persistedFiscal.blocking_reasons, ...memoryMiningBlockers]);
     const blockers = gateBlockers.length === 0 && requiredCooperationNeedsMeetingIdRetry(flow, meetings)
       ? unique([...baseBlockers, "required_cooperation"])
       : baseBlockers;
-    const blockerDiagnostics = blockerDiagnosticsFor(flow, meetings, gate, gateBlockers, fiscal, persistedFiscal, blockers);
+    const blockerDiagnostics = blockerDiagnosticsFor(flow, meetings, gate, gateBlockers, fiscal, persistedFiscal, blockers, memoryMiningBlockers);
     const directAction = blockers.length > 0 ? blockedDirectAction(blockers) : checklist.display.direct_action;
     const checklistStatus = directAction ? withDirectAction(checklist, directAction) : checklist;
     const backTo = blockers.length > 0 ? fiscalBackTo(flow) : null;
@@ -779,7 +802,8 @@ export class FlowEngine {
     flow.gold_mining = unique([...flow.gold_mining, ...promotedGold]);
     const meetings = await this.store.listMeetings(flow.flow_id);
     const nuggets = collectMemoryNuggets(flow, meetings);
-    const candidates = nuggets.map((nugget, index) =>
+    const resolutionMap = latestTraceableCandidateResolutionMap(flow);
+    const rawCandidates = nuggets.map((nugget, index) =>
       classifyMemoryCandidate({
         id: `mc_${index + 1}`,
         item: nugget.item,
@@ -789,7 +813,10 @@ export class FlowEngine {
         dexMemoriaHome
       })
     );
+    const resolvedCandidates = rawCandidates.map((candidate) => applyMemoryCandidateResolution(candidate, resolutionMap.get(candidate.id), workspace, dexMemoriaHome));
+    const candidates = writePolicy === "auto_write" ? resolvedCandidates.map((candidate) => governAutoWriteCandidate(candidate, flow.flow_id)) : resolvedCandidates;
     const blocked = candidates.filter((candidate) => candidate.blocked);
+    const unresolvedBlocked = blocked.filter((candidate) => !resolutionMap.has(candidate.id));
     const writable = candidates.filter((candidate) => isWritableCandidate(candidate));
     const ledgerOnly = candidates.filter((candidate) => candidate.scope === "ledger_only");
     const estacionamento = candidates.filter((candidate) => candidate.scope === "estacionamento");
@@ -805,13 +832,52 @@ export class FlowEngine {
 
     const now = nowIso();
     const writtenIds = new Set(written.map((item) => item.candidate_id));
-    const strongUnwritten =
+    const postWriteValidation = await validateMemoryPostWrite({ written, candidates, validatedAt: now });
+    const postWriteParkingLot = postWriteValidation.parking_lot;
+    if (postWriteParkingLot.length > 0) {
+      flow.parking_lot = unique([...flow.parking_lot, ...postWriteParkingLot]);
+    }
+    if (postWriteValidation.required) {
+      const validationEvidence: Evidence = {
+        evidence_id: await this.store.nextId("evd"),
+        flow_id: flow.flow_id,
+        kind: "memory_post_write_validation",
+        title: `mm_memory_mining post-write validation: ${postWriteValidation.status}`,
+        content: JSON.stringify(
+          {
+            status: postWriteValidation.status,
+            validator: postWriteValidation.validator,
+            touched_files: postWriteValidation.touched_files,
+            findings: postWriteValidation.findings,
+            checked_triggers: postWriteValidation.checked_triggers,
+            recall_proof: postWriteValidation.recall_proof
+          },
+          null,
+          2
+        ),
+        note: "Validacao estrutural pos-write para impedir tratar written_count como memoria consolidada sem L1<->L2/L3 e recall.",
+        parking_lot: postWriteParkingLot,
+        gold_mining: [],
+        cooperators: [{ name: "consciencia-memorias", reason: "validou contrato L1/L2/L3 pos-write de mm_memory_mining", material: true }],
+        active_credits: ["consciencia-memorias validou memoria automatica antes do veredito"],
+        created_at: now
+      };
+      postWriteValidation.evidence_id = validationEvidence.evidence_id;
+      flow.evidence.push(validationEvidence);
+      await this.store.saveEvidence(validationEvidence);
+    }
+    const postWriteBlocked = memoryPostWriteValidationBlocks(postWriteValidation);
+    const strongUnwrittenCandidates =
       writePolicy === "auto_write"
         ? candidates.filter((candidate) => candidate.score.total >= 6 && !writtenIds.has(candidate.id) && !candidate.blocked && candidate.scope !== "estacionamento" && candidate.scope !== "descartar")
         : [];
-    const writeDecisions = candidates.map((candidate) => memoryWriteDecision(candidate, writePolicy, writtenIds));
+    const strongUnwritten = strongUnwrittenCandidates.filter((candidate) => !resolutionMap.has(candidate.id));
+    const resolvedStrongUnwritten = rawCandidates.filter((candidate) => candidate.score.total >= 6 && resolutionMap.has(candidate.id));
+    const resolvedCandidateIds = candidates.filter((candidate) => resolutionMap.has(candidate.id)).map((candidate) => candidate.id);
+    const candidateResolutions = resolvedCandidateIds.map((candidateId) => resolutionMap.get(candidateId)).filter((item): item is MemoryCandidateResolution => Boolean(item));
+    const writeDecisions = candidates.map((candidate) => memoryWriteDecision(candidate, writePolicy, writtenIds, resolutionMap.get(candidate.id)));
     const editQueue = candidates
-      .filter((candidate) => !writtenIds.has(candidate.id))
+      .filter((candidate) => !writtenIds.has(candidate.id) && !resolutionMap.has(candidate.id))
       .map((candidate) => ({
         candidate_id: candidate.id,
         title: candidate.title,
@@ -821,26 +887,36 @@ export class FlowEngine {
         suggestion: memoryEditSuggestion(candidate, writePolicy),
         target_files: candidate.target_files
       }));
-    const destinationWarnings = strongUnwritten.map((candidate) => `${candidate.id}:${candidate.scope}:${memoryNonWriteReason(candidate, writePolicy, writtenIds)}`);
+    const destinationWarnings = [
+      ...strongUnwritten.map((candidate) => `${candidate.id}:${candidate.scope}:${memoryNonWriteReason(candidate, writePolicy, writtenIds)}`),
+      ...postWriteValidation.findings.map((finding) => `post_write_validation:${finding.code}:${finding.file ?? "unknown"}:${finding.line ?? "unknown"}`)
+    ];
     const memoryRequiredButEmpty = memoryRequiredByFlow(flow) && candidates.length === 0 && written.length === 0;
     const summary: MemoryMiningSummary = {
       required: candidates.length > 0 || memoryRequiredByFlow(flow),
       last_run_at: now,
       write_policy: writePolicy,
-      blocked_verdict: blocked.length > 0 || memoryRequiredButEmpty || strongUnwritten.length > 0,
+      blocked_verdict: unresolvedBlocked.length > 0 || memoryRequiredButEmpty || strongUnwritten.length > 0 || postWriteBlocked,
       candidates_count: candidates.length,
       written_count: written.length,
-      blocked_count: blocked.length,
+      blocked_count: unresolvedBlocked.length,
       ledger_only_count: ledgerOnly.length,
       discarded_count: discarded.length,
       strong_unwritten_count: strongUnwritten.length,
+      resolved_candidate_ids: resolvedCandidateIds,
+      resolved_strong_unwritten_count: resolvedStrongUnwritten.length,
+      candidate_resolutions: candidateResolutions,
+      memory_written: written.length > 0,
+      memory_validated: postWriteValidation.status === "passed",
+      memory_consolidated: postWriteValidation.status === "passed",
+      memory_post_write_validation: postWriteValidation,
       memory_required_but_empty: memoryRequiredButEmpty,
-      candidates: candidates.map(memoryCandidateLedgerData),
+      candidates: candidates.map((candidate) => memoryCandidateLedgerDataWithResolution(candidate, resolutionMap.get(candidate.id))),
       written,
       ledger_only: ledgerOnly.map((candidate) => candidate.id),
       estacionamento: estacionamento.map((candidate) => candidate.id),
       discarded: discarded.map((candidate) => candidate.id),
-      blocked: blocked.map((candidate) => ({ id: candidate.id, blocked_reason: candidate.blocked_reason })),
+      blocked: unresolvedBlocked.map((candidate) => ({ id: candidate.id, blocked_reason: candidate.blocked_reason })),
       write_decisions: writeDecisions,
       edit_queue: editQueue,
       destination_warnings: destinationWarnings
@@ -853,7 +929,13 @@ export class FlowEngine {
         write_policy: writePolicy,
         candidates_count: candidates.length,
         written_count: written.length,
-        blocked_count: blocked.length
+        blocked_count: unresolvedBlocked.length,
+        resolved_candidate_ids: resolvedCandidateIds,
+        memory_written: summary.memory_written,
+        memory_validated: summary.memory_validated,
+        memory_consolidated: summary.memory_consolidated,
+        post_write_parking_lot: postWriteParkingLot,
+        memory_post_write_validation: postWriteValidation
       }
     });
     flow.updated_at = now;
@@ -863,16 +945,24 @@ export class FlowEngine {
       "memory_mined",
       {
         write_policy: writePolicy,
-        candidates: candidates.map(memoryCandidateLedgerData),
+        candidates: candidates.map((candidate) => memoryCandidateLedgerDataWithResolution(candidate, resolutionMap.get(candidate.id))),
         written,
         ledger_only: ledgerOnly.map((candidate) => candidate.id),
         estacionamento: estacionamento.map((candidate) => candidate.id),
         discarded: discarded.map((candidate) => candidate.id),
-        blocked: blocked.map((candidate) => ({ id: candidate.id, blocked_reason: candidate.blocked_reason })),
+        blocked: unresolvedBlocked.map((candidate) => ({ id: candidate.id, blocked_reason: candidate.blocked_reason })),
         write_decisions: writeDecisions,
         edit_queue: editQueue,
         destination_warnings: destinationWarnings,
         strong_unwritten_count: strongUnwritten.length,
+        resolved_candidate_ids: resolvedCandidateIds,
+        resolved_strong_unwritten_count: resolvedStrongUnwritten.length,
+        candidate_resolutions: candidateResolutions,
+        memory_written: summary.memory_written,
+        memory_validated: summary.memory_validated,
+        memory_consolidated: summary.memory_consolidated,
+        post_write_parking_lot: postWriteParkingLot,
+        memory_post_write_validation: postWriteValidation,
         blocked_verdict: summary.blocked_verdict,
         memory_required_but_empty: summary.memory_required_but_empty
       },
@@ -889,14 +979,108 @@ export class FlowEngine {
       ledger_only: ledgerOnly,
       estacionamento,
       discarded,
-      blocked,
+      blocked: unresolvedBlocked,
       write_decisions: writeDecisions,
       edit_queue: editQueue,
       destination_warnings: destinationWarnings,
       strong_unwritten_count: strongUnwritten.length,
-      unclassified: blocked.length,
+      resolved_candidate_ids: resolvedCandidateIds,
+      resolved_strong_unwritten_count: resolvedStrongUnwritten.length,
+      candidate_resolutions: candidateResolutions,
+      memory_written: summary.memory_written,
+      memory_validated: summary.memory_validated,
+      memory_consolidated: summary.memory_consolidated,
+      memory_post_write_validation: postWriteValidation,
+      unclassified: unresolvedBlocked.length,
       blocked_verdict: summary.blocked_verdict,
       memory_required_but_empty: summary.memory_required_but_empty
+    };
+  }
+
+  async resolveMemoryCandidates(input: ResolveMemoryCandidatesInput): Promise<Record<string, unknown>> {
+    requireText(input.flow_id, "flow_id");
+    const candidateIds = unique((input.candidate_ids ?? []).map((candidateId) => candidateId.trim()).filter(Boolean));
+    if (candidateIds.length === 0) {
+      throw new Error("candidate_ids must contain at least one memory candidate id");
+    }
+    const actions: MemoryCandidateResolutionAction[] = ["promote", "park", "discard", "accept_ledger_only"];
+    if (!actions.includes(input.action)) {
+      throw new Error(`Invalid memory candidate resolution action: ${input.action}`);
+    }
+    requireText(input.rationale, "rationale");
+    assertNoSecretLikeText(input.rationale, "rationale");
+    if (input.when) {
+      assertNoSecretLikeText(input.when, "when");
+    }
+    if (input.theme) {
+      assertNoSecretLikeText(input.theme, "theme");
+    }
+    if (input.action === "park") {
+      requireText(input.when, "when");
+    }
+    if (input.action === "promote") {
+      const scope = input.target_scope ?? "projeto";
+      if (!isPromotionScope(scope)) {
+        throw new Error(`Invalid target_scope for promote: ${scope}`);
+      }
+      if (scope === "tema") {
+        requireText(input.theme, "theme");
+      }
+    }
+
+    const flow = await this.store.loadFlow(input.flow_id);
+    const currentCandidates = Array.isArray(flow.memory_mining?.candidates) ? flow.memory_mining.candidates : [];
+    if (currentCandidates.length === 0) {
+      throw new Error("MEMORY_CANDIDATES_NOT_MINED: execute mm_memory_mining antes de resolver memory_candidates");
+    }
+    const candidateLookup = new Map(currentCandidates.map((candidate) => [String(candidate.id), candidate]));
+    const missing = candidateIds.filter((candidateId) => !candidateLookup.has(candidateId));
+    if (missing.length > 0) {
+      throw new Error(`Unknown memory candidate ids: ${missing.join(", ")}`);
+    }
+
+    const now = nowIso();
+    const resolutions: MemoryCandidateResolution[] = candidateIds.map((candidateId) => {
+      const candidate = candidateLookup.get(candidateId) ?? {};
+      return {
+        resolution_id: `mcr_${now.replace(/[-:.TZ]/g, "")}_${candidateId}`,
+        candidate_id: candidateId,
+        action: input.action,
+        rationale: input.rationale.trim(),
+        ...(input.when ? { when: input.when.trim() } : {}),
+        ...(input.action === "promote" ? { target_scope: input.target_scope ?? "projeto" } : {}),
+        ...(input.theme ? { theme: input.theme.trim() } : {}),
+        candidate_title: typeof candidate.title === "string" ? candidate.title : undefined,
+        candidate_scope: isMemoryCandidateScope(candidate.scope) ? candidate.scope : undefined,
+        candidate_score: candidateScoreTotal(candidate),
+        traceable: true,
+        created_at: now,
+        source: "mm_memory_candidate_resolve"
+      };
+    });
+
+    flow.memory_candidate_resolutions = [...(flow.memory_candidate_resolutions ?? []), ...resolutions];
+    flow.history.push({
+      at: now,
+      type: "memory_candidates_resolved",
+      data: {
+        candidate_ids: candidateIds,
+        action: input.action,
+        rationale: input.rationale.trim(),
+        when: input.when?.trim() ?? null,
+        target_scope: input.action === "promote" ? input.target_scope ?? "projeto" : null
+      }
+    });
+    flow.updated_at = now;
+    await this.store.saveFlow(flow);
+    await this.ledger(flow.flow_id, "memory_candidates_resolved", { resolutions }, "dex-code");
+
+    const memoryMining = await this.mineMemory({ flow_id: flow.flow_id, auto_classify: true, write_policy: "auto_write" });
+    return {
+      flow_id: flow.flow_id,
+      resolved: resolutions,
+      memory_mining: memoryMining,
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id })
     };
   }
 
@@ -973,13 +1157,14 @@ export class FlowEngine {
     assertNoSecretLikeText(input.uri, "uri");
     assertNoSecretLikeText(input.content, "content");
     assertNoSecretLikeText(input.note, "note");
+    const flow = await this.store.loadFlow(input.flow_id);
     const evidence = await this.attachEvidence({
       flow_id: input.flow_id,
       kind: input.kind ?? "goal_evidence",
       title: input.title,
       uri: input.uri,
       content: input.content,
-      note: input.note,
+      note: mergeEvidenceNotes(input.note, goalEvidenceMetadataNote(flow, input)),
       gold_mining: input.satisfies?.map((item) => `evidence_required:${item}`) ?? []
     });
     return {
@@ -1050,21 +1235,27 @@ export class FlowEngine {
     if (requiresGoalEvidence(flow) && (input.status === "pronto" || input.status === "pronto_com_ressalvas") && evidenceIds.length === 0) {
       throw new Error("goal_verdict requires traceable evidence_ids for positive conclusions");
     }
+    const positiveVerdict = input.status === "pronto" || input.status === "pronto_com_ressalvas";
     let memoryMining: Record<string, unknown> | null = null;
-    if (input.status === "pronto" || input.status === "pronto_com_ressalvas") {
+    if (positiveVerdict) {
       memoryMining = hasMemoryMiningRun(flow) ? (flow.memory_mining ?? null) : null;
     }
     const fiscalFlow = await this.store.loadFlow(input.flow_id);
-    const fiscal = evaluateFiscalPolicy(fiscalFlow, {
-      ...input,
-      memory_mining: memoryMining
-    });
-    if (fiscal.blocking_reasons.length > 0) {
-      await this.persistFiscalBlock(fiscalFlow, fiscal, "goal_verdict", input);
-      throw new Error(`PPIRTV_FISCAL_BLOCKED: ${fiscal.blocking_reasons.join(", ")}; required_cooperation=${fiscal.required_cooperation.map((item) => item.name).join("|")}`);
+    if (positiveVerdict) {
+      const fiscal = evaluateFiscalPolicy(fiscalFlow, {
+        ...input,
+        memory_mining: memoryMining
+      });
+      if (fiscal.blocking_reasons.length > 0) {
+        await this.persistFiscalBlock(fiscalFlow, fiscal, "goal_verdict", input);
+        throw new Error(`PPIRTV_FISCAL_BLOCKED: ${fiscal.blocking_reasons.join(", ")}; required_cooperation=${fiscal.required_cooperation.map((item) => item.name).join("|")}`);
+      }
     }
-    if (memoryMining?.blocked_verdict === true) {
-      throw new Error("MEMORY_MINING_BLOCKED_VERDICT: resolver memory_candidates bloqueados antes do veredito positivo");
+    if (positiveVerdict && memoryMining?.blocked_verdict === true) {
+      await this.persistMemoryMiningVerdictBlock(fiscalFlow, memoryMining, input);
+      throw new Error(
+        "MEMORY_MINING_BLOCKED_VERDICT: resolver memory_candidates bloqueados antes do veredito positivo; execute goal_status, use mm_memory_candidate_resolve para dar destino rastreavel a strong_unwritten_count/ledger_only e reexecute mm_memory_mining antes de repetir goal_verdict"
+      );
     }
     let effectiveStatus = input.status;
     let quandoRessalva: string | null = null;
@@ -2000,6 +2191,44 @@ export class FlowEngine {
     });
   }
 
+  private async persistMemoryMiningVerdictBlock(flow: Flow, memoryMining: Record<string, unknown>, input: FiscalVerdictInput = {}): Promise<void> {
+    const now = nowIso();
+    const blockers = [MEMORY_MINING_BLOCKED_VERDICT_REASON];
+    const loopId = blockerLoopId(blockers);
+    const loopSignature = blockerSignature(blockers);
+    flow.status = "blocked";
+    flow.history.push({
+      at: now,
+      type: "memory_mining_blocked_verdict",
+      data: {
+        source: "goal_verdict",
+        loop_id: loopId,
+        loop_signature: loopSignature,
+        blocking_reasons: blockers,
+        strong_unwritten_count: numericMemoryField(memoryMining, "strong_unwritten_count"),
+        ledger_only_count: numericMemoryField(memoryMining, "ledger_only_count"),
+        blocked_count: numericMemoryField(memoryMining, "blocked_count"),
+        destination_warnings: Array.isArray(memoryMining.destination_warnings) ? memoryMining.destination_warnings : [],
+        edit_queue_count: Array.isArray(memoryMining.edit_queue) ? memoryMining.edit_queue.length : 0,
+        next_required_action: memoryMiningBlockedAction(flow, "validacao", countRegressions(flow), false),
+        verdict_status: input.status
+      }
+    });
+    flow.updated_at = now;
+    await this.store.saveFlow(flow);
+    await this.ledger(flow.flow_id, "memory_mining_blocked_verdict", {
+      source: "goal_verdict",
+      loop_id: loopId,
+      loop_signature: loopSignature,
+      blocking_reasons: blockers,
+      strong_unwritten_count: numericMemoryField(memoryMining, "strong_unwritten_count"),
+      ledger_only_count: numericMemoryField(memoryMining, "ledger_only_count"),
+      blocked_count: numericMemoryField(memoryMining, "blocked_count"),
+      destination_warnings: Array.isArray(memoryMining.destination_warnings) ? memoryMining.destination_warnings : [],
+      edit_queue_count: Array.isArray(memoryMining.edit_queue) ? memoryMining.edit_queue.length : 0
+    }, "goal_verdict");
+  }
+
   async archiveFlow(input: { flow_id: string; reason?: string }): Promise<Flow & PresentationEnvelope> {
     const flow = await this.store.loadFlow(input.flow_id);
     const wasBlocked = flow.status === "blocked";
@@ -2697,7 +2926,7 @@ function evaluateFiscalPolicy(flow: Flow, input: FiscalVerdictInput = {}): Fisca
   if (codeReviewRequired(flow, input) && !hasReviewEvidence(flow, input)) {
     blockingReasons.push("review_required");
   }
-  if (librarianRequired(input) && latestLibrarianStatus(flow)?.status !== "recalled") {
+  if (librarianRequired(flow, input) && latestLibrarianStatus(flow)?.status !== "recalled") {
     blockingReasons.push("librarian_status");
   }
   if (recurringRisk(input) && regressLimitReached(flow, input)) {
@@ -2779,8 +3008,8 @@ function cooReason(name: string, blockers: string[], fallbackReason: string): st
   if (name === "revisor-codigo" && blockers.includes("review_required")) {
     return "obrigatorio por review_required: mudanca/risco de codigo exige artefato ou achados de revisao";
   }
-  if ((name === "garimpeiro" || name === "dex-memoria") && blockers.includes("memory_required_but_empty")) {
-    return "obrigatorio por memory_required_but_empty: garimpar pepitas e classificar memoria L1/L2 antes de veredito positivo";
+  if ((name === "garimpeiro" || name === "dex-memoria") && blockers.some((blocker) => ["memory_required_but_empty", MEMORY_MINING_BLOCKED_VERDICT_REASON].includes(blocker))) {
+    return "obrigatorio por memory_required_but_empty/memory_mining_blocked_verdict: garimpar pepitas, classificar memoria L1/L2 e dar destino a candidatos fortes antes de veredito positivo";
   }
   if ((name === "reuniao" || name === "sprinter") && blockers.includes("required_cooperation")) {
     return "obrigatorio por required_cooperation: ressalva material exige reuniao material e trilho/regresso definido";
@@ -2860,7 +3089,7 @@ function noMemoryWasPromoted(flow: Flow, memoryMining?: Record<string, unknown> 
   const status = memoryMining ?? flow.memory_mining;
   const writtenCount = typeof status?.written_count === "number" ? status.written_count : 0;
   if (writtenCount > 0) {
-    return false;
+    return !memoryMiningConsolidated(status);
   }
   const candidatesCount = typeof status?.candidates_count === "number" ? status.candidates_count : 0;
   const candidates = Array.isArray(status?.candidates) ? status.candidates : [];
@@ -2868,6 +3097,13 @@ function noMemoryWasPromoted(flow: Flow, memoryMining?: Record<string, unknown> 
     return candidates.length === 0;
   }
   return true;
+}
+
+function memoryMiningConsolidated(memoryMining: Record<string, unknown> | MemoryMiningSummary | undefined | null): boolean {
+  if (!memoryMining) {
+    return false;
+  }
+  return memoryMining.memory_consolidated === true && memoryMining.memory_validated === true;
 }
 
 function codeReviewRequired(flow: Flow, input: FiscalVerdictInput): boolean {
@@ -2965,8 +3201,24 @@ function missingParticipantsFor(meeting: Meeting): string[] {
   return meeting.participants_required.filter((participant) => !meeting.participants_present.includes(participant));
 }
 
-function librarianRequired(input: FiscalVerdictInput): boolean {
-  return /bibliotecario|bibliotecário|graphify|retorno visual/i.test([input.rationale, input.next_step, ...(input.residual_risks ?? [])].filter(Boolean).join("\n"));
+function librarianRequired(flow: Flow, input: FiscalVerdictInput): boolean {
+  const text = [input.rationale, input.next_step, ...(input.residual_risks ?? [])].filter(Boolean).join("\n");
+  if (librarianExplicitlyOutOfScope(flow, text)) {
+    return false;
+  }
+  return /bibliotec|graphify|retorno visual/i.test(text);
+}
+
+function librarianExplicitlyOutOfScope(flow: Flow, inputText: string): boolean {
+  const scopeOutText = flow.scope.out.join("\n");
+  const combined = [scopeOutText, inputText].filter(Boolean).join("\n");
+  if (!/bibliotec|graphify|retorno visual/i.test(scopeOutText)) {
+    return false;
+  }
+  if (!/(fora do escopo|fora de escopo|out[-_ ]?of[-_ ]?scope|p2|estacionad|rodada futura|rodada propria|nao exigid|nao requerido)/i.test(combined)) {
+    return false;
+  }
+  return !/(obrigatorio agora|exigido agora|required now|bloqueia p1|bloquear p1|gate p1)/i.test(inputText);
 }
 
 function recurringRisk(input: FiscalVerdictInput): boolean {
@@ -3049,6 +3301,9 @@ function isBlockerStillActive(flow: Flow, reason: string): boolean {
   if (reason === "memory_required_but_empty") {
     return memoryRequiredByFlow(flow) && noMemoryWasPromoted(flow);
   }
+  if (reason === MEMORY_MINING_BLOCKED_VERDICT_REASON) {
+    return memoryMiningVerdictStillBlocked(flow);
+  }
   if (reason === "review_required") {
     return !hasReviewEvidence(flow, {});
   }
@@ -3089,13 +3344,15 @@ function blockerDiagnosticsFor(
   gateBlockers: string[],
   fiscal: FiscalPolicyResult,
   persistedFiscal: Pick<FiscalPolicyResult, "blocking_reasons" | "required_cooperation">,
-  effectiveBlockers: string[]
+  effectiveBlockers: string[],
+  memoryMiningBlockers: string[] = []
 ): BlockerDiagnostics {
   const fiscalBlockers = reconciledBlockers(flow, fiscal.blocking_reasons);
   const persistedFiscalBlockers = reconciledBlockers(flow, persistedFiscal.blocking_reasons);
-  const fiscalModeActive = fiscal.material || persistedFiscalBlockers.length > 0;
+  const activeMemoryMiningBlockers = reconciledBlockers(flow, memoryMiningBlockers);
+  const fiscalModeActive = fiscal.material || persistedFiscalBlockers.length > 0 || activeMemoryMiningBlockers.length > 0;
   const hasGateBlockers = gateBlockers.length > 0;
-  const hasFiscalBlockers = fiscalBlockers.length > 0 || persistedFiscalBlockers.length > 0;
+  const hasFiscalBlockers = fiscalBlockers.length > 0 || persistedFiscalBlockers.length > 0 || activeMemoryMiningBlockers.length > 0;
   const policy = hasGateBlockers && hasFiscalBlockers
     ? "mixed"
     : hasFiscalBlockers
@@ -3113,17 +3370,24 @@ function blockerDiagnosticsFor(
     gate_blockers: gateBlockers,
     fiscal_blockers: fiscalBlockers,
     persisted_fiscal_blockers: persistedFiscalBlockers,
+    memory_mining_blockers: activeMemoryMiningBlockers,
     effective_blockers: effectiveBlockers,
     blocker_families: effectiveBlockers.map((blocker) => ({
       blocker,
       family: blockerFamily(blocker),
-      source: blockerSources(blocker, gateBlockers, fiscalBlockers, persistedFiscalBlockers)
+      source: blockerSources(blocker, gateBlockers, fiscalBlockers, persistedFiscalBlockers, activeMemoryMiningBlockers)
     })),
     interpretation: blockerInterpretation(policy, fiscalModeActive),
     why_fiscal_mode_not_active: fiscalModeActive ? [] : whyFiscalModeNotActive(flow)
   };
   if (effectiveBlockers.includes("required_cooperation")) {
     diagnostics.required_cooperation = requiredCooperationDiagnostics(flow, meetings, effectiveBlockers);
+  }
+  if (effectiveBlockers.includes("memory_required_but_empty")) {
+    diagnostics.memory_required = memoryRequiredDiagnostics(flow);
+  }
+  if (effectiveBlockers.includes(MEMORY_MINING_BLOCKED_VERDICT_REASON)) {
+    diagnostics.memory_mining = memoryMiningBlockedDiagnostics(flow);
   }
   return diagnostics;
 }
@@ -3132,7 +3396,8 @@ function blockerSources(
   blocker: string,
   gateBlockers: string[],
   fiscalBlockers: string[],
-  persistedFiscalBlockers: string[]
+  persistedFiscalBlockers: string[],
+  memoryMiningBlockers: string[] = []
 ): string[] {
   const sources: string[] = [];
   if (gateBlockers.includes(blocker)) {
@@ -3143,6 +3408,9 @@ function blockerSources(
   }
   if (persistedFiscalBlockers.includes(blocker)) {
     sources.push("persisted_fiscal_block");
+  }
+  if (memoryMiningBlockers.includes(blocker)) {
+    sources.push("memory_mining");
   }
   return sources;
 }
@@ -3170,6 +3438,9 @@ function blockerFamily(blocker: string): string {
     return "fiscal_cooperation";
   }
   if (blocker === "memory_required_but_empty") {
+    return "fiscal_memory";
+  }
+  if (blocker === MEMORY_MINING_BLOCKED_VERDICT_REASON) {
     return "fiscal_memory";
   }
   if (["hygiene_blocking", "review_required", "librarian_status", "attempt_regress_count"].includes(blocker)) {
@@ -3200,6 +3471,91 @@ function whyFiscalModeNotActive(flow: Flow): string[] {
   }
   reasons.push("sem sinal material ativo no texto, evidencias, memoria, higiene, review, regressao ou bibliotecario");
   return reasons;
+}
+
+function memoryRequiredDiagnostics(flow: Flow): Record<string, unknown> {
+  const status = flow.memory_mining;
+  const candidates = Array.isArray(status?.candidates) ? status.candidates : [];
+  const writtenCount = typeof status?.written_count === "number" ? status.written_count : 0;
+  const candidatesCount = typeof status?.candidates_count === "number" ? status.candidates_count : 0;
+  return {
+    required: memoryRequiredByFlow(flow),
+    mined: hasMemoryMiningRun(flow),
+    last_run_at: status?.last_run_at ?? null,
+    write_policy: status?.write_policy ?? null,
+    written_count: writtenCount,
+    memory_written: status?.memory_written === true,
+    memory_validated: status?.memory_validated === true,
+    memory_consolidated: status?.memory_consolidated === true,
+    post_write_validation: status?.memory_post_write_validation ?? null,
+    candidates_count: candidatesCount,
+    candidates_visible: candidates.length,
+    memory_required_but_empty: noMemoryWasPromoted(flow),
+    clears_when: [
+      "mm_memory_mining roda no flow",
+      "memory_consolidated=true com validacao pos-write quando auto_write escreveu memoria",
+      "goal_status deixa de listar memory_required_but_empty antes de novo goal_verdict positivo"
+    ],
+    executable_route: memoryMiningRequiredSequence(flow).slice(0, 2)
+  };
+}
+
+function memoryMiningVerdictBlockers(flow: Flow): string[] {
+  return memoryMiningVerdictStillBlocked(flow) ? [MEMORY_MINING_BLOCKED_VERDICT_REASON] : [];
+}
+
+function memoryMiningVerdictStillBlocked(flow: Flow): boolean {
+  const status = flow.memory_mining;
+  const postWriteBlocked = memoryPostWriteValidationBlocks(status?.memory_post_write_validation);
+  if (!status?.blocked_verdict && !postWriteBlocked) {
+    return false;
+  }
+  return (
+    numericMemoryField(status, "strong_unwritten_count") > 0 ||
+    numericMemoryField(status, "blocked_count") > 0 ||
+    status?.memory_required_but_empty === true ||
+    postWriteBlocked
+  );
+}
+
+function memoryPostWriteValidationBlocks(validation: MemoryPostWriteValidation | undefined | null): boolean {
+  return validation?.required === true && validation.status !== "passed";
+}
+
+function numericMemoryField(memory: Record<string, unknown> | MemoryMiningSummary | undefined | null, field: string): number {
+  const value = memory?.[field as keyof typeof memory];
+  return typeof value === "number" ? value : 0;
+}
+
+function memoryMiningBlockedDiagnostics(flow: Flow): Record<string, unknown> {
+  const status = flow.memory_mining;
+  const editQueue = Array.isArray(status?.edit_queue) ? status.edit_queue : [];
+  const destinationWarnings = Array.isArray(status?.destination_warnings) ? status.destination_warnings.map(String) : [];
+  const writeDecisions = Array.isArray(status?.write_decisions) ? status.write_decisions : [];
+  return {
+    blocked_verdict: status?.blocked_verdict === true,
+    last_run_at: status?.last_run_at ?? null,
+    write_policy: status?.write_policy ?? null,
+    strong_unwritten_count: numericMemoryField(status, "strong_unwritten_count"),
+    resolved_candidate_ids: Array.isArray(status?.resolved_candidate_ids) ? status.resolved_candidate_ids : [],
+    resolved_strong_unwritten_count: numericMemoryField(status, "resolved_strong_unwritten_count"),
+    memory_written: status?.memory_written === true,
+    memory_validated: status?.memory_validated === true,
+    memory_consolidated: status?.memory_consolidated === true,
+    post_write_validation: status?.memory_post_write_validation ?? null,
+    ledger_only_count: numericMemoryField(status, "ledger_only_count"),
+    blocked_count: numericMemoryField(status, "blocked_count"),
+    edit_queue_count: editQueue.length,
+    destination_warnings: destinationWarnings,
+    write_decisions: writeDecisions,
+    clears_when: [
+      "candidatos fortes recebem destino claro via mm_memory_candidate_resolve: memoria, estacionamento com quando, descarte justificado ou ledger-only aceito com regra",
+      "memoria auto_write passa na validacao pos-write L1<->L2/L3 com marcador PPIRTV-MM-AUTO-WRITE-REVIEW",
+      "mm_memory_mining retorna blocked_verdict=false",
+      "goal_status deixa de listar memory_mining_blocked_verdict antes de novo goal_verdict positivo"
+    ],
+    executable_route: memoryMiningBlockedSequence(flow)
+  };
 }
 
 function latestLibrarianStatus(flow: Flow): RecallVisualStatus | null {
@@ -3299,7 +3655,7 @@ function requiredMeetingKind(flow: Flow, blockers: string[], regressLimitReached
     return "convergente";
   }
   if (
-    blockers.some((blocker) => ["hygiene_blocking", "memory_required_but_empty", "review_required", "librarian_status"].includes(blocker)) &&
+    blockers.some((blocker) => ["hygiene_blocking", "memory_required_but_empty", MEMORY_MINING_BLOCKED_VERDICT_REASON, "review_required", "librarian_status"].includes(blocker)) &&
     !hasClosedMeetingKind(flow, "transversal")
   ) {
     return "transversal";
@@ -3313,7 +3669,7 @@ function hasClosedMeetingKind(flow: Flow, kind: MeetingKind): boolean {
 
 function requiredMeetingParticipants(blockers: string[]): string[] {
   const participants = ["chato", "questionador", "reuniao", "validador-pronto"];
-  if (blockers.includes("memory_required_but_empty")) {
+  if (blockers.some((blocker) => ["memory_required_but_empty", MEMORY_MINING_BLOCKED_VERDICT_REASON].includes(blocker))) {
     participants.push("garimpeiro", "dex-memoria");
   }
   if (blockers.includes("review_required")) {
@@ -3512,8 +3868,12 @@ function nextRequiredActionFor(
       back_to: backTo,
       regress_count: regressCount,
       max_regressions: FISCAL_CONFIG.maxRegressions,
-      can_retry_verdict: false
+      can_retry_verdict: false,
+      required_tool_sequence: memoryMiningRequiredSequence(flow)
     };
+  }
+  if (blockers.includes(MEMORY_MINING_BLOCKED_VERDICT_REASON)) {
+    return memoryMiningBlockedAction(flow, backTo, regressCount, regressLimitReached);
   }
   return {
     type: "resolve_blockers",
@@ -3834,8 +4194,8 @@ function researcherSkillResolution(workspace: string): Record<string, unknown> {
   return {
     required_skill: "pesquisador-organizado",
     lookup_paths: [
-      "C:\\Users\\Administrator\\.agents\\skills\\pesquisador-organizado\\SKILL.md",
-      "C:\\Users\\Administrator\\.codex\\skills\\pesquisador-organizado\\SKILL.md",
+      `${USER_PROFILE_POINTER}\\.agents\\skills\\pesquisador-organizado\\SKILL.md`,
+      `${USER_PROFILE_POINTER}\\.codex\\skills\\pesquisador-organizado\\SKILL.md`,
       `${workspace}\\.agents\\skills\\pesquisador-organizado\\SKILL.md`
     ],
     if_missing: {
@@ -3863,8 +4223,8 @@ function cooperatorSkillResolution(workspace: string, skill: string, role: strin
   return {
     required_skill: skill,
     lookup_paths: [
-      `C:\\Users\\Administrator\\.agents\\skills\\${skill}\\SKILL.md`,
-      `C:\\Users\\Administrator\\.codex\\skills\\${skill}\\SKILL.md`,
+      `${USER_PROFILE_POINTER}\\.agents\\skills\\${skill}\\SKILL.md`,
+      `${USER_PROFILE_POINTER}\\.codex\\skills\\${skill}\\SKILL.md`,
       `${workspace}\\.agents\\skills\\${skill}\\SKILL.md`
     ],
     if_missing: {
@@ -3915,6 +4275,120 @@ function reviewRequiredSequence(flow: Flow): Array<Record<string, unknown>> {
         review_findings: ["<achado real de review>"],
         rationale: "Veredito apos review explicita e blockers fiscais resolvidos.",
         next_step: "arquivar ou executar pendencia rastreavel"
+      }
+    }
+  ];
+}
+
+function memoryMiningRequiredSequence(flow: Flow): Array<Record<string, unknown>> {
+  return [
+    {
+      order: 1,
+      tool: "mm_memory_mining",
+      purpose: "executar garimpo/classificacao canonica de memoria no flow antes de novo veredito positivo",
+      args: { flow_id: flow.flow_id, auto_classify: true, write_policy: "auto_write" },
+      capture: "memory_mining_summary"
+    },
+    {
+      order: 2,
+      tool: "goal_status",
+      purpose: "confirmar que memory_required_but_empty saiu dos blockers antes de repetir goal_verdict",
+      args: { flow_id: flow.flow_id }
+    },
+    {
+      order: 3,
+      tool: "goal_verdict",
+      purpose: "somente se goal_status nao listar memory_required_but_empty e os demais blockers estiverem resolvidos",
+      only_if: "goal_status.blockers nao contem memory_required_but_empty",
+      args: {
+        flow_id: flow.flow_id,
+        status: "pronto_com_ressalvas",
+        evidence_ids: ["<evidence_ids_obrigatorias>"],
+        meeting_id: "<meeting_id_se_required_cooperation_estava_ativo>",
+        rationale: "Veredito apos mm_memory_mining canonico e blockers fiscais resolvidos.",
+        residual_risks: ["<risco residual ou nenhum>"],
+        next_step: "<proximo passo com quando>"
+      }
+    }
+  ];
+}
+
+function memoryMiningBlockedAction(
+  flow: Flow,
+  backTo: Phase | null,
+  regressCount: number,
+  regressLimitReached: boolean
+): Record<string, unknown> {
+  const status = flow.memory_mining;
+  return {
+    type: "resolve_memory_candidates",
+    tool: "mm_memory_candidate_resolve",
+    reason:
+      `memory_mining bloqueou veredito: strong_unwritten_count=${numericMemoryField(status, "strong_unwritten_count")}, ` +
+      `ledger_only_count=${numericMemoryField(status, "ledger_only_count")}, blocked_count=${numericMemoryField(status, "blocked_count")}. ` +
+      "Dar destino explicito aos candidatos antes de repetir goal_verdict.",
+    back_to: backTo,
+    regress_count: regressCount,
+    max_regressions: FISCAL_CONFIG.maxRegressions,
+    can_retry_verdict: false,
+    locked_by_limit: regressLimitReached,
+    candidate_resolution_options: [
+      "promover para memoria L1/L2/L3 quando houver destino claro",
+      "estacionar com quando/gatilho quando ainda nao for memoria canonica",
+      "descartar com justificativa depois do garimpo",
+      "aceitar como ledger-only nao bloqueante somente com regra e justificativa rastreaveis"
+    ],
+    required_tool_sequence: memoryMiningBlockedSequence(flow)
+  };
+}
+
+function memoryMiningBlockedSequence(flow: Flow): Array<Record<string, unknown>> {
+  return [
+    {
+      order: 1,
+      tool: "goal_status",
+      purpose: "inspecionar memory_mining.edit_queue, write_decisions, destination_warnings e strong_unwritten_count",
+      args: { flow_id: flow.flow_id }
+    },
+    {
+      order: 2,
+      tool: "mm_memory_candidate_resolve",
+      purpose: "registrar destino rastreavel para cada candidato forte sem rota canonica",
+      args: {
+        flow_id: flow.flow_id,
+        candidate_ids: ["<candidate_id>"],
+        action: "promote|park|discard|accept_ledger_only",
+        rationale: "<justificativa rastreavel>",
+        when: "<obrigatorio se action=park>",
+        target_scope: "<global|tema|projeto se action=promote>"
+      },
+      capture: "memory_candidate_resolution"
+    },
+    {
+      order: 3,
+      tool: "mm_memory_mining",
+      purpose: "reexecutar a mineracao apos dar destino claro aos candidatos fortes sem rota canonica",
+      args: { flow_id: flow.flow_id, auto_classify: true, write_policy: "auto_write" },
+      capture: "memory_mining_summary"
+    },
+    {
+      order: 4,
+      tool: "goal_status",
+      purpose: "confirmar que memory_mining_blocked_verdict saiu dos effective_blockers",
+      args: { flow_id: flow.flow_id }
+    },
+    {
+      order: 5,
+      tool: "goal_verdict",
+      purpose: "somente se goal_status nao listar memory_mining_blocked_verdict nem outros blockers efetivos",
+      only_if: "goal_status.blocker_diagnostics.effective_blockers vazio",
+      args: {
+        flow_id: flow.flow_id,
+        status: "pronto_com_ressalvas",
+        evidence_ids: ["<evidence_ids_obrigatorias>"],
+        rationale: "Veredito apos candidatos fortes de memoria receberem destino rastreavel.",
+        residual_risks: ["<risco residual ou nenhum>"],
+        next_step: "<proximo passo com quando>"
       }
     }
   ];
@@ -4347,6 +4821,24 @@ function evidenceQualityReasons(status: EvidenceQuality["status"], hasTrace: boo
   return reasons;
 }
 
+function goalEvidenceMetadataNote(flow: Flow, input: { title: string; content?: string; uri?: string; note?: string }): string | undefined {
+  if (!input.content && !input.uri && !input.note) {
+    return undefined;
+  }
+  return [
+    "Metadados PPIRTV:",
+    "Origem: evidence_add.",
+    "Objetivo: declarado no GoalEnvelope/flow.",
+    `Fase: ${flow.phase}.`,
+    `Procedimento: ${input.title}.`,
+    "Limitacao: nao informada pelo operador; revisar risco residual no veredito."
+  ].join(" ");
+}
+
+function mergeEvidenceNotes(note: string | undefined, metadata: string | undefined): string | undefined {
+  return [note, metadata].filter(Boolean).join("\n") || undefined;
+}
+
 function deriveVerdictLearning(
   input: FiscalVerdictInput,
   evidences: Evidence[]
@@ -4397,16 +4889,126 @@ function missingQuandoGate(nextStep: string): string | null {
   return "Gate do Quando: next_step promete acao futura sem quando verificavel (data, gatilho, cadencia, condicao, janela, vencimento, dependencia ou responsavel). Veredito rebaixado para pronto_com_ressalvas.";
 }
 
-function memoryWriteDecision(candidate: MemoryCandidate, writePolicy: MemoryWritePolicy, writtenIds: Set<string>): Record<string, unknown> {
+function latestTraceableCandidateResolutionMap(flow: Flow): Map<string, MemoryCandidateResolution> {
+  const result = new Map<string, MemoryCandidateResolution>();
+  for (const resolution of flow.memory_candidate_resolutions ?? []) {
+    if (isTraceableCandidateResolution(resolution)) {
+      result.set(resolution.candidate_id, resolution);
+    }
+  }
+  return result;
+}
+
+function isTraceableCandidateResolution(resolution: MemoryCandidateResolution): boolean {
+  if (!resolution.traceable || !resolution.candidate_id || !resolution.rationale?.trim()) {
+    return false;
+  }
+  if (resolution.action === "park") {
+    return Boolean(resolution.when?.trim());
+  }
+  if (resolution.action === "promote") {
+    return isPromotionScope(resolution.target_scope ?? "projeto") && (resolution.target_scope !== "tema" || Boolean(resolution.theme?.trim()));
+  }
+  return resolution.action === "discard" || resolution.action === "accept_ledger_only";
+}
+
+function applyMemoryCandidateResolution(
+  candidate: MemoryCandidate,
+  resolution: MemoryCandidateResolution | undefined,
+  workspace: string,
+  dexMemoriaHome: string
+): MemoryCandidate {
+  if (!resolution || !isTraceableCandidateResolution(resolution)) {
+    return candidate;
+  }
+  if (resolution.action === "promote") {
+    const scope = resolution.target_scope ?? "projeto";
+    const theme = scope === "tema" ? resolution.theme ?? candidate.theme : candidate.theme;
+    return {
+      ...candidate,
+      scope,
+      theme,
+      target_files: memoryTargetFilesForResolution(scope, theme, workspace, dexMemoriaHome),
+      blocked: false,
+      blocked_reason: null,
+      has_l1: true
+    };
+  }
+  if (resolution.action === "park") {
+    return { ...candidate, scope: "estacionamento", target_files: [], blocked: false, blocked_reason: null };
+  }
+  if (resolution.action === "discard") {
+    return { ...candidate, scope: "descartar", target_files: [], blocked: false, blocked_reason: null };
+  }
+  return candidate;
+}
+
+function memoryTargetFilesForResolution(scope: MemoryCandidatePromoteScope, theme: string | undefined, workspace: string, dexMemoriaHome: string): string[] {
+  if (scope === "global") {
+    return [path.join(dexMemoriaHome, "global", "LEMBRANCA.md"), path.join(dexMemoriaHome, "global", "MEMORIA.md")];
+  }
+  if (scope === "tema" && theme) {
+    return [path.join(dexMemoriaHome, "temas", theme, "LEMBRANCA.md"), path.join(dexMemoriaHome, "temas", theme, "MEMORIA.md")];
+  }
+  return [path.join(workspace, ".agents", "LEMBRANCA.md"), path.join(workspace, ".agents", "MEMORIA.md")];
+}
+
+function memoryCandidateLedgerDataWithResolution(candidate: MemoryCandidate, resolution: MemoryCandidateResolution | undefined): Record<string, unknown> {
+  return {
+    ...memoryCandidateLedgerData(candidate),
+    ...(resolution ? { resolution: candidateResolutionLedgerData(resolution) } : {})
+  };
+}
+
+function candidateResolutionLedgerData(resolution: MemoryCandidateResolution): Record<string, unknown> {
+  return {
+    resolution_id: resolution.resolution_id,
+    candidate_id: resolution.candidate_id,
+    action: resolution.action,
+    rationale: resolution.rationale,
+    when: resolution.when,
+    target_scope: resolution.target_scope,
+    theme: resolution.theme,
+    traceable: resolution.traceable,
+    created_at: resolution.created_at,
+    source: resolution.source
+  };
+}
+
+function isPromotionScope(value: unknown): value is MemoryCandidatePromoteScope {
+  return value === "global" || value === "tema" || value === "projeto";
+}
+
+function isMemoryCandidateScope(value: unknown): value is MemoryCandidateScope {
+  return value === "global" || value === "tema" || value === "projeto" || value === "ledger_only" || value === "estacionamento" || value === "descartar";
+}
+
+function candidateScoreTotal(candidate: Record<string, unknown>): number | undefined {
+  const score = candidate.score;
+  if (!score || typeof score !== "object") {
+    return undefined;
+  }
+  const total = (score as Record<string, unknown>).total;
+  return typeof total === "number" ? total : undefined;
+}
+
+function memoryWriteDecision(
+  candidate: MemoryCandidate,
+  writePolicy: MemoryWritePolicy,
+  writtenIds: Set<string>,
+  resolution?: MemoryCandidateResolution
+): Record<string, unknown> {
   const written = writtenIds.has(candidate.id);
+  const resolved = Boolean(resolution && isTraceableCandidateResolution(resolution));
   return {
     candidate_id: candidate.id,
     title: candidate.title,
-    action: written ? "written" : memoryNonWriteAction(candidate, writePolicy, writtenIds),
-    reason: written ? "written_by_auto_write_policy" : memoryNonWriteReason(candidate, writePolicy, writtenIds),
+    action: written ? "written" : resolved ? `resolved_${resolution?.action}` : memoryNonWriteAction(candidate, writePolicy, writtenIds),
+    reason: written ? "written_by_auto_write_policy" : resolved ? "traceable_resolution_registered" : memoryNonWriteReason(candidate, writePolicy, writtenIds),
     scope: candidate.scope,
     score: candidate.score.total,
-    editable: !written
+    editable: !written && !resolved,
+    ...(resolution ? { resolution: candidateResolutionLedgerData(resolution) } : {})
   };
 }
 
@@ -4618,6 +5220,10 @@ function memoryCheckoutAccountability(flow: Flow, memoryMining: MemoryMiningSumm
     discarded_count: memoryMining.discarded_count,
     estacionamento_count: memoryMining.estacionamento?.length ?? 0,
     strong_unwritten_count: memoryMining.strong_unwritten_count ?? 0,
+    memory_written: memoryMining.memory_written === true,
+    memory_validated: memoryMining.memory_validated === true,
+    memory_consolidated: memoryMining.memory_consolidated === true,
+    memory_post_write_validation: memoryMining.memory_post_write_validation ?? null,
     memory_required_but_empty: memoryMining.memory_required_but_empty === true,
     written,
     candidates,
@@ -4629,8 +5235,10 @@ function memoryCheckoutAccountability(flow: Flow, memoryMining: MemoryMiningSumm
     l2_files: layers.L2,
     l3_files: layers.L3,
     summary:
-      memoryMining.written_count > 0
-        ? `memoria gravada: L1=${layers.L1.length}, L2=${layers.L2.length}, L3=${layers.L3.length}`
+      memoryMining.memory_consolidated === true
+        ? `memoria consolidada: L1=${layers.L1.length}, L2=${layers.L2.length}, L3=${layers.L3.length}`
+        : memoryMining.written_count > 0
+          ? `memoria gravada, aguardando/pendente de validacao: L1=${layers.L1.length}, L2=${layers.L2.length}, L3=${layers.L3.length}`
         : memoryMining.candidates_count > 0
           ? "memoria classificada sem escrita canonica neste checkout"
           : memoryMining.required
@@ -4830,7 +5438,27 @@ function memoryMiningStatus(flow: Flow): MemoryMiningSummary {
       write_decisions: [],
       edit_queue: [],
       destination_warnings: [],
-      strong_unwritten_count: 0
+      strong_unwritten_count: 0,
+      resolved_candidate_ids: [],
+      resolved_strong_unwritten_count: 0,
+      candidate_resolutions: flow.memory_candidate_resolutions ?? [],
+      memory_written: false,
+      memory_validated: false,
+      memory_consolidated: false,
+      memory_post_write_validation: {
+        required: false,
+        status: "not_required",
+        validator: "consciencia-memorias-post-write",
+        touched_files: [],
+        l1_files: [],
+        l2_files: [],
+        l3_files: [],
+        checked_triggers: [],
+        recall_proof: [],
+        findings: [],
+        parking_lot: [],
+        commands_required: []
+      }
     }
   );
 }

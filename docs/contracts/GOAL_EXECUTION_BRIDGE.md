@@ -13,7 +13,7 @@ Para criar novos prompts `/GOAL`, `GoalEnvelope` e Trilhos SPT, use primeiro a
 fonte global:
 
 ```text
-C:\Users\Administrator\.agents\contracts\GOAL_SPT_CANONICAL_CONTRACT.md
+$env:USERPROFILE\.agents\contracts\GOAL_SPT_CANONICAL_CONTRACT.md
 ```
 
 A copia local versionada do repo fica em
@@ -230,6 +230,59 @@ descartar. Em `auto_write`, candidate forte sem destino canonico deve gerar
 `destination_warnings` e `blocked_verdict=true`; em `classify_only`, candidatos
 sem escrita sao esperados, mas continuam editaveis e visiveis.
 
+`auto_write` nao consolida memoria apenas por ter gravado arquivo. A mineracao
+precisa diferenciar:
+
+- `memory_written`: arquivo L1/L2/L3 foi tocado;
+- `memory_validated`: o corte escrito passou validacao pos-write compativel com
+  `consciencia-memorias`;
+- `memory_consolidated`: a memoria pode sustentar fechamento fiscal.
+
+A validacao pos-write deve ser limitada aos arquivos tocados em `written[]` e
+verificar conexoes bidirecionais: L1 -> L2, L2 -> L1 e, quando houver L3, L2 ->
+L3 e L3 -> L2. Toda memoria automatica nova recebe o marcador
+`PPIRTV-MM-AUTO-WRITE-REVIEW`, tags de revisao e metadados de flow/candidate
+para revisao posterior com `consciencia-memorias`. Como os validadores vivos de
+memoria esperam a camada `conhecimento`, `auto_write` cria tambem um L3 minimo
+e `conhecimento/INDEX.md` para que o corte novo tenha L1<->L2<->L3 validavel.
+Esse gate nao reescreve nem invalida o vault legado por padrao; legado so entra
+quando for tocado pela escrita atual ou por revisao explicita.
+
+Findings dessa validacao devem ser estacionados no flow com `code`, caminho,
+linha e condicao de retomada. Um achado pos-write nao pode ficar apenas como
+warning tecnico se ele bloqueia ou orienta correcao antes de `goal_verdict`.
+
+### `mm_memory_candidate_resolve`
+
+Registra destino explicito para `memory_candidates` fortes que ficaram sem rota
+canonica, especialmente `ledger_only` com score alto.
+
+Payload:
+
+```json
+{
+  "flow_id": "flow_...",
+  "candidate_ids": ["mc_10", "mc_12"],
+  "action": "accept_ledger_only",
+  "rationale": "Fica como decisao local rastreavel; nao ha destino L1/L2 reutilizavel."
+}
+```
+
+Acoes aceitas:
+
+- `promote`: promove para memoria curada na proxima mineracao; aceita
+  `target_scope` como `global`, `tema` ou `projeto`.
+- `park`: estaciona com `when` obrigatorio.
+- `discard`: descarta com justificativa.
+- `accept_ledger_only`: aceita que continue no ledger, sem bloquear, com regra
+  e justificativa rastreaveis.
+
+A tool grava a resolucao no flow, historico e ledger, reexecuta
+`mm_memory_mining` e atualiza `goal_status`. `goal_verdict` positivo so pode
+prosseguir quando `strong_unwritten_count=0` ou quando todos os candidatos
+fortes tiverem `candidate_resolutions` rastreaveis. Sem `rationale`, ou sem
+`when` no caso de `park`, a resolucao nao conta.
+
 Todo item em `estacionamento` passa pela lente do `garimpeiro` e fica ligado em
 `goal_learning_links.garimpo_vinculado`. A classificacao deve distinguir
 `ponto_cego`, `dica_de_ouro`, `armadilha`, `heuristica` e `nao_promover`, para
@@ -336,10 +389,12 @@ bloqueada, a tool falha em vez de aceitar sucesso.
 10. Durante a execucao, chamar `goal_status` apos mensagens ou tools relevantes.
 11. Chamar `mm_memory_mining` manualmente quando quiser inspecionar candidates
     antes do fechamento.
-11. Registrar evidencias reais com `evidence_add`.
-12. Chamar `goal_verdict` somente com `evidence_ids` rastreaveis.
-13. Usar `goal_resume` em retomadas ou retries.
-14. Para sequenciar varios SPTs/flows independentes, chamar
+12. Se houver candidate forte sem destino, chamar
+    `mm_memory_candidate_resolve` e confirmar `goal_status`.
+13. Registrar evidencias reais com `evidence_add`.
+14. Chamar `goal_verdict` somente com `evidence_ids` rastreaveis.
+15. Usar `goal_resume` em retomadas ou retries.
+16. Para sequenciar varios SPTs/flows independentes, chamar
     `mm_pipeline_run` e acompanhar o relatorio consolidado.
 
 ## 6. Diagnostico de bloqueio fiscal

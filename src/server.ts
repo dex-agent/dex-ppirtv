@@ -2,7 +2,16 @@ import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mc
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { PROMPT_NAMES, RESOURCE_URIS, TOOL_NAMES, gatesTemplate, mcpReference, meetingsTemplate, promptText, resourceText } from "./catalogs.js";
-import { GOAL_VERDICT_POLICIES, MEETING_KINDS, MEETING_TYPES, MEMORY_WRITE_POLICIES, PHASES, VERDICTS } from "./domain.js";
+import {
+  GOAL_VERDICT_POLICIES,
+  MEETING_KINDS,
+  MEETING_TYPES,
+  MEMORY_CANDIDATE_PROMOTE_SCOPES,
+  MEMORY_CANDIDATE_RESOLUTION_ACTIONS,
+  MEMORY_WRITE_POLICIES,
+  PHASES,
+  VERDICTS
+} from "./domain.js";
 import { FlowEngine } from "./flow-engine.js";
 import { PpirtvStore } from "./store.js";
 
@@ -419,6 +428,23 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
   );
 
   server.registerTool(
+    "mm_memory_candidate_resolve",
+    {
+      description: "Resolve strong GOAL memory candidates with a traceable destination before retrying goal_verdict.",
+      inputSchema: {
+        flow_id: z.string().min(1),
+        candidate_ids: z.array(z.string().min(1)).min(1),
+        action: z.enum(MEMORY_CANDIDATE_RESOLUTION_ACTIONS),
+        rationale: z.string().min(1),
+        when: z.string().optional(),
+        target_scope: z.enum(MEMORY_CANDIDATE_PROMOTE_SCOPES).optional(),
+        theme: z.string().optional()
+      }
+    },
+    async (args) => toolResponse(() => engine.resolveMemoryCandidates(args))
+  );
+
+  server.registerTool(
     "mm_pipeline_run",
     {
       description: "Create and run multiple PPIRTV flows sequentially with gates, verdicts and optional memory mining.",
@@ -469,7 +495,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         next_step: z.string().min(1)
       }
     },
-    async (args) => toolResponse(() => engine.goalVerdict(args))
+    async (args) => toolResponse(() => engine.goalVerdict(args), args)
   );
 
   server.registerTool(
@@ -580,11 +606,15 @@ function registerPrompts(server: McpServer): void {
   assertRegistered("prompt", PROMPT_NAMES);
 }
 
-async function toolResponse(operation: () => Promise<unknown>) {
+type ToolErrorContext = {
+  flow_id?: unknown;
+};
+
+async function toolResponse(operation: () => Promise<unknown>, errorContext?: ToolErrorContext) {
   try {
     return toolResult(await operation());
   } catch (error) {
-    return toolErrorResult(error);
+    return toolErrorResult(error, errorContext);
   }
 }
 
@@ -595,8 +625,8 @@ function toolResult(value: unknown) {
   };
 }
 
-function toolErrorResult(error: unknown) {
-  const envelope = classifyToolError(error);
+function toolErrorResult(error: unknown, errorContext?: ToolErrorContext) {
+  const envelope = classifyToolError(error, errorContext);
   const value = { error: envelope };
   return {
     isError: true,
@@ -605,7 +635,7 @@ function toolErrorResult(error: unknown) {
   };
 }
 
-function classifyToolError(error: unknown) {
+function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
   const rawMessage = error instanceof Error ? error.message : String(error);
   const message = redactSecretLikeText(rawMessage);
   const base = {
@@ -650,10 +680,19 @@ function classifyToolError(error: unknown) {
       ...base,
       code: "MEMORY_MINING_BLOCKED_VERDICT",
       recoverable: true,
-      next_required_action: { type: "resolve_memory_candidates", tool: "mm_memory_mining" }
+      next_required_action: { type: "resolve_memory_candidates", tool: "mm_memory_candidate_resolve" }
     };
   }
   if (/PPIRTV_FISCAL_BLOCKED/i.test(message)) {
+    if (/memory_required_but_empty/i.test(message)) {
+      const flowId = typeof errorContext?.flow_id === "string" && errorContext.flow_id.length > 0 ? errorContext.flow_id : "<flow_id>";
+      return {
+        ...base,
+        code: "PPIRTV_FISCAL_BLOCKED",
+        recoverable: true,
+        next_required_action: memoryRequiredErrorAction(flowId)
+      };
+    }
     return {
       ...base,
       code: "PPIRTV_FISCAL_BLOCKED",
@@ -674,6 +713,23 @@ function classifyToolError(error: unknown) {
     code: "PPIRTV_TOOL_ERROR",
     recoverable: false,
     next_required_action: null
+  };
+}
+
+function memoryRequiredErrorAction(flowId: string) {
+  return {
+    type: "run_memory_mining",
+    tool: "mm_memory_mining",
+    reason: "memory_required_but_empty exige mm_memory_mining canonico no flow antes de novo goal_verdict positivo",
+    required_tool_sequence: [
+      {
+        order: 1,
+        tool: "mm_memory_mining",
+        args: { flow_id: flowId, auto_classify: true, write_policy: "auto_write" }
+      },
+      { order: 2, tool: "goal_status", args: { flow_id: flowId } },
+      { order: 3, tool: "goal_verdict", only_if: "goal_status.blockers nao contem memory_required_but_empty" }
+    ]
   };
 }
 

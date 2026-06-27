@@ -181,6 +181,7 @@ function normalizeFlow(flow: Flow): Flow {
   flow.goal_learning_links ??= [];
   flow.cooperators ??= [];
   flow.active_credits ??= [];
+  flow.memory_candidate_resolutions ??= [];
   flow.memory_mining ??= {
     required: flow.gold_mining.length > 0 || flow.parking_lot.length > 0,
     blocked_verdict: false,
@@ -200,6 +201,27 @@ function normalizeFlow(flow: Flow): Flow {
   flow.memory_mining.edit_queue ??= [];
   flow.memory_mining.destination_warnings ??= [];
   flow.memory_mining.strong_unwritten_count ??= 0;
+  flow.memory_mining.resolved_candidate_ids ??= [];
+  flow.memory_mining.resolved_strong_unwritten_count ??= 0;
+  flow.memory_mining.candidate_resolutions ??= flow.memory_candidate_resolutions;
+  flow.memory_mining.memory_written ??= (flow.memory_mining.written_count ?? 0) > 0;
+  flow.memory_mining.memory_validated ??= flow.memory_mining.memory_post_write_validation?.status === "passed";
+  flow.memory_mining.memory_consolidated ??= flow.memory_mining.memory_validated === true;
+  flow.memory_mining.memory_post_write_validation ??= {
+    required: false,
+    status: "not_required",
+    validator: "consciencia-memorias-post-write",
+    touched_files: [],
+    l1_files: [],
+    l2_files: [],
+    l3_files: [],
+    checked_triggers: [],
+    recall_proof: [],
+    findings: [],
+    parking_lot: [],
+    commands_required: []
+  };
+  flow.memory_mining.memory_post_write_validation.parking_lot ??= [];
   flow.evidence = (flow.evidence ?? []).map((evidence) => ({
     ...evidence,
     parking_lot: evidence.parking_lot ?? [],

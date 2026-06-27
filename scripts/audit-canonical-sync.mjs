@@ -28,6 +28,11 @@ function main() {
       local: path.join(repoRoot, "docs", "contracts", "GOAL_SPT_CANONICAL_CONTRACT.md")
     },
     {
+      label: "GOAL execution bridge",
+      global: path.join(userProfile, ".agents", "contracts", "GOAL_EXECUTION_BRIDGE.md"),
+      local: path.join(repoRoot, "docs", "contracts", "GOAL_EXECUTION_BRIDGE.md")
+    },
+    {
       label: "PRINCIPLES.md",
       global: path.join(userProfile, ".agents", "memories", "principles", "PRINCIPLES.md"),
       local: path.join(repoRoot, "principles", "PRINCIPLES.md")
@@ -53,8 +58,8 @@ function assertFilePairsInSync(pairs) {
       continue;
     }
 
-    const globalHash = sha256(pair.global);
-    const localHash = sha256(pair.local);
+    const globalHash = sha256(canonicalText(pair.global));
+    const localHash = sha256(canonicalText(pair.local));
     if (globalHash !== localHash) {
       fail(`${pair.label} divergiu: global=${pair.global} local=${pair.local}`);
     }
@@ -73,7 +78,7 @@ function assertLocalAuthorityPointers() {
 
   if (existsSync(agentsPath)) {
     const agentsText = readUtf8(agentsPath);
-    assertIncludes(agentsText, "C:\\Users\\Administrator\\.agents\\contracts\\...", "AGENTS.md deve apontar autoridade global de contratos");
+    assertIncludes(agentsText, "$env:USERPROFILE\\.agents\\contracts\\...", "AGENTS.md deve apontar autoridade global de contratos");
     assertIncludes(agentsText, "npm run audit:canonical", "AGENTS.md deve exigir audit canonico");
   }
 
@@ -85,7 +90,7 @@ function assertLocalAuthorityPointers() {
 
   if (existsSync(bridgePath)) {
     const bridgeText = readUtf8(bridgePath);
-    assertIncludes(bridgeText, "C:\\Users\\Administrator\\.agents\\contracts\\GOAL_SPT_CANONICAL_CONTRACT.md", "bridge deve apontar contrato global");
+    assertIncludes(bridgeText, "$env:USERPROFILE\\.agents\\contracts\\GOAL_SPT_CANONICAL_CONTRACT.md", "bridge deve apontar contrato global");
     assertIncludes(bridgeText, "copia local versionada", "bridge deve rotular docs/contracts como copia local");
   }
 }
@@ -172,8 +177,12 @@ function readUtf8(filePath) {
   return readFileSync(filePath, "utf8");
 }
 
-function sha256(filePath) {
-  return createHash("sha256").update(readFileSync(filePath)).digest("hex");
+function canonicalText(filePath) {
+  return readUtf8(filePath).replace(/\r\n/g, "\n");
+}
+
+function sha256(text) {
+  return createHash("sha256").update(text).digest("hex");
 }
 
 function fail(message) {
