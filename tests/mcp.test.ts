@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -7,6 +7,7 @@ import { StdioClientTransport, getDefaultEnvironment } from "@modelcontextprotoc
 import { REQUIRED_PROMPTS, REQUIRED_TOOLS } from "../src/domain.js";
 
 let tempRoot: string;
+let mcpWorkspace: string;
 let client: Client | undefined;
 let transport: StdioClientTransport | undefined;
 
@@ -18,6 +19,7 @@ afterEach(async () => {
   await client?.close();
   client = undefined;
   transport = undefined;
+  mcpWorkspace = "";
   if (tempRoot.startsWith(os.tmpdir())) {
     await rm(tempRoot, { recursive: true, force: true });
   }
@@ -138,6 +140,16 @@ describe("PPIRTV MCP stdio server", () => {
     expect(resultOf(status).tasks).toEqual(expect.arrayContaining(["Rodar teste MCP."]));
     expect(resultOf(status).expected_evidence).toEqual(expect.arrayContaining(["vitest."]));
     expect(resultOf(status).done_criteria).toEqual(expect.arrayContaining(["vitest."]));
+    expect(resultOf(status)).toMatchObject({
+      project_root: mcpWorkspace,
+      ppirtv_home: path.join(mcpWorkspace, ".ppirtv"),
+      runtime_layout_status: { status: "ready", missing_directories: [] }
+    });
+    expect(resultOf(checkout)).toMatchObject({
+      project_root: mcpWorkspace,
+      ppirtv_home: path.join(mcpWorkspace, ".ppirtv"),
+      runtime_layout_status: { status: "ready", missing_directories: [] }
+    });
     expect(resultOf(status).phase_emoji).toBe("🧠");
     expect(((resultOf(verdict).verdict as Record<string, unknown>).status)).toBe("pronto");
     expect((resultOf(status).current_verdict as Record<string, unknown>).status).toBe("pronto");
@@ -768,14 +780,17 @@ describe("PPIRTV MCP stdio server", () => {
 });
 
 async function connectClient(): Promise<void> {
+  const workspace = path.join(tempRoot, "mcp-workspace");
+  await mkdir(workspace, { recursive: true });
+  mcpWorkspace = await realpath(workspace);
   client = new Client({ name: "ppirtv-test-client", version: "0.1.0" });
   transport = new StdioClientTransport({
     command: process.execPath,
-    args: ["dist/index.js"],
-    cwd: process.cwd(),
+    args: [path.join(process.cwd(), "dist", "index.js")],
+    cwd: workspace,
     env: {
       ...getDefaultEnvironment(),
-      PPIRTV_HOME: tempRoot,
+      PPIRTV_HOME: path.join(workspace, ".ppirtv"),
       DEX_MEMORIA_HOME: path.join(tempRoot, "memories")
     },
     stderr: "pipe"

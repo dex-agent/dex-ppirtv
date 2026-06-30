@@ -5,7 +5,8 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "dex-ppirtv": "dist/index.js"
+    "dex-ppirtv": "dist/index.js",
+    "dex-ppirtv-launcher": "dist/launcher.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

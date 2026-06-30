@@ -85,25 +85,84 @@ npm run diagnostic:bundle -- --flow-id <flow_id> --ppirtv-home <path-to-.ppirtv>
 npm start
 ```
 
-The MCP process should be started with `cwd` set to the workspace being operated
-on. Runtime flow state is written under that workspace unless `PPIRTV_HOME` is
-configured.
+For a single global installation, prefer the launcher entrypoint. It resolves
+the consumer workspace before the MCP server starts, changes the process cwd to
+that workspace and sets `PPIRTV_HOME` to `<workspace>/.ppirtv`.
 
-Minimal MCP server configuration shape:
+Minimal global launcher configuration shape:
 
 ```json
 {
   "command": "node",
-  "args": ["dist/index.js"],
-  "cwd": "<workspace-or-repo-root>",
+  "args": ["<install-root>/dist/launcher.js", "--workspace", "<workspace-name-or-path>"],
+  "cwd": "<install-root>",
   "env": {
-    "PPIRTV_HOME": "<local-runtime-state-dir>",
+    "PPIRTV_WORKSPACE_ROOT": "<optional-root-for-workspace-names>",
     "PPIRTV_PRINCIPLES_PATH": "<optional-operational-contract-json>"
   }
 }
 ```
 
-Do not point `PPIRTV_HOME` at a public or versioned directory.
+### Global Launcher
+
+The launcher accepts:
+
+1. `--workspace <absolute-path-or-folder-name>`;
+2. `PPIRTV_WORKSPACE=<absolute-path-or-folder-name>`;
+3. `PPIRTV_WORKSPACE_ROOT` or `PPIRTV_WORKSPACE_ROOTS` to resolve a folder name;
+4. inherited `cwd`, only when it is a real project root and not the install repo.
+
+Example global config using only the consumer folder name:
+
+```json
+{
+  "command": "node",
+  "args": ["<install-root>/dist/launcher.js", "--workspace", "my-project"],
+  "cwd": "<install-root>",
+  "env": {
+    "PPIRTV_WORKSPACE_ROOT": "C:/CodexProjetos",
+    "PPIRTV_PRINCIPLES_PATH": "<optional-operational-contract-json>"
+  }
+}
+```
+
+With that config, `my-project` resolves to
+`C:/CodexProjetos/my-project`, and runtime state is written only to:
+
+```text
+C:/CodexProjetos/my-project/.ppirtv/
+```
+
+If the launcher starts from the install repository without `--workspace`,
+`PPIRTV_WORKSPACE` or a reliable consumer cwd, it fails early with
+`PPIRTV_LAUNCHER_WORKSPACE_REQUIRED`. This is intentional: without any
+workspace signal from the host, choosing a project would be a guess and could
+write runtime state to the wrong repository.
+
+### Direct Mode
+
+Direct mode remains supported for local or legacy configurations. In direct
+mode the MCP process must start with `cwd` set to the workspace being operated
+on. `PPIRTV_HOME`, when provided, must resolve exactly to
+`<workspace>/.ppirtv`; otherwise the server fails early to prevent
+cross-repository writes.
+
+Direct mode configuration shape:
+
+```json
+{
+  "command": "node",
+  "args": ["<install-root>/dist/index.js"],
+  "cwd": "<workspace-root>",
+  "env": {
+    "PPIRTV_HOME": "<workspace-root>/.ppirtv",
+    "PPIRTV_PRINCIPLES_PATH": "<optional-operational-contract-json>"
+  }
+}
+```
+
+Do not point `PPIRTV_HOME` at a public, versioned, install-repo or other
+workspace directory.
 
 When validating a repo-local Codex MCP config, a direct smoke with
 `--config-toml` proves only the selected server. If a parent workspace may also
@@ -120,15 +179,15 @@ clients before treating the environment as clean.
 
 ## Quick Start
 
-Example MCP server configuration:
+Preferred global launcher configuration:
 
 ```json
 {
   "command": "node",
-  "args": ["<repo-root>/dist/index.js"],
-  "cwd": "<workspace-root>",
+  "args": ["<install-root>/dist/launcher.js", "--workspace", "my-project"],
+  "cwd": "<install-root>",
   "env": {
-    "PPIRTV_HOME": "<runtime-state-dir>",
+    "PPIRTV_WORKSPACE_ROOT": "C:/CodexProjetos",
     "PPIRTV_PRINCIPLES_PATH": "<optional-contract-json>"
   }
 }
@@ -163,15 +222,23 @@ Then inspect it with:
 
 ## Runtime State
 
-By default, the store uses a local runtime directory named `.ppirtv` under the
-current workspace. You can override it with `PPIRTV_HOME`.
+By default, the store uses a local runtime directory named `.ppirtv` under
+`process.cwd()`. The runtime treats `process.cwd()` as the consumer project
+root. `PPIRTV_HOME`, when present, must confirm the same path:
+`<projectRoot>/.ppirtv`.
 
 Runtime state can include:
 
-- flows;
-- meetings;
-- evidence;
-- ledger events.
+- `flows/`;
+- `meetings/`;
+- `evidence/`;
+- `memory/`;
+- `review/`;
+- `verdicts/`;
+- `logs/`;
+- `specs/`;
+- `tasks/`;
+- `ledger.ndjson` at the `.ppirtv` root for compatibility.
 
 That state is operational data, not source code.
 
@@ -239,6 +306,10 @@ Official GOAL/SPT tools:
 - `goal_regress`
 - `evidence_add`
 - `goal_verdict`
+
+`goal_status` and `ppirtv_checkout` expose `project_root`, `ppirtv_home` and
+`runtime_layout_status` so clients can verify where the active MCP process is
+writing state.
 
 `ppirtv_checkout` is the direct closing/accountability tool. It returns the
 same canonical checkout embedded in `goal_status.ppirtv_checkout`, but promotes

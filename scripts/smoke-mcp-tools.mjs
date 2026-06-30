@@ -1,4 +1,5 @@
-import { readFile } from "node:fs/promises";
+import { realpathSync, statSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -39,17 +40,31 @@ const configAudit = args.auditConfigTomls.length > 0
     auditConfigTomls: args.auditConfigTomls.map((item) => path.resolve(item))
   })
   : null;
+const runtimeConfigCheck = runtimeConfigCheckFor(server);
 
 if (args.auditOnly) {
   const result = {
-    ok: !args.failOnConfigConflict || !configAudit?.conflicts.length,
+    ok: runtimeConfigCheck.ok && (!args.failOnConfigConflict || !configAudit?.conflicts.length),
     server: serverSummary(server, serverSource, serverName),
+    runtime_config_check: runtimeConfigCheck,
     config_audit: configAudit
   };
   console.log(JSON.stringify(result, null, 2));
   if (!result.ok) {
     process.exitCode = 1;
   }
+  process.exit();
+}
+
+if (!runtimeConfigCheck.ok) {
+  const result = {
+    ok: false,
+    server: serverSummary(server, serverSource, serverName),
+    runtime_config_check: runtimeConfigCheck,
+    config_audit: configAudit
+  };
+  console.log(JSON.stringify(result, null, 2));
+  process.exitCode = 1;
   process.exit();
 }
 
@@ -67,13 +82,15 @@ try {
   const listed = await client.listTools();
   const names = listed.tools.map((tool) => tool.name).sort();
   const missing = REQUIRED_TOOLS.filter((tool) => !names.includes(tool));
-  const flowSmoke = args.flowSmoke && missing.length === 0 ? await runFlowSmoke(client) : null;
+  const flowWorkspace = runtimeConfigCheck.launcher_workspace ?? server.cwd ?? workspace;
+  const flowSmoke = args.flowSmoke && missing.length === 0 ? await runFlowSmoke(client, flowWorkspace) : null;
   const result = {
     ok: missing.length === 0 && (!args.flowSmoke || Boolean(flowSmoke?.archived)) && (!args.failOnConfigConflict || !configAudit?.conflicts.length),
     count: names.length,
     missing,
     required: REQUIRED_TOOLS,
     server: serverSummary(server, serverSource, serverName),
+    runtime_config_check: runtimeConfigCheck,
     config_audit: configAudit,
     flow_smoke: flowSmoke,
     names
@@ -189,25 +206,134 @@ function parseTomlStringArray(rawValue) {
   return matches.map((match) => match[1].replace(/\\\\/g, "\\").replace(/\\"/g, "\""));
 }
 
-async function runFlowSmoke(client) {
-  const created = resultOf(await client.callTool({
-    name: "flow_create",
-    arguments: {
-      goal: "PPIRTV MCP tools smoke",
-      context: "Validate list_tools and flow lifecycle before executing a long SPT",
-      risks: ["runtime loaded with incomplete tool surface"],
-      uncertainties: ["consumer session may need restart"]
-    }
-  }));
+async function runFlowSmoke(client, workspaceRoot) {
+  const sptPath = await writeSmokeSpt(workspaceRoot);
+  const idempotencyKey = `dex-ppirtv-smoke:${Date.now()}:${Math.random().toString(16).slice(2)}`;
+  const envelope = {
+    workspace: workspaceRoot,
+    spt_path: sptPath,
+    objective: "Validate PPIRTV MCP runtime isolation smoke",
+    idempotency_key: idempotencyKey,
+    evidence_required: true,
+    required_evidence: ["runtime status", "checkout status"],
+    requested_verdict_policy: "evidence_required",
+    source: "dex-ppirtv-smoke"
+  };
+  await client.callTool({ name: "spt_validate", arguments: envelope });
+  const created = resultOf(await client.callTool({ name: "goal_start", arguments: envelope }));
   const flowId = created.flow_id;
   if (!flowId) {
-    return { archived: false, error: "flow_create did not return flow_id" };
+    return { archived: false, error: "goal_start did not return flow_id" };
   }
+  const status = resultOf(await client.callTool({ name: "goal_status", arguments: { flow_id: flowId } }));
+  const checkout = resultOf(await client.callTool({ name: "ppirtv_checkout", arguments: { flow_id: flowId } }));
   await client.callTool({
     name: "flow_archive",
     arguments: { flow_id: flowId, reason: "smoke complete" }
   });
-  return { archived: true, flow_id: flowId };
+  return {
+    archived: true,
+    flow_id: flowId,
+    status_runtime: runtimeSummary(status),
+    checkout_runtime: runtimeSummary(checkout)
+  };
+}
+
+async function writeSmokeSpt(workspaceRoot) {
+  const dir = path.join(workspaceRoot, ".agents", "PLAN-TASKS");
+  await mkdir(dir, { recursive: true });
+  const sptPath = path.join(dir, "ppirtv-smoke-runtime-isolation.md");
+  await writeFile(
+    sptPath,
+    [
+      "# Trilho - PPIRTV Smoke Runtime Isolation",
+      "",
+      "Tipo: SPEC-PLAN-TASKs",
+      "Status: EM TESTE",
+      "Owner: smoke-mcp-tools",
+      "Data: 2026-06-30",
+      `Workspace: ${workspaceRoot}`,
+      "Origem: scripts/smoke-mcp-tools.mjs",
+      "",
+      "## GoalEnvelope",
+      "",
+      "Smoke envelope is supplied by the caller at runtime.",
+      "",
+      "## Contexto",
+      "",
+      "Validate the MCP runtime layout selected for the active consumer workspace.",
+      "",
+      "## Problema",
+      "",
+      "A tool-list smoke can pass while runtime state is written to the wrong project.",
+      "",
+      "## Decisao",
+      "",
+      "Use official GOAL/SPT tools and inspect status and checkout runtime diagnostics.",
+      "",
+      "## Escopo",
+      "",
+      "- Start a minimal official GOAL.",
+      "- Inspect runtime diagnostics.",
+      "",
+      "## Fora de escopo",
+      "",
+      "- Fiscal closure.",
+      "- Long SPT execution.",
+      "",
+      "## SPEC",
+      "",
+      "Runtime diagnostics must point to the caller workspace.",
+      "",
+      "## PLAN",
+      "",
+      "1. Validate this SPT.",
+      "2. Start a GOAL.",
+      "3. Read status and checkout.",
+      "4. Archive the smoke flow.",
+      "",
+      "## TASKs",
+      "",
+      "- [ ] Validate tool surface.",
+      "- [ ] Validate runtime layout.",
+      "",
+      "## Expected Evidence",
+      "",
+      "- runtime status",
+      "- checkout status",
+      "",
+      "## Done Criteria",
+      "",
+      "- runtime diagnostics point to the active workspace.",
+      "",
+      "## Riscos",
+      "",
+      "- False green if only list_tools is checked.",
+      "",
+      "## Gates",
+      "",
+      "- Gate do Quando: this smoke runs before long SPT execution.",
+      "",
+      "## Validacao",
+      "",
+      "`npm run smoke:mcp-tools -- --workspace <workspace> --flow-smoke`",
+      "",
+      "## Prompt /GOAL de execucao",
+      "",
+      "Run this smoke only for runtime isolation validation.",
+      ""
+    ].join("\n"),
+    "utf8"
+  );
+  return sptPath;
+}
+
+function runtimeSummary(result) {
+  return {
+    project_root: result.project_root,
+    ppirtv_home: result.ppirtv_home,
+    runtime_layout_status: result.runtime_layout_status
+  };
 }
 
 function resultOf(response) {
@@ -223,6 +349,175 @@ function serverSummary(server, source, name) {
     cwd: server.cwd,
     env_keys: Object.keys(server.env ?? {}).sort()
   };
+}
+
+function runtimeConfigCheckFor(server) {
+  const launcherCheck = launcherRuntimeConfigCheckFor(server);
+  if (launcherCheck) {
+    return launcherCheck;
+  }
+  const cwd = server.cwd ? path.resolve(server.cwd) : null;
+  const expected = cwd ? path.join(cwd, ".ppirtv") : null;
+  const ppirtvHome = server.env?.PPIRTV_HOME ? path.resolve(cwd ?? process.cwd(), server.env.PPIRTV_HOME) : null;
+  const ok = Boolean(cwd && (!ppirtvHome || samePath(ppirtvHome, expected)));
+  return {
+    ok,
+    code: ok ? (ppirtvHome ? "ppirtv_home_matches_cwd" : "ppirtv_home_defaults_to_cwd") : "ppirtv_home_mismatch",
+    cwd,
+    ppirtv_home: ppirtvHome,
+    expected_ppirtv_home: expected,
+    message: ok
+      ? ppirtvHome
+        ? "PPIRTV_HOME confirms <cwd>/.ppirtv"
+        : "PPIRTV_HOME is unset; runtime will use <cwd>/.ppirtv"
+      : "PPIRTV_HOME must resolve exactly to <cwd>/.ppirtv for runtime isolation"
+  };
+}
+
+function launcherRuntimeConfigCheckFor(server) {
+  if (!isLauncherServer(server)) {
+    return null;
+  }
+  const cwd = server.cwd ? path.resolve(server.cwd) : null;
+  if (!cwd) {
+    return {
+      ok: false,
+      code: "ppirtv_launcher_cwd_missing",
+      cwd,
+      message: "Global launcher configs must declare cwd so workspace hints can be resolved safely."
+    };
+  }
+  const hint = launcherWorkspaceHint(server);
+  if (!hint) {
+    const cwdIsInstallRepo = samePath(cwd, repoRoot);
+    return {
+      ok: !cwdIsInstallRepo,
+      code: cwdIsInstallRepo ? "ppirtv_launcher_workspace_required" : "ppirtv_launcher_cwd_workspace",
+      cwd,
+      launcher_workspace: cwdIsInstallRepo ? null : canonicalExistingPath(cwd),
+      expected_ppirtv_home: cwdIsInstallRepo ? null : path.join(canonicalExistingPath(cwd), ".ppirtv"),
+      message: cwdIsInstallRepo
+        ? "Global launcher started from the install repository without --workspace or PPIRTV_WORKSPACE."
+        : "Launcher will use cwd as the consumer workspace."
+    };
+  }
+  const resolved = resolveLauncherHint(hint.value, cwd, server.env ?? {});
+  if (!resolved) {
+    return {
+      ok: false,
+      code: "ppirtv_launcher_workspace_not_found",
+      cwd,
+      launcher_hint: hint,
+      message: "Launcher workspace hint did not resolve to an existing project directory."
+    };
+  }
+  if (samePath(resolved, repoRoot)) {
+    return {
+      ok: false,
+      code: "ppirtv_launcher_install_root_selected",
+      cwd,
+      launcher_hint: hint,
+      launcher_workspace: resolved,
+      message: "Launcher workspace resolves to the dex-PPIRTV install repository, not a consumer project."
+    };
+  }
+  return {
+    ok: true,
+    code: "ppirtv_launcher_workspace_resolved",
+    cwd,
+    launcher_hint: hint,
+    launcher_workspace: resolved,
+    expected_ppirtv_home: path.join(resolved, ".ppirtv"),
+    message: "Launcher workspace hint resolves to a consumer project; PPIRTV_HOME will be set by the launcher."
+  };
+}
+
+function isLauncherServer(server) {
+  return [server.command, ...(server.args ?? [])]
+    .filter(Boolean)
+    .some((item) => /dex-ppirtv-launcher/i.test(item) || /(?:^|[\\/])launcher\.(?:js|mjs|cjs)$/i.test(item));
+}
+
+function launcherWorkspaceHint(server) {
+  const args = server.args ?? [];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--workspace") {
+      return args[index + 1] ? { source: "argv", value: args[index + 1] } : null;
+    }
+    if (arg.startsWith("--workspace=")) {
+      return { source: "argv", value: arg.slice("--workspace=".length) };
+    }
+  }
+  const envWorkspace = server.env?.PPIRTV_WORKSPACE;
+  return envWorkspace ? { source: "env", value: envWorkspace } : null;
+}
+
+function resolveLauncherHint(hint, cwd, env) {
+  const candidates = launcherCandidates(hint, cwd, env);
+  for (const candidate of candidates) {
+    if (isProjectDirectory(candidate)) {
+      return canonicalExistingPath(candidate);
+    }
+  }
+  return null;
+}
+
+function launcherCandidates(hint, cwd, env) {
+  if (path.isAbsolute(hint)) {
+    return [path.resolve(hint)];
+  }
+  const roots = launcherWorkspaceRoots(cwd, env);
+  const hasSeparator = /[\\/]/.test(hint) || hint === "." || hint === ".." || hint.startsWith("./") || hint.startsWith("../");
+  const relativeCandidates = hasSeparator ? [path.resolve(cwd, hint)] : [];
+  return [...relativeCandidates, ...roots.map((root) => path.resolve(root, hint))];
+}
+
+function launcherWorkspaceRoots(cwd, env) {
+  const roots = [
+    ...(env.PPIRTV_WORKSPACE_ROOTS?.split(path.delimiter) ?? []),
+    env.PPIRTV_WORKSPACE_ROOT,
+    cwd
+  ].filter(Boolean).map((root) => path.resolve(cwd, String(root)));
+  const seen = new Set();
+  return roots.filter((root) => {
+    const key = normalizePath(root);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function isProjectDirectory(value) {
+  if (!isDirectory(value)) {
+    return false;
+  }
+  return [".git", "AGENTS.md", "package.json", ".agents", ".codex"].some((marker) => pathExistsSync(path.join(value, marker)));
+}
+
+function isDirectory(value) {
+  try {
+    return statSync(value).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function pathExistsSync(value) {
+  try {
+    statSync(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function canonicalExistingPath(value) {
+  try {
+    return realpathSync.native(path.resolve(value));
+  } catch {
+    return path.resolve(value);
+  }
 }
 
 async function auditCodexConfigConflicts({ serverUnderTest, source, name, auditConfigTomls }) {
@@ -312,6 +607,10 @@ function normalizeServerName(name) {
 
 function normalizePath(value) {
   return value ? path.resolve(String(value)).toLowerCase() : null;
+}
+
+function samePath(left, right) {
+  return normalizePath(left) === normalizePath(right);
 }
 
 function directServer(repoRoot, workspace) {

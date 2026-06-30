@@ -1,33 +1,78 @@
 import { mkdir, readFile, readdir, rename, stat, writeFile, appendFile } from "node:fs/promises";
 import path from "node:path";
 import { existsSync } from "node:fs";
-import { resolvePpirtvHome } from "./config.js";
+import { PPIRTV_RUNTIME_DIRS, resolveRuntimePaths, runtimePathsFromHome } from "./config.js";
+import type { PpirtvRuntimeDir, PpirtvRuntimePaths } from "./config.js";
 import type { Evidence, Flow, LedgerEvent, Meeting } from "./domain.js";
 
 let idSequence = 0;
 
+export type RuntimeLayoutStatus = {
+  project_root: string;
+  ppirtv_home: string;
+  ledger_path: string;
+  ledger_exists: boolean;
+  required_directories: PpirtvRuntimeDir[];
+  missing_directories: PpirtvRuntimeDir[];
+  directories: Record<PpirtvRuntimeDir, string>;
+  status: "ready" | "missing";
+};
+
 export class PpirtvStore {
   readonly root: string;
+  readonly runtimePaths: PpirtvRuntimePaths;
   readonly flowsDir: string;
   readonly meetingsDir: string;
   readonly evidenceDir: string;
+  readonly memoryDir: string;
+  readonly reviewDir: string;
+  readonly verdictsDir: string;
+  readonly logsDir: string;
+  readonly specsDir: string;
+  readonly tasksDir: string;
   readonly ledgerPath: string;
 
-  constructor(root = resolvePpirtvHome()) {
-    this.root = root;
-    this.flowsDir = path.join(root, "flows");
-    this.meetingsDir = path.join(root, "meetings");
-    this.evidenceDir = path.join(root, "evidence");
-    this.ledgerPath = path.join(root, "ledger.ndjson");
+  constructor(root?: string) {
+    this.runtimePaths = root ? runtimePathsFromHome(projectRootForExplicitStoreRoot(root), root) : resolveRuntimePaths();
+    this.root = this.runtimePaths.ppirtvHome;
+    this.flowsDir = this.runtimePaths.dirs.flows;
+    this.meetingsDir = this.runtimePaths.dirs.meetings;
+    this.evidenceDir = this.runtimePaths.dirs.evidence;
+    this.memoryDir = this.runtimePaths.dirs.memory;
+    this.reviewDir = this.runtimePaths.dirs.review;
+    this.verdictsDir = this.runtimePaths.dirs.verdicts;
+    this.logsDir = this.runtimePaths.dirs.logs;
+    this.specsDir = this.runtimePaths.dirs.specs;
+    this.tasksDir = this.runtimePaths.dirs.tasks;
+    this.ledgerPath = this.runtimePaths.ledgerPath;
   }
 
   async init(): Promise<void> {
-    await mkdir(this.flowsDir, { recursive: true });
-    await mkdir(this.meetingsDir, { recursive: true });
-    await mkdir(this.evidenceDir, { recursive: true });
+    await Promise.all(PPIRTV_RUNTIME_DIRS.map((dir) => mkdir(this.runtimePaths.dirs[dir], { recursive: true })));
     if (!existsSync(this.ledgerPath)) {
       await writeFile(this.ledgerPath, "", "utf8");
     }
+  }
+
+  async runtimeLayoutStatus(): Promise<RuntimeLayoutStatus> {
+    await this.init();
+    const missing: PpirtvRuntimeDir[] = [];
+    for (const dir of PPIRTV_RUNTIME_DIRS) {
+      if (!(await this.pathExists(this.runtimePaths.dirs[dir]))) {
+        missing.push(dir);
+      }
+    }
+    const ledgerExists = await this.pathExists(this.ledgerPath);
+    return {
+      project_root: this.runtimePaths.projectRoot,
+      ppirtv_home: this.runtimePaths.ppirtvHome,
+      ledger_path: this.ledgerPath,
+      ledger_exists: ledgerExists,
+      required_directories: [...PPIRTV_RUNTIME_DIRS],
+      missing_directories: missing,
+      directories: this.runtimePaths.dirs,
+      status: missing.length === 0 && ledgerExists ? "ready" : "missing"
+    };
   }
 
   async nextId(prefix: "flow" | "evt" | "mtg" | "evd" | "vrd" | "pipe"): Promise<string> {
@@ -123,6 +168,11 @@ export class PpirtvStore {
       return false;
     }
   }
+}
+
+function projectRootForExplicitStoreRoot(root: string): string {
+  const resolved = path.resolve(root);
+  return path.basename(resolved).toLowerCase() === ".ppirtv" ? path.dirname(resolved) : process.cwd();
 }
 
 function safeArtifactId(value: unknown, label: string): string {

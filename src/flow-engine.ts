@@ -58,7 +58,7 @@ import {
   scanOperationalPrinciples,
   type PrincipleChecklistItem
 } from "./principles.js";
-import { PpirtvStore } from "./store.js";
+import { PpirtvStore, type RuntimeLayoutStatus } from "./store.js";
 import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured } from "./config.js";
 
 const DEFAULT_SCOPE: Scope = { in: [], out: [] };
@@ -485,10 +485,14 @@ export class FlowEngine {
     const loopMonitor = fiscalLoopMonitor(flow, blockers);
     const nextRequiredAction = nextRequiredActionFor(flow, meetings, blockers, backTo, regressCount, regressLimitReached, loopMonitor);
     const resolutionGuidance = blockerResolutionGuidance(blockers, nextRequiredAction, loopMonitor);
+    const runtimeLayoutStatus = await this.store.runtimeLayoutStatus();
     return {
       flow_id: flow.flow_id,
       status: flow.status,
       phase: flow.phase,
+      project_root: runtimeLayoutStatus.project_root,
+      ppirtv_home: runtimeLayoutStatus.ppirtv_home,
+      runtime_layout_status: runtimeLayoutStatus,
       phase_label: checklistStatus.display.phase_label,
       phase_emoji: checklistStatus.display.phase_emoji,
       checklist: checklistStatus,
@@ -559,7 +563,7 @@ export class FlowEngine {
       fiscal_policy: fiscal,
       librarian_status: librarianStatus,
       ppirtv_checkin: ppirtvCheckIn(flow, requiredCooperation, librarianStatus, blockers, resolutionGuidance),
-      ppirtv_checkout: ppirtvCheckOut(flow, librarianStatus, blockers, resolutionGuidance, blockerDiagnostics)
+      ppirtv_checkout: ppirtvCheckOut(flow, librarianStatus, blockers, resolutionGuidance, blockerDiagnostics, runtimeLayoutStatus)
     };
   }
 
@@ -582,6 +586,9 @@ export class FlowEngine {
       ready_definition: checkout.ready_definition,
       gate_final_output: checkout.gate_final_output,
       final_report_model: checkout.final_report_model,
+      project_root: checkout.project_root,
+      ppirtv_home: checkout.ppirtv_home,
+      runtime_layout_status: checkout.runtime_layout_status,
       evidence_accountability: checkout.evidence_accountability,
       blocker_diagnostics: checkout.blocker_diagnostics,
       utility_accountability: checkout.utility_accountability,
@@ -4682,7 +4689,8 @@ function ppirtvCheckOut(
   librarianStatus: StructuredLibrarianStatus,
   blockers: string[],
   resolutionGuidance: Record<string, unknown> | null = null,
-  blockerDiagnostics: BlockerDiagnostics | null = null
+  blockerDiagnostics: BlockerDiagnostics | null = null,
+  runtimeLayoutStatus: RuntimeLayoutStatus | null = null
 ): Record<string, unknown> {
   const latestVerdict = flow.verdicts.at(-1);
   const closed = flow.status === "complete" || flow.status === "archived";
@@ -4711,6 +4719,9 @@ function ppirtvCheckOut(
     complete: closed,
     status: flow.status,
     verdict: latestVerdict?.status ?? null,
+    project_root: runtimeLayoutStatus?.project_root ?? null,
+    ppirtv_home: runtimeLayoutStatus?.ppirtv_home ?? null,
+    runtime_layout_status: runtimeLayoutStatus,
     meetings_count: flow.meetings.length,
     evidence_count: flow.evidence.length,
     evidence_accountability: evidenceAccountability,
