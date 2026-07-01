@@ -268,7 +268,65 @@ curtos como `#erro-recorrente`, `#falso-verde`, `#encoding`, `#fallback` e
 `#evidencia-visual` ajudam a busca transversal, mas nao substituem memoria
 recuperavel nem justificam criar deposito generico de erros.
 
-## 7. Gate do Quando
+## 7. Impossibilitar a repeticao e melhor que aprender com o erro
+
+> ID no contrato operacional: `P8` (Gate do Quando permanece `P7`).
+
+Aprender com o erro e bom. Impossibilitar a repeticao do erro e melhor.
+
+O principio #6 trata da repeticao — bloqueia o pronto na terceira vez e exige
+destino rastreavel. Este principio e o complemento proativo: desde a primeira
+ocorrencia, a meta e construir defesa em profundidade para que o mesmo erro nao
+seja fisicamente possivel de repetir.
+
+Defesa em profundidade sao tres camadas:
+
+1. **Gate automatizado** — teste, check, validador ou contrato que detecta o
+   padrao do erro antes de chegar em producao. O gate deve ser comprovado: rodar
+   contra o codigo bugado (FAIL) e contra o codigo corrigido (PASS).
+2. **Memoria recuperavel** — L1/L2/L3 com gatilho curto, tag semantica, frase
+   natural e fonte viva. Achavel por pelo menos duas formas de busca.
+3. **Documentacao viva** — anti-padrao ou regra no `AGENTS.md`, contrato ou
+   doccanonica do projeto, para que um agente novo veja a regra antes de errar.
+
+O tropecco so se repete se alguem ignorar as tres camadas.
+
+### Quando o principio entra em acao
+
+- Apos encontrar causa raiz de um erro com evidencia (nao antes — chute nao
+  gera defesa, gera ruido).
+- Apos aplicar o fix e valida-lo.
+- Antes de declarar pronto.
+
+### O que conta como impossibilitar
+
+- Um teste que falha contra o padrao bugado e passa contra o corrigido.
+- Um contrato operacional que recusa o estado invalido.
+- Um anti-padrao documentado com gatilho de memoria.
+- Um gate de deploy ou pre-commit que roda automaticamente.
+
+### O que NAO conta como impossibilitar
+
+- Memoria sem gate automatizado (ninguem lembrara de consultar).
+- Gate sem cadencia definida (ninguem rodara).
+- Documentacao sem gatilho recuperavel (ninguem achar).
+- Anunciar "impossibilitado" sem comprovar o gate contra o bug real.
+
+Frase martelo:
+
+```text
+Aprender com o erro é tolerância. Impossibilitar o erro é engenharia.
+```
+
+### Relacao com o principio #6
+
+- #6 e reativo: aceita ate tres ocorrencias, depois bloqueia e exige destino.
+- #7 (P8 no contrato) e proativo: desde a primeira ocorrencia, converte o
+  aprendizado em defesa.
+- Juntos: P8 reduz a necessidade de #6; quando #6 dispara, P8 explica por que
+  a defesa falhou e onde fortalecer.
+
+## 8. Gate do Quando
 
 Um `o que` sem `quando` nao vira plano executavel.
 
