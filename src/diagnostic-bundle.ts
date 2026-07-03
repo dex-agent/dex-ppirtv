@@ -1,5 +1,6 @@
 import type { Evidence, Flow, LedgerEvent, Meeting } from "./domain.js";
 import { PpirtvStore } from "./store.js";
+import { scrubSecretLike, isSecretLikeText } from "./security/secret-redaction.js";
 
 export type RedactedDiagnosticBundle = {
   generated_at: string;
@@ -107,33 +108,8 @@ function latestFiscalBlockers(flow: Flow): unknown {
   return event?.data.blocking_reasons ?? [];
 }
 
+// #6 (security SSOT): usar scrubSecretLike do modulo central em vez de
+// regex local mais fraca. Mantem tracking de redactions para o manifest.
 function redactObject(value: unknown, redactions: Set<string>): unknown {
-  if (Array.isArray(value)) {
-    return value.map((item) => redactObject(item, redactions));
-  }
-  if (value && typeof value === "object") {
-    const result: Record<string, unknown> = {};
-    for (const [key, nested] of Object.entries(value)) {
-      if (/secret|token|password|api[_-]?key|authorization/i.test(key)) {
-        redactions.add(key);
-        result[key] = "[redacted]";
-      } else {
-        result[key] = redactObject(nested, redactions);
-      }
-    }
-    return result;
-  }
-  return typeof value === "string" ? redactSecretLikeText(value, redactions) : value;
-}
-
-function redactSecretLikeText(value: string, redactions: Set<string>): string {
-  let output = value.replace(/Authorization:\s*Bearer\s+[A-Za-z0-9._~+/=-]+/gi, () => {
-    redactions.add("Authorization");
-    return "Authorization: Bearer [redacted]";
-  });
-  output = output.replace(/\b(api[_-]?key|token|password|secret)\s*[:=]\s*[^,\s;]+/gi, (match, key: string) => {
-    redactions.add(key);
-    return `${key}=[redacted]`;
-  });
-  return output;
+  return scrubSecretLike(value, redactions);
 }

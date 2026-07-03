@@ -1,8 +1,10 @@
 import { mkdir, readFile, readdir, rename, stat, writeFile, appendFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { existsSync } from "node:fs";
 import { PPIRTV_RUNTIME_DIRS, resolveRuntimePaths, runtimePathsFromHome } from "./config.js";
 import type { PpirtvRuntimeDir, PpirtvRuntimePaths } from "./config.js";
+import { scrubSecretLike } from "./security/secret-redaction.js";
 import type { Evidence, Flow, LedgerEvent, Meeting } from "./domain.js";
 
 let idSequence = 0;
@@ -146,18 +148,26 @@ export class PpirtvStore {
 
   async appendLedger(event: LedgerEvent): Promise<void> {
     await this.init();
-    await appendFile(this.ledgerPath, `${JSON.stringify(scrubSecrets(event))}\n`, "utf8");
+    await appendFile(this.ledgerPath, `${JSON.stringify(scrubSecretLike(event))}\n`, "utf8");
   }
 
   async readLedger(flowId?: string): Promise<LedgerEvent[]> {
     await this.init();
     const text = await readFile(this.ledgerPath, "utf8");
+    // #2 (security/estabilidade): tolerar linhas corrompidas sem derrubar
+    // o sistema. Linhas invalidas sao filtradas (nao crasham o readLedger).
     return text
       .split(/\r?\n/)
       .filter(Boolean)
-      .map((line) => JSON.parse(line) as LedgerEvent)
+      .flatMap((line) => {
+        try {
+          return [JSON.parse(line) as LedgerEvent];
+        } catch {
+          return [];
+        }
+      })
       .filter((event) => !flowId || event.flow_id === flowId)
-      .sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.event_id.localeCompare(b.event_id));
+      .sort((a, b) => (a.timestamp ?? "").localeCompare(b.timestamp ?? "") || (a.event_id ?? "").localeCompare(b.event_id ?? ""));
   }
 
   async pathExists(target: string): Promise<boolean> {
@@ -201,28 +211,17 @@ async function readJson<T>(filePath: string): Promise<T> {
   return JSON.parse(text) as T;
 }
 
+// #3 (security): writeJsonAtomic usa temp unico com randomUUID para evitar
+// race condition em escritas concorrentes.
+// NOTA: writeJsonAtomic NAO redaciona segredos — o flow JSON em .ppirtv/ e'
+// estado interno do runtime, e o fiscal policy precisa ler o conteudo original
+// (ex.: gold_mining com token sintetico para teste de blocked_reason). A
+// redação acontece na BORDA DE SAIDA: appendLedger (para o ledger.ndjson) e
+// exportRedactedDiagnosticBundle (para export cross-boundary).
 async function writeJsonAtomic(filePath: string, value: unknown): Promise<void> {
-  const tempPath = `${filePath}.tmp`;
+  const tempPath = `${filePath}.${randomUUID()}.tmp`;
   await writeFile(tempPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
   await rename(tempPath, filePath);
-}
-
-function scrubSecrets(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(scrubSecrets);
-  }
-  if (value && typeof value === "object") {
-    const result: Record<string, unknown> = {};
-    for (const [key, nested] of Object.entries(value)) {
-      if (/secret|token|password|api[_-]?key|authorization/i.test(key)) {
-        result[key] = "[redacted]";
-      } else {
-        result[key] = scrubSecrets(nested);
-      }
-    }
-    return result;
-  }
-  return value;
 }
 
 function normalizeFlow(flow: Flow): Flow {

@@ -3,8 +3,10 @@ import { resolveDexMemoriaHome as resolveConfiguredDexMemoriaHome } from "../con
 import type { Flow, Meeting, MemoryCandidate } from "../domain.js";
 import type { MemoryNugget } from "./memory-types.js";
 
-export const SECRET_LIKE_PATTERN =
-  /\bBearer\s+[A-Za-z0-9._~+/=-]{12,}|\bsk-[A-Za-z0-9_-]{12,}\b|\b(?:api[_-]?key|token|password|secret|authorization)\s*[:=]\s*\S+/i;
+// #5 (security SSOT): reexportar SECRET_LIKE_PATTERN do modulo centralizado
+// em vez de manter regex local. Consumidores existentes continuam funcionando.
+export { SECRET_LIKE_PATTERN } from "../security/secret-redaction.js";
+import { SECRET_LIKE_PATTERN } from "../security/secret-redaction.js";
 
 const THEME_RULES: Array<{ theme: string; pattern: RegExp }> = [
   { theme: "pythia-deepseek", pattern: /pythia-deepseek/i },

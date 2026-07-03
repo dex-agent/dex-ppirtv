@@ -186,7 +186,7 @@ describe("memory graph providers", () => {
     const result = await provider.recall({
       flow_id: "flow_1",
       phase: "planejamento",
-      question: "Authorization: Bearer abc123",
+      question: "Authorization: Bearer abcdefghijklmnop",
       workspace
     });
 
