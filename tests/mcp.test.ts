@@ -563,6 +563,12 @@ describe("PPIRTV MCP stdio server", () => {
         tool: "evidence_add"
       }
     });
+    // BUG 4: o envelope EVIDENCIA_AUSENTE precisa informar o flow_id e o que
+    // falta, para o consumidor saber exatamente quais args passar em
+    // evidence_add, em vez de adivinhar.
+    expect(resultOf(missingEvidence).error.next_required_action).toMatchObject({
+      args: { flow_id: flowId }
+    });
 
     const evidence = await client!.callTool({
       name: "evidence_add",

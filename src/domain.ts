@@ -9,6 +9,19 @@ export const PHASES = [
 
 export type Phase = (typeof PHASES)[number];
 
+export const COMPACT_PHASES = [
+  "concepcao",
+  "implementacao",
+  "revisao",
+  "validacao"
+] as const;
+
+export type CompactPhase = (typeof COMPACT_PHASES)[number];
+
+export type AnyPhase = Phase | CompactPhase;
+
+export type PhaseMode = "full" | "compact";
+
 export const MEETING_TYPES = ["divergent", "convergent", "transversal", "decision"] as const;
 export type MeetingType = (typeof MEETING_TYPES)[number];
 export const MEETING_KINDS = ["divergente", "convergente", "transversal", "decisao"] as const;
@@ -20,6 +33,8 @@ export type VerdictStatus = (typeof VERDICTS)[number];
 export const GOAL_VERDICT_POLICIES = ["evidence_required", "allow_ressalvas", "draft"] as const;
 export type GoalVerdictPolicy = (typeof GOAL_VERDICT_POLICIES)[number];
 
+export type RiskLevel = "high" | "medium" | "low" | "mechanical";
+
 export type GoalEnvelope = {
   workspace: string;
   spt_path: string;
@@ -30,6 +45,8 @@ export type GoalEnvelope = {
   required_evidence: string[];
   requested_verdict_policy: GoalVerdictPolicy;
   source: string;
+  risk_level?: RiskLevel;
+  mode?: PhaseMode;
 };
 
 export type GoalBinding = {
@@ -384,6 +401,7 @@ export type Flow = {
   owner?: string;
   context?: string;
   phase: Phase;
+  mode?: PhaseMode;
   status: FlowStatus;
   scope: Scope;
   risks: string[];
@@ -479,6 +497,52 @@ export const GATE_REQUIREMENTS: Record<
   ],
   teste: [
     { key: "test_executed", label: "teste real executado ou limitacao explicita", source: "provided" },
+    { key: "evidence", label: "evidencia anexada", source: "evidence" }
+  ],
+  validacao: [
+    { key: "verdict", label: "veredito registrado", source: "verdict" },
+    { key: "residual_risks", label: "risco residual registrado", source: "provided" },
+    { key: "next_step", label: "proximo passo definido", source: "provided" },
+    { key: "clean_house", label: "casa limpa confirmada", source: "provided" }
+  ]
+};
+
+// --- Compact mode: 4 phases (concepcao, implementacao, revisao, validacao) ---
+
+export const COMPACT_NEXT_PHASE: Record<CompactPhase, CompactPhase | null> = {
+  concepcao: "implementacao",
+  implementacao: "revisao",
+  revisao: "validacao",
+  validacao: null
+};
+
+export const COMPACT_DEFAULT_BACK_TO: Record<CompactPhase, CompactPhase | null> = {
+  concepcao: null,
+  implementacao: "concepcao",
+  revisao: "implementacao",
+  validacao: "revisao"
+};
+
+export const COMPACT_GATE_REQUIREMENTS: Record<
+  CompactPhase,
+  Array<{ key: string; label: string; source: "flow" | "provided" | "evidence" | "meeting" | "verdict" }>
+> = {
+  concepcao: [
+    { key: "goal", label: "objetivo nomeado", source: "flow" },
+    { key: "context", label: "contexto minimo conhecido", source: "flow" },
+    { key: "risks", label: "risco principal nomeado", source: "flow" },
+    { key: "scope_in", label: "escopo definido", source: "flow" },
+    { key: "tasks", label: "tarefas ordenadas", source: "flow" },
+    { key: "done_criteria", label: "criterio de pronto definido", source: "flow" }
+  ],
+  implementacao: [
+    { key: "implementation_done", label: "mudanca executada ou bloqueio objetivo registrado", source: "provided" },
+    { key: "changed_files", label: "arquivos alterados registrados", source: "flow" }
+  ],
+  revisao: [
+    { key: "diff_reviewed", label: "diff revisado", source: "provided" },
+    { key: "barata_scan", label: "barata nunca esta sozinha aplicado", source: "provided" },
+    { key: "test_executed", label: "teste executado ou limitacao explicita", source: "provided" },
     { key: "evidence", label: "evidencia anexada", source: "evidence" }
   ],
   validacao: [

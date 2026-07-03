@@ -117,11 +117,21 @@ export function classifyMemoryCandidate(input: {
     `Verificacao: origem=${input.source}; score=${score.total}.`,
     "Prevencao: manter L1 antes da memoria detalhada e revisar destino antes do veredito."
   ].join("\n");
+  // R5: se o candidato nasceu com scope writavel (global/tema/projeto) mas nao
+  // e' writable (reaproveitamento=0 ou total<6), rebaixar para ledger_only
+  // em vez de deixar sem destino. Isso fecha a lacuna onde auto_write
+  // rejeitava o candidato pelo gate mas ele nao aparecia em ledger_only nem
+  // estacionamento, gerando falso silencio.
+  const effectiveScope: MemoryCandidate["scope"] = !blockedReason
+    && ["global", "tema", "projeto"].includes(scope)
+    && !(score.evidencia >= 1 && score.reaproveitamento >= 1 && score.total >= 6)
+    ? "ledger_only"
+    : scope;
   return {
     id: input.id,
     title,
     source: input.source,
-    scope,
+    scope: effectiveScope,
     theme,
     layer,
     has_l1: !blockedReason,
@@ -209,7 +219,7 @@ export function governAutoWriteCandidate(candidate: MemoryCandidate, flowId: str
 }
 
 export function isWritableCandidate(candidate: MemoryCandidate): boolean {
-  return !candidate.blocked && candidate.score.evidencia >= 1 && candidate.score.total >= 6 && ["global", "tema", "projeto"].includes(candidate.scope);
+  return !candidate.blocked && candidate.score.evidencia >= 1 && candidate.score.reaproveitamento >= 1 && candidate.score.total >= 6 && ["global", "tema", "projeto"].includes(candidate.scope);
 }
 
 export function memoryCandidateLedgerData(candidate: MemoryCandidate): Record<string, unknown> {

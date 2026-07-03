@@ -58,7 +58,9 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
     evidence_required: z.boolean(),
     required_evidence: z.array(z.string()).default([]),
     requested_verdict_policy: z.enum(GOAL_VERDICT_POLICIES).default("evidence_required"),
-    source: z.string().min(1)
+    source: z.string().min(1),
+    risk_level: z.enum(["high", "medium", "low", "mechanical"]).optional(),
+    mode: z.enum(["full", "compact"]).optional()
   };
   const pipelineItemSchema = z.object({
     goal: z.string().min(1),
@@ -234,7 +236,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         next_step: z.string().min(1)
       }
     },
-    async (args) => toolResponse(() => engine.recordVerdict(args))
+    async (args) => toolResponse(() => engine.recordVerdict(args), { flow_id: typeof args.flow_id === "string" ? args.flow_id : undefined })
   );
 
   server.registerTool(
@@ -660,11 +662,19 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
     };
   }
   if (/goal_verdict requires traceable evidence_ids|Unknown evidence_ids/i.test(message)) {
+    // BUG 4: quando o errorContext traz flow_id, repassar nos args para o
+    // consumidor saber exatamente qual flow_id alimentar em evidence_add,
+    // em vez de adivinhar. Estrutura aditiva: type/tool continuam presentes.
+    const flowId = typeof errorContext?.flow_id === "string" && errorContext.flow_id.length > 0 ? errorContext.flow_id : undefined;
     return {
       ...base,
       code: "EVIDENCIA_AUSENTE",
       recoverable: true,
-      next_required_action: { type: "attach_traceable_evidence", tool: "evidence_add" }
+      next_required_action: {
+        type: "attach_traceable_evidence",
+        tool: "evidence_add",
+        ...(flowId ? { args: { flow_id: flowId, required: "evidence_ids com satisfies apontando para required_evidence do flow" } } : {})
+      }
     };
   }
   if (/AUTO_CLASSIFY_DISABLED_AUTO_WRITE/i.test(message)) {

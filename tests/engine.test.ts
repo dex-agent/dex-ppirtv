@@ -1799,14 +1799,330 @@ describe("PPIRTV flow engine", () => {
     }
   });
 
-  it("T4 marks memory_required_but_empty when required learning has no promoted candidates", async () => {
-    const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t4", "Garimpo vazio bloqueia memoria exigida");
+  it("T4 keeps memory_required_but_empty when mining has not run yet, and clears after classify_only with 0 strong unwritten", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t4", "Garimpo vazio apos classify_only libera verdict");
     await engine.updateFlowFacts(flowId, { risks: ["memoria L1/L2 obrigatoria para este risco material"] });
 
+    // Antes de rodar a mineracao, o blocker de memoria vazia permanece.
+    const statusBefore = await engine.goalStatus({ flow_id: flowId });
+    expect(statusBefore.blockers as string[]).toContain("memory_required_but_empty");
+
+    // BUG 1: classify_only executou, nao ha candidato nenhum e nenhum
+    // strong_unwritten pendente. O blocker de "memoria vazia" deve sair.
     const mined = await engine.mineMemory({ flow_id: flowId, write_policy: "classify_only" });
 
-    expect(mined.memory_required_but_empty).toBe(true);
-    expect(mined.blocked_verdict).toBe(true);
+    expect(mined.candidates).toEqual([]);
+    expect(mined.strong_unwritten_count).toBe(0);
+    expect(mined.write_policy).toBe("classify_only");
+    expect(mined.memory_required_but_empty).toBe(false);
+    expect(mined.blocked_verdict).toBe(false);
+
+    const statusAfter = await engine.goalStatus({ flow_id: flowId });
+    expect(statusAfter.blockers as string[]).not.toContain("memory_required_but_empty");
+  });
+
+  it("T4c preserves implementation_done across subsequent goal_gate_check calls without re-sending provided", async () => {
+    // BUG 3: o usuario registra implementation_done:true + changed_files via
+    // goal_gate_check na fase implementacao. Em chamadas seguintes (ex.: para
+    // checar status), sem reenviar implementation_done, o item volta para
+    // missing. Isso trava o flow ate alguem arquivar com flow_archive.
+    const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t4c", "implementation_done persiste no gate");
+    // Avanca ate implementacao
+    await engine.goalAdvance({ flow_id: flowId, provided: { context: "ctx", risks: ["risco"], uncertainties: ["u"] } });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { scope_in: ["src"], scope_out: ["fora"], tasks: ["codar"], expected_evidence: ["review"], done_criteria: ["passar"] }
+    });
+
+    // Primeira chamada: registra implementation_done:true + changed_files
+    const firstGate = await engine.goalGateCheck({
+      flow_id: flowId,
+      phase: "implementacao",
+      provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] }
+    });
+    expect(firstGate.missing).not.toContain("implementation_done");
+    expect(firstGate.missing).not.toContain("changed_files");
+
+    // Segunda chamada sem reenviar implementation_done: deve continuar resolvido
+    // porque ja foi registrado no provided persistido da fase.
+    const secondGate = await engine.goalGateCheck({
+      flow_id: flowId,
+      phase: "implementacao",
+      provided: {}
+    });
+
+    expect(secondGate.missing).not.toContain("implementation_done");
+  });
+
+  it("T4d keeps auto_write from promoting candidates with reaproveitamento=0 to L1/L2/L3 (integration)", async () => {
+    // R5: teste de integracao confirmando que mineMemory com write_policy=auto_write
+    // rebaixa candidato reaproveitamento=0 para ledger_only/estacionamento, nunca
+    // para written. O teste unitario em tests/mining-policy.test.ts cobre
+    // isWritableCandidate isolado; este cobre o fluxo real de mineMemory.
+    const originalDexMemoriaHome = process.env.DEX_MEMORIA_HOME;
+    const memRoot = path.join(tempRoot, "r5-reaproveitamento-zero");
+    process.env.DEX_MEMORIA_HOME = memRoot;
+    try {
+      const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t4d-r5", "Auto_write nao promove reaproveitamento=0");
+      const meeting = await engine.goalMeetingOpen({
+        flow_id: flowId,
+        type: "transversal",
+        question: "Turno processual deve virar memoria?",
+        participants_required: ["chato", "reuniao"]
+      });
+      // Fala processual do Chato: tem evidencia e custo de esquecimento, mas
+      // reaproveitamento proximo de zero — e' registro de conversa, nao regra
+      // reaplicavel.
+      await engine.goalMeetingClose({
+        flow_id: flowId,
+        meeting_id: meeting.meeting_id as string,
+        participants_present: ["chato", "reuniao"],
+        decision: "Turno processual nao vira memoria de reuso.",
+        satisfies_blockers: ["required_cooperation"],
+        findings: ["E SE falhar? git rollback via git reset --hard HEAD~2 por que o patch quebrou encoding."],
+        gold_mining: ["Turno do Chato: e se falhar, fazer git rollback reset HEAD~2."]
+      });
+
+      const mined = await engine.mineMemory({ flow_id: flowId, auto_classify: true, write_policy: "auto_write" });
+      const candidates = mined.candidates as Array<Record<string, unknown>>;
+
+      // Helper: retorno de mineMemory traz ledger_only/estacionamento/discarded
+      // como arrays de objetos (Candidates). written traz registros de escrita.
+      const idsIn = (list: unknown): string[] => Array.isArray(list) ? list.map((item) => (item as Record<string, unknown>).id as string) : [];
+
+      // Se houver candidato classificado, nenhum dele pode estar em `written`
+      // quando reaproveitamento for 0.
+      for (const candidate of candidates) {
+        const score = candidate.score as { reaproveitamento?: number };
+        if ((score.reaproveitamento ?? 0) === 0) {
+          const writtenIds = idsIn(mined.written);
+          expect(writtenIds).not.toContain(candidate.id);
+          // Deve ter ido para ledger_only ou estacionamento ou discarded, nunca
+          // ficar sem destino (R5: rebaixamento automatico para ledger_only).
+          const ledgerOnlyIds = idsIn(mined.ledger_only);
+          const estacionamentoIds = idsIn(mined.estacionamento);
+          const discardedIds = idsIn(mined.discarded);
+          const candidateId = candidate.id as string;
+          const destination = ledgerOnlyIds.includes(candidateId)
+            || estacionamentoIds.includes(candidateId)
+            || discardedIds.includes(candidateId);
+          expect(destination).toBe(true);
+        }
+      }
+    } finally {
+      process.env.DEX_MEMORIA_HOME = originalDexMemoriaHome;
+    }
+  });
+
+  it("T-MC-D startGoal with mode:compact propagates flow.mode and starts at concepcao", async () => {
+    const workspace = path.join(tempRoot, "mc-mode-compact-start");
+    const sptPath = await writeFakeSpt(workspace);
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Modo compact wire-up",
+      idempotency_key: "dex-code:test-mc-mode-start",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "compact"
+    });
+    const flowId = started.flow_id as string;
+    const flow = await engine.store.loadFlow(flowId);
+
+    expect(flow.mode).toBe("compact");
+    expect(flow.phase).toBe("concepcao");
+  });
+
+  it("T-MC-A advance in compact flow follows concepcao->implementacao->revisao->validacao", async () => {
+    const workspace = path.join(tempRoot, "mc-mode-compact-advance");
+    const sptPath = await writeFakeSpt(workspace);
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Avanco compact",
+      idempotency_key: "dex-code:test-mc-mode-advance",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "compact",
+      risk_level: "mechanical"
+    });
+    const flowId = started.flow_id as string;
+
+    // Concepcao -> Implementacao (fornecendo o que o gate compact de concepcao exige)
+    const advanced1 = await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { context: "ctx", risks: ["risco"], scope_in: ["src"], scope_out: ["fora"], tasks: ["codar"], done_criteria: ["passar"] }
+    });
+    expect(advanced1.flow?.phase ?? (advanced1 as Record<string, unknown>).phase).toBe("implementacao");
+
+    // Implementacao -> Revisao. Em compact, a revisao acontece na proxima
+    // fase. usamos risk_level "mechanical" para nao exigir review_required
+    // no gate de implementacao (o fiscal policy exige review quando ha
+    // changed_files; mechanical desliga essa exigencia antecipada).
+    const advanced2 = await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] }
+    });
+    const afterImpl = await engine.store.loadFlow(flowId);
+    expect(afterImpl.phase).toBe("revisao");
+  });
+
+  it("T-MC-C checkGate for concepcao in compact flow returns compact gates (not undefined)", async () => {
+    const workspace = path.join(tempRoot, "mc-mode-compact-gate");
+    const sptPath = await writeFakeSpt(workspace);
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Gate compact",
+      idempotency_key: "dex-code:test-mc-mode-gate",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "compact"
+    });
+    const flowId = started.flow_id as string;
+
+    // O gate compact de concepcao inclui requisitos que so existem no perfil
+    // compact (escopo definido, tarefas, criterio de pronto). Confirmar via
+    // checklist do goal_status que esses labels aparecem para a fase concepcao.
+    const status = await engine.goalStatus({ flow_id: flowId });
+    const checklist = (status.checklist as Record<string, unknown> | undefined) ?? {};
+    const items = (checklist.items as Array<Record<string, unknown>> | undefined) ?? [];
+    const labels = items.map((item) => String(item.label ?? ""));
+    // Gates compact de concepcao tem labels especificos.
+    expect(labels).toEqual(expect.arrayContaining([
+      expect.stringContaining("escopo definido"),
+      expect.stringContaining("tarefas ordenadas"),
+      expect.stringContaining("criterio de pronto")
+    ]));
+
+    // E NAO deve ter labels full-only de pensamentos/planejamento.
+    expect(labels).not.toEqual(expect.arrayContaining([expect.stringContaining("incertezas marcadas")]));
+  });
+
+  it("T-MC-B flow without mode stays full with 6 phases (regression)", async () => {
+    const workspace = path.join(tempRoot, "mc-mode-full-regression");
+    const sptPath = await writeFakeSpt(workspace);
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Default full regression",
+      idempotency_key: "dex-code:test-mc-mode-full",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code"
+    });
+    const flowId = started.flow_id as string;
+    const flow = await engine.store.loadFlow(flowId);
+
+    expect(flow.mode).toBe("full");
+    expect(flow.phase).toBe("pensamentos");
+  });
+
+  it("T-MC-R2 rejects mode mismatch when reusing goal flow by idempotency key", async () => {
+    // R2: se um flow ja existe com mode "full" e um novo goal_start chega com
+    // mode "compact" usando a mesma idempotency_key, o engine deve rejeitar
+    // em vez de sobrescrever silenciosamente o modo (o que quebraria o fluxo
+    // em fase avancada).
+    const workspace = path.join(tempRoot, "mc-mode-mismatch-reuse");
+    const sptPath = await writeFakeSpt(workspace);
+    const idempotencyKey = "dex-code:test-mc-mode-mismatch";
+    await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Flow original full",
+      idempotency_key: idempotencyKey,
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "full"
+    });
+
+    await expect(
+      engine.startGoal({
+        workspace,
+        spt_path: sptPath,
+        objective: "Retry com mode diferente",
+        idempotency_key: idempotencyKey,
+        evidence_required: true,
+        required_evidence: ["npm run check"],
+        requested_verdict_policy: "evidence_required",
+        source: "dex-code",
+        mode: "compact"
+      })
+    ).rejects.toThrow(/mode mismatch|MODE_MISMATCH/i);
+  });
+
+  it("T-MC-S compact flow runs end-to-end concepcao->implementacao->revisao->validacao with verdict (smoke)", async () => {
+    // Smoke de aceitacao do modo compact: percorrer as 4 fases e registrar
+    // veredito positivo. Protege o valor ponta-a-ponta do modo compact,
+    // nao apenas transicoes isoladas.
+    const workspace = path.join(tempRoot, "mc-mode-compact-smoke");
+    const sptPath = await writeFakeSpt(workspace);
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Smoke compact E2E",
+      idempotency_key: "dex-code:test-mc-mode-smoke",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "compact",
+      risk_level: "mechanical"
+    });
+    const flowId = started.flow_id as string;
+    const evidence = await engine.addGoalEvidence({
+      flow_id: flowId,
+      title: "npm run check",
+      content: "pass",
+      satisfies: ["npm run check"]
+    });
+
+    // Concepcao -> Implementacao
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { context: "ctx", risks: ["risco"], scope_in: ["src"], scope_out: ["fora"], tasks: ["codar"], done_criteria: ["passar"] }
+    });
+    let flow = await engine.store.loadFlow(flowId);
+    expect(flow.phase).toBe("implementacao");
+
+    // Implementacao -> Revisao
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] }
+    });
+    flow = await engine.store.loadFlow(flowId);
+    expect(flow.phase).toBe("revisao");
+
+    // Revisao -> Validacao. O gate compact de revisao exige diff_reviewed,
+    // barata_scan, test_executed e review material (review_findings ou
+    // artifact). Em mechanical, o fiscal policy nao exige code review formal,
+    // mas o gate da fase pede review_evidence_coherent quando ha changed_files.
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { diff_reviewed: true, barata_scan: true, test_executed: true, review_findings: ["diff revisado sem regressao material"] }
+    });
+    flow = await engine.store.loadFlow(flowId);
+    expect(flow.phase).toBe("validacao");
+
+    // Veredito positivo em modo compact com evidence rastreavel.
+    const verdict = await engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto",
+      rationale: "Smoke compact E2E passou pelas 4 fases",
+      evidence_ids: [evidence.evidence_id as string],
+      residual_risks: [],
+      next_step: "arquivar"
+    });
+    expect(verdict.verdict as Record<string, unknown>).toMatchObject({ status: "pronto" });
   });
 
   it("T5 blocks code-change GOAL verdicts without review artifact or findings", async () => {
@@ -2116,8 +2432,11 @@ describe("PPIRTV flow engine", () => {
 
     const mined = await engine.mineMemory({ flow_id: flowId, write_policy: "classify_only" });
 
-    expect(mined.memory_required_but_empty).toBe(true);
-    expect(mined.blocked_verdict).toBe(true);
+    // BUG 1 (novo contrato): classify_only executou com 0 candidatos e 0
+    // strong_unwritten -> memory_required_but_empty limpa. Nao ha mais nada
+    // a escrever. (O verdict ainda pode bloquear por outros motivos fiscais,
+    // mas nao por "memoria vazia".)
+    expect(mined.memory_required_but_empty).toBe(false);
   });
 
   it("T16 always returns structured librarian_status instead of null", async () => {
@@ -2376,12 +2695,15 @@ describe("PPIRTV flow engine", () => {
       const archived = await engine.archiveFlow({ flow_id: flowId, reason: "teste consumidor simulado finalizado" });
 
       expect(hygiene.hygiene_blocking).toBe(true);
-      expect(mined.memory_required_but_empty).toBe(true);
+      // BUG 1 (novo contrato): classify_only com 0 strong_unwritten limpa o
+      // memory_required_but_empty. Os demais blockers fiscais permanecem.
+      expect(mined.memory_required_but_empty).toBe(false);
       expect(gate.status).toBe("blocked");
       expect(status.status).toBe("blocked");
       expect(status.blockers).toEqual(
-        expect.arrayContaining(["required_cooperation", "memory_required_but_empty", "review_required", "librarian_status", "hygiene_blocking"])
+        expect.arrayContaining(["required_cooperation", "review_required", "librarian_status", "hygiene_blocking"])
       );
+      expect(status.blockers as string[]).not.toContain("memory_required_but_empty");
       expect(archived.status).toBe("archived");
     } finally {
       process.chdir(originalCwd);
@@ -2521,7 +2843,9 @@ describe("PPIRTV flow engine", () => {
       expect(archived.display.direct_action.action).toContain("Arquivado com bloqueios preservados");
       expect(archived.display.direct_action.action).not.toMatch(/Gate pronto para avancar|pronto para avancar/i);
       expect(hygiene.hygiene_blocking).toBe(true);
-      expect(mined.memory_required_but_empty).toBe(true);
+      // BUG 1 (novo contrato): classify_only com 0 strong_unwritten limpa o
+      // memory_required_but_empty. Outros blockers persistem.
+      expect(mined.memory_required_but_empty).toBe(false);
     } finally {
       process.chdir(originalCwd);
     }

@@ -5,6 +5,8 @@ import {
   GATE_REQUIREMENTS,
   NEXT_PHASE,
   PHASES,
+  COMPACT_PHASES,
+  type AnyPhase,
   type Cooperator,
   type Evidence,
   type EvidenceQuality,
@@ -59,6 +61,7 @@ import {
   type PrincipleChecklistItem
 } from "./principles.js";
 import { PpirtvStore, type RuntimeLayoutStatus } from "./store.js";
+import { profileFor } from "./phase-profile.js";
 import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured } from "./config.js";
 
 const DEFAULT_SCOPE: Scope = { in: [], out: [] };
@@ -439,6 +442,22 @@ export class FlowEngine {
       type: reused ? "goal_reused" : "goal_started",
       data: goalLedgerData(flow.goal_binding, flow)
     });
+    // Patch A (modo compact wire-up): propagar envelope.mode para flow.mode.
+    // Default "full" quando ausente. Se compact e o flow ainda esta em fase
+    // full inicial ("pensamentos"), migrar para a fase inicial compact
+    // ("concepcao") para que advance/checkGate operem no perfil certo.
+    // R2 (revisor-codigo): se o flow ja existe com modo diferente (idempotency
+    // reuse), rejeitar em vez de sobrescrever silenciosamente — isso quebraria
+    // o fluxo em fase avancada.
+    const incomingMode = envelope.mode ?? "full";
+    if (reused && flow.mode && flow.mode !== incomingMode) {
+      throw new Error(`MODE_MISMATCH: flow already in mode "${flow.mode}", cannot switch to "${incomingMode}" (idempotency_key=${envelope.idempotency_key})`);
+    }
+    flow.mode = incomingMode;
+    if (flow.mode === "compact" && flow.phase === "pensamentos" && flow.verdicts.length === 0 && Object.keys(flow.gates).length === 0) {
+      flow.phase = "concepcao" as AnyPhase as Phase;
+      flow.history.push({ at: now, type: "flow_created", data: { phase: "concepcao", mode: "compact" } });
+    }
     await this.store.saveFlow(flow);
     await this.ledger(flow.flow_id, reused ? "goal_reused" : "goal_started", goalLedgerData(flow.goal_binding, flow), "dex-code");
 
@@ -898,7 +917,7 @@ export class FlowEngine {
       ...strongUnwritten.map((candidate) => `${candidate.id}:${candidate.scope}:${memoryNonWriteReason(candidate, writePolicy, writtenIds)}`),
       ...postWriteValidation.findings.map((finding) => `post_write_validation:${finding.code}:${finding.file ?? "unknown"}:${finding.line ?? "unknown"}`)
     ];
-    const memoryRequiredButEmpty = memoryRequiredByFlow(flow) && candidates.length === 0 && written.length === 0;
+    const memoryRequiredButEmpty = memoryRequiredByFlow(flow) && candidates.length === 0 && written.length === 0 && !(writePolicy === "classify_only" && strongUnwritten.length === 0);
     const summary: MemoryMiningSummary = {
       required: candidates.length > 0 || memoryRequiredByFlow(flow),
       last_run_at: now,
@@ -1363,8 +1382,21 @@ export class FlowEngine {
     if (phase === "implementacao") {
       flow.changed_files = unique([...flow.changed_files, ...stringArray(provided.changed_files)]);
     }
-    const missing = GATE_REQUIREMENTS[phase]
-      .filter((requirement) => !hasRequirement(flow, requirement.key, requirement.source, provided))
+    // BUG 3 (pragmatic DRY): requisitos source=provided (ex.: implementation_done)
+    // precisam persistir entre chamadas de goal_gate_check. O registro anterior
+    // da fase ja esta em flow.gates[phase].provided; fazemos merge aditivo para
+    // que chamadas subsequentes sem reenviar o provided continuem considerando-o
+    // resolvido. Sources flow/evidence/meeting/verdict continuam consultando o
+    // fluxo vivo e nao sao afetados por este merge.
+    const persistedProvided = (flow.gates[phase]?.provided ?? {}) as Record<string, unknown>;
+    const effectiveProvided: Record<string, unknown> = { ...persistedProvided, ...provided };
+    // Patch C (modo compact wire-up): usar profileFor(flow.mode) para decidir
+    // gates e transicoes. Default cai em FULL_PROFILE quando flow.mode e'
+    // undefined ou desconhecido.
+    const profile = profileFor(flow.mode);
+    const gateRequirements = profile.gateRequirements[phase] ?? [];
+    const missing = gateRequirements
+      .filter((requirement) => !hasRequirement(flow, requirement.key, requirement.source, effectiveProvided))
       .map((requirement) => requirement.key);
     if (needsReviewCoherence(flow, phase, provided)) {
       missing.push("review_evidence_coherent");
@@ -1377,10 +1409,10 @@ export class FlowEngine {
       phase,
       status,
       checked_at: nowIso(),
-      provided,
+      provided: effectiveProvided,
       missing,
-      next: status === "passed" ? `advance_to_${NEXT_PHASE[phase] ?? "complete"}` : `complete_gate_${phase}`,
-      back_to: status === "passed" ? null : DEFAULT_BACK_TO[phase]
+      next: status === "passed" ? `advance_to_${profile.nextPhase[phase] ?? "complete"}` : `complete_gate_${phase}`,
+      back_to: status === "passed" ? null : (profile.defaultBackTo[phase] as Phase | null)
     };
     if (input.persist ?? true) {
       flow.gates[phase] = record;
@@ -1439,7 +1471,8 @@ export class FlowEngine {
     }
     const fresh = await this.store.loadFlow(flow.flow_id);
     const from = fresh.phase;
-    const to = NEXT_PHASE[from];
+    // Patch B (modo compact wire-up): proxima fase segundo o perfil do flow.
+    const to = profileFor(fresh.mode).nextPhase[from];
     const now = nowIso();
     await this.runAfterPhaseHook(fresh, from, input.actor);
     if (to === null) {
@@ -1450,14 +1483,14 @@ export class FlowEngine {
       await this.ledger(fresh.flow_id, "flow_completed", { from, evidence_ids: input.evidence_ids ?? [] }, input.actor);
       return presentGate({ advanced: true, phase: from, from, to: null, status: "complete", next: "complete", back_to: null }, fresh);
     }
-    fresh.phase = to;
+    fresh.phase = to as AnyPhase as Phase;
     fresh.status = "active";
     fresh.updated_at = now;
     fresh.history.push({ at: now, type: "phase_advanced", data: { from, to, evidence_ids: input.evidence_ids ?? [] } });
     await this.store.saveFlow(fresh);
     await this.ledger(fresh.flow_id, "phase_advanced", { from, to, evidence_ids: input.evidence_ids ?? [] }, input.actor);
-    const librarian = await this.runBeforePhaseHook(fresh, to, input.actor);
-    const presented = presentGate({ advanced: true, phase: to, from, to, status: fresh.status, next: `gate_${to}`, back_to: null }, fresh);
+    const librarian = await this.runBeforePhaseHook(fresh, to as AnyPhase as Phase, input.actor);
+    const presented = presentGate({ advanced: true, phase: to as AnyPhase as Phase, from, to: to as AnyPhase as Phase, status: fresh.status, next: `gate_${to}`, back_to: null }, fresh);
     if (librarian) {
       presented.display.librarian = librarian;
     }
@@ -1907,7 +1940,9 @@ export class FlowEngine {
     fiscal_policy?: FiscalPolicyResult;
   } & PresentationEnvelope> {
     const flow = await this.store.loadFlow(flowId);
-    const items = GATE_REQUIREMENTS[flow.phase].map((requirement) => ({
+    const checklistProfile = profileFor(flow.mode);
+    const checklistRequirements = checklistProfile.gateRequirements[flow.phase] ?? [];
+    const items = checklistRequirements.map((requirement) => ({
       label: requirement.label,
       checked: hasRequirement(flow, requirement.key, requirement.source, flow.gates[flow.phase]?.provided ?? {})
     }));
@@ -2763,7 +2798,9 @@ function normalizeGoalEnvelope(input: GoalEnvelope): GoalEnvelope {
     evidence_required: Boolean(input.evidence_required),
     required_evidence: unique(input.required_evidence ?? []),
     requested_verdict_policy: input.requested_verdict_policy,
-    source: input.source.trim()
+    source: input.source.trim(),
+    mode: input.mode,
+    risk_level: input.risk_level
   };
 }
 
@@ -3046,6 +3083,10 @@ function fiscalMateriality(flow: Flow, input: FiscalVerdictInput): boolean {
   if (!flow.goal_binding) {
     return false;
   }
+  // Fast-track: mechanical risk (text/doc/refs updates) skips fiscal material
+  if (flow.goal_binding.envelope.risk_level === "mechanical") {
+    return false;
+  }
   const text = fiscalText(flow, input);
   return (
     input.status === "pronto_com_ressalvas" ||
@@ -3103,6 +3144,16 @@ function noMemoryWasPromoted(flow: Flow, memoryMining?: Record<string, unknown> 
   if (candidatesCount > 0) {
     return candidates.length === 0;
   }
+  // BUG 1: se a mineracao ja foi executada em modo classify_only e nao ha
+  // nenhum candidato forte pendente de destino, nao ha memoria para escrever.
+  // O blocker de "memoria vazia" so faz sentido quando a mineracao ainda
+  // nao rodou ou quando existe strong_unwritten aguardando decisao.
+  const miningRan = typeof status?.last_run_at === "string" && status.last_run_at.length > 0;
+  const writePolicy = typeof status?.write_policy === "string" ? status.write_policy : "";
+  const strongUnwrittenCount = typeof status?.strong_unwritten_count === "number" ? status.strong_unwritten_count : 0;
+  if (miningRan && writePolicy === "classify_only" && strongUnwrittenCount === 0) {
+    return false;
+  }
   return true;
 }
 
@@ -3114,6 +3165,10 @@ function memoryMiningConsolidated(memoryMining: Record<string, unknown> | Memory
 }
 
 function codeReviewRequired(flow: Flow, input: FiscalVerdictInput): boolean {
+  // Fast-track: mechanical risk (text/doc updates) does not require code review
+  if (flow.goal_binding?.envelope.risk_level === "mechanical") {
+    return false;
+  }
   return flow.changed_files.length > 0 || /(codigo|código|mudanca de codigo|mudança de código|diff|review|revisor)/i.test(fiscalText(flow, input));
 }
 
@@ -3619,7 +3674,8 @@ function withDirectAction<T extends { display?: Record<string, unknown> }>(
 }
 
 function fiscalBackTo(flow: Flow): Phase {
-  return DEFAULT_BACK_TO[flow.phase] ?? "pensamentos";
+  // Patch D (modo compact wire-up): regresso fiscal segundo o perfil do flow.
+  return (profileFor(flow.mode).defaultBackTo[flow.phase] as Phase | null) ?? "pensamentos";
 }
 
 function meetingKindForType(type?: MeetingType): MeetingKind | undefined {
@@ -5387,7 +5443,8 @@ function requireText(value: string | undefined, field: string): void {
 }
 
 function assertPhase(phase: string): asserts phase is Phase {
-  if (!PHASES.includes(phase as Phase)) {
+  // Modo compact wire-up: aceitar tambem fases compact alem das full.
+  if (!PHASES.includes(phase as Phase) && !COMPACT_PHASES.includes(phase as AnyPhase as never)) {
     throw new Error(`Invalid phase: ${phase}`);
   }
 }
