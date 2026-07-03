@@ -449,6 +449,11 @@ export class FlowEngine {
     // R2 (revisor-codigo): se o flow ja existe com modo diferente (idempotency
     // reuse), rejeitar em vez de sobrescrever silenciosamente — isso quebraria
     // o fluxo em fase avancada.
+    // P2a (hardening): snapshot do estado pre-mutacao para rollback em caso
+    // de falha em saveFlow. Sem isso, o flow em memoria fica divergente do
+    // disco apos IO error.
+    const previousMode = flow.mode;
+    const previousPhase = flow.phase;
     const incomingMode = envelope.mode ?? "full";
     if (reused && flow.mode && flow.mode !== incomingMode) {
       throw new Error(`MODE_MISMATCH: flow already in mode "${flow.mode}", cannot switch to "${incomingMode}" (idempotency_key=${envelope.idempotency_key})`);
@@ -458,7 +463,15 @@ export class FlowEngine {
       flow.phase = "concepcao" as AnyPhase as Phase;
       flow.history.push({ at: now, type: "flow_created", data: { phase: "concepcao", mode: "compact" } });
     }
-    await this.store.saveFlow(flow);
+    try {
+      await this.store.saveFlow(flow);
+    } catch (saveError) {
+      // Rollback defensivo: restaurar estado pre-mutacao para nao deixar o
+      // flow em memoria divergente do disco.
+      flow.mode = previousMode;
+      flow.phase = previousPhase;
+      throw saveError;
+    }
     await this.ledger(flow.flow_id, reused ? "goal_reused" : "goal_started", goalLedgerData(flow.goal_binding, flow), "dex-code");
 
     return {
@@ -1627,6 +1640,13 @@ export class FlowEngine {
     const now = nowIso();
     flow.phase = input.to;
     flow.status = "active";
+    // P1 (hardening): invalidar gate da fase destino apos regresso. Sem isso,
+    // o gate "passed" stale (com provided acumulado do BUG 3 merge) libera
+    // sem revalidacao. Regra: gate de fase regressada nasce ausente/blocked
+    // ate nova checagem explicita.
+    if (flow.gates[input.to]) {
+      delete flow.gates[input.to];
+    }
     flow.updated_at = now;
     flow.history.push({
       at: now,
@@ -2799,8 +2819,11 @@ function normalizeGoalEnvelope(input: GoalEnvelope): GoalEnvelope {
     required_evidence: unique(input.required_evidence ?? []),
     requested_verdict_policy: input.requested_verdict_policy,
     source: input.source.trim(),
-    mode: input.mode,
-    risk_level: input.risk_level
+    // P2b (hardening): validar mode e risk_level na borda. Rejeitar valores
+    // invalidos em vez de passar cru para o store (Zod do MCP protege, mas
+    // chamadas diretas ao engine precisam do mesmo guard).
+    mode: input.mode && ["full", "compact"].includes(input.mode) ? input.mode : undefined,
+    risk_level: input.risk_level && ["high", "medium", "low", "mechanical"].includes(input.risk_level) ? input.risk_level : undefined
   };
 }
 
@@ -3675,7 +3698,10 @@ function withDirectAction<T extends { display?: Record<string, unknown> }>(
 
 function fiscalBackTo(flow: Flow): Phase {
   // Patch D (modo compact wire-up): regresso fiscal segundo o perfil do flow.
-  return (profileFor(flow.mode).defaultBackTo[flow.phase] as Phase | null) ?? "pensamentos";
+  // P3b (hardening): fallback mode-aware para nao enviar compact flow para
+  // fase full-only ("pensamentos") em caso de dados corrompidos.
+  const fallback = flow.mode === "compact" ? "concepcao" : "pensamentos";
+  return (profileFor(flow.mode).defaultBackTo[flow.phase] as Phase | null) ?? (fallback as Phase);
 }
 
 function meetingKindForType(type?: MeetingType): MeetingKind | undefined {

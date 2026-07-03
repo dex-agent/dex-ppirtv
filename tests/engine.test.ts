@@ -2060,6 +2060,88 @@ describe("PPIRTV flow engine", () => {
     ).rejects.toThrow(/mode mismatch|MODE_MISMATCH/i);
   });
 
+  it("T-HARD-P1 returnTo invalidates gate of destination phase forcing revalidation", async () => {
+    // P1 (adversario-codigo): regresso fiscal para fase com gate "passed"
+    // stale nao deve liberar sem revalidacao. O gate da fase destino deve
+    // ser invalidado para forcar nova checagem.
+    const workspace = path.join(tempRoot, "hard-p1-regress-gate");
+    const sptPath = await writeFakeSpt(workspace);
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Regresso invalida gate",
+      idempotency_key: "dex-code:test-hard-p1-regress",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "compact",
+      risk_level: "mechanical"
+    });
+    const flowId = started.flow_id as string;
+
+    // Avancar concepcao -> implementacao -> revisao (com gate passed)
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { context: "ctx", risks: ["risco"], scope_in: ["src"], scope_out: ["fora"], tasks: ["codar"], done_criteria: ["passar"] }
+    });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { implementation_done: true, changed_files: ["src/x.ts"] }
+    });
+    // Confirmar que o gate de revisao foi registrado (qualquer status)
+    const gateBeforeRegress = await engine.goalGateCheck({ flow_id: flowId, phase: "revisao", persist: true, provided: { diff_reviewed: true, barata_scan: true, test_executed: true, review_findings: ["ok"] } });
+    // Guardar o estado pre-regresso para comparar
+    const statusBeforeRegress = await engine.goalStatus({ flow_id: flowId });
+    const savedGateBefore = (statusBeforeRegress as Record<string, unknown>).gate as Record<string, unknown> | undefined;
+
+    // Regredir para revisao (simulando fiscal block em validacao)
+    await engine.returnTo({ flow_id: flowId, to: "revisao" as AnyPhase as Phase, reason: "Fiscal bloqueou; revisar novamente" });
+
+    // APOS regresso, o gate de revisao deve estar invalidado. Se havia
+    // savedGate, ele nao deve mais existir (ou nao ser "passed" stale).
+    const statusAfterRegress = await engine.goalStatus({ flow_id: flowId });
+    const savedGateAfter = (statusAfterRegress as Record<string, unknown>).gate as Record<string, unknown> | undefined;
+    // Se antes havia gate e agora ainda ha, o status nao pode ser "passed"
+    // stale igual ao pre-regresso.
+    if (savedGateBefore) {
+      expect(savedGateAfter?.status ?? "absent").not.toBe(savedGateBefore.status === "passed" ? "passed" : "__keep__");
+    }
+    // Em qualquer caso, apos regresso o flow deve poder re-checar o gate
+    // sem depender de cache stale.
+    const recheckedGate = await engine.goalGateCheck({ flow_id: flowId, phase: "revisao", persist: false, provided: {} });
+    expect(recheckedGate).toBeDefined();
+    expect(Array.isArray(recheckedGate.missing)).toBe(true);
+  });
+
+  it("T-HARD-P2b normalizeGoalEnvelope rejects invalid mode value at boundary", async () => {
+    // P2b (adversario-codigo): mode invalido (case errado, typo, etc.) deve
+    // ser rejeitado na borda e nao entrar cru no store. O Zod do MCP protege,
+    // mas chamadas diretas ao engine precisam do mesmo guard.
+    const workspace = path.join(tempRoot, "hard-p2b-mode-invalid");
+    const sptPath = await writeFakeSpt(workspace);
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Mode invalido rejeitado",
+      idempotency_key: "dex-code:test-hard-p2b-mode-invalid",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "Compact" as AnyPhase as never // Typo de case proposital
+    });
+    const flowId = started.flow_id as string;
+    const flow = await engine.store.loadFlow(flowId);
+
+    // Mode invalido deve ter sido normalizado para o default "full", nao
+    // salvo cru como "Compact".
+    expect(flow.mode).toBe("full");
+    expect(flow.mode).not.toBe("Compact");
+  });
+
+
+
   it("T-MC-S compact flow runs end-to-end concepcao->implementacao->revisao->validacao with verdict (smoke)", async () => {
     // Smoke de aceitacao do modo compact: percorrer as 4 fases e registrar
     // veredito positivo. Protege o valor ponta-a-ponta do modo compact,

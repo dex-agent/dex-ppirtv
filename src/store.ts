@@ -228,6 +228,10 @@ function scrubSecrets(value: unknown): unknown {
 function normalizeFlow(flow: Flow): Flow {
   flow.parking_lot ??= [];
   flow.gold_mining ??= [];
+  // P3a (hardening): default explicito para flow.mode. Antes dependia do
+  // fallback em profileFor(undefined); agora o ponto de leitura seta o
+  // default, eliminando fragilidade defensiva.
+  flow.mode ??= "full";
   flow.goal_learning_links ??= [];
   flow.cooperators ??= [];
   flow.active_credits ??= [];
