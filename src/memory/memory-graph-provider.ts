@@ -1,14 +1,14 @@
 import { access } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
-import type { Phase } from "../domain.js";
+import type { Phase, AnyPhase } from "../domain.js";
 import { assertNoSecretLikeText, redactSecretLikeText } from "./mining-policy.js";
 
 export type MemoryGraphSource = "graphify";
 
 export type MemoryGraphQuery = {
   flow_id: string;
-  phase: Phase;
+  phase: AnyPhase;
   question: string;
   workspace: string;
 };
@@ -25,7 +25,7 @@ export type MemoryGraphHit = {
 
 export type MemoryGraphResult = {
   flow_id: string;
-  phase: Phase;
+  phase: AnyPhase;
   queried_at: string;
   items: MemoryGraphHit[];
   warnings: string[];

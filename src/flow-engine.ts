@@ -111,7 +111,7 @@ type ResolveMemoryCandidatesInput = {
 
 type BlockerDiagnostics = {
   source: "goal_status";
-  phase: Phase;
+  phase?: AnyPhase;
   policy: "none" | "phase_gate_requirements" | "fiscal_material_policy" | "mixed";
   fiscal_mode_active: boolean;
   gate_status: GateRecord["status"];
@@ -460,7 +460,7 @@ export class FlowEngine {
     }
     flow.mode = incomingMode;
     if (flow.mode === "compact" && flow.phase === "pensamentos" && flow.verdicts.length === 0 && Object.keys(flow.gates).length === 0) {
-      flow.phase = "concepcao" as AnyPhase as Phase;
+      flow.phase = "concepcao";
       flow.history.push({ at: now, type: "flow_created", data: { phase: "concepcao", mode: "compact" } });
     }
     try {
@@ -655,7 +655,7 @@ export class FlowEngine {
   async goalGateCheck(input: {
     flow_id?: string;
     idempotency_key?: string;
-    phase?: Phase;
+    phase?: AnyPhase;
     provided?: Record<string, unknown>;
     persist?: boolean;
     detail?: "compact" | "full";
@@ -1132,7 +1132,7 @@ export class FlowEngine {
   async goalRegress(input: {
     flow_id?: string;
     idempotency_key?: string;
-    to?: Phase;
+    to?: AnyPhase;
     reason: string;
     meeting_id?: string;
     evidence_ids?: string[];
@@ -1390,7 +1390,7 @@ export class FlowEngine {
 
   async checkGate(input: {
     flow_id: string;
-    phase?: Phase;
+    phase?: AnyPhase;
     provided?: Record<string, unknown>;
     persist?: boolean;
   }): Promise<GateRecord & PresentationEnvelope> {
@@ -1491,7 +1491,7 @@ export class FlowEngine {
     const fresh = await this.store.loadFlow(flow.flow_id);
     const from = fresh.phase;
     // Patch B (modo compact wire-up): proxima fase segundo o perfil do flow.
-    const to = profileFor(fresh.mode).nextPhase[from];
+    const to = profileFor(fresh.mode).nextPhase[from] as AnyPhase | null;
     const now = nowIso();
     await this.runAfterPhaseHook(fresh, from, input.actor);
     if (to === null) {
@@ -1502,21 +1502,21 @@ export class FlowEngine {
       await this.ledger(fresh.flow_id, "flow_completed", { from, evidence_ids: input.evidence_ids ?? [] }, input.actor);
       return presentGate({ advanced: true, phase: from, from, to: null, status: "complete", next: "complete", back_to: null }, fresh);
     }
-    fresh.phase = to as AnyPhase as Phase;
+    fresh.phase = to;
     fresh.status = "active";
     fresh.updated_at = now;
     fresh.history.push({ at: now, type: "phase_advanced", data: { from, to, evidence_ids: input.evidence_ids ?? [] } });
     await this.store.saveFlow(fresh);
     await this.ledger(fresh.flow_id, "phase_advanced", { from, to, evidence_ids: input.evidence_ids ?? [] }, input.actor);
-    const librarian = await this.runBeforePhaseHook(fresh, to as AnyPhase as Phase, input.actor);
-    const presented = presentGate({ advanced: true, phase: to as AnyPhase as Phase, from, to: to as AnyPhase as Phase, status: fresh.status, next: `gate_${to}`, back_to: null }, fresh);
+    const librarian = await this.runBeforePhaseHook(fresh, to, input.actor);
+    const presented = presentGate({ advanced: true, phase: to, from, to: to, status: fresh.status, next: `gate_${to}`, back_to: null }, fresh);
     if (librarian) {
       presented.display.librarian = librarian;
     }
     return presented;
   }
 
-  private async runAfterPhaseHook(flow: Flow, phase: Phase, actor?: string): Promise<void> {
+  private async runAfterPhaseHook(flow: Flow, phase: AnyPhase, actor?: string): Promise<void> {
     try {
       const meetings = await this.store.listMeetings(flow.flow_id);
       const summary = await this.memoryHooks.afterPhase({ flow, phase, meetings });
@@ -1536,7 +1536,7 @@ export class FlowEngine {
     }
   }
 
-  private async runBeforePhaseHook(flow: Flow, phase: Phase, actor?: string): Promise<RecallVisualStatus | null> {
+  private async runBeforePhaseHook(flow: Flow, phase: AnyPhase, actor?: string): Promise<RecallVisualStatus | null> {
     try {
       const summary = await this.memoryHooks.beforePhase({ flow, phase });
       const librarianStatus: RecallVisualStatus = {
@@ -1607,7 +1607,7 @@ export class FlowEngine {
     }
   }
 
-  private async recordMemoryHookWarning(flowId: string, hook: "beforePhase" | "afterPhase", phase: Phase, error: unknown, actor?: string): Promise<void> {
+  private async recordMemoryHookWarning(flowId: string, hook: "beforePhase" | "afterPhase", phase: AnyPhase, error: unknown, actor?: string): Promise<void> {
     try {
       await this.ledger(
         flowId,
@@ -1638,7 +1638,7 @@ export class FlowEngine {
     }
   }
 
-  async returnTo(input: { flow_id: string; to: Phase; reason: string; evidence_ids?: string[]; actor?: string }): Promise<Flow & PresentationEnvelope> {
+  async returnTo(input: { flow_id: string; to: AnyPhase; reason: string; evidence_ids?: string[]; actor?: string }): Promise<Flow & PresentationEnvelope> {
     assertPhase(input.to);
     requireText(input.reason, "reason");
     const flow = await this.store.loadFlow(input.flow_id);
@@ -1654,7 +1654,7 @@ export class FlowEngine {
     const toIndex = profile.phases.indexOf(input.to);
     if (toIndex >= 0) {
       for (let i = toIndex; i < profile.phases.length; i += 1) {
-        const phaseToInvalidate = profile.phases[i] as AnyPhase as Phase;
+        const phaseToInvalidate = profile.phases[i];
         if (flow.gates[phaseToInvalidate]) {
           delete flow.gates[phaseToInvalidate];
         }
@@ -1968,7 +1968,7 @@ export class FlowEngine {
 
   async renderChecklist(flowId: string, detail: "compact" | "full" = "full"): Promise<{
     flow_id: string;
-    phase: Phase;
+    phase?: AnyPhase;
     markdown: string;
     items: Array<{ label: string; checked: boolean }>;
     operational_principles?: PrincipleChecklistItem[];
@@ -3371,7 +3371,7 @@ function isMaterialHygieneFinding(finding: HygieneFinding): boolean {
   return finding.severity === "warning" || finding.severity === "error";
 }
 
-function needsReviewCoherence(flow: Flow, phase: Phase, provided: Record<string, unknown>): boolean {
+function needsReviewCoherence(flow: Flow, phase: AnyPhase, provided: Record<string, unknown>): boolean {
   const changedFilesVisible = flow.changed_files.length > 0 || stringArray(provided.changed_files).length > 0;
   if (phase !== "revisao" || !flow.goal_binding || !changedFilesVisible) {
     return false;
@@ -3719,7 +3719,7 @@ function withDirectAction<T extends { display?: Record<string, unknown> }>(
   };
 }
 
-function fiscalBackTo(flow: Flow): Phase {
+function fiscalBackTo(flow: Flow): AnyPhase {
   // Patch D (modo compact wire-up): regresso fiscal segundo o perfil do flow.
   // P3b (hardening): fallback mode-aware para nao enviar compact flow para
   // fase full-only ("pensamentos") em caso de dados corrompidos.
@@ -3820,7 +3820,7 @@ function nextRequiredActionFor(
   flow: Flow,
   meetings: Meeting[],
   blockers: string[],
-  backTo: Phase | null,
+  backTo: AnyPhase | null,
   regressCount: number,
   regressLimitReached: boolean,
   loopMonitor: LoopMonitor | null
@@ -4009,7 +4009,7 @@ function requiredCooperationSequence(
   meetingId: string,
   meetingKind: MeetingKind,
   blockers: string[],
-  backTo: Phase | null,
+  backTo: AnyPhase | null,
   meetingAlreadyOpen: boolean
 ): Array<Record<string, unknown>> {
   const participants = requiredMeetingParticipants(blockers);
@@ -4077,7 +4077,7 @@ function requiredCooperationSequence(
   return sequence;
 }
 
-function loopEscalationAction(flow: Flow, blockers: string[], backTo: Phase | null, loopMonitor: LoopMonitor | null): Record<string, unknown> | null {
+function loopEscalationAction(flow: Flow, blockers: string[], backTo: AnyPhase | null, loopMonitor: LoopMonitor | null): Record<string, unknown> | null {
   if (!loopMonitor?.escalation.active) {
     return null;
   }
@@ -4427,7 +4427,7 @@ function memoryMiningRequiredSequence(flow: Flow): Array<Record<string, unknown>
 
 function memoryMiningBlockedAction(
   flow: Flow,
-  backTo: Phase | null,
+  backTo: AnyPhase | null,
   regressCount: number,
   regressLimitReached: boolean
 ): Record<string, unknown> {

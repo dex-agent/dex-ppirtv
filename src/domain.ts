@@ -199,7 +199,7 @@ export type PipelineFlowResult = {
   goal: string;
   flow_id?: string;
   status: PipelineFlowStatus;
-  phase?: Phase;
+  phase?: AnyPhase;
   verdict_id?: string;
   blocker?: string;
   evidence_ids?: string[];
@@ -231,13 +231,13 @@ export type Scope = {
 };
 
 export type GateRecord = {
-  phase: Phase;
+  phase: AnyPhase;
   status: GateStatus;
   checked_at: string;
   provided: Record<string, unknown>;
   missing: string[];
   next: string;
-  back_to: Phase | null;
+  back_to: AnyPhase | null;
 };
 
 export type Cooperator = {
@@ -247,10 +247,10 @@ export type Cooperator = {
 };
 
 export type PresentationAliases = {
-  fase?: Phase;
+  fase?: AnyPhase;
   faltando?: string[];
   proximo?: string;
-  voltar_para?: Phase | null;
+  voltar_para?: AnyPhase | null;
   estacionamento?: string[];
   garimpo?: string[];
 };
@@ -400,7 +400,7 @@ export type Flow = {
   goal_binding?: GoalBinding;
   owner?: string;
   context?: string;
-  phase: Phase;
+  phase: AnyPhase;
   mode?: PhaseMode;
   status: FlowStatus;
   scope: Scope;
@@ -419,7 +419,7 @@ export type Flow = {
   evidence: Evidence[];
   meetings: string[];
   verdicts: Verdict[];
-  gates: Partial<Record<Phase, GateRecord>>;
+  gates: Record<string, GateRecord>;
   memory_mining?: MemoryMiningSummary;
   memory_candidate_resolutions?: MemoryCandidateResolution[];
   history: Array<{

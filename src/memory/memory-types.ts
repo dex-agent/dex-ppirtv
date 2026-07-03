@@ -1,4 +1,4 @@
-import type { Flow, Meeting, Phase } from "../domain.js";
+import type { Flow, Meeting, Phase, AnyPhase } from "../domain.js";
 
 export type MemorySource = "runtime" | "curated_l1" | "curated_l2" | "curated_l3" | "graphify";
 
@@ -15,7 +15,7 @@ export type MemoryRecallItem = {
 
 export type MemoryRecallSummary = {
   flow_id: string;
-  phase: Phase;
+  phase: AnyPhase;
   recalled_at: string;
   items: MemoryRecallItem[];
   warnings: string[];
@@ -28,7 +28,7 @@ export type MemoryRecallSummary = {
 export type MemoryRuntimeRecord = {
   id: string;
   flow_id: string;
-  phase: Phase;
+  phase: AnyPhase;
   type: "recall" | "hook" | "candidate" | "parking";
   created_at: string;
   data: Record<string, unknown>;
@@ -36,7 +36,7 @@ export type MemoryRuntimeRecord = {
 
 export type MemoryHookSummary = {
   flow_id: string;
-  phase: Phase;
+  phase: AnyPhase;
   recorded_at: string;
   candidates_count: number;
   parking_count: number;
@@ -45,13 +45,13 @@ export type MemoryHookSummary = {
 
 export type MemoryHookInput = {
   flow: Flow;
-  phase: Phase;
+  phase: AnyPhase;
   meetings?: Meeting[];
 };
 
 export type MemoryRecallInput = {
   flow: Flow;
-  phase: Phase;
+  phase: AnyPhase;
 };
 
 export type MemoryHookRunner = {

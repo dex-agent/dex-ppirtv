@@ -1,4 +1,4 @@
-import { DEFAULT_BACK_TO, type Cooperator, type DisplayEnvelope, type Flow, type Phase, type PresentationEnvelope } from "./domain.js";
+import { DEFAULT_BACK_TO, type Cooperator, type DisplayEnvelope, type Flow, type AnyPhase, type Phase, type PresentationEnvelope } from "./domain.js";
 
 const PHASE_META: Record<Phase, { label: string; emoji: string; owner: string; ownerEmoji: string }> = {
   pensamentos: { label: "Pensamentos", emoji: "🧠", owner: "Rita Reuniao + Quele Questiona", ownerEmoji: "🗣️" },
@@ -42,10 +42,10 @@ const CHECKLIST_EMOJI: Record<Phase, string> = {
 };
 
 export type GateLike = {
-  phase: Phase;
+  phase: AnyPhase;
   missing?: string[];
   next?: string;
-  back_to?: Phase | null;
+  back_to?: AnyPhase | null;
   parking_lot?: string[];
   gold_mining?: string[];
   cooperators?: Cooperator[];
@@ -106,7 +106,7 @@ export function presentChecklist(input: {
   markdown: string;
 }): {
   flow_id: string;
-  phase: Phase;
+  phase: AnyPhase;
   markdown: string;
   items: Array<{ label: string; checked: boolean }>;
 } & PresentationEnvelope {
@@ -163,11 +163,11 @@ export function presentationFor(input: GateLike & { checklist_visual?: DisplayEn
       garimpo: input.gold_mining ?? []
     },
     display,
-    suggested_cooperation: suggestedCooperation(input.phase, missing, input.back_to ?? DEFAULT_BACK_TO[input.phase])
+    suggested_cooperation: suggestedCooperation(input.phase, missing, input.back_to ?? (DEFAULT_BACK_TO[input.phase as Phase] ?? null))
   };
 }
 
-function suggestedCooperation(phase: Phase, missing: string[], backTo: Phase | null): Cooperator[] {
+function suggestedCooperation(phase: AnyPhase, missing: string[], backTo: AnyPhase | null): Cooperator[] {
   if (missing.length === 0) {
     return [];
   }

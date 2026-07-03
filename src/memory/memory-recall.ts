@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { Flow, Phase } from "../domain.js";
+import type { Flow, Phase, AnyPhase } from "../domain.js";
 import type { MemoryRecallItem, MemoryRecallSummary } from "./memory-types.js";
 import type { MemoryGraphProvider } from "./memory-graph-provider.js";
 import { MemoryRuntimeStore } from "./memory-store.js";
@@ -9,7 +9,7 @@ import { normalizeTextKey, redactSecretLikeText } from "./mining-policy.js";
 const MIN_RECALL_TOKEN_LENGTH = 3;
 const MAX_RECALL_QUERY_TOKENS = 40;
 
-export async function beforePhase(input: { flow: Flow; phase: Phase; runtime: MemoryRuntimeStore; graphProvider?: MemoryGraphProvider }): Promise<MemoryRecallSummary> {
+export async function beforePhase(input: { flow: Flow; phase: AnyPhase; runtime: MemoryRuntimeStore; graphProvider?: MemoryGraphProvider }): Promise<MemoryRecallSummary> {
   const recalledAt = new Date().toISOString();
   const warnings: string[] = [];
   const query = buildQuery(input.flow, input.phase);
@@ -69,7 +69,7 @@ function librarianStatusFrom(
   return warnings.length > 0 ? "empty" : "disabled";
 }
 
-async function graphRecall(provider: MemoryGraphProvider | undefined, flow: Flow, phase: Phase, warnings: string[]): Promise<MemoryRecallItem[]> {
+async function graphRecall(provider: MemoryGraphProvider | undefined, flow: Flow, phase: AnyPhase, warnings: string[]): Promise<MemoryRecallItem[]> {
   if (!provider) {
     return [];
   }
@@ -161,11 +161,11 @@ async function curatedRecall(flow: Flow, query: string[], warnings: string[]): P
   return items;
 }
 
-function buildQuery(flow: Flow, phase: Phase): string[] {
+function buildQuery(flow: Flow, phase: AnyPhase): string[] {
   return tokenize([phase, flow.goal, flow.context, ...flow.risks, ...flow.uncertainties, ...flow.tasks, ...flow.decisions].filter(Boolean).join(" "));
 }
 
-function buildGraphQuestion(flow: Flow, phase: Phase): string {
+function buildGraphQuestion(flow: Flow, phase: AnyPhase): string {
   return [phase, flow.goal, flow.context, ...flow.risks, ...flow.uncertainties, ...flow.tasks, ...flow.decisions]
     .filter(Boolean)
     .join(" ")

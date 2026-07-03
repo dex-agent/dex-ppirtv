@@ -9,9 +9,11 @@
  * presentation never need to know if it's "compact" or "full".
  */
 
-import type { Phase, CompactPhase } from "./domain.js";
+import type { Phase, CompactPhase, AnyPhase } from "./domain.js";
 
-export type AnyPhase = string;
+// AnyPhase agora e reexportado de domain.ts (SSOT). A definicao local
+// `string` foi removida para evitar divergencia de tipos.
+export type { AnyPhase };
 
 export type PhaseDisplayMeta = {
   label: string;
