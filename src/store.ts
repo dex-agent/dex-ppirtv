@@ -212,16 +212,25 @@ async function readJson<T>(filePath: string): Promise<T> {
 }
 
 // #3 (security): writeJsonAtomic usa temp unico com randomUUID para evitar
-// race condition em escritas concorrentes.
+// race condition em escritas concorrentes. No Windows, fs.rename falha com
+// EPERM se o destino existe ou ha handle aberto; usamos retry com unlink.
 // NOTA: writeJsonAtomic NAO redaciona segredos — o flow JSON em .ppirtv/ e'
-// estado interno do runtime, e o fiscal policy precisa ler o conteudo original
-// (ex.: gold_mining com token sintetico para teste de blocked_reason). A
-// redação acontece na BORDA DE SAIDA: appendLedger (para o ledger.ndjson) e
-// exportRedactedDiagnosticBundle (para export cross-boundary).
+// estado interno do runtime, e o fiscal policy precisa ler o conteudo original.
 async function writeJsonAtomic(filePath: string, value: unknown): Promise<void> {
   const tempPath = `${filePath}.${randomUUID()}.tmp`;
   await writeFile(tempPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-  await rename(tempPath, filePath);
+  try {
+    await rename(tempPath, filePath);
+  } catch (renameError) {
+    // Windows: rename falha se o destino existe. Tentar unlink + rename.
+    try {
+      const { unlink } = await import("node:fs/promises");
+      await unlink(filePath);
+    } catch {
+      // arquivo pode nao existir ainda; ignorar
+    }
+    await rename(tempPath, filePath);
+  }
 }
 
 function normalizeFlow(flow: Flow): Flow {

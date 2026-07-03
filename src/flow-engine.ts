@@ -1646,12 +1646,25 @@ export class FlowEngine {
     const now = nowIso();
     flow.phase = input.to;
     flow.status = "active";
-    // P1 (hardening): invalidar gate da fase destino apos regresso. Sem isso,
-    // o gate "passed" stale (com provided acumulado do BUG 3 merge) libera
-    // sem revalidacao. Regra: gate de fase regressada nasce ausente/blocked
-    // ate nova checagem explicita.
-    if (flow.gates[input.to]) {
-      delete flow.gates[input.to];
+    // P1+D (hardening): invalidar gate da fase destino E todos os gates
+    // de fases posteriores no perfil do flow. Sem isso, o gate "passed"
+    // stale (com provided acumulado do BUG 3 merge) de fases downstream
+    // libera avance sem revalidacao apos regresso.
+    const profile = profileFor(flow.mode);
+    const toIndex = profile.phases.indexOf(input.to);
+    if (toIndex >= 0) {
+      for (let i = toIndex; i < profile.phases.length; i += 1) {
+        const phaseToInvalidate = profile.phases[i] as AnyPhase as Phase;
+        if (flow.gates[phaseToInvalidate]) {
+          delete flow.gates[phaseToInvalidate];
+        }
+      }
+    } else {
+      // Fallback: se a fase nao esta no perfil (dados corrompidos),
+      // invalidar pelo menos o gate da fase destino.
+      if (flow.gates[input.to]) {
+        delete flow.gates[input.to];
+      }
     }
     flow.updated_at = now;
     flow.history.push({

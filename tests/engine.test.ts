@@ -2115,6 +2115,52 @@ describe("PPIRTV flow engine", () => {
     expect(Array.isArray(recheckedGate.missing)).toBe(true);
   });
 
+  it("T-HARD-D returnTo invalidates ALL downstream gates not just destination", async () => {
+    // D (design-patterns-gof): returnTo so invalidava o gate da fase destino.
+    // Gates de fases POSTERIORES continuavam "passed" com provided stale
+    // (do BUG 3 merge), permitindo avance sem revalidacao.
+    const workspace = path.join(tempRoot, "hard-d-downstream-gates");
+    const sptPath = await writeFakeSpt(workspace);
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Downstream gates invalidados",
+      idempotency_key: "dex-code:test-hard-d-downstream",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "compact",
+      risk_level: "mechanical"
+    });
+    const flowId = started.flow_id as string;
+
+    // Avancar ate revisao (concepcao -> implementacao -> revisao)
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { context: "ctx", risks: ["risco"], scope_in: ["src"], scope_out: ["fora"], tasks: ["codar"], done_criteria: ["passar"] }
+    });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { implementation_done: true, changed_files: ["src/x.ts"] }
+    });
+    // Registrar gate passed em revisao
+    await engine.goalGateCheck({ flow_id: flowId, phase: "revisao", persist: true, provided: { diff_reviewed: true, barata_scan: true, test_executed: true, review_findings: ["ok"] } });
+
+    // Confirmar que revisao tem gate registrado
+    const flowBeforeRegress = await engine.store.loadFlow(flowId);
+    expect(flowBeforeRegress.gates["revisao"]).toBeDefined();
+
+    // Regredir para implementacao (uma fase ANTES de revisao)
+    await engine.returnTo({ flow_id: flowId, to: "implementacao" as AnyPhase as Phase, reason: "Fiscal bloqueou; refazer implementacao" });
+
+    // APOS regresso, o gate de revisao (fase POSTERIOR a implementacao)
+    // tambem deve ter sido invalidado, nao so o de implementacao.
+    const flowAfterRegress = await engine.store.loadFlow(flowId);
+    expect(flowAfterRegress.gates["implementacao"]).toBeUndefined();
+    expect(flowAfterRegress.gates["revisao"]).toBeUndefined();
+  });
+
   it("T-HARD-P2b normalizeGoalEnvelope rejects invalid mode value at boundary", async () => {
     // P2b (adversario-codigo): mode invalido (case errado, typo, etc.) deve
     // ser rejeitado na borda e nao entrar cru no store. O Zod do MCP protege,
