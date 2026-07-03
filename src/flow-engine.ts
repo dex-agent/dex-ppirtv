@@ -603,9 +603,9 @@ export class FlowEngine {
   async goalCheckout(input: { flow_id?: string; idempotency_key?: string; detail?: "compact" | "full" }): Promise<Record<string, unknown>> {
     const status = await this.goalStatus(input);
     const checkout = status.ppirtv_checkout as Record<string, unknown>;
-    const detail = input.detail === "compact" ? "compact" : "full";
-    const prestacaoDeContas = checkout.prestacao_de_contas;
-    const prestacaoCount = Array.isArray(prestacaoDeContas) ? prestacaoDeContas.length : 0;
+    // A+C (DRY): o checkout interno ja foi processado por compactPpirtvCheckout
+    // quando detail=compact. Nao reomitir nem recompute count aqui — confiar
+    // no processamento anterior. Apenas espelhar campos do checkout no top-level.
     return {
       flow_id: status.flow_id,
       status: status.status,
@@ -619,18 +619,17 @@ export class FlowEngine {
       cooperation_accountability: checkout.cooperation_accountability,
       librarian_accountability: checkout.librarian_accountability,
       contract_accountability: checkout.contract_accountability,
-      ready_definition: detail === "compact" ? undefined : checkout.ready_definition,
-      gate_final_output: detail === "compact" ? undefined : checkout.gate_final_output,
-      final_report_model: detail === "compact" ? undefined : checkout.final_report_model,
+      ready_definition: checkout.ready_definition,
+      gate_final_output: checkout.gate_final_output,
+      final_report_model: checkout.final_report_model,
       project_root: checkout.project_root,
       ppirtv_home: checkout.ppirtv_home,
       runtime_layout_status: checkout.runtime_layout_status,
       evidence_accountability: checkout.evidence_accountability,
       blocker_diagnostics: checkout.blocker_diagnostics,
       utility_accountability: checkout.utility_accountability,
-      // BUG 5: em compact, omitir array grande; manter contagem.
-      prestacao_de_contas: detail === "compact" ? undefined : prestacaoDeContas,
-      prestacao_de_contas_count: prestacaoCount,
+      prestacao_de_contas: checkout.prestacao_de_contas,
+      prestacao_de_contas_count: checkout.prestacao_de_contas_count,
       residual_risks: checkout.residual_risks,
       resolution_guidance: checkout.resolution_guidance,
       ppirtv_checkout: checkout
@@ -4784,7 +4783,11 @@ function compactPpirtvCheckout(checkout: Record<string, unknown>, detail: "compa
     return checkout;
   }
   const prestacao = checkout.prestacao_de_contas;
-  const prestacaoCount = Array.isArray(prestacao) ? prestacao.length : 0;
+  // prestacao_de_contas pode ser array (legado) ou objeto com chaves
+  // (utilidade, memoria, evidencias, etc.). Contar de forma compativel.
+  const prestacaoCount = Array.isArray(prestacao)
+    ? prestacao.length
+    : (prestacao && typeof prestacao === "object" ? Object.keys(prestacao).length : 0);
   const { prestacao_de_contas, ready_definition, gate_final_output, final_report_model, ...rest } = checkout;
   return {
     ...rest,

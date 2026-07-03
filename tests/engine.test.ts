@@ -2165,6 +2165,50 @@ describe("PPIRTV flow engine", () => {
     expect(checkoutCompact.prestacao_de_contas_count).toBeDefined();
   });
 
+  it("T-BUG5-CO ppirtv_checkout with detail:compact reports correct prestacao_de_contas_count", async () => {
+    // A (adversario): ppirtv_checkout com detail:compact reportava count=0
+    // porque lia prestacao_de_contas ja removido por compactPpirtvCheckout.
+    const flow = await engine.createFlow({ goal: "BUG5 checkout compact count" });
+    // Adicionar alguma atividade para gerar prestacao_de_contas
+    await engine.attachEvidence({ flow_id: flow.flow_id, kind: "note", title: "ev", content: "x" });
+
+    const checkoutFull = await engine.goalCheckout({ flow_id: flow.flow_id }) as Record<string, unknown>;
+    // prestacao_de_contas pode ser array ou objeto; contar de forma compativel.
+    const fullPrestacao = checkoutFull.prestacao_de_contas;
+    const fullCount = Array.isArray(fullPrestacao)
+      ? fullPrestacao.length
+      : (fullPrestacao && typeof fullPrestacao === "object" ? Object.keys(fullPrestacao as Record<string, unknown>).length : 0);
+
+    const checkoutCompact = await engine.goalCheckout({ flow_id: flow.flow_id, detail: "compact" }) as Record<string, unknown>;
+    // O count em compact deve ser igual ao count em full (nao zero).
+    expect(checkoutCompact.prestacao_de_contas).toBeUndefined();
+    expect(typeof checkoutCompact.prestacao_de_contas_count).toBe("number");
+    expect(checkoutCompact.prestacao_de_contas_count).toBe(fullCount);
+    // ready_definition/gate_final_output/final_report_model omitidos em compact.
+    expect(checkoutCompact.ready_definition).toBeUndefined();
+    expect(checkoutCompact.gate_final_output).toBeUndefined();
+    expect(checkoutCompact.final_report_model).toBeUndefined();
+  });
+
+  it("T-BUG5-GC goal_gate_check with detail:compact omits operational_principles in status_snapshot", async () => {
+    // B (revisor): goal_gate_check com detail:compact nao tinha teste.
+    const { flowId } = await startGoalWithEvidence("dex-code:test-bug5-gate-compact", "Gate compact");
+    await engine.goalAdvance({ flow_id: flowId, provided: { context: "ctx", risks: ["r"], uncertainties: ["u"] } });
+
+    const gate = await engine.goalGateCheck({
+      flow_id: flowId,
+      phase: "planejamento",
+      provided: { scope_in: ["x"], scope_out: ["y"], tasks: ["t"], expected_evidence: ["e"], done_criteria: ["d"] },
+      persist: false,
+      detail: "compact"
+    }) as Record<string, unknown>;
+
+    const snapshot = gate.status_snapshot as Record<string, unknown>;
+    const checklist = snapshot.checklist as Record<string, unknown>;
+    expect(checklist.operational_principles).toBeUndefined();
+    expect(checklist.operational_principles_count).toBeDefined();
+  });
+
 
 
   it("T-MC-S compact flow runs end-to-end concepcao->implementacao->revisao->validacao with verdict (smoke)", async () => {
