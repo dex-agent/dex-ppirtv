@@ -2140,6 +2140,31 @@ describe("PPIRTV flow engine", () => {
     expect(flow.mode).not.toBe("Compact");
   });
 
+  it("T-BUG5 detail:compact omits operational_principles and prestacao_de_contas from goal_status", async () => {
+    // BUG 5: goal_status com detail:"compact" deve omitir arrays grandes
+    // (operational_principles, ready_definition, gate_final_output,
+    // final_report_model, prestacao_de_contas) e manter contagens.
+    const flow = await engine.createFlow({ goal: "BUG5 detail compact" });
+
+    // Default (full): operational_principles presente.
+    const statusFull = await engine.goalStatus({ flow_id: flow.flow_id }) as Record<string, unknown>;
+    const checklistFull = statusFull.checklist as Record<string, unknown>;
+    expect(checklistFull.operational_principles).toBeDefined();
+    expect(Array.isArray(checklistFull.operational_principles)).toBe(true);
+
+    // Compact: operational_principles ausente, mas count presente.
+    const statusCompact = await engine.goalStatus({ flow_id: flow.flow_id, detail: "compact" }) as Record<string, unknown>;
+    const checklistCompact = statusCompact.checklist as Record<string, unknown>;
+    expect(checklistCompact.operational_principles).toBeUndefined();
+    expect(checklistCompact.operational_principles_count).toBeDefined();
+    expect(typeof checklistCompact.operational_principles_count).toBe("number");
+
+    // Compact: ppirtv_checkout nao tem prestacao_de_contas completa.
+    const checkoutCompact = statusCompact.ppirtv_checkout as Record<string, unknown>;
+    expect(checkoutCompact.prestacao_de_contas).toBeUndefined();
+    expect(checkoutCompact.prestacao_de_contas_count).toBeDefined();
+  });
+
 
 
   it("T-MC-S compact flow runs end-to-end concepcao->implementacao->revisao->validacao with verdict (smoke)", async () => {

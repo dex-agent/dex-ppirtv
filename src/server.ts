@@ -282,10 +282,11 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
   server.registerTool(
     "goal_status",
     {
-      description: "Return GOAL execution status, checklist, evidence, blockers and next actionable step.",
+      description: "Return GOAL execution status, checklist, evidence, blockers and next actionable step. Use detail: 'compact' to omit operational_principles, ready_definition, gate_final_output, final_report_model and full prestacao_de_contas (default: 'full').",
       inputSchema: {
         flow_id: z.string().optional(),
-        idempotency_key: z.string().optional()
+        idempotency_key: z.string().optional(),
+        detail: z.enum(["compact", "full"]).optional()
       }
     },
     async (args) => toolResponse(() => engine.goalStatus(args))
@@ -294,10 +295,11 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
   server.registerTool(
     "ppirtv_checkout",
     {
-      description: "Return the canonical PPIRTV closing accountability directly, with memory, learning, cooperation, librarian and utility sections at top level.",
+      description: "Return the canonical PPIRTV closing accountability directly, with memory, learning, cooperation, librarian and utility sections at top level. Use detail: 'compact' to omit large arrays (default: 'full').",
       inputSchema: {
         flow_id: z.string().optional(),
-        idempotency_key: z.string().optional()
+        idempotency_key: z.string().optional(),
+        detail: z.enum(["compact", "full"]).optional()
       }
     },
     async (args) => toolResponse(() => engine.goalCheckout(args))
@@ -319,13 +321,14 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
   server.registerTool(
     "goal_gate_check",
     {
-      description: "Run and persist an official GOAL phase gate by flow_id or idempotency_key.",
+      description: "Run and persist an official GOAL phase gate by flow_id or idempotency_key. Use detail: 'compact' for lighter output (default: 'full').",
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
         phase: z.enum(PHASES).optional(),
         provided: z.record(z.unknown()).optional(),
-        persist: z.boolean().optional()
+        persist: z.boolean().optional(),
+        detail: z.enum(["compact", "full"]).optional()
       }
     },
     async (args) => toolResponse(() => engine.goalGateCheck(args))

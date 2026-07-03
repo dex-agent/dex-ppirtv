@@ -483,9 +483,10 @@ export class FlowEngine {
     };
   }
 
-  async goalStatus(input: { flow_id?: string; idempotency_key?: string }): Promise<Record<string, unknown>> {
+  async goalStatus(input: { flow_id?: string; idempotency_key?: string; detail?: "compact" | "full" }): Promise<Record<string, unknown>> {
     let flow = await this.resolveGoalFlow(input);
-    const checklist = await this.renderChecklist(flow.flow_id);
+    const detail = input.detail === "compact" ? "compact" : "full";
+    const checklist = await this.renderChecklist(flow.flow_id, detail);
     const savedGate = flow.gates[flow.phase];
     const gateProvided = savedGate?.status === "blocked" || (savedGate?.status === "passed" && officialGoalNeedsCanonicalVerdict(flow))
       ? savedGate.provided
@@ -595,13 +596,16 @@ export class FlowEngine {
       fiscal_policy: fiscal,
       librarian_status: librarianStatus,
       ppirtv_checkin: ppirtvCheckIn(flow, requiredCooperation, librarianStatus, blockers, resolutionGuidance),
-      ppirtv_checkout: ppirtvCheckOut(flow, librarianStatus, blockers, resolutionGuidance, blockerDiagnostics, runtimeLayoutStatus)
+      ppirtv_checkout: compactPpirtvCheckout(ppirtvCheckOut(flow, librarianStatus, blockers, resolutionGuidance, blockerDiagnostics, runtimeLayoutStatus), detail)
     };
   }
 
-  async goalCheckout(input: { flow_id?: string; idempotency_key?: string }): Promise<Record<string, unknown>> {
+  async goalCheckout(input: { flow_id?: string; idempotency_key?: string; detail?: "compact" | "full" }): Promise<Record<string, unknown>> {
     const status = await this.goalStatus(input);
     const checkout = status.ppirtv_checkout as Record<string, unknown>;
+    const detail = input.detail === "compact" ? "compact" : "full";
+    const prestacaoDeContas = checkout.prestacao_de_contas;
+    const prestacaoCount = Array.isArray(prestacaoDeContas) ? prestacaoDeContas.length : 0;
     return {
       flow_id: status.flow_id,
       status: status.status,
@@ -615,16 +619,18 @@ export class FlowEngine {
       cooperation_accountability: checkout.cooperation_accountability,
       librarian_accountability: checkout.librarian_accountability,
       contract_accountability: checkout.contract_accountability,
-      ready_definition: checkout.ready_definition,
-      gate_final_output: checkout.gate_final_output,
-      final_report_model: checkout.final_report_model,
+      ready_definition: detail === "compact" ? undefined : checkout.ready_definition,
+      gate_final_output: detail === "compact" ? undefined : checkout.gate_final_output,
+      final_report_model: detail === "compact" ? undefined : checkout.final_report_model,
       project_root: checkout.project_root,
       ppirtv_home: checkout.ppirtv_home,
       runtime_layout_status: checkout.runtime_layout_status,
       evidence_accountability: checkout.evidence_accountability,
       blocker_diagnostics: checkout.blocker_diagnostics,
       utility_accountability: checkout.utility_accountability,
-      prestacao_de_contas: checkout.prestacao_de_contas,
+      // BUG 5: em compact, omitir array grande; manter contagem.
+      prestacao_de_contas: detail === "compact" ? undefined : prestacaoDeContas,
+      prestacao_de_contas_count: prestacaoCount,
       residual_risks: checkout.residual_risks,
       resolution_guidance: checkout.resolution_guidance,
       ppirtv_checkout: checkout
@@ -653,6 +659,7 @@ export class FlowEngine {
     phase?: Phase;
     provided?: Record<string, unknown>;
     persist?: boolean;
+    detail?: "compact" | "full";
   }): Promise<Record<string, unknown>> {
     const flow = await this.resolveGoalFlow(input);
     assertGoalBinding(flow);
@@ -666,7 +673,7 @@ export class FlowEngine {
     return {
       ...gate,
       persisted: input.persist ?? true,
-      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id })
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: input.detail })
     };
   }
 
@@ -1947,15 +1954,16 @@ export class FlowEngine {
       : presented;
   }
 
-  async renderChecklist(flowId: string): Promise<{
+  async renderChecklist(flowId: string, detail: "compact" | "full" = "full"): Promise<{
     flow_id: string;
     phase: Phase;
     markdown: string;
     items: Array<{ label: string; checked: boolean }>;
-    operational_principles: PrincipleChecklistItem[];
-    ready_definition: string[];
-    gate_final_output: string[];
-    final_report_model: string[];
+    operational_principles?: PrincipleChecklistItem[];
+    operational_principles_count?: number;
+    ready_definition?: string[];
+    gate_final_output?: string[];
+    final_report_model?: string[];
     required_cooperation?: Cooperator[];
     fiscal_policy?: FiscalPolicyResult;
   } & PresentationEnvelope> {
@@ -2028,10 +2036,13 @@ export class FlowEngine {
       });
     return {
       ...(blockers.length > 0 || flow.status === "blocked" ? withDirectAction(presented, blockedDirectAction(blockers.length > 0 ? blockers : ["flow_blocked"])) : presented),
-      operational_principles: operationalPrinciples,
-      ready_definition: readyItems,
-      gate_final_output: gateOutputItems,
-      final_report_model: reportModelItems,
+      // BUG 5 (detail compact): omitir arrays grandes quando detail=compact.
+      // Substituir por contagens para manter sinal sem custo de tokens.
+      operational_principles: detail === "compact" ? undefined : operationalPrinciples,
+      operational_principles_count: operationalPrinciples.length,
+      ready_definition: detail === "compact" ? undefined : readyItems,
+      gate_final_output: detail === "compact" ? undefined : gateOutputItems,
+      final_report_model: detail === "compact" ? undefined : reportModelItems,
       required_cooperation: fiscal.required_cooperation,
       fiscal_policy: fiscal
     };
@@ -4763,6 +4774,21 @@ function ppirtvCheckIn(
       : checkinBlockers.length > 0
         ? `check-in visivel com bloqueios fiscais: ${checkinBlockers.join(", ")}`
         : "check-in visivel"
+  };
+}
+
+// BUG 5 (detail compact): helper para omitir arrays grandes do checkout
+// quando detail=compact. Mantem contagem para preservar sinal diagnostico.
+function compactPpirtvCheckout(checkout: Record<string, unknown>, detail: "compact" | "full"): Record<string, unknown> {
+  if (detail !== "compact") {
+    return checkout;
+  }
+  const prestacao = checkout.prestacao_de_contas;
+  const prestacaoCount = Array.isArray(prestacao) ? prestacao.length : 0;
+  const { prestacao_de_contas, ready_definition, gate_final_output, final_report_model, ...rest } = checkout;
+  return {
+    ...rest,
+    prestacao_de_contas_count: prestacaoCount
   };
 }
 
