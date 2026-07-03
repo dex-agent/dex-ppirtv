@@ -2237,6 +2237,33 @@ describe("PPIRTV flow engine", () => {
     expect(checkoutCompact.final_report_model).toBeUndefined();
   });
 
+  it("T-LEAN goal_status with detail:lean returns <5KB with only core fields", async () => {
+    // DT-04 (chato + pragmatic): detail compact ainda e 26KB. Lean deve
+    // retornar apenas nucleo (fase, status, blockers, next_step, display,
+    // aliases) em <5KB, sem checkout/checkin/checklist/fiscal_policy.
+    const flow = await engine.createFlow({ goal: "Lean status test" });
+
+    const statusLean = await engine.goalStatus({ flow_id: flow.flow_id, detail: "lean" as AnyPhase as never }) as Record<string, unknown>;
+    const jsonLean = JSON.stringify(statusLean);
+
+    // Deve ter campos nucleo.
+    expect(statusLean.phase).toBeDefined();
+    expect(statusLean.status).toBeDefined();
+    expect(statusLean.blockers).toBeDefined();
+    expect((statusLean as Record<string, unknown>).display).toBeDefined();
+
+    // NAO deve ter campos pesados.
+    expect(statusLean.ppirtv_checkout).toBeUndefined();
+    expect(statusLean.ppirtv_checkin).toBeUndefined();
+    expect((statusLean as Record<string, unknown>).checklist).toBeUndefined();
+    expect((statusLean as Record<string, unknown>).fiscal_policy).toBeUndefined();
+    expect((statusLean as Record<string, unknown>).required_cooperation).toBeUndefined();
+    expect((statusLean as Record<string, unknown>).resolution_guidance).toBeUndefined();
+
+    // Deve ser menor que 5KB.
+    expect(jsonLean.length).toBeLessThan(5120);
+  });
+
   it("T-BUG5-GC goal_gate_check with detail:compact omits operational_principles in status_snapshot", async () => {
     // B (revisor): goal_gate_check com detail:compact nao tinha teste.
     const { flowId } = await startGoalWithEvidence("dex-code:test-bug5-gate-compact", "Gate compact");

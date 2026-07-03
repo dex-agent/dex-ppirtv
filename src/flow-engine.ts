@@ -483,10 +483,41 @@ export class FlowEngine {
     };
   }
 
-  async goalStatus(input: { flow_id?: string; idempotency_key?: string; detail?: "compact" | "full" }): Promise<Record<string, unknown>> {
+  async goalStatus(input: { flow_id?: string; idempotency_key?: string; detail?: "lean" | "compact" | "full" }): Promise<Record<string, unknown>> {
     let flow = await this.resolveGoalFlow(input);
-    const detail = input.detail === "compact" ? "compact" : "full";
-    const checklist = await this.renderChecklist(flow.flow_id, detail);
+    const detail = input.detail === "lean" ? "lean" : input.detail === "compact" ? "compact" : "full";
+    // DT-04 (pragmatic/chato): detail "lean" retorna apenas nucleo do status
+    // (fase, status, blockers, next_step, display, aliases) sem montar
+    // checkout, checkin, checklist ou fiscal_policy. Target: <5KB.
+    if (detail === "lean") {
+      const gate = flow.gates[flow.phase];
+      const blockers: string[] = gate?.missing ?? [];
+      const next = blockers.length > 0 ? `complete_gate_${flow.phase}` : (profileFor(flow.mode).nextPhase[flow.phase] ? `advance_to_${profileFor(flow.mode).nextPhase[flow.phase]}` : "complete");
+      const lean: Record<string, unknown> = {
+        flow_id: flow.flow_id,
+        phase: flow.phase,
+        mode: flow.mode,
+        status: flow.status,
+        blockers,
+        next_step: next,
+        gate_status: gate?.status ?? "unchecked",
+        gate_missing: gate?.missing ?? [],
+        goal: flow.goal,
+        goal_envelope: flow.goal_binding?.envelope ?? null,
+        aliases: {
+          fase: flow.phase,
+          faltando: blockers,
+          proximo: next
+        },
+        display: {
+          phase_label: profileFor(flow.mode).displayMeta[flow.phase]?.label ?? flow.phase,
+          phase_emoji: profileFor(flow.mode).displayMeta[flow.phase]?.emoji ?? "",
+          direct_action: blockers.length > 0 ? `Completar: ${blockers.join(", ")}` : "Sem bloqueio local"
+        }
+      };
+      return lean;
+    }
+    const checklist = await this.renderChecklist(flow.flow_id, detail === "compact" ? "compact" : "full");
     const savedGate = flow.gates[flow.phase];
     const gateProvided = savedGate?.status === "blocked" || (savedGate?.status === "passed" && officialGoalNeedsCanonicalVerdict(flow))
       ? savedGate.provided
@@ -600,7 +631,7 @@ export class FlowEngine {
     };
   }
 
-  async goalCheckout(input: { flow_id?: string; idempotency_key?: string; detail?: "compact" | "full" }): Promise<Record<string, unknown>> {
+  async goalCheckout(input: { flow_id?: string; idempotency_key?: string; detail?: "lean" | "compact" | "full" }): Promise<Record<string, unknown>> {
     const status = await this.goalStatus(input);
     const checkout = status.ppirtv_checkout as Record<string, unknown>;
     // A+C (DRY): o checkout interno ja foi processado por compactPpirtvCheckout
@@ -658,7 +689,7 @@ export class FlowEngine {
     phase?: AnyPhase;
     provided?: Record<string, unknown>;
     persist?: boolean;
-    detail?: "compact" | "full";
+    detail?: "lean" | "compact" | "full";
   }): Promise<Record<string, unknown>> {
     const flow = await this.resolveGoalFlow(input);
     assertGoalBinding(flow);

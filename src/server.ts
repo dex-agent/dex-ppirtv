@@ -286,7 +286,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
-        detail: z.enum(["compact", "full"]).optional()
+        detail: z.enum(["lean", "compact", "full"]).optional()
       }
     },
     async (args) => toolResponse(() => engine.goalStatus(args))
@@ -299,7 +299,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
-        detail: z.enum(["compact", "full"]).optional()
+        detail: z.enum(["lean", "compact", "full"]).optional()
       }
     },
     async (args) => toolResponse(() => engine.goalCheckout(args))
@@ -328,7 +328,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         phase: z.enum(PHASES).optional(),
         provided: z.record(z.unknown()).optional(),
         persist: z.boolean().optional(),
-        detail: z.enum(["compact", "full"]).optional()
+        detail: z.enum(["lean", "compact", "full"]).optional()
       }
     },
     async (args) => toolResponse(() => engine.goalGateCheck(args))
