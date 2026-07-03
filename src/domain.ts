@@ -507,51 +507,10 @@ export const GATE_REQUIREMENTS: Record<
   ]
 };
 
-// --- Compact mode: 4 phases (concepcao, implementacao, revisao, validacao) ---
-
-export const COMPACT_NEXT_PHASE: Record<CompactPhase, CompactPhase | null> = {
-  concepcao: "implementacao",
-  implementacao: "revisao",
-  revisao: "validacao",
-  validacao: null
-};
-
-export const COMPACT_DEFAULT_BACK_TO: Record<CompactPhase, CompactPhase | null> = {
-  concepcao: null,
-  implementacao: "concepcao",
-  revisao: "implementacao",
-  validacao: "revisao"
-};
-
-export const COMPACT_GATE_REQUIREMENTS: Record<
-  CompactPhase,
-  Array<{ key: string; label: string; source: "flow" | "provided" | "evidence" | "meeting" | "verdict" }>
-> = {
-  concepcao: [
-    { key: "goal", label: "objetivo nomeado", source: "flow" },
-    { key: "context", label: "contexto minimo conhecido", source: "flow" },
-    { key: "risks", label: "risco principal nomeado", source: "flow" },
-    { key: "scope_in", label: "escopo definido", source: "flow" },
-    { key: "tasks", label: "tarefas ordenadas", source: "flow" },
-    { key: "done_criteria", label: "criterio de pronto definido", source: "flow" }
-  ],
-  implementacao: [
-    { key: "implementation_done", label: "mudanca executada ou bloqueio objetivo registrado", source: "provided" },
-    { key: "changed_files", label: "arquivos alterados registrados", source: "flow" }
-  ],
-  revisao: [
-    { key: "diff_reviewed", label: "diff revisado", source: "provided" },
-    { key: "barata_scan", label: "barata nunca esta sozinha aplicado", source: "provided" },
-    { key: "test_executed", label: "teste executado ou limitacao explicita", source: "provided" },
-    { key: "evidence", label: "evidencia anexada", source: "evidence" }
-  ],
-  validacao: [
-    { key: "verdict", label: "veredito registrado", source: "verdict" },
-    { key: "residual_risks", label: "risco residual registrado", source: "provided" },
-    { key: "next_step", label: "proximo passo definido", source: "provided" },
-    { key: "clean_house", label: "casa limpa confirmada", source: "provided" }
-  ]
-};
+// E (refactor SSOT): COMPACT_NEXT_PHASE, COMPACT_DEFAULT_BACK_TO e
+// COMPACT_GATE_REQUIREMENTS foram REMOVIDOS. Eram duplicacao de
+// COMPACT_PROFILE em phase-profile.ts sem nenhum consumidor. O SSOT
+// unico para configuracao de fases e phase-profile.ts via profileFor().
 
 export const REQUIRED_TOOLS = [
   "flow_create",
