@@ -2287,6 +2287,14 @@ describe("PPIRTV flow engine", () => {
     const directAction = display.direct_action;
     expect(typeof directAction).toBe("string");
     expect(directAction as string).toContain("Bloqueado");
+
+    // barata_scan: operador deve ver vizinhos do erro (counts, nao arrays).
+    expect(statusLean.evidence_count).toBeDefined();
+    expect(typeof statusLean.evidence_count).toBe("number");
+    expect(statusLean.meetings_count).toBeDefined();
+    expect(typeof statusLean.meetings_count).toBe("number");
+    expect(statusLean.current_verdict_status).toBeDefined();
+    expect(statusLean.loop_monitor).toBeDefined();
   });
 
   it("T-BUG5-GC goal_gate_check with detail:compact omits operational_principles in status_snapshot", async () => {

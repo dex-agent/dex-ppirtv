@@ -515,6 +515,10 @@ export class FlowEngine {
         nextRequiredAction = { type: "resolve_blockers", tool: "goal_status", detail: "full", reason: `blockers: ${allBlockers.join(", ")}` };
       }
       const directAction = allBlockers.length > 0 ? `Bloqueado: ${allBlockers.join(", ")}` : "Sem bloqueio local; verificar status fiscal antes de avancar";
+      // barata_scan (auditoria): incluir counts de vizinhos do erro para o
+      // operador aplicar "barata nunca esta sozinha" sem precisar de full.
+      const currentVerdict = flow.verdicts.at(-1) ?? null;
+      const loopMonitor = fiscalLoopMonitor(flow, allBlockers);
       const lean: Record<string, unknown> = {
         flow_id: flow.flow_id,
         phase: flow.phase,
@@ -535,6 +539,11 @@ export class FlowEngine {
         regress_count: regressCount,
         max_regressions: FISCAL_CONFIG.maxRegressions,
         regress_limit_reached: regressLimitReached,
+        // barata_scan (auditoria vizinhos): counts e sinal, nao arrays.
+        evidence_count: flow.evidence.length,
+        meetings_count: flow.meetings.length,
+        current_verdict_status: currentVerdict?.status ?? null,
+        loop_monitor: loopMonitor ? { count: loopMonitor.count, signature: loopMonitor.signature, escalation_active: loopMonitor.escalation?.active ?? false } : null,
         aliases: {
           fase: flow.phase,
           faltando: allBlockers,
