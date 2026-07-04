@@ -491,28 +491,59 @@ export class FlowEngine {
     // checkout, checkin, checklist ou fiscal_policy. Target: <5KB.
     if (detail === "lean") {
       const gate = flow.gates[flow.phase];
+      // BUG-LEAN-01+02: calcular campos acionaveis de blocker mesmo em lean.
+      // Sem isso, o operador fica preso sem saber o que fazer para destravar.
+      const fiscal = evaluateFiscalPolicy(flow);
+      const persistedFiscal = latestFiscalBlock(flow);
       const blockers: string[] = gate?.missing ?? [];
-      const next = blockers.length > 0 ? `complete_gate_${flow.phase}` : (profileFor(flow.mode).nextPhase[flow.phase] ? `advance_to_${profileFor(flow.mode).nextPhase[flow.phase]}` : "complete");
+      const reconciledBlockersList = reconciledBlockers(flow, [...fiscal.blocking_reasons, ...persistedFiscal.blocking_reasons]);
+      const allBlockers = blockers.length > 0 ? blockers : reconciledBlockersList;
+      const requiredCooperation = fiscal.required_cooperation;
+      const meetingRequired = allBlockers.includes("required_cooperation");
+      const regressCount = countRegressions(flow);
+      const regressLimitReached = regressCount >= FISCAL_CONFIG.maxRegressions;
+      const next = allBlockers.length > 0 ? `complete_gate_${flow.phase}` : (profileFor(flow.mode).nextPhase[flow.phase] ? `advance_to_${profileFor(flow.mode).nextPhase[flow.phase]}` : "complete");
+      // next_required_action: acao concreta para o operador destravar.
+      let nextRequiredAction: Record<string, unknown> | null = null;
+      if (meetingRequired) {
+        nextRequiredAction = { type: "open_decision_meeting", tool: "goal_meeting_open", reason: "required_cooperation exige reuniao material" };
+      } else if (allBlockers.includes("review_required")) {
+        nextRequiredAction = { type: "attach_review", tool: "evidence_add", reason: "review_required exige evidencia de revisao" };
+      } else if (allBlockers.includes("memory_required_but_empty")) {
+        nextRequiredAction = { type: "run_memory_mining", tool: "mm_memory_mining", reason: "memory_required_but_empty exige mineracao" };
+      } else if (allBlockers.length > 0) {
+        nextRequiredAction = { type: "resolve_blockers", tool: "goal_status", detail: "full", reason: `blockers: ${allBlockers.join(", ")}` };
+      }
+      const directAction = allBlockers.length > 0 ? `Bloqueado: ${allBlockers.join(", ")}` : "Sem bloqueio local; verificar status fiscal antes de avancar";
       const lean: Record<string, unknown> = {
         flow_id: flow.flow_id,
         phase: flow.phase,
         mode: flow.mode,
         status: flow.status,
-        blockers,
+        blockers: allBlockers,
         next_step: next,
         gate_status: gate?.status ?? "unchecked",
         gate_missing: gate?.missing ?? [],
         goal: flow.goal,
         goal_envelope: flow.goal_binding?.envelope ?? null,
+        // Campos acionaveis de blocker (BUG-LEAN-01+02): pequenos em bytes
+        // mas essenciais para o operador saber COMO destravar o flow.
+        required_cooperation: requiredCooperation,
+        next_required_action: nextRequiredAction,
+        meeting_required: meetingRequired,
+        regress_required: allBlockers.length > 0 && !regressLimitReached,
+        regress_count: regressCount,
+        max_regressions: FISCAL_CONFIG.maxRegressions,
+        regress_limit_reached: regressLimitReached,
         aliases: {
           fase: flow.phase,
-          faltando: blockers,
+          faltando: allBlockers,
           proximo: next
         },
         display: {
           phase_label: profileFor(flow.mode).displayMeta[flow.phase]?.label ?? flow.phase,
           phase_emoji: profileFor(flow.mode).displayMeta[flow.phase]?.emoji ?? "",
-          direct_action: blockers.length > 0 ? `Completar: ${blockers.join(", ")}` : "Sem bloqueio local"
+          direct_action: directAction
         }
       };
       return lean;

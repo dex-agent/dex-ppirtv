@@ -2257,11 +2257,36 @@ describe("PPIRTV flow engine", () => {
     expect(statusLean.ppirtv_checkin).toBeUndefined();
     expect((statusLean as Record<string, unknown>).checklist).toBeUndefined();
     expect((statusLean as Record<string, unknown>).fiscal_policy).toBeUndefined();
-    expect((statusLean as Record<string, unknown>).required_cooperation).toBeUndefined();
     expect((statusLean as Record<string, unknown>).resolution_guidance).toBeUndefined();
 
     // Deve ser menor que 5KB.
     expect(jsonLean.length).toBeLessThan(5120);
+  });
+
+  it("T-LEAN-ACTION lean includes actionable blocker fields (required_cooperation, next_required_action, meeting_required)", async () => {
+    // BUG-LEAN-01: lean omite required_cooperation e next_required_action.
+    // Operador fica preso sem saber como destravar o flow.
+    const { flowId } = await startGoalWithEvidence("dex-code:test-lean-action", "Lean com fiscal");
+    await engine.updateFlowFacts(flowId, { risks: ["risco material de produto"], changed_files: ["src/x.ts"] });
+    await engine.goalAdvance({ flow_id: flowId, provided: { context: "ctx", risks: ["risco"], uncertainties: ["u"] } });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { scope_in: ["src"], scope_out: ["fora"], tasks: ["codar"], expected_evidence: ["review"], done_criteria: ["passar"] }
+    });
+
+    const statusLean = await engine.goalStatus({ flow_id: flowId, detail: "lean" }) as Record<string, unknown>;
+
+    // Lean DEVE incluir campos acionaveis de blocker (mesmo sendo lean).
+    expect(statusLean.required_cooperation).toBeDefined();
+    expect(Array.isArray(statusLean.required_cooperation)).toBe(true);
+    expect(statusLean.next_required_action).toBeDefined();
+    expect(statusLean.meeting_required).toBeDefined();
+    expect(statusLean.regress_required).toBeDefined();
+    // direct_action deve conter instrucao acionavel quando blocked.
+    const display = (statusLean.display as Record<string, unknown>) ?? {};
+    const directAction = display.direct_action;
+    expect(typeof directAction).toBe("string");
+    expect(directAction as string).toContain("Bloqueado");
   });
 
   it("T-BUG5-GC goal_gate_check with detail:compact omits operational_principles in status_snapshot", async () => {
