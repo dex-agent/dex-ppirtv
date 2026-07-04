@@ -13,6 +13,7 @@ import {
   VERDICTS
 } from "./domain.js";
 import { FlowEngine } from "./flow-engine.js";
+import { scrubSecretLikeText } from "./security/secret-redaction.js";
 import { PpirtvStore } from "./store.js";
 
 export function createPpirtvServer(options: { storeRoot?: string } = {}): McpServer {
@@ -642,7 +643,7 @@ function toolErrorResult(error: unknown, errorContext?: ToolErrorContext) {
 
 function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
   const rawMessage = error instanceof Error ? error.message : String(error);
-  const message = redactSecretLikeText(rawMessage);
+  const message = scrubSecretLikeText(rawMessage);
   const base = {
     message,
     details: { original_error: message },
@@ -744,12 +745,6 @@ function memoryRequiredErrorAction(flowId: string) {
       { order: 3, tool: "goal_verdict", only_if: "goal_status.blockers nao contem memory_required_but_empty" }
     ]
   };
-}
-
-function redactSecretLikeText(value: string): string {
-  return value
-    .replace(/Authorization:\s*Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Authorization: Bearer [REDACTED]")
-    .replace(/\b(api[_-]?key|token|password|secret)\s*[:=]\s*[^,\s;]+/gi, "$1=[REDACTED]");
 }
 
 function resourceResult(uri: string, value: unknown) {

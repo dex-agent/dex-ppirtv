@@ -1,8 +1,8 @@
 {
   "version": "1.0",
-  "numeric_version": 4,
-  "principles_revision": "2026-06-06.9",
-  "updated_at": "2026-06-06",
+  "numeric_version": 5,
+  "principles_revision": "2026-07-04.1",
+  "updated_at": "2026-07-04",
   "source": "principles/PRINCIPLES.md",
   "canonical_source": "$env:USERPROFILE\\.agents\\memories\\principles\\PRINCIPLES.md",
   "canonical_contract": "$env:USERPROFILE\\.agents\\memories\\principles\\operational-contract.json",
@@ -335,49 +335,73 @@
     {
       "id": "P8",
       "legacy_id": "impossibilitar_repeticao",
-      "name": "Impossibilitar a Repeticao",
-      "label": "Impossibilitar a Repeticao",
-      "summary": "Aprender com o erro e tolerancia; impossibilitar a repeticao e engenharia. Desde a primeira ocorrencia, converter o aprendizado em defesa em profundidade: gate automatizado + memoria recuperavel + documentacao viva.",
+      "name": "Impossibilitar a repeticao",
+      "label": "Impossibilitar a repeticao",
+      "summary": "Aprender com o erro e tolerancia; impossibilitar a repeticao e engenharia. Desde a primeira causa raiz confirmada, criar a menor defesa verificavel e proporcional ao risco para evitar repeticao.",
       "trigger": [
         "causa raiz encontrada com evidencia",
         "fix aplicado e validado",
-        "antes de declarar pronto apos correcao de bug",
-        "erro com padrao reutilizavel identificado"
+        "erro com padrao reutilizavel identificado",
+        "correcao de bug antes de declarar pronto",
+        "falha fiscal, seguranca, contrato, memoria, evidencia ou governanca"
       ],
       "required_actions": [
-        "construir gate automatizado (teste, check, validador) que detecta o padrao do erro",
-        "comprovar o gate: rodar contra codigo bugado (FAIL) e contra corrigido (PASS)",
-        "gravar memoria L1/L2/L3 com gatilho, tag e frase natural achaveis",
-        "documentar anti-padrao no AGENTS.md, contrato ou doc canonica do projeto",
-        "definir cadencia ou gatilho para o gate (quando rodar)"
+        "owner do Trilho ou executor classifica severidade inicial e defesa minima",
+        "chato desafia a classificacao com cenarios de quebra e risco de burocracia",
+        "clean-code valida se a defesa melhora teste, contrato, erro explicito, fronteira ou legibilidade",
+        "ppi ou validador-pronto fecha o veredito quando a mudanca tocar governanca, memoria, seguranca, contrato, MCP, runtime ou falso pronto",
+        "criar a menor defesa verificavel proporcional ao risco ou estacionar com justificativa e quando"
       ],
       "evidence": [
-        "gate comprovado (FAIL vs bugado, PASS vs corrigido)",
-        "memoria achavel por pelo menos duas formas de busca (rg validado)",
-        "anti-padrao ou regra no AGENTS.md com gatilho de memoria",
-        "cadencia do gate declarada (pre-commit, pre-deploy, CI)"
+        "erro ocorrido descrito",
+        "causa raiz confirmada",
+        "defesa criada ou justificativa de estacionamento registrada",
+        "comando, teste, check ou fonte que valida a defesa",
+        "quando de retomada quando a defesa nao couber no corte"
       ],
       "blocks_ready_when": [
-        "gate existe mas nao foi comprovado contra o bug real",
-        "memoria escrita mas nao achavel por frase natural ou tag",
-        "documentacao sem gatilho recuperavel",
-        "gate sem cadencia definida"
+        "risco de segredo, token, autorizacao, .env ou dado sensivel sem defesa verificavel",
+        "risco de perda, corrupcao ou vazamento de dados ou memoria sem defesa verificavel",
+        "quebra de contrato publico MCP/API/CLI ou fonte canonica sem defesa verificavel",
+        "falso pronto fiscal, PPIRTV, build, teste ou audit",
+        "erro recorrente pelo mesmo padrao ou operacionalmente equivalente sem destino rastreavel",
+        "correcao sem gate verificavel permite repeticao silenciosa",
+        "defesa ausente deixaria o proximo agente sem como detectar o problema"
       ],
       "default_severity": "WARN",
       "severity": "warning",
-      "checklist_label": "Bug corrigido tem defesa em profundidade: gate automatizado comprovado + memoria recuperavel + anti-padrao documentado",
+      "escalates_to_block_when": [
+        "seguranca ou segredo",
+        "perda/corrupcao/vazamento de dados ou memoria",
+        "contrato publico ou fonte canonica",
+        "falso pronto fiscal, PPIRTV, build, teste ou audit",
+        "recorrencia do mesmo padrao",
+        "ausencia de gate verificavel para repeticao silenciosa"
+      ],
+      "responsible_roles": [
+        "owner do Trilho ou executor da tarefa",
+        "chato",
+        "clean-code",
+        "ppi ou validador-pronto"
+      ],
+      "checklist_label": "Causa raiz corrigida tem defesa minima verificavel ou estacionamento com quando",
       "applies_to": [
+        "hygiene_scan",
         "gate_check",
         "checklist_render",
         "verdict",
         "prompts"
       ],
       "trace_destination": [
-        "teste/smoke",
+        "teste",
+        "check",
+        "contrato operacional",
+        "napkin tatico",
         "memoria L1/L2/L3",
-        "AGENTS.md",
-        "operational-contract",
-        "HANDOFF"
+        "Trilho",
+        "HANDOFF",
+        "estacionamento com quando",
+        "descarte justificado"
       ]
     }
   ],
@@ -430,7 +454,9 @@
     "Sem quando, o item pode ser ideia, hipotese ou estacionamento, mas nao pronto, plano executavel ou regra promovida.",
     "O Gate Final PPIRTV e verificacao antes do veredito; o modelo de relatorio final e a saida depois da verificacao.",
     "Nao registre secrets em ledger, evidencia, prompts ou docs versionadas.",
-    "Preserve campos MCP existentes; principios orientam bloqueio, retorno e aprendizado."
+    "Preserve campos MCP existentes; principios orientam bloqueio, retorno e aprendizado.",
+    "P8 Impossibilitar a repeticao: apos causa raiz confirmada, crie a menor defesa verificavel proporcional ao risco ou estacione com justificativa e quando.",
+    "P8 default WARN; escale para BLOCK quando envolver seguranca, dados, memoria, contrato publico, fonte canonica, falso pronto, recorrencia ou ausencia de gate verificavel."
   ],
   "hygiene_checks": [
     "principles_source_exists",
@@ -445,7 +471,8 @@
     "final_report_model_present",
     "repeated_errors_have_traceable_destination",
     "actionable_items_have_when_gate",
-    "secret_like_config_values"
+    "secret_like_config_values",
+    "repeat_prevention_defense_depth"
   ],
   "ai_application": {
     "rule": "principios devem ser aplicados como gates de decisao, nao como frases decorativas",
@@ -496,7 +523,8 @@
       "P4": "WARN; BLOCK se o lixo afeta execucao, memoria ou validacao",
       "P5": "BLOCK antes de acao tecnica",
       "P6": "BLOCK",
-      "P7": "BLOCK para plano, decisao ou acao futura"
+      "P7": "BLOCK para plano, decisao ou acao futura",
+      "P8": "WARN; BLOCK quando risco alto, recorrencia ou falta de defesa verificavel permitir falso pronto"
     },
     "runtime_mapping": {
       "INFO": "info",

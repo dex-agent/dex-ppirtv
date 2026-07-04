@@ -267,8 +267,9 @@ function normalizeFlow(flow: Flow): Flow {
   flow.memory_mining.resolved_strong_unwritten_count ??= 0;
   flow.memory_mining.candidate_resolutions ??= flow.memory_candidate_resolutions;
   flow.memory_mining.memory_written ??= (flow.memory_mining.written_count ?? 0) > 0;
+  flow.memory_mining.write_failures_count ??= flow.memory_mining.write_failures?.length ?? 0;
   flow.memory_mining.memory_validated ??= flow.memory_mining.memory_post_write_validation?.status === "passed";
-  flow.memory_mining.memory_consolidated ??= flow.memory_mining.memory_validated === true;
+  flow.memory_mining.memory_consolidated ??= flow.memory_mining.memory_validated === true && flow.memory_mining.write_failures_count === 0;
   flow.memory_mining.memory_post_write_validation ??= {
     required: false,
     status: "not_required",

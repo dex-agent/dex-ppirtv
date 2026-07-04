@@ -25,6 +25,7 @@ describe("secret redaction SSOT", () => {
   it("detects sk-... bare token by content", () => {
     expect(isSecretLikeText("sk-live-abc123xyz789")).toBe(true);
     expect(isSecretLikeText("sk-test-qwertyuiop1234")).toBe(true);
+    expect(isSecretLikeText("sk-proj-abcdefghijklmnopqrstuvwxyz1234567890")).toBe(true);
   });
 
   it("detects Bearer token by content", () => {
@@ -35,6 +36,12 @@ describe("secret redaction SSOT", () => {
     expect(isSecretLikeText("api_key=AKIAIOSFODNN7EXAMPLE")).toBe(true);
   });
 
+  it("detects GitHub and GitLab personal access tokens by content", () => {
+    expect(isSecretLikeText("ghp_abcdefghijklmnop1234567890")).toBe(true);
+    expect(isSecretLikeText("github_pat_abcdefghijklmnopqrstuvwxyz1234567890_ABCD")).toBe(true);
+    expect(isSecretLikeText("glpat-abcdefghijklmnop1234567890")).toBe(true);
+  });
+
   it("does not flag normal text", () => {
     expect(isSecretLikeText("objetivo normal do fluxo")).toBe(false);
     expect(isSecretLikeText("npm run check")).toBe(false);
@@ -42,6 +49,9 @@ describe("secret redaction SSOT", () => {
 
   it("scrubs string with secret to [redacted]", () => {
     expect(scrubSecretLikeText("usar Bearer eyJhbGciOiJIUzI1NiJ9.test")).toBe("[redacted]");
+    expect(scrubSecretLikeText("usar ghp_abcdefghijklmnop1234567890")).toBe("[redacted]");
+    expect(scrubSecretLikeText("usar github_pat_abcdefghijklmnopqrstuvwxyz1234567890_ABCD")).toBe("[redacted]");
+    expect(scrubSecretLikeText("usar sk-proj-abcdefghijklmnopqrstuvwxyz1234567890")).toBe("[redacted]");
     expect(scrubSecretLikeText("texto normal")).toBe("texto normal");
   });
 

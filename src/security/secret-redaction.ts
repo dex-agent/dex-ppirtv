@@ -23,10 +23,11 @@
 // The canonical pattern. Covers:
 // - Bearer tokens: `Bearer eyJ...`, `Authorization: Bearer ...`
 // - API keys: `sk-...`, `sk_live_...`, `pk_live_...`
+// - GitHub/GitLab PATs: `ghp_...`, `github_pat_...`, `glpat-...`
 // - Key=value assignments: `api_key=...`, `token:...`, `password=...`
 // - Long hex/base64 strings prefixed by common secret names
 export const SECRET_LIKE_PATTERN =
-  /\bBearer\s+[A-Za-z0-9._~+/=-]{12,}|\bsk[_-]?(?:live[_-]?|test[_-]?)?[A-Za-z0-9_-]{12,}|\bpk[_-]?live[_-][A-Za-z0-9_-]{12,}|\b(?:api[_-]?key|token|password|secret|authorization)\s*[:=]\s*["']?[A-Za-z0-9_~+/=-]{8,}["']?/i;
+  /\bBearer\s+[A-Za-z0-9._~+/=-]{12,}|\bsk[_-]?(?:live[_-]?|test[_-]?)?[A-Za-z0-9_-]{12,}|\bpk[_-]?live[_-][A-Za-z0-9_-]{12,}|\bgh[pousr]_[A-Za-z0-9_]{20,}|\bgithub_pat_[A-Za-z0-9_]{20,}|\bglpat-[A-Za-z0-9_-]{20,}|\b(?:api[_-]?key|token|password|secret|authorization)\s*[:=]\s*["']?[A-Za-z0-9_~+/=-]{8,}["']?/i;
 
 // Key names that indicate a secret value regardless of content.
 export const SECRET_KEY_PATTERN = /secret|token|password|api[_-]?key|authorization|credential|private[_-]?key/i;

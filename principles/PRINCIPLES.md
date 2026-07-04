@@ -1,8 +1,8 @@
 # Principios do dex-PPIRTV
 
 Status: vigente
-Principles-Revision: `2026-06-06.9`
-Last-Updated: `2026-06-06`
+Principles-Revision: `2026-07-04.1`
+Last-Updated: `2026-07-04`
 Canonical-Source: `$env:USERPROFILE\.agents\memories\principles\PRINCIPLES.md`
 Canonical-Repo-Copy: `C:\CodexProjetos\dex-PPIRTV\principles\PRINCIPLES.md`
 Sync-Rule: depois de alterar a fonte global, sincronizar a copia do repo e
@@ -100,6 +100,7 @@ formalmente.
 | Nunca comecamos pelo final nem pelo meio | BLOCK antes de acao tecnica |
 | Erro repetido tres vezes bloqueia pronto | BLOCK |
 | Gate do Quando | BLOCK para plano, decisao ou acao futura |
+| Impossibilitar a repeticao | WARN; BLOCK quando risco alto, recorrencia ou falta de defesa verificavel permitir falso pronto |
 
 ## Gate Final PPIRTV
 
@@ -139,6 +140,11 @@ Antes de declarar uma tarefa como pronta, executar este checklist:
    Algum item promete acao futura?
    Se sim, ele tem data, gatilho, cadencia, condicao, janela de revisao,
    vencimento, dependencia ou responsavel?
+
+8. Impossibilitar a repeticao
+   Houve causa raiz real, fix validado ou erro com padrao reutilizavel?
+   Se sim, existe a menor defesa verificavel proporcional ao risco?
+   Se a defesa nao coube, ha justificativa, quando e destino rastreavel?
 
 Saida obrigatoria:
 
@@ -268,65 +274,7 @@ curtos como `#erro-recorrente`, `#falso-verde`, `#encoding`, `#fallback` e
 `#evidencia-visual` ajudam a busca transversal, mas nao substituem memoria
 recuperavel nem justificam criar deposito generico de erros.
 
-## 7. Impossibilitar a repeticao e melhor que aprender com o erro
-
-> ID no contrato operacional: `P8` (Gate do Quando permanece `P7`).
-
-Aprender com o erro e bom. Impossibilitar a repeticao do erro e melhor.
-
-O principio #6 trata da repeticao — bloqueia o pronto na terceira vez e exige
-destino rastreavel. Este principio e o complemento proativo: desde a primeira
-ocorrencia, a meta e construir defesa em profundidade para que o mesmo erro nao
-seja fisicamente possivel de repetir.
-
-Defesa em profundidade sao tres camadas:
-
-1. **Gate automatizado** — teste, check, validador ou contrato que detecta o
-   padrao do erro antes de chegar em producao. O gate deve ser comprovado: rodar
-   contra o codigo bugado (FAIL) e contra o codigo corrigido (PASS).
-2. **Memoria recuperavel** — L1/L2/L3 com gatilho curto, tag semantica, frase
-   natural e fonte viva. Achavel por pelo menos duas formas de busca.
-3. **Documentacao viva** — anti-padrao ou regra no `AGENTS.md`, contrato ou
-   doccanonica do projeto, para que um agente novo veja a regra antes de errar.
-
-O tropecco so se repete se alguem ignorar as tres camadas.
-
-### Quando o principio entra em acao
-
-- Apos encontrar causa raiz de um erro com evidencia (nao antes — chute nao
-  gera defesa, gera ruido).
-- Apos aplicar o fix e valida-lo.
-- Antes de declarar pronto.
-
-### O que conta como impossibilitar
-
-- Um teste que falha contra o padrao bugado e passa contra o corrigido.
-- Um contrato operacional que recusa o estado invalido.
-- Um anti-padrao documentado com gatilho de memoria.
-- Um gate de deploy ou pre-commit que roda automaticamente.
-
-### O que NAO conta como impossibilitar
-
-- Memoria sem gate automatizado (ninguem lembrara de consultar).
-- Gate sem cadencia definida (ninguem rodara).
-- Documentacao sem gatilho recuperavel (ninguem achar).
-- Anunciar "impossibilitado" sem comprovar o gate contra o bug real.
-
-Frase martelo:
-
-```text
-Aprender com o erro é tolerância. Impossibilitar o erro é engenharia.
-```
-
-### Relacao com o principio #6
-
-- #6 e reativo: aceita ate tres ocorrencias, depois bloqueia e exige destino.
-- #7 (P8 no contrato) e proativo: desde a primeira ocorrencia, converte o
-  aprendizado em defesa.
-- Juntos: P8 reduz a necessidade de #6; quando #6 dispara, P8 explica por que
-  a defesa falhou e onde fortalecer.
-
-## 8. Gate do Quando
+## 7. Gate do Quando
 
 Um `o que` sem `quando` nao vira plano executavel.
 
@@ -342,6 +290,72 @@ Frase martelo:
 ```text
 Um o que? sem um Quando... é NUNCA!!..
 ```
+
+## 8. Impossibilitar a repeticao
+
+Aprender com o erro e tolerancia. Impossibilitar a repeticao e engenharia.
+
+Este principio complementa o principio 6. O principio 6 reage quando o erro ja
+se repetiu; o principio 8 atua desde a primeira causa raiz confirmada para criar
+defesa proporcional contra a repeticao.
+
+### Quando entra em acao
+
+- causa raiz encontrada com evidencia;
+- fix aplicado e validado;
+- erro com padrao reutilizavel identificado;
+- antes de declarar pronto apos correcao de bug, falha fiscal, seguranca,
+  contrato, memoria, evidencia ou governanca.
+
+### Responsaveis
+
+- O owner do Trilho ou executor da tarefa classifica inicialmente a severidade e
+  declara a defesa minima.
+- O `chato` desafia a classificacao com cenarios "E SE?", procurando risco
+  subestimado e burocracia exagerada.
+- O `clean-code` valida se a defesa melhora teste, contrato, erro explicito,
+  fronteira ou legibilidade, sem criar ritual vazio.
+- O `ppi` ou `validador-pronto` fecha o veredito antes de declarar pronto quando
+  a mudanca tocar governanca, memoria, seguranca, contrato, MCP, runtime ou
+  falso pronto.
+
+### Como classificar
+
+Default: WARN. Registrar risco, defesa escolhida e evidencia. Pode seguir se a
+defesa for proporcional ou se a falta de defesa tiver justificativa e quando
+rastreavel.
+
+Escala para BLOCK quando qualquer item abaixo for verdadeiro:
+
+- risco de segredo, token, autorizacao, `.env` ou dado sensivel;
+- perda, corrupcao ou vazamento de dados ou memoria;
+- quebra de contrato publico MCP/API/CLI ou fonte canonica;
+- falso pronto fiscal, PPIRTV, build, teste ou audit;
+- erro recorrente pelo mesmo padrao ou operacionalmente equivalente;
+- a correcao nao tem gate verificavel e pode se repetir silenciosamente;
+- a defesa ausente deixaria o proximo agente sem como detectar o problema.
+
+### Defesa minima verificavel
+
+Escolha a menor defesa suficiente para o risco. Nao e obrigatorio criar todas as
+camadas em todo bug.
+
+Defesas validas incluem:
+
+- teste de regressao ou teste caracterizador;
+- check, validador, audit ou contrato operacional;
+- erro mais explicito ou fronteira mais clara;
+- documentacao viva, napkin, Trilho ou HANDOFF;
+- memoria L1/L2/L3 quando o aprendizado for reutilizavel;
+- estacionamento com quando quando a defesa nao couber no corte atual.
+
+Evidencia minima:
+
+- qual erro ocorreu;
+- qual causa raiz foi confirmada;
+- qual defesa foi criada ou por que foi estacionada;
+- qual comando, teste, check ou fonte valida a defesa;
+- quando sera retomado se a defesa nao couber agora.
 
 ## Contrato editavel
 

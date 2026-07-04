@@ -37,7 +37,10 @@ async function appendUniqueBlock(filePath: string, block: string): Promise<void>
   let existing = "";
   try {
     existing = await readFile(filePath, "utf8");
-  } catch {
+  } catch (error) {
+    if (!isNotFoundError(error)) {
+      throw error;
+    }
     existing = "";
   }
   if (existing.includes(block.trim())) {
@@ -45,4 +48,8 @@ async function appendUniqueBlock(filePath: string, block: string): Promise<void>
   }
   const prefix = existing.trim().length > 0 ? "\n\n" : "";
   await appendFile(filePath, `${prefix}${block.trim()}\n`, "utf8");
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return Boolean(error && typeof error === "object" && "code" in error && (error as { code?: unknown }).code === "ENOENT");
 }

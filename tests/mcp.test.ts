@@ -639,6 +639,54 @@ describe("PPIRTV MCP stdio server", () => {
       code: "SENSITIVE_CONTENT_BLOCKED",
       recoverable: false
     });
+
+    const patValue = "ghp_abcdefghijklmnop1234567890";
+    const patBlocked = await client!.callTool({
+      name: "evidence_add",
+      arguments: {
+        flow_id: flowId,
+        title: "github pat evidence",
+        content: patValue
+      }
+    });
+    expect((patBlocked as { isError?: boolean }).isError).toBe(true);
+    expect(JSON.stringify(patBlocked)).not.toContain(patValue);
+    expect(resultOf(patBlocked).error).toMatchObject({
+      code: "SENSITIVE_CONTENT_BLOCKED",
+      recoverable: false
+    });
+
+    const fineGrainedPatValue = "github_pat_abcdefghijklmnopqrstuvwxyz1234567890_ABCD";
+    const fineGrainedPatBlocked = await client!.callTool({
+      name: "evidence_add",
+      arguments: {
+        flow_id: flowId,
+        title: "github fine-grained pat evidence",
+        content: fineGrainedPatValue
+      }
+    });
+    expect((fineGrainedPatBlocked as { isError?: boolean }).isError).toBe(true);
+    expect(JSON.stringify(fineGrainedPatBlocked)).not.toContain(fineGrainedPatValue);
+    expect(resultOf(fineGrainedPatBlocked).error).toMatchObject({
+      code: "SENSITIVE_CONTENT_BLOCKED",
+      recoverable: false
+    });
+
+    const projectTokenValue = "sk-proj-abcdefghijklmnopqrstuvwxyz1234567890";
+    const projectTokenBlocked = await client!.callTool({
+      name: "evidence_add",
+      arguments: {
+        flow_id: flowId,
+        title: "openai project token evidence",
+        content: projectTokenValue
+      }
+    });
+    expect((projectTokenBlocked as { isError?: boolean }).isError).toBe(true);
+    expect(JSON.stringify(projectTokenBlocked)).not.toContain(projectTokenValue);
+    expect(resultOf(projectTokenBlocked).error).toMatchObject({
+      code: "SENSITIVE_CONTENT_BLOCKED",
+      recoverable: false
+    });
   });
 
   it("runs five PPIRTV flows sequentially through mm_pipeline_run over MCP", async () => {

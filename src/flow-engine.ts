@@ -938,11 +938,16 @@ export class FlowEngine {
     const estacionamento = candidates.filter((candidate) => candidate.scope === "estacionamento");
     const discarded = candidates.filter((candidate) => candidate.scope === "descartar");
     const written: Array<{ candidate_id: string; files: string[] }> = [];
+    const writeFailures: Array<{ candidate_id: string; reason: string }> = [];
 
     if (writePolicy === "auto_write") {
       for (const candidate of writable) {
-        const files = await writeMemoryCandidate(candidate);
-        written.push({ candidate_id: candidate.id, files });
+        try {
+          const files = await writeMemoryCandidate(candidate);
+          written.push({ candidate_id: candidate.id, files });
+        } catch (error) {
+          writeFailures.push({ candidate_id: candidate.id, reason: errorMessage(error) });
+        }
       }
     }
 
@@ -1005,14 +1010,17 @@ export class FlowEngine {
       }));
     const destinationWarnings = [
       ...strongUnwritten.map((candidate) => `${candidate.id}:${candidate.scope}:${memoryNonWriteReason(candidate, writePolicy, writtenIds)}`),
-      ...postWriteValidation.findings.map((finding) => `post_write_validation:${finding.code}:${finding.file ?? "unknown"}:${finding.line ?? "unknown"}`)
+      ...postWriteValidation.findings.map((finding) => `post_write_validation:${finding.code}:${finding.file ?? "unknown"}:${finding.line ?? "unknown"}`),
+      ...writeFailures.map((failure) => `write_failed:${failure.candidate_id}:${failure.reason}`)
     ];
     const memoryRequiredButEmpty = memoryRequiredByFlow(flow) && candidates.length === 0 && written.length === 0 && !(writePolicy === "classify_only" && strongUnwritten.length === 0);
+    const writeFailuresCount = writeFailures.length;
+    const postWritePassed = postWriteValidation.status === "passed";
     const summary: MemoryMiningSummary = {
       required: candidates.length > 0 || memoryRequiredByFlow(flow),
       last_run_at: now,
       write_policy: writePolicy,
-      blocked_verdict: unresolvedBlocked.length > 0 || memoryRequiredButEmpty || strongUnwritten.length > 0 || postWriteBlocked,
+      blocked_verdict: unresolvedBlocked.length > 0 || memoryRequiredButEmpty || strongUnwritten.length > 0 || postWriteBlocked || writeFailuresCount > 0,
       candidates_count: candidates.length,
       written_count: written.length,
       blocked_count: unresolvedBlocked.length,
@@ -1023,12 +1031,14 @@ export class FlowEngine {
       resolved_strong_unwritten_count: resolvedStrongUnwritten.length,
       candidate_resolutions: candidateResolutions,
       memory_written: written.length > 0,
-      memory_validated: postWriteValidation.status === "passed",
-      memory_consolidated: postWriteValidation.status === "passed",
+      memory_validated: postWritePassed,
+      memory_consolidated: postWritePassed && writeFailuresCount === 0,
       memory_post_write_validation: postWriteValidation,
       memory_required_but_empty: memoryRequiredButEmpty,
       candidates: candidates.map((candidate) => memoryCandidateLedgerDataWithResolution(candidate, resolutionMap.get(candidate.id))),
       written,
+      write_failures: writeFailures,
+      write_failures_count: writeFailuresCount,
       ledger_only: ledgerOnly.map((candidate) => candidate.id),
       estacionamento: estacionamento.map((candidate) => candidate.id),
       discarded: discarded.map((candidate) => candidate.id),
@@ -1045,6 +1055,7 @@ export class FlowEngine {
         write_policy: writePolicy,
         candidates_count: candidates.length,
         written_count: written.length,
+        write_failures_count: writeFailuresCount,
         blocked_count: unresolvedBlocked.length,
         resolved_candidate_ids: resolvedCandidateIds,
         memory_written: summary.memory_written,
@@ -1063,6 +1074,8 @@ export class FlowEngine {
         write_policy: writePolicy,
         candidates: candidates.map((candidate) => memoryCandidateLedgerDataWithResolution(candidate, resolutionMap.get(candidate.id))),
         written,
+        write_failures: writeFailures,
+        write_failures_count: writeFailuresCount,
         ledger_only: ledgerOnly.map((candidate) => candidate.id),
         estacionamento: estacionamento.map((candidate) => candidate.id),
         discarded: discarded.map((candidate) => candidate.id),
@@ -1092,6 +1105,8 @@ export class FlowEngine {
       write_policy: writePolicy,
       candidates,
       written,
+      write_failures: writeFailures,
+      write_failures_count: writeFailuresCount,
       ledger_only: ledgerOnly,
       estacionamento,
       discarded,
@@ -1322,7 +1337,7 @@ export class FlowEngine {
     for (const item of input.verdict_gold_mining ?? []) {
       assertNoSecretLikeText(item, "verdict_gold_mining");
     }
-    const flow = await this.store.loadFlow(input.flow_id);
+    let flow = await this.store.loadFlow(input.flow_id);
     assertGoalBinding(flow);
     if (typeof input.regress_count === "number" && input.regress_count > countRegressions(flow)) {
       const now = nowIso();
@@ -1334,6 +1349,7 @@ export class FlowEngine {
       flow.updated_at = now;
       await this.store.saveFlow(flow);
       await this.ledger(flow.flow_id, "regress_count_reported", { regress_count: input.regress_count, source: "goal_verdict" }, "goal_verdict");
+      flow = await this.store.loadFlow(input.flow_id);
     }
     const meetingIds = unique([input.meeting_id, ...(input.meeting_ids ?? [])].filter(Boolean) as string[]);
     for (const meetingId of meetingIds) {
@@ -1352,11 +1368,14 @@ export class FlowEngine {
       throw new Error("goal_verdict requires traceable evidence_ids for positive conclusions");
     }
     const positiveVerdict = input.status === "pronto" || input.status === "pronto_com_ressalvas";
-    let memoryMining: Record<string, unknown> | null = null;
-    if (positiveVerdict) {
-      memoryMining = hasMemoryMiningRun(flow) ? (flow.memory_mining ?? null) : null;
-    }
     const fiscalFlow = await this.store.loadFlow(input.flow_id);
+    const memoryMining: Record<string, unknown> | null = positiveVerdict && hasMemoryMiningRun(fiscalFlow) ? (fiscalFlow.memory_mining ?? null) : null;
+    if (positiveVerdict && memoryMining?.blocked_verdict === true) {
+      await this.persistMemoryMiningVerdictBlock(fiscalFlow, memoryMining, input);
+      throw new Error(
+        "MEMORY_MINING_BLOCKED_VERDICT: resolver memory_candidates bloqueados antes do veredito positivo; execute goal_status, use mm_memory_candidate_resolve para dar destino rastreavel a strong_unwritten_count/ledger_only e reexecute mm_memory_mining antes de repetir goal_verdict"
+      );
+    }
     if (positiveVerdict) {
       const fiscal = evaluateFiscalPolicy(fiscalFlow, {
         ...input,
@@ -1366,12 +1385,6 @@ export class FlowEngine {
         await this.persistFiscalBlock(fiscalFlow, fiscal, "goal_verdict", input);
         throw new Error(`PPIRTV_FISCAL_BLOCKED: ${fiscal.blocking_reasons.join(", ")}; required_cooperation=${fiscal.required_cooperation.map((item) => item.name).join("|")}`);
       }
-    }
-    if (positiveVerdict && memoryMining?.blocked_verdict === true) {
-      await this.persistMemoryMiningVerdictBlock(fiscalFlow, memoryMining, input);
-      throw new Error(
-        "MEMORY_MINING_BLOCKED_VERDICT: resolver memory_candidates bloqueados antes do veredito positivo; execute goal_status, use mm_memory_candidate_resolve para dar destino rastreavel a strong_unwritten_count/ledger_only e reexecute mm_memory_mining antes de repetir goal_verdict"
-      );
     }
     let effectiveStatus = input.status;
     let quandoRessalva: string | null = null;
@@ -2949,6 +2962,10 @@ function goalLedgerData(binding: GoalBinding, flow?: Flow): Record<string, unkno
     expected_evidence: flow?.expected_evidence ?? binding.envelope.required_evidence,
     done_criteria: flow?.done_criteria ?? []
   };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function requiresGoalEvidence(flow: Flow): boolean {

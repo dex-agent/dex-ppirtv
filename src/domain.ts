@@ -158,6 +158,8 @@ export type MemoryMiningSummary = {
   memory_required_but_empty?: boolean;
   candidates?: Array<Record<string, unknown>>;
   written?: Array<{ candidate_id: string; files: string[] }>;
+  write_failures?: Array<{ candidate_id: string; reason: string }>;
+  write_failures_count?: number;
   ledger_only?: string[];
   estacionamento?: string[];
   discarded?: string[];

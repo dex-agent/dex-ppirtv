@@ -9,6 +9,7 @@ import { AUTO_WRITE_REVIEW_MARKER, AUTO_WRITE_REVIEW_TAGS, memoryAnchor } from "
 import { loadOperationalContractSync } from "../src/principles.js";
 import { PpirtvStore } from "../src/store.js";
 import { exportRedactedDiagnosticBundle } from "../src/diagnostic-bundle.js";
+import type { Flow } from "../src/domain.js";
 
 let tempRoot: string;
 let engine: FlowEngine;
@@ -1130,6 +1131,52 @@ describe("PPIRTV flow engine", () => {
         score: expect.objectContaining({ evidencia: 0 })
       });
       expect(mined.written).toEqual([]);
+    } finally {
+      restoreDexMemoriaHome(originalDexMemoriaHome);
+    }
+  });
+
+  it("continues mm_memory_mining when one auto-write candidate fails and reports the failed candidate", async () => {
+    const originalDexMemoriaHome = process.env.DEX_MEMORIA_HOME;
+    const memRoot = path.join(tempRoot, "partial-write-memories");
+    process.env.DEX_MEMORIA_HOME = memRoot;
+    try {
+      const flow = await engine.createFlow({
+        goal: "Falha parcial de escrita de memoria",
+        context: "ctx",
+        risks: ["risco"],
+        uncertainties: ["lacuna"]
+      });
+      flow.gold_mining.push(
+        "Ponto cego Delphi DUnitX standalone vs provider precisa virar memoria reutilizavel.",
+        "Ponto cego PPIRTV goal_verdict com snapshot divergente precisa virar memoria reutilizavel."
+      );
+      await engine.store.saveFlow(flow);
+      await mkdir(path.join(memRoot, "temas", "delphi", "LEMBRANCA.md"), { recursive: true });
+
+      const mined = await engine.mineMemory({ flow_id: flow.flow_id, auto_classify: true, write_policy: "auto_write" });
+
+      expect(mined.write_policy).toBe("auto_write");
+      expect(mined.written).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            candidate_id: "mc_2",
+            files: expect.arrayContaining([path.join(memRoot, "temas", "ppirtv", "LEMBRANCA.md")])
+          })
+        ])
+      );
+      expect(mined.write_failures).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            candidate_id: "mc_1",
+            reason: expect.stringContaining("EISDIR")
+          })
+        ])
+      );
+      expect(mined.destination_warnings as string[]).toEqual(expect.arrayContaining([expect.stringContaining("write_failed:mc_1")]));
+      expect(mined.blocked_verdict).toBe(true);
+      expect(mined.write_failures_count).toBe(1);
+      expect(mined.memory_consolidated).toBe(false);
     } finally {
       restoreDexMemoriaHome(originalDexMemoriaHome);
     }
@@ -4000,6 +4047,43 @@ describe("PPIRTV flow engine", () => {
     }
   });
 
+  it("uses the fresh goalVerdict flow snapshot when memory mining changes between loads", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-goal-verdict-fresh-memory-snapshot",
+      "Veredito usa snapshot fresco de memoria"
+    );
+    const meeting = await engine.goalMeetingOpen({
+      flow_id: flowId,
+      type: "convergent",
+      question: "Snapshot fresco de memoria bloqueia veredito?"
+    });
+    await engine.goalMeetingClose({
+      flow_id: flowId,
+      meeting_id: meeting.meeting_id as string,
+      participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+      decision: "Veredito precisa usar a mesma leitura fresca do flow.",
+      satisfies_blockers: ["required_cooperation"]
+    });
+    const clean = await engine.store.loadFlow(flowId);
+    clean.memory_mining = memoryMiningSummary({ blocked_verdict: false, write_policy: "classify_only", strong_unwritten_count: 0 });
+    await engine.store.saveFlow(clean);
+
+    const driftStore = new DriftMemoryMiningStore(tempRoot, flowId);
+    const driftEngine = new FlowEngine(driftStore);
+
+    await expect(
+      driftEngine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Veredito com leitura fresca consistente.",
+        evidence_ids: [evidenceId],
+        meeting_id: meeting.meeting_id as string,
+        residual_risks: [],
+        next_step: "arquivar quando status fresco nao listar blockers"
+      })
+    ).rejects.toThrow(/MEMORY_MINING_BLOCKED_VERDICT/i);
+  });
+
   it("T33 mines review findings, residual risks and evidence from goal_verdict into editable accountability", async () => {
     const originalDexMemoriaHome = process.env.DEX_MEMORIA_HOME;
     const memRoot = path.join(tempRoot, "goal-verdict-learning-memories");
@@ -4810,6 +4894,58 @@ async function startGoalWithEvidence(
     satisfies: ["npm run check"]
   });
   return { flowId, evidenceId: evidence.evidence_id as string, workspace, sptPath };
+}
+
+class DriftMemoryMiningStore extends PpirtvStore {
+  private loadCount = 0;
+
+  constructor(root: string, private readonly targetFlowId: string) {
+    super(root);
+  }
+
+  override async loadFlow(flowId: string): Promise<Flow> {
+    const flow = await super.loadFlow(flowId);
+    if (flowId !== this.targetFlowId) {
+      return flow;
+    }
+    this.loadCount += 1;
+    return {
+      ...flow,
+      memory_mining:
+        this.loadCount >= 2
+          ? memoryMiningSummary({ blocked_verdict: true, write_policy: "auto_write", strong_unwritten_count: 1 })
+          : memoryMiningSummary({ blocked_verdict: false, write_policy: "classify_only", strong_unwritten_count: 0 })
+    };
+  }
+}
+
+function memoryMiningSummary(overrides: Partial<NonNullable<Flow["memory_mining"]>> = {}): NonNullable<Flow["memory_mining"]> {
+  return {
+    required: true,
+    last_run_at: new Date().toISOString(),
+    write_policy: "classify_only",
+    blocked_verdict: false,
+    candidates_count: 1,
+    written_count: 0,
+    blocked_count: 0,
+    ledger_only_count: 0,
+    discarded_count: 0,
+    strong_unwritten_count: 0,
+    memory_required_but_empty: false,
+    candidates: [{ id: "mc_fresh", title: "Snapshot fresco", scope: "ledger_only" }],
+    written: [],
+    ledger_only: ["mc_fresh"],
+    estacionamento: [],
+    discarded: [],
+    blocked: [],
+    write_decisions: [],
+    edit_queue: [],
+    destination_warnings: [],
+    memory_written: false,
+    memory_validated: false,
+    memory_consolidated: false,
+    ...overrides
+  };
 }
 
 async function repeatFiscalBlock(flowId: string, evidenceId: string, times: number): Promise<void> {
