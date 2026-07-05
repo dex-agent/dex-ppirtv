@@ -495,24 +495,36 @@ export class FlowEngine {
       // Sem isso, o operador fica preso sem saber o que fazer para destravar.
       const fiscal = evaluateFiscalPolicy(flow);
       const persistedFiscal = latestFiscalBlock(flow);
+      const meetings = await this.store.listMeetings(flow.flow_id);
       const blockers: string[] = gate?.missing ?? [];
       const reconciledBlockersList = reconciledBlockers(flow, [...fiscal.blocking_reasons, ...persistedFiscal.blocking_reasons]);
-      const allBlockers = blockers.length > 0 ? blockers : reconciledBlockersList;
-      const requiredCooperation = fiscal.required_cooperation;
+      const baseBlockers = blockers.length > 0 ? blockers : reconciledBlockersList;
+      const allBlockers = blockers.length === 0 && requiredCooperationNeedsMeetingIdRetry(flow, meetings)
+        ? unique([...baseBlockers, "required_cooperation"])
+        : baseBlockers;
       const meetingRequired = allBlockers.includes("required_cooperation");
+      const requiredCooperation = meetingRequired
+        ? fiscal.required_cooperation.length > 0
+          ? fiscal.required_cooperation
+          : persistedFiscal.required_cooperation.length > 0
+            ? persistedFiscal.required_cooperation
+            : requiredCoo(allBlockers)
+        : [];
       const regressCount = countRegressions(flow);
       const regressLimitReached = regressCount >= FISCAL_CONFIG.maxRegressions;
       const next = allBlockers.length > 0 ? `complete_gate_${flow.phase}` : (profileFor(flow.mode).nextPhase[flow.phase] ? `advance_to_${profileFor(flow.mode).nextPhase[flow.phase]}` : "complete");
       // next_required_action: acao concreta para o operador destravar.
-      let nextRequiredAction: Record<string, unknown> | null = null;
-      if (meetingRequired) {
-        nextRequiredAction = { type: "open_decision_meeting", tool: "goal_meeting_open", reason: "required_cooperation exige reuniao material" };
-      } else if (allBlockers.includes("review_required")) {
-        nextRequiredAction = { type: "attach_review", tool: "evidence_add", reason: "review_required exige evidencia de revisao" };
-      } else if (allBlockers.includes("memory_required_but_empty")) {
-        nextRequiredAction = { type: "run_memory_mining", tool: "mm_memory_mining", reason: "memory_required_but_empty exige mineracao" };
-      } else if (allBlockers.length > 0) {
-        nextRequiredAction = { type: "resolve_blockers", tool: "goal_status", detail: "full", reason: `blockers: ${allBlockers.join(", ")}` };
+      let nextRequiredAction = meetingRequired
+        ? nextRequiredActionFor(flow, meetings, allBlockers, fiscalBackTo(flow), regressCount, regressLimitReached, null)
+        : null;
+      if (!nextRequiredAction) {
+        if (allBlockers.includes("review_required")) {
+          nextRequiredAction = { type: "attach_review", tool: "evidence_add", reason: "review_required exige evidencia de revisao" };
+        } else if (allBlockers.includes("memory_required_but_empty")) {
+          nextRequiredAction = { type: "run_memory_mining", tool: "mm_memory_mining", reason: "memory_required_but_empty exige mineracao" };
+        } else if (allBlockers.length > 0) {
+          nextRequiredAction = { type: "resolve_blockers", tool: "goal_status", detail: "full", reason: `blockers: ${allBlockers.join(", ")}` };
+        }
       }
       const directAction = allBlockers.length > 0 ? `Bloqueado: ${allBlockers.join(", ")}` : "Sem bloqueio local; verificar status fiscal antes de avancar";
       // barata_scan (auditoria): incluir counts de vizinhos do erro para o
@@ -572,7 +584,7 @@ export class FlowEngine {
     const fiscal = evaluateFiscalPolicy(flow);
     const persistedFiscal = latestFiscalBlock(flow);
     const librarianStatus = structuredLibrarianStatus(rawLibrarianStatus);
-    const requiredCooperation = fiscal.required_cooperation.length > 0 ? fiscal.required_cooperation : persistedFiscal.required_cooperation;
+    let requiredCooperation = fiscal.required_cooperation.length > 0 ? fiscal.required_cooperation : persistedFiscal.required_cooperation;
     const meetings = await this.store.listMeetings(flow.flow_id);
     const gateBlockers = flow.status === "complete" || flow.status === "archived" ? [] : gate.status === "blocked" ? gate.missing : [];
     const memoryMiningBlockers = memoryMiningVerdictBlockers(flow);
@@ -580,6 +592,9 @@ export class FlowEngine {
     const blockers = gateBlockers.length === 0 && requiredCooperationNeedsMeetingIdRetry(flow, meetings)
       ? unique([...baseBlockers, "required_cooperation"])
       : baseBlockers;
+    if (blockers.includes("required_cooperation") && requiredCooperation.length === 0) {
+      requiredCooperation = requiredCoo(blockers);
+    }
     const blockerDiagnostics = blockerDiagnosticsFor(flow, meetings, gate, gateBlockers, fiscal, persistedFiscal, blockers, memoryMiningBlockers);
     const directAction = blockers.length > 0 ? blockedDirectAction(blockers) : checklist.display.direct_action;
     const checklistStatus = directAction ? withDirectAction(checklist, directAction) : checklist;
@@ -1383,7 +1398,14 @@ export class FlowEngine {
       });
       if (fiscal.blocking_reasons.length > 0) {
         await this.persistFiscalBlock(fiscalFlow, fiscal, "goal_verdict", input);
-        throw new Error(`PPIRTV_FISCAL_BLOCKED: ${fiscal.blocking_reasons.join(", ")}; required_cooperation=${fiscal.required_cooperation.map((item) => item.name).join("|")}`);
+        const meetings = await this.store.listMeetings(fiscalFlow.flow_id);
+        const cooperationDiagnostics = requiredCooperationDiagnostics(fiscalFlow, meetings, fiscal.blocking_reasons, input);
+        const missingForVerdict = stringArray(cooperationDiagnostics.missing_for_verdict);
+        const eligibleMeetingIds = stringArray(cooperationDiagnostics.eligible_meeting_ids);
+        const meetingRetryHint = missingForVerdict.includes("meeting_id")
+          ? `; missing_for_verdict=${missingForVerdict.join("|")}; eligible_meeting_ids=${eligibleMeetingIds.join("|")}`
+          : "";
+        throw new Error(`PPIRTV_FISCAL_BLOCKED: ${fiscal.blocking_reasons.join(", ")}; required_cooperation=${fiscal.required_cooperation.map((item) => item.name).join("|")}${meetingRetryHint}`);
       }
     }
     let effectiveStatus = input.status;
@@ -2323,7 +2345,7 @@ export class FlowEngine {
         }
       },
       suggested_cooperation: [],
-      required_cooperation: blockingFindings.length > 0 ? requiredCoo("hygiene_scan encontrou achados materiais antes do veredito") : []
+      required_cooperation: []
     };
   }
 
@@ -2332,7 +2354,10 @@ export class FlowEngine {
     const loopId = blockerLoopId(fiscal.blocking_reasons);
     const loopSignature = blockerSignature(fiscal.blocking_reasons);
     const meetings = await this.store.listMeetings(flow.flow_id);
-    const requiredCooperation = requiredCooperationDiagnostics(flow, meetings, fiscal.blocking_reasons, input);
+    const requiredCooperation = {
+      ...requiredCooperationDiagnostics(flow, meetings, fiscal.blocking_reasons, input),
+      explicit_meeting_trigger: explicitMeetingTrigger(fiscalText(flow, input))
+    };
     flow.status = "blocked";
     flow.history.push({
       at: now,
@@ -3092,9 +3117,6 @@ function evaluateFiscalPolicy(flow: Flow, input: FiscalVerdictInput = {}): Fisca
     return fiscalResult(false, []);
   }
 
-  if (!hasClosedMeetingSatisfying(flow, input, "required_cooperation")) {
-    blockingReasons.push("required_cooperation");
-  }
   if (memoryRequiredByFlow(flow, input) && noMemoryWasPromoted(flow, input.memory_mining)) {
     blockingReasons.push("memory_required_but_empty");
   }
@@ -3112,17 +3134,21 @@ function evaluateFiscalPolicy(flow: Flow, input: FiscalVerdictInput = {}): Fisca
   } else if (recurringRisk(input) && !hasEnoughAttempts(flow, input)) {
     blockingReasons.push("attempt_regress_count");
   }
+  if (requiredCooperationRequired(flow, input, blockingReasons)) {
+    blockingReasons.unshift("required_cooperation");
+  }
 
   return fiscalResult(true, unique(blockingReasons));
 }
 
 function fiscalResult(material: boolean, blockingReasons: string[]): FiscalPolicyResult {
+  const meetingRequired = blockingReasons.includes("required_cooperation");
   return {
     material,
     blocking_reasons: blockingReasons,
-    required_cooperation: material ? requiredCoo(blockingReasons) : [],
+    required_cooperation: blockingReasons.includes("required_cooperation") ? requiredCoo(blockingReasons) : [],
     meeting_policy: {
-      required: material,
+      required: meetingRequired,
       rotation: [
         "ancora-fluxo",
         "chato",
@@ -3156,7 +3182,7 @@ function fiscalResult(material: boolean, blockingReasons: string[]): FiscalPolic
     },
     direct_action:
       blockingReasons.length > 0
-        ? `regressar_para_reuniao_review_memoria: ${blockingReasons.join(", ")}`
+        ? `resolver_blockers_fiscais: ${blockingReasons.join(", ")}`
         : "fiscal_policy_clear"
   };
 }
@@ -3254,6 +3280,117 @@ function fiscalText(flow: Flow, input: FiscalVerdictInput): string {
 
 function materialRiskText(text: string): boolean {
   return /(risco material|risco de produto|regress|erro recorrente|falh|bloque|sem reuniao|sem reunião|sem revisor|sem memoria|sem memória|bibliotecario|bibliotecário|graphify|hygiene|codigo|código|mudanca de codigo|mudança de código|principios|princípios)/i.test(text);
+}
+
+function requiredCooperationRequired(flow: Flow, input: FiscalVerdictInput, blockingReasons: string[]): boolean {
+  return requiredCooperationStillActive(flow, input);
+}
+
+function explicitMeetingTrigger(text: string): boolean {
+  const normalized = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return normalized
+    .split(/[\r\n.;]+/)
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .some((segment) => positiveMeetingTrigger(segment) && !negativeMeetingTrigger(segment));
+}
+
+function negativeMeetingTrigger(text: string): boolean {
+  return (
+    /(required_cooperation|meeting_id|participantes insuficientes).{0,80}(nao se aplica|nao e necessario|nao ha|required false|opcional|sem necessidade|nao ocorreu)/i.test(text) ||
+    /(nao se aplica|nao e necessario|nao ha|opcional|sem necessidade|nao ocorreu).{0,80}(required_cooperation|meeting_id|participantes insuficientes)/i.test(text)
+  );
+}
+
+function positiveMeetingTrigger(text: string): boolean {
+  return /(sem reuniao|reuniao obrigatoria|reuniao material|mesa material|cooperacao material|divergente\/convergente\/transversal|sem meeting_id|required_cooperation (obrigator|exig|missing|falt|pendente)|participantes insuficientes)/i.test(text);
+}
+
+function requiredCooperationStillActive(flow: Flow, input: FiscalVerdictInput = {}): boolean {
+  if (explicitMeetingTrigger(fiscalText(flow, input))) {
+    return true;
+  }
+  if (requiredCooperationMeetingIdMissingForPositiveVerdict(flow, input)) {
+    return true;
+  }
+  if (hasClosedMeetingSatisfying(flow, input, "required_cooperation")) {
+    return false;
+  }
+  return requiredCooperationMeetingSignal(flow);
+}
+
+function requiredCooperationMeetingIdMissingForPositiveVerdict(flow: Flow, input: FiscalVerdictInput): boolean {
+  if ((input.status !== "pronto" && input.status !== "pronto_com_ressalvas") || inputMeetingIds(input).length > 0) {
+    return false;
+  }
+  return flow.history.some(
+    (event, index) =>
+      event.type === "meeting_closed" &&
+      event.data.participants_minimum_satisfied !== false &&
+      truthy(event.data.decision) &&
+      stringArray(event.data.satisfies_blockers).includes("required_cooperation") &&
+      !hasVerdictRecordedAfterIndex(flow, index)
+  );
+}
+
+function requiredCooperationMeetingSignal(flow: Flow): boolean {
+  const latestBlock = latestFiscalBlockEvent(flow);
+  const latest = latestBlock?.event.data.required_cooperation_diagnostics as Record<string, unknown> | undefined;
+  if (!latestBlock) {
+    return false;
+  }
+  if (flow.history.slice(latestBlock.index + 1).some((event) => event.type === "verdict_recorded")) {
+    return false;
+  }
+  if (latest?.explicit_meeting_trigger === true && !explicitMeetingTriggerClearedByFactsUpdate(flow, latestBlock.index)) {
+    return true;
+  }
+  return (
+    hasOpenRequiredCooperationMeetingSignal(flow, stringArray(latest?.open_meeting_ids)) ||
+    hasInsufficientRequiredCooperationMeetingSignal(flow, stringArray(latest?.insufficient_meeting_ids))
+  );
+}
+
+function historyAfter(flow: Flow, index: number): Flow["history"] {
+  return flow.history.slice(index + 1);
+}
+
+function explicitMeetingTriggerClearedByFactsUpdate(flow: Flow, latestBlockIndex: number): boolean {
+  if (explicitMeetingTrigger(fiscalText(flow, {}))) {
+    return false;
+  }
+  return historyAfter(flow, latestBlockIndex).some(
+    (event) =>
+      event.type === "flow_facts_updated" &&
+      Object.keys(event.data).some((key) => ["context", "risks", "uncertainties", "tasks", "done_criteria", "expected_evidence", "decisions", "scope"].includes(key))
+  );
+}
+
+function hasOpenRequiredCooperationMeetingSignal(flow: Flow, meetingIds: string[]): boolean {
+  return liveOpenMeetingIds(flow).some((meetingId) => meetingIds.includes(meetingId));
+}
+
+function hasInsufficientRequiredCooperationMeetingSignal(flow: Flow, meetingIds: string[]): boolean {
+  return flow.history.some(
+    (event) =>
+      event.type === "meeting_closed" &&
+      meetingIds.includes(String(event.data.meeting_id ?? "")) &&
+      event.data.participants_minimum_satisfied === false
+  );
+}
+
+function liveOpenMeetingIds(flow: Flow): string[] {
+  const opened = flow.history
+    .filter((event) => event.type === "meeting_opened")
+    .map((event) => String(event.data.meeting_id ?? ""))
+    .filter(Boolean);
+  const closed = new Set(
+    flow.history
+      .filter((event) => event.type === "meeting_closed")
+      .map((event) => String(event.data.meeting_id ?? ""))
+      .filter(Boolean)
+  );
+  return opened.filter((meetingId) => !closed.has(meetingId));
 }
 
 function memoryRequiredByFlow(flow: Flow, input: FiscalVerdictInput = {}): boolean {
@@ -3363,20 +3500,30 @@ function requiredCooperationDiagnostics(
   input: FiscalVerdictInput = {}
 ): Record<string, unknown> {
   const suggested = uniqueCooperators(meetings.flatMap((meeting) => meeting.suggested_cooperators ?? []));
+  const inputIds = inputMeetingIds(input);
+  const latestBlock = latestFiscalBlockEvent(flow);
+  const latestPersisted = latestBlock?.event.data.required_cooperation_diagnostics as Record<string, unknown> | undefined;
+  const persistedInsufficientIds = new Set(
+    latestBlock && !hasVerdictRecordedAfterIndex(flow, latestBlock.index) ? stringArray(latestPersisted?.insufficient_meeting_ids) : []
+  );
   const eligible = meetings.filter(
     (meeting) =>
       meeting.status === "closed" &&
       meeting.satisfies_blockers.includes("required_cooperation") &&
       missingParticipantsFor(meeting).length === 0 &&
-      truthy(meeting.decision)
+      truthy(meeting.decision) &&
+      !meetingConsumedByLaterVerdict(flow, meeting)
   );
   const insufficient = meetings.filter(
-    (meeting) => meeting.status === "closed" && meeting.participants_required.length > 0 && missingParticipantsFor(meeting).length > 0
+    (meeting) =>
+      meeting.status === "closed" &&
+      meeting.participants_required.length > 0 &&
+      missingParticipantsFor(meeting).length > 0 &&
+      (persistedInsufficientIds.has(meeting.meeting_id) || requiredCooperationMeetingMaterial(flow, meeting, inputIds, latestBlock?.index ?? null))
   );
-  const latestPersisted = latestFiscalBlockEvent(flow)?.event.data.required_cooperation_diagnostics as Record<string, unknown> | undefined;
   const inputMissingMeetingId =
     (input.status === "pronto" || input.status === "pronto_com_ressalvas") && inputMeetingIds(input).length === 0 && eligible.length > 0;
-  const persistedMissingForVerdict = stringArray(latestPersisted?.missing_for_verdict);
+  const persistedMissingForVerdict = inputMeetingIds(input).length > 0 ? [] : stringArray(latestPersisted?.missing_for_verdict);
   const missingForVerdict = unique([...(inputMissingMeetingId ? ["meeting_id"] : []), ...persistedMissingForVerdict]);
   const participantsRequired = requiredMeetingParticipants(blockers);
   const missingParticipants = unique(insufficient.flatMap((meeting) => missingParticipantsFor(meeting)));
@@ -3384,7 +3531,9 @@ function requiredCooperationDiagnostics(
     suggested_count: suggested.length,
     suggested,
     participants_required: participantsRequired,
-    open_meeting_ids: meetings.filter((meeting) => meeting.status !== "closed").map((meeting) => meeting.meeting_id),
+    open_meeting_ids: meetings
+      .filter((meeting) => meeting.status !== "closed" && requiredCooperationMeetingMaterial(flow, meeting, inputIds, latestBlock?.index ?? null))
+      .map((meeting) => meeting.meeting_id),
     eligible_meeting_ids: eligible.map((meeting) => meeting.meeting_id),
     insufficient_meeting_ids: insufficient.map((meeting) => meeting.meeting_id),
     missing_participants: missingParticipants,
@@ -3395,6 +3544,67 @@ function requiredCooperationDiagnostics(
 
 function missingParticipantsFor(meeting: Meeting): string[] {
   return meeting.participants_required.filter((participant) => !meeting.participants_present.includes(participant));
+}
+
+function requiredCooperationMeetingMaterial(flow: Flow, meeting: Meeting, inputMeetingIdsForVerdict: string[], latestBlockIndex: number | null): boolean {
+  if (inputMeetingIdsForVerdict.includes(meeting.meeting_id)) {
+    return true;
+  }
+  if (meeting.satisfies_blockers.includes("required_cooperation")) {
+    return true;
+  }
+  if (!meetingHasRequiredCooperationParticipants(meeting)) {
+    return false;
+  }
+  return meetingLinkedToFiscalBlock(flow, meeting, latestBlockIndex);
+}
+
+function meetingHasRequiredCooperationParticipants(meeting: Meeting): boolean {
+  const requiredParticipants = requiredMeetingParticipants(["required_cooperation"]);
+  return requiredParticipants.every((participant) => meeting.participants_required.includes(participant));
+}
+
+function meetingLinkedToFiscalBlock(flow: Flow, meeting: Meeting, latestBlockIndex: number | null): boolean {
+  if (latestBlockIndex === null) {
+    return false;
+  }
+  const openedIndex = meetingOpenedIndex(flow, meeting.meeting_id);
+  if (openedIndex === null) {
+    return false;
+  }
+  if (openedIndex > latestBlockIndex) {
+    return true;
+  }
+  const previousBlockIndex = previousFiscalBlockIndex(flow, latestBlockIndex);
+  return previousBlockIndex !== null && openedIndex > previousBlockIndex;
+}
+
+function meetingOpenedIndex(flow: Flow, meetingId: string): number | null {
+  const index = flow.history.findIndex((event) => event.type === "meeting_opened" && String(event.data.meeting_id ?? "") === meetingId);
+  return index >= 0 ? index : null;
+}
+
+function meetingClosedIndex(flow: Flow, meetingId: string): number | null {
+  const index = flow.history.findIndex((event) => event.type === "meeting_closed" && String(event.data.meeting_id ?? "") === meetingId);
+  return index >= 0 ? index : null;
+}
+
+function previousFiscalBlockIndex(flow: Flow, beforeIndex: number): number | null {
+  for (let index = beforeIndex - 1; index >= 0; index -= 1) {
+    if (flow.history[index]?.type === "fiscal_policy_blocked") {
+      return index;
+    }
+  }
+  return null;
+}
+
+function meetingConsumedByLaterVerdict(flow: Flow, meeting: Meeting): boolean {
+  const closedIndex = meetingClosedIndex(flow, meeting.meeting_id);
+  return closedIndex !== null && hasVerdictRecordedAfterIndex(flow, closedIndex);
+}
+
+function hasVerdictRecordedAfterIndex(flow: Flow, historyIndex: number): boolean {
+  return flow.history.slice(historyIndex + 1).some((event) => event.type === "verdict_recorded");
 }
 
 function librarianRequired(flow: Flow, input: FiscalVerdictInput): boolean {
@@ -3492,7 +3702,7 @@ function reconciledBlockers(flow: Flow, blockers: string[]): string[] {
 
 function isBlockerStillActive(flow: Flow, reason: string): boolean {
   if (reason === "required_cooperation") {
-    return !hasClosedMeetingSatisfying(flow, {}, "required_cooperation");
+    return requiredCooperationStillActive(flow);
   }
   if (reason === "memory_required_but_empty") {
     return memoryRequiredByFlow(flow) && noMemoryWasPromoted(flow);
@@ -3977,11 +4187,13 @@ function nextRequiredActionFor(
       ]
     };
   }
-  const meetingKind = requiredMeetingKind(flow, blockers, regressLimitReached);
-  const openMeeting = latestOpenMeeting(meetings, meetingKind) ?? latestOpenMeeting(meetings);
   if (blockers.includes("required_cooperation")) {
     const cooperationDiagnostics = requiredCooperationDiagnostics(flow, meetings, blockers);
+    const meetingKind = requiredMeetingKind(flow, blockers, regressLimitReached);
     const eligibleMeetingIds = stringArray(cooperationDiagnostics.eligible_meeting_ids);
+    const openMeetingIds = new Set(stringArray(cooperationDiagnostics.open_meeting_ids));
+    const relevantOpenMeetings = meetings.filter((meeting) => openMeetingIds.has(meeting.meeting_id));
+    const openMeeting = latestOpenMeeting(relevantOpenMeetings, meetingKind) ?? latestOpenMeeting(relevantOpenMeetings);
     const missingForVerdict = stringArray(cooperationDiagnostics.missing_for_verdict);
     if (eligibleMeetingIds.length > 0 && missingForVerdict.includes("meeting_id")) {
       return {
@@ -4789,9 +5001,10 @@ function ppirtvCheckIn(
   blockers: string[],
   resolutionGuidance: Record<string, unknown> | null = null
 ): Record<string, unknown> {
-  const cooVisible = requiredCooperation.length > 0 || flow.cooperators.length > 0;
   const graphifyStatus = librarianStatus.graphify.status;
   const meetingRequired = blockers.includes("required_cooperation");
+  const cooRequired = meetingRequired || requiredCooperation.length > 0;
+  const cooVisible = requiredCooperation.length > 0 || flow.cooperators.length > 0;
   const meetingToolAvailable = true;
   const librarianGraphifyRequired = blockers.includes("librarian_status");
   const graphifyConfigured = librarianStatus.graphify.configured === true;
@@ -4808,7 +5021,7 @@ function ppirtvCheckIn(
     ...(librarianConfiguredButUntested ? ["bibliotecario_config_mismatch"] : [])
   ]);
   const ppiRequired =
-    !cooVisible ||
+    (cooRequired && !cooVisible) ||
     librarianStatus.bibliotecario.status === "failed" ||
     librarianStatus.graphify.status === "failed" ||
     checkinBlockers.length > 0;
@@ -4826,9 +5039,9 @@ function ppirtvCheckIn(
       { name: "ppirtv", status: "online", visible: true, auto_repair: "already_visible" },
       {
         name: "coo",
-        status: cooVisible ? "visible" : "needs_visibility",
+        status: cooVisible ? "visible" : cooRequired ? "needs_visibility" : "not_required",
         visible: cooVisible,
-        auto_repair: cooVisible ? "already_visible" : "required_cooperation_generated"
+        auto_repair: cooVisible ? "already_visible" : cooRequired ? "required_cooperation_generated" : "not_required_without_required_cooperation"
       },
       {
         name: "bibliotecario",
@@ -4969,7 +5182,7 @@ function ppirtvCheckOut(
     resolution_guidance: resolutionGuidance,
     blocker_diagnostics: blockerDiagnostics,
     direct_action: blockers.length > 0
-      ? `check-out bloqueado: ${blockers.join(", ")}; abrir reuniao/revisor/memoria conforme resolution_guidance antes de veredito positivo`
+      ? `check-out bloqueado: ${blockers.join(", ")}; executar resolution_guidance.next_required_action antes de veredito positivo`
       : closed
         ? "fechamento_total_registrado"
         : "check-out pendente ate veredito/arquivo"
