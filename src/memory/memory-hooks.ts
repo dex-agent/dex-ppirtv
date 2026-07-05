@@ -49,7 +49,7 @@ export class MemoryLibrarian implements MemoryHookRunner {
     const parking = candidates.filter((candidate) => candidate.scope === "estacionamento" || candidate.scope === "ledger_only");
 
     for (const candidate of candidates) {
-      await this.runtime.append("candidates", {
+      await this.runtime.appendUnique("candidates", {
         id: runtimeRecordId("candidate", input.flow.flow_id, `${recordedAt}_${candidate.id}`),
         flow_id: input.flow.flow_id,
         phase: input.phase,
@@ -68,7 +68,7 @@ export class MemoryLibrarian implements MemoryHookRunner {
     }
 
     for (const item of input.flow.parking_lot) {
-      await this.runtime.append("parking-lot", {
+      await this.runtime.appendUnique("parking-lot", {
         id: runtimeRecordId("parking", input.flow.flow_id, `${recordedAt}_${item}`),
         flow_id: input.flow.flow_id,
         phase: input.phase,
@@ -89,7 +89,7 @@ export class MemoryLibrarian implements MemoryHookRunner {
       parking_count: parking.length,
       warnings: []
     };
-    await this.runtime.append("hooks", {
+    await this.runtime.appendUnique("hooks", {
       id: runtimeRecordId("hook", input.flow.flow_id, recordedAt),
       flow_id: input.flow.flow_id,
       phase: input.phase,

@@ -19,6 +19,7 @@ export type MemoryRecallSummary = {
   recalled_at: string;
   items: MemoryRecallItem[];
   warnings: string[];
+  deduped?: boolean;
   visual_status: {
     librarian: "disabled" | "recalled" | "empty" | "missing_graph" | "timeout" | "failed";
     graphify: "disabled" | "recalled" | "empty" | "missing_graph" | "timeout" | "failed";

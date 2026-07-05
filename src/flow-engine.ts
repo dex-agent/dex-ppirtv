@@ -1651,6 +1651,9 @@ export class FlowEngine {
         warnings: summary.warnings,
         recalled_count: summary.items.length
       };
+      if (summary.deduped) {
+        return librarianStatus;
+      }
       await this.ledger(
         flow.flow_id,
         "memory_recalled",

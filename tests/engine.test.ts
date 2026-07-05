@@ -181,6 +181,51 @@ describe("PPIRTV flow engine", () => {
     expect(parking).toContain("Avaliar depois");
   });
 
+  it("deduplicates repeated afterPhase candidates and parking for the same flow content", async () => {
+    const flow = await engine.createFlow({ goal: "Lean audit garimpo" });
+    flow.gold_mining = ["Regra PPIRTV: validar contrato antes do veredito."];
+    flow.parking_lot = ["Avaliar depois uma UI para estacionamento."];
+    const librarian = new MemoryLibrarian(tempRoot);
+
+    await librarian.afterPhase({ flow, phase: "pensamentos", meetings: [] });
+    await librarian.afterPhase({ flow, phase: "planejamento", meetings: [] });
+    const candidates = await readJsonl(path.join(tempRoot, "memory", "candidates.jsonl"));
+    const parking = await readJsonl(path.join(tempRoot, "memory", "parking-lot.jsonl"));
+
+    expect(candidates.filter((record) => record.flow_id === flow.flow_id)).toHaveLength(2);
+    expect(parking.filter((record) => record.flow_id === flow.flow_id)).toHaveLength(1);
+  });
+
+  it("deduplicates repeated beforePhase recall records by content signature", async () => {
+    const workspace = path.join(tempRoot, "workspace");
+    await mkdir(path.join(workspace, ".agents"), { recursive: true });
+    await writeFile(path.join(workspace, ".agents", "LEMBRANCA.md"), "- PPIRTV advance: consultar contrato antes de seguir\n", "utf8");
+    const flow = await engine.createFlow({ goal: "PPIRTV advance", context: "contrato antes de seguir" });
+    flow.goal_binding = {
+      envelope: {
+        workspace,
+        spt_path: path.join(workspace, "trail.md"),
+        objective: flow.goal,
+        idempotency_key: "memory-before-phase-dedupe",
+        evidence_required: true,
+        required_evidence: [],
+        requested_verdict_policy: "evidence_required",
+        source: "test"
+      },
+      started_at: new Date().toISOString(),
+      last_seen_at: new Date().toISOString()
+    };
+    const librarian = new MemoryLibrarian(tempRoot);
+
+    const first = await librarian.beforePhase({ flow, phase: "planejamento" });
+    const second = await librarian.beforePhase({ flow, phase: "planejamento" });
+    const recalls = await readJsonl(path.join(tempRoot, "memory", "recalls.jsonl"));
+
+    expect(first.deduped).toBe(false);
+    expect(second.deduped).toBe(true);
+    expect(recalls.filter((record) => record.flow_id === flow.flow_id)).toHaveLength(1);
+  });
+
   it("reuses a persisted passing gate when advancing", async () => {
     const flow = await engine.createFlow({ goal: "Runbook gate then advance" });
     const gate = await engine.checkGate({
@@ -255,6 +300,43 @@ describe("PPIRTV flow engine", () => {
     expect(JSON.stringify(recallEvent?.data)).toContain("\"source\":\"graphify\"");
     expect(JSON.stringify(recallEvent?.data)).toContain("\"destination\":\"recall_hint\"");
     expect(JSON.stringify(recallEvent?.data)).not.toContain("Traversal:");
+  });
+
+  it("keeps librarian display but skips duplicate memory_recalled ledger events", async () => {
+    const dedupedHooks: MemoryHookRunner = {
+      beforePhase: async () => ({
+        flow_id: "x",
+        phase: "planejamento",
+        recalled_at: new Date().toISOString(),
+        items: [],
+        warnings: [],
+        visual_status: { librarian: "empty", graphify: "disabled" },
+        deduped: true
+      }),
+      afterPhase: async () => ({
+        flow_id: "x",
+        phase: "pensamentos",
+        recorded_at: new Date().toISOString(),
+        candidates_count: 0,
+        parking_count: 0,
+        warnings: []
+      })
+    };
+    const dedupedEngine = new FlowEngine(new PpirtvStore(tempRoot), dedupedHooks);
+    const flow = await dedupedEngine.createFlow({ goal: "Dedup recall ledger" });
+
+    const advanced = await dedupedEngine.advance({
+      flow_id: flow.flow_id,
+      provided: {
+        context: "contexto conhecido",
+        risks: ["risco"],
+        uncertainties: ["lacuna"]
+      }
+    });
+    const ledger = await dedupedEngine.store.readLedger(flow.flow_id);
+
+    expect(advanced.display?.librarian).toMatchObject({ status: "empty", recalled_count: 0 });
+    expect(ledger.some((event) => event.type === "memory_recalled")).toBe(false);
   });
 
   it("keeps advance working when graphify provider fails", async () => {
@@ -5054,6 +5136,14 @@ function restoreEnvSnapshot(snapshot: Record<string, string | undefined>): void 
       process.env[key] = value;
     }
   }
+}
+
+async function readJsonl(filePath: string): Promise<Array<Record<string, any>>> {
+  const text = await readFile(filePath, "utf8");
+  return text
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as Record<string, any>);
 }
 
 function validPipelineItem(goal: string): {

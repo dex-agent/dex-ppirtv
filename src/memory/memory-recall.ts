@@ -27,9 +27,10 @@ export async function beforePhase(input: { flow: Flow; phase: AnyPhase; runtime:
     visual_status: {
       librarian: librarianStatusFrom(warnings, items.length, graphifyStatus),
       graphify: graphifyStatus
-    }
+    },
+    deduped: false
   };
-  await input.runtime.recordRecall(summary);
+  summary.deduped = !(await input.runtime.recordRecall(summary));
   return summary;
 }
 
