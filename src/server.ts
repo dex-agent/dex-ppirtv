@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { PROMPT_NAMES, RESOURCE_URIS, TOOL_NAMES, gatesTemplate, mcpReference, meetingsTemplate, promptText, resourceText } from "./catalogs.js";
 import {
+  COMPACT_PHASES,
   GOAL_VERDICT_POLICIES,
   MEETING_KINDS,
   MEETING_TYPES,
@@ -15,6 +16,8 @@ import {
 import { FlowEngine } from "./flow-engine.js";
 import { scrubSecretLikeText } from "./security/secret-redaction.js";
 import { PpirtvStore } from "./store.js";
+
+const ANY_PHASES = [...PHASES, ...COMPACT_PHASES] as const;
 
 export function createPpirtvServer(options: { storeRoot?: string } = {}): McpServer {
   const store = new PpirtvStore(options.storeRoot);
@@ -140,7 +143,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
       description: "Check the PPIRTV gate for the current or requested phase.",
       inputSchema: {
         flow_id: z.string().min(1),
-        phase: z.enum(PHASES).optional(),
+        phase: z.enum(ANY_PHASES).optional(),
         provided: z.record(z.unknown()).optional(),
         persist: z.boolean().optional()
       }
@@ -290,7 +293,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         detail: z.enum(["lean", "compact", "full"]).optional()
       }
     },
-    async (args) => toolResponse(() => engine.goalStatus(args))
+    async (args) => toolResponse(() => engine.goalStatus(args), args)
   );
 
   server.registerTool(
@@ -303,7 +306,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         detail: z.enum(["lean", "compact", "full"]).optional()
       }
     },
-    async (args) => toolResponse(() => engine.goalCheckout(args))
+    async (args) => toolResponse(() => engine.goalCheckout(args), args)
   );
 
   server.registerTool(
@@ -316,7 +319,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         note: z.string().optional()
       }
     },
-    async (args) => toolResponse(() => engine.resumeGoal(args))
+    async (args) => toolResponse(() => engine.resumeGoal(args), args)
   );
 
   server.registerTool(
@@ -326,13 +329,13 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
-        phase: z.enum(PHASES).optional(),
+        phase: z.enum(ANY_PHASES).optional(),
         provided: z.record(z.unknown()).optional(),
         persist: z.boolean().optional(),
         detail: z.enum(["lean", "compact", "full"]).optional()
       }
     },
-    async (args) => toolResponse(() => engine.goalGateCheck(args))
+    async (args) => toolResponse(() => engine.goalGateCheck(args), args)
   );
 
   server.registerTool(
@@ -346,7 +349,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         evidence_ids: z.array(z.string()).optional()
       }
     },
-    async (args) => toolResponse(() => engine.goalAdvance(args))
+    async (args) => toolResponse(() => engine.goalAdvance(args), args)
   );
 
   server.registerTool(
@@ -662,7 +665,7 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
       ...base,
       code: "GOAL_NAO_ATIVO",
       recoverable: true,
-      next_required_action: { type: "goal_start_required", tool: "goal_start" }
+      next_required_action: goalStartRequiredAction(errorContext)
     };
   }
   if (/goal_verdict requires traceable evidence_ids|Unknown evidence_ids/i.test(message)) {
@@ -707,6 +710,19 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
         next_required_action: memoryRequiredErrorAction(flowId)
       };
     }
+    if (/missing_for_verdict=.*meeting_id/i.test(message)) {
+      return {
+        ...base,
+        code: "PPIRTV_FISCAL_BLOCKED",
+        recoverable: true,
+        next_required_action: {
+          type: "provide_meeting_id_for_verdict",
+          tool: "goal_verdict",
+          eligible_meeting_ids: parsePipeListFromError(message, "eligible_meeting_ids"),
+          required_satisfies_blockers: ["required_cooperation"]
+        }
+      };
+    }
     return {
       ...base,
       code: "PPIRTV_FISCAL_BLOCKED",
@@ -730,6 +746,14 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
   };
 }
 
+function parsePipeListFromError(message: string, key: string): string[] {
+  const match = new RegExp(`${key}=([^;\\n\\r]+)`, "i").exec(message);
+  if (!match) {
+    return [];
+  }
+  return match[1].split("|").map((item) => item.trim()).filter(Boolean);
+}
+
 function memoryRequiredErrorAction(flowId: string) {
   return {
     type: "run_memory_mining",
@@ -743,6 +767,39 @@ function memoryRequiredErrorAction(flowId: string) {
       },
       { order: 2, tool: "goal_status", args: { flow_id: flowId } },
       { order: 3, tool: "goal_verdict", only_if: "goal_status.blockers nao contem memory_required_but_empty" }
+    ]
+  };
+}
+
+function goalStartRequiredAction(errorContext?: ToolErrorContext) {
+  const flowId = typeof errorContext?.flow_id === "string" && errorContext.flow_id.length > 0 ? errorContext.flow_id : "<flow_id>";
+  const goalStartArgs = {
+    workspace: "<workspace>",
+    spt_path: "<spt_path>",
+    objective: "<objective>",
+    idempotency_key: "<idempotency_key>",
+    source: "<source>",
+    flow_id: flowId
+  };
+  return {
+    type: "goal_start_required",
+    tool: "goal_start",
+    reason: "wrappers goal_* exigem GOAL oficial iniciado por goal_start; flow_create sozinho nao cria goal_binding",
+    required_tool_sequence: [
+      {
+        order: 1,
+        tool: "spt_validate",
+        args: {
+          workspace: goalStartArgs.workspace,
+          spt_path: goalStartArgs.spt_path,
+          objective: goalStartArgs.objective
+        }
+      },
+      {
+        order: 2,
+        tool: "goal_start",
+        args: goalStartArgs
+      }
     ]
   };
 }

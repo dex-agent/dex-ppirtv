@@ -573,6 +573,42 @@ describe("PPIRTV flow engine", () => {
     ).rejects.toThrow(/not bound to an official GOAL/);
   });
 
+  it("requires goal_resume to operate on a flow started by goal_start", async () => {
+    const flow = await engine.createFlow({
+      goal: "Nao e GOAL oficial",
+      context: "ctx",
+      risks: ["risco"],
+      uncertainties: ["lacuna"]
+    });
+
+    await expect(engine.resumeGoal({ flow_id: flow.flow_id, note: "nao deve retomar flow comum" })).rejects.toThrow(
+      /not bound to an official GOAL/
+    );
+  });
+
+  it("keeps goal_resume working for official GOAL flows", async () => {
+    const workspace = path.join(tempRoot, "workspace-goal-resume-official");
+    const sptPath = await writeFakeSpt(workspace);
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Retomar GOAL oficial",
+      idempotency_key: "dex-code:test-goal-resume-official",
+      evidence_required: true,
+      required_evidence: ["vitest"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code"
+    });
+
+    const resumed = await engine.resumeGoal({ flow_id: started.flow_id as string, note: "retomada oficial" });
+
+    expect(resumed).toMatchObject({
+      flow_id: started.flow_id,
+      resumed: true,
+      goal_envelope: expect.objectContaining({ idempotency_key: "dex-code:test-goal-resume-official" })
+    });
+  });
+
   it("does not promote unknown parking items to gold by default", async () => {
     const workspace = path.join(tempRoot, "workspace");
     const sptPath = await writeFakeSpt(workspace);
@@ -1914,6 +1950,7 @@ describe("PPIRTV flow engine", () => {
       const hygiene = await engine.hygieneScan(flowId);
 
       expect(hygiene.blocking_findings_count).toBeGreaterThan(0);
+      expect(hygiene.required_cooperation).toEqual([]);
       await expect(
         engine.goalVerdict({
           flow_id: flowId,
@@ -1927,6 +1964,57 @@ describe("PPIRTV flow engine", () => {
     } finally {
       process.chdir(originalCwd);
     }
+  });
+
+  it("drops legacy persisted required_cooperation when the current flow has no meeting trigger", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-legacy-required-cooperation-drop", "Legacy COO nao ritualiza");
+    const flow = await engine.store.loadFlow(flowId);
+    flow.history.push({
+      at: new Date().toISOString(),
+      type: "fiscal_policy_blocked",
+      data: {
+        source: "legacy_pre_reuniao_sem_ritual",
+        blocking_reasons: ["required_cooperation", "review_required"],
+        required_cooperation: [{ name: "reuniao", reason: "legacy materialidade fiscal", material: true }]
+      }
+    });
+    flow.updated_at = new Date().toISOString();
+    await engine.store.saveFlow(flow);
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+
+    expect(status.blockers).toContain("review_required");
+    expect(status.blockers).not.toContain("required_cooperation");
+    expect(status.required_cooperation).toEqual([]);
+    expect(status.meeting_required).toBe(false);
+  });
+
+  it("does not convert regress limit into required_cooperation when direct blockers remain", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-regress-limit-no-ritual-coo", "Regress limit sem COO ritual");
+    await engine.updateFlowFacts(flowId, { changed_files: ["src/flow-engine.ts"] });
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Erro recorrente no review ainda sem evidencia.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["erro recorrente sem review anexado"],
+        next_step: "abrir decisao de limite agora",
+        regress_count: 3
+      })
+    ).rejects.toThrow(/attempt_regress_count|review_required/i);
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+
+    expect(status.regress_limit_reached).toBe(true);
+    expect(status.blockers).toEqual(expect.arrayContaining(["review_required", "attempt_regress_count"]));
+    expect(status.blockers).not.toContain("required_cooperation");
+    expect(status.required_cooperation).toEqual([]);
+    expect(status.next_required_action).toMatchObject({
+      type: "open_decision_meeting",
+      tool: "goal_meeting_open"
+    });
   });
 
   it("T4 keeps memory_required_but_empty when mining has not run yet, and clears after classify_only with 0 strong unwritten", async () => {
@@ -2528,38 +2616,25 @@ describe("PPIRTV flow engine", () => {
     ).rejects.toThrow(/review_required/i);
   });
 
-  it("T6 exposes mandatory COO as required_cooperation and blocks until material participation exists", async () => {
-    const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t6", "COO obrigatorio");
+  it("T6 does not open required_cooperation only because a material risk exists", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t6", "COO sem rito automatico");
     await engine.updateFlowFacts(flowId, { risks: ["risco material de produto e fluxo"] });
 
     const status = await engine.goalStatus({ flow_id: flowId });
-    const names = (status.required_cooperation as Array<Record<string, unknown>>).map((item) => item.name);
 
-    expect(names).toEqual(
-      expect.arrayContaining([
-        "chato",
-        "questionador",
-        "entrevista-me",
-        "garimpeiro",
-        "dex-memoria",
-        "estacionamento",
-        "reuniao",
-        "sprinter",
-        "duda-dev",
-        "mapeador-implementacao",
-        "revisor-codigo",
-        "tio-testador",
-        "validador-pronto"
-      ])
-    );
-    expect(status.required_cooperation).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: "chato", reason: expect.stringContaining("perguntas de pressao") }),
-        expect.objectContaining({ name: "ancora-fluxo", reason: expect.stringContaining("regresso correto") }),
-        expect.objectContaining({ name: "validador-pronto", reason: expect.stringContaining("qualquer veredito positivo") })
-      ])
-    );
-    expect(status.blockers).toEqual(expect.arrayContaining(["required_cooperation"]));
+    expect(status.required_cooperation).toEqual([]);
+    expect(status.blockers).not.toContain("required_cooperation");
+    expect(status.meeting_required).toBe(false);
+    const checkin = status.ppirtv_checkin as Record<string, unknown>;
+    const components = checkin.components as Array<Record<string, unknown>>;
+    const coo = components.find((component) => component.name === "coo");
+    expect(checkin.ppi_action_required).toBe(false);
+    expect(checkin.initial_adjustment_required).toBe(false);
+    expect(coo).toMatchObject({
+      status: "not_required",
+      visible: false,
+      auto_repair: "not_required_without_required_cooperation"
+    });
   });
 
   it("T7 shows Graphify enabled but failing in visual librarian status", async () => {
@@ -2667,7 +2742,7 @@ describe("PPIRTV flow engine", () => {
 
   it("T11 exposes corrective check-in with disabled librarian/Graphify visible and explained", async () => {
     const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t11", "Check-in corretivo");
-    await engine.updateFlowFacts(flowId, { risks: ["risco material exige COO visivel"] });
+    await engine.updateFlowFacts(flowId, { risks: ["sem reuniao material exige COO visivel"] });
 
     const status = await engine.goalStatus({ flow_id: flowId });
     const checkin = status.ppirtv_checkin as Record<string, unknown>;
@@ -2864,7 +2939,7 @@ describe("PPIRTV flow engine", () => {
     );
   });
 
-  it("T18 preserves goal_gate_check blocking required cooperation and hygiene material findings", async () => {
+  it("T18 preserves goal_gate_check hygiene material findings without opening a meeting by default", async () => {
     const workspace = path.join(tempRoot, "gate-check-hygiene");
     const sptPath = await writeFakeSpt(workspace);
     const started = await engine.startGoal({
@@ -2883,54 +2958,28 @@ describe("PPIRTV flow engine", () => {
     const gate = await engine.goalGateCheck({ flow_id: flowId, persist: false });
 
     expect(gate.status).toBe("blocked");
-    expect(gate.missing).toEqual(expect.arrayContaining(["required_cooperation", "hygiene_blocking"]));
-    expect((gate.display as Record<string, Record<string, string>>).direct_action.action).toContain("required_cooperation");
+    expect(gate.missing).toEqual(expect.arrayContaining(["hygiene_blocking"]));
+    expect(gate.missing).not.toContain("required_cooperation");
+    expect((gate.display as Record<string, Record<string, string>>).direct_action.action).toContain("hygiene_blocking");
   });
 
-  it("T19 explains required_cooperation reasons by blocker and keeps all mandatory COO visible", async () => {
-    const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t19", "Razoes especificas por fiscal");
+  it("T19 routes direct memory and review blockers without manufacturing required_cooperation", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t19", "Blockers diretos sem rito");
     await engine.updateFlowFacts(flowId, {
       risks: ["sem memoria L1/L2 gerada pelo motor"],
       changed_files: ["src/flow-engine.ts"]
     });
 
     const status = await engine.goalStatus({ flow_id: flowId });
-    const required = status.required_cooperation as Array<Record<string, unknown>>;
-    const names = required.map((item) => item.name);
 
-    expect(names).toEqual(
-      expect.arrayContaining([
-        "ancora-fluxo",
-        "chato",
-        "questionador",
-        "entrevista-me",
-        "garimpeiro",
-        "dex-memoria",
-        "estacionamento",
-        "reuniao",
-        "sprinter",
-        "duda-dev",
-        "mapeador-implementacao",
-        "revisor-codigo",
-        "tio-testador",
-        "validador-pronto"
-      ])
-    );
-    expect(required).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: "revisor-codigo", reason: expect.stringContaining("review_required") }),
-        expect.objectContaining({ name: "garimpeiro", reason: expect.stringContaining("memory_required_but_empty") }),
-        expect.objectContaining({ name: "dex-memoria", reason: expect.stringContaining("memory_required_but_empty") }),
-        expect.objectContaining({ name: "reuniao", reason: expect.stringContaining("required_cooperation") }),
-        expect.objectContaining({ name: "sprinter", reason: expect.stringContaining("required_cooperation") }),
-        expect.objectContaining({ name: "tio-testador", reason: expect.stringContaining("risco de teste/evidencia") }),
-        expect.objectContaining({ name: "validador-pronto", reason: expect.stringContaining("qualquer veredito positivo") }),
-        expect.objectContaining({ name: "ancora-fluxo", reason: expect.stringContaining("regresso correto") }),
-        expect.objectContaining({ name: "chato", reason: expect.stringContaining("perguntas de pressao") }),
-        expect.objectContaining({ name: "questionador", reason: expect.stringContaining("perguntas de pressao") }),
-        expect.objectContaining({ name: "entrevista-me", reason: expect.stringContaining("perguntas de pressao") })
-      ])
-    );
+    expect(status.blockers).toEqual(expect.arrayContaining(["memory_required_but_empty", "review_required"]));
+    expect(status.blockers).not.toContain("required_cooperation");
+    expect(status.required_cooperation).toEqual([]);
+    expect(status.meeting_required).toBe(false);
+    expect(status.next_required_action).toMatchObject({
+      type: "attach_review",
+      tool: "evidence_add"
+    });
   });
 
   it("T20 summarizes blockers and next action in ppirtv_checkout for blocked flows", async () => {
@@ -2952,9 +3001,10 @@ describe("PPIRTV flow engine", () => {
 
     expect(checkout).toMatchObject({ complete: false, status: "blocked" });
     expect(checkout.direct_action).toEqual(expect.stringContaining("check-out bloqueado:"));
-    expect(checkout.direct_action).toEqual(expect.stringContaining("required_cooperation"));
+    expect(checkout.direct_action).not.toEqual(expect.stringContaining("required_cooperation"));
     expect(checkout.direct_action).toEqual(expect.stringContaining("review_required"));
-    expect(checkout.direct_action).toEqual(expect.stringContaining("abrir reuniao/revisor/memoria"));
+    expect(checkout.direct_action).toEqual(expect.stringContaining("memory_required_but_empty"));
+    expect(checkout.direct_action).toEqual(expect.stringContaining("resolution_guidance.next_required_action"));
   });
 
   it("routes memory_required_but_empty to canonical mm_memory_mining after evidence and material meeting", async () => {

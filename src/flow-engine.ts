@@ -687,7 +687,8 @@ export class FlowEngine {
   }
 
   async goalCheckout(input: { flow_id?: string; idempotency_key?: string; detail?: "lean" | "compact" | "full" }): Promise<Record<string, unknown>> {
-    const status = await this.goalStatus(input);
+    const statusDetail = input.detail === "lean" ? "compact" : input.detail;
+    const status = await this.goalStatus({ ...input, detail: statusDetail });
     const checkout = status.ppirtv_checkout as Record<string, unknown>;
     // A+C (DRY): o checkout interno ja foi processado por compactPpirtvCheckout
     // quando detail=compact. Nao reomitir nem recompute count aqui — confiar
@@ -724,6 +725,7 @@ export class FlowEngine {
 
   async resumeGoal(input: { flow_id?: string; idempotency_key?: string; note?: string }): Promise<Record<string, unknown>> {
     const flow = await this.resolveGoalFlow(input);
+    assertGoalBinding(flow);
     const now = nowIso();
     if (flow.goal_binding) {
       flow.goal_binding.last_seen_at = now;

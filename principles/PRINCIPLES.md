@@ -1,8 +1,8 @@
 # Principios do dex-PPIRTV
 
 Status: vigente
-Principles-Revision: `2026-07-04.1`
-Last-Updated: `2026-07-04`
+Principles-Revision: `2026-07-07.1`
+Last-Updated: `2026-07-07`
 Canonical-Source: `$env:USERPROFILE\.agents\memories\principles\PRINCIPLES.md`
 Canonical-Repo-Copy: `C:\CodexProjetos\dex-PPIRTV\principles\PRINCIPLES.md`
 Sync-Rule: depois de alterar a fonte global, sincronizar a copia do repo e
@@ -101,6 +101,7 @@ formalmente.
 | Erro repetido tres vezes bloqueia pronto | BLOCK |
 | Gate do Quando | BLOCK para plano, decisao ou acao futura |
 | Impossibilitar a repeticao | WARN; BLOCK quando risco alto, recorrencia ou falta de defesa verificavel permitir falso pronto |
+| Seguranca prematura tambem quebra nascimento | WARN; BLOCK se trava sem evidencia impedir experimento reversivel ou se risco real ficar subprotegido |
 
 ## Gate Final PPIRTV
 
@@ -145,6 +146,13 @@ Antes de declarar uma tarefa como pronta, executar este checklist:
    Houve causa raiz real, fix validado ou erro com padrao reutilizavel?
    Se sim, existe a menor defesa verificavel proporcional ao risco?
    Se a defesa nao coube, ha justificativa, quando e destino rastreavel?
+
+9. Seguranca prematura tambem quebra nascimento
+   A trava de seguranca tem evidencia local e risco concreto?
+   Se nao, ela foi substituida por escopo limitado, telemetria, falha explicita
+   e rollback?
+   A protecao preserva o nascimento do experimento sem expor segredo,
+   permissao, dado sensivel, compliance, autorizacao ou acao destrutiva?
 
 Saida obrigatoria:
 
@@ -335,6 +343,48 @@ Escala para BLOCK quando qualquer item abaixo for verdadeiro:
 - a correcao nao tem gate verificavel e pode se repetir silenciosamente;
 - a defesa ausente deixaria o proximo agente sem como detectar o problema.
 
+### Sub-regra: consumo seguro de segredos indicados
+
+Quando o usuario indicar explicitamente uma fonte de segredo e uma chave
+especifica, como `.env` + `GITHUB_TOKEN`, o agente deve consumir essa chave de
+forma limitada em vez de exigir que o valor seja colado no chat.
+
+Responsavel pela definicao:
+
+- o usuario define fonte, chave e operacao concreta;
+- o agente valida escopo, legitimidade e risco antes de ler;
+- o executor usa somente a chave allowlistada e nunca imprime o valor;
+- `chato` bloqueia se a leitura virar varredura ampla, bypass ou vazamento;
+- `clean-code` exige helper, comando ou fronteira que reduza chance de logar
+  segredo.
+
+Contrato operacional:
+
+- preferir variavel de ambiente ja carregada; se ela nao existir e o usuario
+  apontar `.env`, ler apenas a chave nomeada;
+- nao ecoar, resumir, registrar, copiar, versionar, memorizar, estacionar,
+  anexar em lixeira ou incluir em prompt o valor do segredo;
+- passar o segredo somente em memoria de processo, ambiente temporario, header
+  temporario ou stdin seguro, conforme a ferramenta permitir;
+- limpar variaveis temporarias e remover artefatos auxiliares quando houver;
+- relatar erro apenas com metadado sanitizado, como chave ausente, fonte
+  ambigua ou permissao negada;
+- se um segredo for colado no chat, tratar como incidente: usar uma unica vez
+  apenas se o usuario pediu a operacao concreta, recomendar revogacao/rotacao e
+  registrar somente metadado sanitizado.
+
+Limites:
+
+- nao fazer varredura ampla de `.env`, navegador, cookies, senhas, sessoes,
+  Authorization headers, password manager ou payload privado;
+- nao extrair cookie/sessao/senha de navegador nem burlar fluxo oficial de
+  acesso;
+- so baixar, gerar ou salvar credencial em `.env` quando o usuario tiver
+  autorizado fonte, conta/projeto, chave e destino, e a rota for legitima para
+  API/token de acesso autorizado;
+- se a unica rota expuser o segredo em log, terminal, historico, memoria ou
+  arquivo versionavel, bloquear e propor uma rota sem eco.
+
 ### Defesa minima verificavel
 
 Escolha a menor defesa suficiente para o risco. Nao e obrigatorio criar todas as
@@ -356,6 +406,71 @@ Evidencia minima:
 - qual defesa foi criada ou por que foi estacionada;
 - qual comando, teste, check ou fonte valida a defesa;
 - quando sera retomado se a defesa nao couber agora.
+
+## 9. Seguranca prematura tambem quebra nascimento
+
+Seguranca boa protege o nascimento do projeto. Seguranca aplicada cedo demais,
+sem evidencia local, pode virar limitacao invisivel, esconder falhas e impedir
+que um V0 bom exista.
+
+Este principio nao autoriza imprudencia. Ele exige proporcionalidade: em fase
+inicial, preferir liberdade observavel, falha explicita, telemetria, escopo
+limitado e gates reversiveis antes de bloquear por medo abstrato.
+
+### Quando entra em acao
+
+- prototipo, V0, bootstrap, spike, TUI, runtime externo ou agente nascendo;
+- criacao de tool, router, executor, conector, limite, timeout ou fallback;
+- tentativa de bloquear pensamento/status externo, telemetria, logs de
+  diagnostico, comandos locais controlados ou experimentos reversiveis;
+- revisao de seguranca que pode impedir o aprendizado minimo do sistema.
+
+### Regra operacional
+
+Antes de adicionar guardrails, timeouts agressivos, hard kills, fallbacks
+automaticos, limites de prompt, restricoes de comando, bloqueios de status ou
+cortes de telemetria, exigir:
+
+- evidencia local do risco que a trava reduz;
+- escopo concreto da protecao;
+- custo da trava para nascimento, observabilidade e debug;
+- alternativa mais leve: logs, erro explicito, dry-run, confirmacao, allowlist,
+  sandbox local, rollback ou flag reversivel;
+- criterio claro de quando endurecer a trava depois.
+
+Default: WARN. Pode seguir quando o risco for baixo, reversivel e observavel,
+desde que haja logs, falha explicita e caminho de rollback.
+
+Escala para BLOCK quando qualquer item abaixo for verdadeiro:
+
+- a trava impede experimento reversivel sem evidencia local;
+- o sistema passa a esconder falha, status, raciocinio operacional ou
+  telemetria necessaria para diagnostico;
+- fallback automatico mascara erro real;
+- timeout, kill ou limite impede observar comportamento essencial;
+- a justificativa e medo generico, sem ameaca concreta;
+- a flexibilizacao deixaria subprotegido segredo, permissao, dado sensivel,
+  acao destrutiva, compliance ou autorizacao.
+
+### Evidencia minima
+
+- qual risco concreto existe agora;
+- qual trava foi escolhida e por que e proporcional;
+- qual alternativa mais leve foi considerada;
+- qual log, teste, harness, dry-run ou confirmacao torna o experimento
+  observavel;
+- quando e por qual gatilho a trava deve endurecer.
+
+### Limites que continuam bloqueantes
+
+Este principio nunca reduz protecao para:
+
+- segredos, tokens, cookies, sessoes, Authorization headers ou `.env`;
+- permissoes, contas reais, dados sensiveis ou payload privado;
+- acao externa, destrutiva, financeira, legal, fiscal ou irreversivel;
+- bypass de autorizacao, fluxo oficial de acesso ou consentimento;
+- ausencia de log, ausencia de timeout razoavel ou ausencia de confirmacao
+  quando a politica da tool exigir.
 
 ## Contrato editavel
 

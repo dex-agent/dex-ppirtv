@@ -1,8 +1,8 @@
 {
   "version": "1.0",
-  "numeric_version": 5,
-  "principles_revision": "2026-07-04.1",
-  "updated_at": "2026-07-04",
+  "numeric_version": 7,
+  "principles_revision": "2026-07-07.1",
+  "updated_at": "2026-07-07",
   "source": "principles/PRINCIPLES.md",
   "canonical_source": "$env:USERPROFILE\\.agents\\memories\\principles\\PRINCIPLES.md",
   "canonical_contract": "$env:USERPROFILE\\.agents\\memories\\principles\\operational-contract.json",
@@ -350,17 +350,22 @@
         "chato desafia a classificacao com cenarios de quebra e risco de burocracia",
         "clean-code valida se a defesa melhora teste, contrato, erro explicito, fronteira ou legibilidade",
         "ppi ou validador-pronto fecha o veredito quando a mudanca tocar governanca, memoria, seguranca, contrato, MCP, runtime ou falso pronto",
-        "criar a menor defesa verificavel proporcional ao risco ou estacionar com justificativa e quando"
+        "criar a menor defesa verificavel proporcional ao risco ou estacionar com justificativa e quando",
+        "quando o usuario indicar fonte e chave de segredo, consumir apenas a chave allowlistada sem ecoar valor",
+        "bloquear varredura ampla, bypass ou extracao de cookie, sessao, senha, Authorization header ou payload privado"
       ],
       "evidence": [
         "erro ocorrido descrito",
         "causa raiz confirmada",
         "defesa criada ou justificativa de estacionamento registrada",
         "comando, teste, check ou fonte que valida a defesa",
-        "quando de retomada quando a defesa nao couber no corte"
+        "quando de retomada quando a defesa nao couber no corte",
+        "para segredo indicado, metadado sanitizado da chave/fonte/operacao sem valor sensivel"
       ],
       "blocks_ready_when": [
         "risco de segredo, token, autorizacao, .env ou dado sensivel sem defesa verificavel",
+        "pedido para colar segredo no chat quando fonte/chave autorizada poderia ser consumida sem eco",
+        "leitura ampla de .env, navegador, cookies, senhas, sessoes, Authorization headers ou payload privado",
         "risco de perda, corrupcao ou vazamento de dados ou memoria sem defesa verificavel",
         "quebra de contrato publico MCP/API/CLI ou fonte canonica sem defesa verificavel",
         "falso pronto fiscal, PPIRTV, build, teste ou audit",
@@ -372,6 +377,7 @@
       "severity": "warning",
       "escalates_to_block_when": [
         "seguranca ou segredo",
+        "segredo em chat, log, memoria, evidencia, prompt ou arquivo versionavel",
         "perda/corrupcao/vazamento de dados ou memoria",
         "contrato publico ou fonte canonica",
         "falso pronto fiscal, PPIRTV, build, teste ou audit",
@@ -403,8 +409,143 @@
         "estacionamento com quando",
         "descarte justificado"
       ]
+    },
+    {
+      "id": "P9",
+      "legacy_id": "seguranca_prematura_quebra_nascimento",
+      "name": "Seguranca prematura tambem quebra nascimento",
+      "label": "Seguranca prematura tambem quebra nascimento",
+      "summary": "Seguranca boa protege o nascimento do projeto; travas cedo demais, sem evidencia local, viram limitacao invisivel. Em V0, preferir liberdade observavel, falha explicita, telemetria, escopo limitado e gates reversiveis antes de bloquear por medo abstrato.",
+      "trigger": [
+        "prototipo, V0, bootstrap, spike, TUI, runtime externo ou agente nascendo",
+        "criacao de tool, router, executor, conector, limite, timeout ou fallback",
+        "bloqueio de pensamento/status externo, telemetria, logs de diagnostico, comandos locais controlados ou experimentos reversiveis",
+        "revisao de seguranca que pode impedir o aprendizado minimo do sistema"
+      ],
+      "required_actions": [
+        "exigir evidencia local do risco que a trava reduz",
+        "declarar escopo concreto da protecao",
+        "avaliar custo da trava para nascimento, observabilidade e debug",
+        "preferir alternativa mais leve quando suficiente: logs, erro explicito, dry-run, confirmacao, allowlist, sandbox local, rollback ou flag reversivel",
+        "definir quando endurecer a trava depois"
+      ],
+      "evidence": [
+        "risco concreto descrito",
+        "trava escolhida com justificativa proporcional",
+        "alternativa mais leve considerada",
+        "log, teste, harness, dry-run ou confirmacao que torna o experimento observavel",
+        "gatilho ou quando para endurecer a trava"
+      ],
+      "blocks_ready_when": [
+        "trava impede experimento reversivel sem evidencia local",
+        "sistema esconde falha, status, raciocinio operacional ou telemetria necessaria para diagnostico",
+        "fallback automatico mascara erro real",
+        "timeout, kill ou limite impede observar comportamento essencial",
+        "justificativa e medo generico, sem ameaca concreta",
+        "flexibilizacao deixaria subprotegido segredo, permissao, dado sensivel, acao destrutiva, compliance ou autorizacao"
+      ],
+      "default_severity": "WARN",
+      "severity": "warning",
+      "escalates_to_block_when": [
+        "trava sem evidencia impede nascimento de V0 reversivel",
+        "seguranca oculta falha ou telemetria necessaria",
+        "risco real de segredo, permissao, dado sensivel, destrutivo, compliance ou autorizacao fica subprotegido"
+      ],
+      "responsible_roles": [
+        "executor da tarefa",
+        "chato",
+        "critico-cetico",
+        "validador-pronto"
+      ],
+      "checklist_label": "Travas de seguranca sao proporcionais, observaveis e nao impedem o nascimento do V0",
+      "applies_to": [
+        "design_review",
+        "implementation_plan",
+        "gate_check",
+        "checklist_render",
+        "verdict",
+        "prompts"
+      ],
+      "trace_destination": [
+        "contrato operacional",
+        "tool-policy",
+        "security",
+        "teste",
+        "harness",
+        "logs",
+        "estacionamento com quando",
+        "HANDOFF"
+      ]
     }
   ],
+  "secret_env_consumption_policy": {
+    "principle_id": "P8",
+    "localizer": "ENV-SECRET-CONSUMO-SEGURO",
+    "rule": "Se o usuario indicar fonte, chave e operacao concreta, consumir a chave explicitamente allowlistada sem expor o valor; nao exigir que o usuario cole o segredo no chat.",
+    "allowed_when": [
+      "usuario autorizou fonte, chave e operacao concreta",
+      "a credencial pertence a conta, projeto ou ambiente autorizado pelo usuario",
+      "a leitura e limitada a uma chave nomeada",
+      "a operacao consegue usar o segredo sem imprimir, registrar, versionar ou memorizar o valor"
+    ],
+    "required_actions": [
+      "preferir variavel de ambiente ja carregada",
+      "se necessario, parsear apenas a chave nomeada do .env indicado",
+      "usar ambiente temporario, header temporario, stdin seguro ou helper sem eco",
+      "limpar variaveis temporarias e artefatos auxiliares",
+      "relatar apenas metadado sanitizado"
+    ],
+    "forbidden": [
+      "varredura ampla de .env",
+      "ecoar, imprimir, resumir, registrar ou memorizar valor de segredo",
+      "copiar segredo para lixeira, estacionamento, SPT, ledger, evidencia, prompt, docs ou arquivo versionado",
+      "extrair cookie, sessao, senha, Authorization header, password manager ou payload privado",
+      "burlar fluxo oficial de acesso ou capturar credencial de terceiro"
+    ],
+    "blocks_ready_when": [
+      "agente exige segredo colado no chat apesar de fonte/chave autorizada poder ser consumida sem eco",
+      "o caminho disponivel exporia o segredo em log, historico, memoria, terminal ou arquivo versionavel",
+      "fonte, chave, conta/projeto, destino ou permissao sao ambiguos",
+      "a requisicao depende de cookie, sessao, senha, Authorization header bruto ou bypass de navegador"
+    ],
+    "incident_response": [
+      "se segredo foi colado no chat, usar uma unica vez apenas para a operacao concreta autorizada",
+      "recomendar revogacao ou rotacao",
+      "registrar somente metadado sanitizado, nunca o valor"
+    ]
+  },
+  "early_security_proportionality_policy": {
+    "principle_id": "P9",
+    "localizer": "SEGURANCA-CEDO-DEMAIS-LIMITA",
+    "rule": "Antes de endurecer guardrails em V0, exigir evidencia local do risco e preferir liberdade observavel, falha explicita, telemetria, escopo limitado e gates reversiveis.",
+    "allowed_when": [
+      "experimento e local, reversivel e observavel",
+      "risco concreto e baixo ou mitigado por escopo limitado",
+      "ha log, teste, harness, dry-run, confirmacao, rollback ou flag reversivel",
+      "existe gatilho claro para endurecer a trava depois"
+    ],
+    "required_actions": [
+      "nomear o risco concreto",
+      "comparar a trava proposta com alternativa mais leve",
+      "preservar diagnostico, status e telemetria uteis",
+      "registrar quando endurecer o controle",
+      "manter bloqueios reais para segredo, permissao, sensivel, destrutivo, compliance e autorizacao"
+    ],
+    "forbidden": [
+      "bloquear experimento reversivel por medo generico",
+      "mascarar erro real com fallback automatico silencioso",
+      "apagar telemetria necessaria para diagnostico",
+      "usar timeout, kill ou limite que impede observar comportamento essencial sem evidencia local",
+      "flexibilizar protecao de segredo, permissao, dado sensivel, acao destrutiva, compliance ou autorizacao"
+    ],
+    "blocks_ready_when": [
+      "seguranca impede nascimento de V0 reversivel sem evidencia local",
+      "a trava reduz observabilidade essencial",
+      "a alternativa mais leve nao foi considerada",
+      "nao ha quando para endurecer depois",
+      "o sistema real fica subprotegido em segredo, permissao, sensivel, destrutivo, compliance ou autorizacao"
+    ]
+  },
   "ready_definition": [
     "objetivo atendido",
     "principios acionados verificados",
@@ -454,9 +595,13 @@
     "Sem quando, o item pode ser ideia, hipotese ou estacionamento, mas nao pronto, plano executavel ou regra promovida.",
     "O Gate Final PPIRTV e verificacao antes do veredito; o modelo de relatorio final e a saida depois da verificacao.",
     "Nao registre secrets em ledger, evidencia, prompts ou docs versionadas.",
+    "Se o usuario indicar .env e uma chave especifica, consuma apenas essa chave sem ecoar valor; nao force o usuario a colar segredo no chat.",
+    "Nao varra .env, navegador, cookies, senhas, sessoes, Authorization headers ou payload privado; bloqueie bypass e reporte metadado sanitizado.",
     "Preserve campos MCP existentes; principios orientam bloqueio, retorno e aprendizado.",
     "P8 Impossibilitar a repeticao: apos causa raiz confirmada, crie a menor defesa verificavel proporcional ao risco ou estacione com justificativa e quando.",
-    "P8 default WARN; escale para BLOCK quando envolver seguranca, dados, memoria, contrato publico, fonte canonica, falso pronto, recorrencia ou ausencia de gate verificavel."
+    "P8 default WARN; escale para BLOCK quando envolver seguranca, dados, memoria, contrato publico, fonte canonica, falso pronto, recorrencia ou ausencia de gate verificavel.",
+    "P9 Seguranca prematura: em V0, nao bloqueie experimento reversivel sem evidencia local; prefira liberdade observavel, falha explicita, telemetria, escopo limitado e gates reversiveis.",
+    "P9 nao reduz protecao para segredo, permissao, dado sensivel, acao destrutiva, compliance ou autorizacao."
   ],
   "hygiene_checks": [
     "principles_source_exists",
@@ -472,7 +617,10 @@
     "repeated_errors_have_traceable_destination",
     "actionable_items_have_when_gate",
     "secret_like_config_values",
-    "repeat_prevention_defense_depth"
+    "explicit_secret_env_key_consumed_without_echo",
+    "repeat_prevention_defense_depth",
+    "premature_security_controls_have_local_evidence",
+    "v0_experiments_preserve_observability_and_rollback"
   ],
   "ai_application": {
     "rule": "principios devem ser aplicados como gates de decisao, nao como frases decorativas",
@@ -524,7 +672,8 @@
       "P5": "BLOCK antes de acao tecnica",
       "P6": "BLOCK",
       "P7": "BLOCK para plano, decisao ou acao futura",
-      "P8": "WARN; BLOCK quando risco alto, recorrencia ou falta de defesa verificavel permitir falso pronto"
+      "P8": "WARN; BLOCK quando risco alto, recorrencia ou falta de defesa verificavel permitir falso pronto",
+      "P9": "WARN; BLOCK se trava sem evidencia impedir experimento reversivel ou se risco real ficar subprotegido"
     },
     "runtime_mapping": {
       "INFO": "info",

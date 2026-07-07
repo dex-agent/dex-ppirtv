@@ -304,6 +304,105 @@ describe("PPIRTV MCP stdio server", () => {
     expect(ledgerText).not.toContain("flow_completed");
   });
 
+  it("does not turn negative meeting trigger text into required_cooperation over MCP", async () => {
+    await connectClient();
+    const workspace = path.join(tempRoot, "negative-meeting-trigger");
+    const sptPath = await writeFakeSpt(workspace);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Validar texto negativo sem rito fiscal",
+      idempotency_key: "dex-code:mcp-negative-meeting-trigger",
+      evidence_required: true,
+      required_evidence: ["vitest"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code"
+    };
+    const started = await client!.callTool({ name: "goal_start", arguments: envelope });
+    const flowId = resultOf(started).flow_id as string;
+    const evidence = await client!.callTool({
+      name: "evidence_add",
+      arguments: { flow_id: flowId, title: "vitest run", content: "pass", satisfies: ["vitest"] }
+    });
+
+    const verdict = await client!.callTool({
+      name: "goal_verdict",
+      arguments: {
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "required_cooperation nao se aplica neste corte.",
+        evidence_ids: [resultOf(evidence).evidence_id],
+        residual_risks: ["meeting_id opcional porque nao ha required_cooperation"],
+        next_step: "arquivar apos validacao deste teste MCP agora"
+      }
+    });
+    const status = await client!.callTool({ name: "goal_status", arguments: { flow_id: flowId } });
+
+    expect((resultOf(verdict).verdict as Record<string, unknown>).status).toBe("pronto_com_ressalvas");
+    expect(resultOf(status).blockers as string[]).not.toContain("required_cooperation");
+    expect(resultOf(status).meeting_required).toBe(false);
+  });
+
+  it("rejects silent missing meeting_id for eligible required_cooperation meeting over MCP", async () => {
+    await connectClient();
+    const workspace = path.join(tempRoot, "silent-meeting-id-retry");
+    const sptPath = await writeFakeSpt(workspace);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Validar retry de meeting_id silencioso",
+      idempotency_key: "dex-code:mcp-silent-meeting-id-retry",
+      evidence_required: true,
+      required_evidence: ["vitest"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code"
+    };
+    const started = await client!.callTool({ name: "goal_start", arguments: envelope });
+    const flowId = resultOf(started).flow_id as string;
+    const evidence = await client!.callTool({
+      name: "evidence_add",
+      arguments: { flow_id: flowId, title: "vitest run", content: "pass", satisfies: ["vitest"] }
+    });
+    const opened = await client!.callTool({
+      name: "goal_meeting_open",
+      arguments: { flow_id: flowId, kind: "convergente", question: "Fechar required_cooperation MCP" }
+    });
+    await client!.callTool({
+      name: "goal_meeting_close",
+      arguments: {
+        flow_id: flowId,
+        meeting_id: resultOf(opened).meeting_id,
+        participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+        decision: "Reuniao MCP elegivel para required_cooperation.",
+        satisfies_blockers: ["required_cooperation"]
+      }
+    });
+
+    const blocked = await client!.callTool({
+      name: "goal_verdict",
+      arguments: {
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Evidencias e decisao material revisadas.",
+        evidence_ids: [resultOf(evidence).evidence_id],
+        residual_risks: ["risco residual baixo"],
+        next_step: "arquivar apos validacao agora"
+      }
+    });
+    const status = await client!.callTool({ name: "goal_status", arguments: { flow_id: flowId } });
+
+    expect((blocked as { isError?: boolean }).isError).toBe(true);
+    expect(resultOf(blocked).error).toMatchObject({
+      code: "PPIRTV_FISCAL_BLOCKED",
+      next_required_action: {
+        type: "provide_meeting_id_for_verdict",
+        tool: "goal_verdict",
+        eligible_meeting_ids: [resultOf(opened).meeting_id]
+      }
+    });
+    expect(resultOf(status).blockers as string[]).toContain("required_cooperation");
+  });
+
   it("runs the live GOAL wrappers through MCP", async () => {
     await connectClient();
     const workspace = path.join(tempRoot, "workspace");
@@ -402,6 +501,97 @@ describe("PPIRTV MCP stdio server", () => {
     expect(resource.contents[0]?.text).toContain("goal_regressed");
     expect(resource.contents[0]?.text).toContain("gate_checked");
     expect(resource.contents[0]?.text).toContain("phase_advanced");
+  });
+
+  it("accepts compact phase in goal_gate_check over MCP without treating detail compact as mode", async () => {
+    await connectClient();
+    const workspace = path.join(tempRoot, "compact-phase-workspace");
+    const sptPath = await writeFakeSpt(workspace);
+    const started = await client!.callTool({
+      name: "goal_start",
+      arguments: {
+        workspace,
+        spt_path: sptPath,
+        objective: "Fluxo curto",
+        idempotency_key: "dex-code:mcp-compact-phase-schema",
+        evidence_required: true,
+        required_evidence: ["vitest"],
+        requested_verdict_policy: "evidence_required",
+        source: "dex-code",
+        mode: "compact"
+      }
+    });
+    const flowId = resultOf(started).flow_id as string;
+    expect(resultOf(started)).toMatchObject({
+      phase: "concepcao",
+      goal_envelope: { mode: "compact" }
+    });
+
+    const gate = await client!.callTool({
+      name: "goal_gate_check",
+      arguments: {
+        flow_id: flowId,
+        phase: "concepcao",
+        detail: "compact",
+        provided: {
+          context: "ctx",
+          risks: ["baixo"],
+          scope_in: ["src/server.ts"],
+          tasks: ["ajustar schema"],
+          done_criteria: ["gate MCP aceita concepcao"]
+        }
+      }
+    });
+    const result = resultOf(gate);
+
+    expect(result).toMatchObject({ phase: "concepcao", status: "passed" });
+    expect(result.status_snapshot).not.toHaveProperty("operational_principles");
+    expect(result.status_snapshot).toMatchObject({ phase: "concepcao" });
+  });
+
+  it("serves goal_status and ppirtv_checkout detail lean over MCP without generic tool errors", async () => {
+    await connectClient();
+    const workspace = path.join(tempRoot, "lean-detail-workspace");
+    const sptPath = await writeFakeSpt(workspace);
+    const started = await client!.callTool({
+      name: "goal_start",
+      arguments: {
+        workspace,
+        spt_path: sptPath,
+        objective: "Validar detail lean publico",
+        idempotency_key: "dex-code:mcp-lean-detail-contract",
+        evidence_required: true,
+        required_evidence: ["vitest"],
+        requested_verdict_policy: "evidence_required",
+        source: "dex-code"
+      }
+    });
+    const flowId = resultOf(started).flow_id as string;
+
+    const leanStatus = await client!.callTool({ name: "goal_status", arguments: { flow_id: flowId, detail: "lean" } });
+    const leanCheckout = await client!.callTool({ name: "ppirtv_checkout", arguments: { flow_id: flowId, detail: "lean" } });
+    const statusResult = resultOf(leanStatus);
+    const checkoutResult = resultOf(leanCheckout);
+
+    expect((leanStatus as { isError?: boolean }).isError).not.toBe(true);
+    expect((leanCheckout as { isError?: boolean }).isError).not.toBe(true);
+    expect(JSON.stringify(leanStatus)).not.toContain("PPIRTV_TOOL_ERROR");
+    expect(JSON.stringify(leanCheckout)).not.toContain("PPIRTV_TOOL_ERROR");
+    expect(statusResult).toMatchObject({
+      flow_id: flowId,
+      phase: expect.any(String),
+      status: expect.any(String),
+      blockers: expect.any(Array),
+      display: expect.objectContaining({ direct_action: expect.any(String) })
+    });
+    expect(statusResult).not.toHaveProperty("ppirtv_checkout");
+    expect(statusResult).not.toHaveProperty("operational_principles");
+    expect(checkoutResult).toMatchObject({
+      flow_id: flowId,
+      direct_action: expect.any(String),
+      complete: expect.any(Boolean),
+      ppirtv_checkout: expect.objectContaining({ direct_action: expect.any(String) })
+    });
   });
 
   it("exposes mm_memory_mining and writes valid candidates through MCP", async () => {
@@ -527,6 +717,50 @@ describe("PPIRTV MCP stdio server", () => {
         tool: "goal_start"
       },
       contract_source: "docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md"
+    });
+
+    const commonFlow = await client!.callTool({
+      name: "flow_create",
+      arguments: {
+        goal: "Flow comum sem GOAL oficial",
+        context: "nao deve aceitar goal_gate_check antes de goal_start",
+        risks: ["comecar pelo meio"]
+      }
+    });
+    const commonFlowId = resultOf(commonFlow).flow_id as string;
+    const gateWithoutGoal = await client!.callTool({
+      name: "goal_gate_check",
+      arguments: { flow_id: commonFlowId }
+    });
+    expect((gateWithoutGoal as { isError?: boolean }).isError).toBe(true);
+    expect(resultOf(gateWithoutGoal).error).toMatchObject({
+      code: "GOAL_NAO_ATIVO",
+      recoverable: true,
+      next_required_action: {
+        type: "goal_start_required",
+        tool: "goal_start",
+        required_tool_sequence: [
+          { order: 1, tool: "spt_validate" },
+          { order: 2, tool: "goal_start", args: { flow_id: commonFlowId } }
+        ]
+      }
+    });
+    const resumeWithoutGoal = await client!.callTool({
+      name: "goal_resume",
+      arguments: { flow_id: commonFlowId, note: "nao deve retomar flow comum" }
+    });
+    expect((resumeWithoutGoal as { isError?: boolean }).isError).toBe(true);
+    expect(resultOf(resumeWithoutGoal).error).toMatchObject({
+      code: "GOAL_NAO_ATIVO",
+      recoverable: true,
+      next_required_action: {
+        type: "goal_start_required",
+        tool: "goal_start",
+        required_tool_sequence: [
+          { order: 1, tool: "spt_validate" },
+          { order: 2, tool: "goal_start", args: { flow_id: commonFlowId } }
+        ]
+      }
     });
 
     const workspace = path.join(tempRoot, "workspace-mcp-error-envelope");
