@@ -1,8 +1,8 @@
 {
   "version": "1.0",
-  "numeric_version": 7,
-  "principles_revision": "2026-07-07.1",
-  "updated_at": "2026-07-07",
+  "numeric_version": 10,
+  "principles_revision": "2026-07-09.4",
+  "updated_at": "2026-07-10",
   "source": "principles/PRINCIPLES.md",
   "canonical_source": "$env:USERPROFILE\\.agents\\memories\\principles\\PRINCIPLES.md",
   "canonical_contract": "$env:USERPROFILE\\.agents\\memories\\principles\\operational-contract.json",
@@ -57,28 +57,54 @@
       "legacy_id": "memoria_sem_lembranca",
       "name": "Memoria sem lembranca e entulho inutil",
       "label": "Memoria sem lembranca e entulho inutil",
-      "summary": "L1 dispara L2; L2 aponta para L3 quando for preciso aprofundar. Criar ou atualizar memoria sem recuperacao bloqueia pronto.",
+      "summary": "L1 dispara L2; L2 ancora L3; L3 aprofunda sob demanda. Finder/rg localizam, Graphify relaciona, fonte viva confirma, garimpeiro qualifica, dex-memoria escreve achado memoravel forte e consciencia-memorias valida qualidade.",
       "trigger": [
         "memoria criada",
         "memoria atualizada",
         "aprendizado reutilizavel",
-        "conhecimento L3 criado"
+        "conhecimento L3 criado",
+        "memoria movida",
+        "curadoria de memoria",
+        "busca de contexto lembrado"
       ],
       "required_actions": [
         "garantir gatilho L1 antes de L2",
         "garantir ancora L2 antes de L3",
-        "manter L3 recuperavel por L2 e L1"
+        "manter L3 recuperavel por L2 e L1",
+        "usar obsidian-memory-finder ou find-memory.ps1 para localizar memoria por tag, localizador, anchor, block id ou frase",
+        "usar rg para confirmacao deterministica e ausencia",
+        "usar Graphify apenas para pergunta relacional e confirmar hit abrindo a fonte viva",
+        "usar dex-memoria para decidir, escrever, superseder ou arquivar memoria",
+        "quando garimpeiro classificar um achado como forte, memoravel, nao sensivel, nao duplicado e com destino L1/L2 claro, usar dex-memoria para gravar no padrao canonico sem pedir aprovacao previa",
+        "usar consciencia-memorias para validar qualidade L1/L2/L3, tagnames, anchors, block ids, links, backups, pontes e achabilidade depois de escrita, movimento ou curadoria",
+        "validar conexoes bidirecionais L1 <-> L2 <-> L3 com consciencia-memorias depois de memoria gravada automaticamente",
+        "manter dex-memoria ao lado de garimpeiro e estacionamento: garimpeiro qualifica, dex-memoria grava o memoravel e estacionamento segura residuo vivo, tropeco novo, pendencia ou item imaturo",
+        "ao final do bloco, reportar contagem de achados fortes memoraveis gravados, tropecos novos catalogados e gatilhos L1 quente usados",
+        "perguntar no fechamento se o usuario deseja editar alguma memoria gravada",
+        "usar memory_candidate quando o achado for fraco, ambiguo, sensivel, duplicado, stale, sem L1, sem L2 ou sem destino seguro",
+        "carregar skill citada quando ela for acionada ou quando a validacao/execucao depender dela, nao por mencao decorativa"
       ],
       "evidence": [
         "lembranca.md aponta para memoria.md",
         "memoria.md aponta para conhecimento quando houver L3",
-        "gatilho curto recupera a memoria"
+        "gatilho curto recupera a memoria",
+        "Finder ou rg recuperou o gatilho, tag, anchor, block id ou frase",
+        "Graphify confirmado por fonte viva quando participou",
+        "validacao de consciencia-memorias registrada quando houve escrita, movimento ou curadoria",
+        "fechamento informa achados fortes memoraveis gravados, tropecos novos catalogados e gatilhos L1 quente usados",
+        "pergunta de edicao de memoria feita no fechamento quando houve escrita automatica"
       ],
       "blocks_ready_when": [
         "existe L2 sem L1",
         "existe L3 sem L2",
         "memoria detalhada nao tem gatilho de recuperacao",
-        "memoria criada ou atualizada sem L1 recuperavel apontando para ancora L2"
+        "memoria criada ou atualizada sem L1 recuperavel apontando para ancora L2",
+        "Graphify foi usado como prova final sem fonte aberta",
+        "memoria forte nao declara ciclo de vida: entrada, gatilho, quando, escopo, validade, supersedencia, arquivamento e descarte",
+        "skill citada foi usada como autoridade sem ter sido carregada quando necessaria",
+        "memoria escrita, movida ou curada nao passou por validacao proporcional de qualidade",
+        "achado memoravel forte ficou sem escrita canonica nem justificativa",
+        "fechamento omite contagem de memoraveis/tropecos ou gatilhos L1 quente quando houve achado material"
       ],
       "default_severity": "BLOCK",
       "severity": "error",
@@ -92,6 +118,12 @@
         "lembranca.md",
         "memoria.md",
         "conhecimento/",
+        "obsidian-memory-finder",
+        "find-memory.ps1",
+        "rg",
+        "Graphify",
+        "dex-memoria",
+        "consciencia-memorias",
         "memory_candidate",
         "descarte justificado"
       ]
@@ -99,8 +131,8 @@
     {
       "id": "P3",
       "legacy_id": "ouro_garimpado_se_guarda",
-      "name": "Ouro garimpado se guarda, trilha aberta na mata se marca",
-      "label": "Ouro garimpado se guarda, trilha aberta na mata se marca",
+      "name": "Ouro garimpado se guarda, trilha aberta se marca",
+      "label": "Ouro garimpado se guarda, trilha aberta se marca",
       "summary": "Aprendizado reutilizavel vira artefato rastreavel; entulho sai no mesmo turno.",
       "trigger": [
         "aprendizado util apareceu",
@@ -111,17 +143,22 @@
       "required_actions": [
         "registrar aprendizado util em artefato rastreavel",
         "marcar trilha operacional relevante",
-        "remover ou justificar entulho operacional"
+        "remover ou justificar entulho operacional",
+        "no fechamento do bloco, informar quantos achados fortes memoraveis foram gravados e quantos tropecos novos foram catalogados",
+        "mostrar apenas os gatilhos usados no L1 quente e perguntar se o usuario deseja editar alguma memoria"
       ],
       "evidence": [
         "artefato rastreavel atualizado",
         "temporarios removidos ou justificados",
-        "trilha certa documentada"
+        "trilha certa documentada",
+        "contadores de achados memoraveis e tropecos novos declarados",
+        "gatilhos L1 quente listados de forma curta"
       ],
       "blocks_ready_when": [
         "aprendizado reutilizavel ficou apenas na conversa",
         "scripts auxiliares ou temporarios ficaram sem justificativa",
-        "aprendizado critico nao foi registrado em destino rastreavel"
+        "aprendizado critico nao foi registrado em destino rastreavel",
+        "fechamento de bloco com achado material nao declarou contagem de memoria/tropeco e gatilhos L1 quente"
       ],
       "default_severity": "WARN",
       "severity": "warning",
@@ -555,6 +592,54 @@
     "acoes futuras com quando",
     "riscos restantes declarados"
   ],
+  "default_workflow": {
+    "id": "PPIRTV_WORKFLOW_BASE",
+    "name": "Workflow Base PPIRTV",
+    "fallback_rule": "Na falta de Trilho, workflow local, contrato especifico ou instrucao mais prioritaria, use PPIRTV como workflow padrao do ecossistema.",
+    "compact_status": {
+      "format": "PPIRTV: P🧠[x] | P🗂️[>] | I🛠️[] | R🔎[] | T🧪[] | V✅[]",
+      "markers": {
+        "[x]": "fase concluida",
+        "[>]": "fase atual",
+        "[]": "fase pendente",
+        "[!]": "fase bloqueada"
+      },
+      "rule": "Em atualizacoes curtas, usar letras, icones e marcadores compactos sem repetir nomes das fases; manter no maximo uma fase atual [>]."
+    },
+    "short_line": "P🧠 Pensamentos -> P🗂️ Planejamento -> I🛠️ Implementacao -> R🔎 Revisao -> T🧪 Teste -> V✅ Validacao",
+    "phases": [
+      {
+        "letter": "P",
+        "name": "Pensamentos",
+        "role": "entender, pesquisar, divergir, convergir e formular diagnostico inicial"
+      },
+      {
+        "letter": "P",
+        "name": "Planejamento",
+        "role": "transformar entendimento em plano, Trilho/SPT ou checklist executavel quando necessario"
+      },
+      {
+        "letter": "I",
+        "name": "Implementacao",
+        "role": "executar a menor mudanca coerente com o plano e as fontes vivas"
+      },
+      {
+        "letter": "R",
+        "name": "Revisao",
+        "role": "revisar ativamente a entrega, procurar incoerencias e ajustar refinamentos proporcionais"
+      },
+      {
+        "letter": "T",
+        "name": "Teste",
+        "role": "executar validacoes, testes, buscas ou checks proporcionais ao risco"
+      },
+      {
+        "letter": "V",
+        "name": "Validacao",
+        "role": "comparar o resultado contra objetivo, plano, principios, evidencias, bloqueios e risco restante"
+      }
+    ]
+  },
   "gate_final_output": [
     "Principios acionados",
     "Evidencias",
@@ -569,24 +654,35 @@
       "level": "L1",
       "path": "lembranca.md",
       "role": "gatilhos curtos",
-      "rule": "carregavel sempre; nao deve virar tutorial"
+      "rule": "recuperavel sempre; dispara L2; nao deve virar tutorial"
     },
     {
       "level": "L2",
       "path": "memoria.md",
       "role": "ancoras operacionais",
-      "rule": "detalhe acionavel com secoes referenciaveis"
+      "rule": "ancora L3 quando houver; detalhe acionavel com secoes referenciaveis"
     },
     {
       "level": "L3",
       "path": "conhecimento/",
       "role": "conhecimento sob demanda",
-      "rule": "documentacao, modelos e tutoriais carregados so quando necessario"
+      "rule": "aprofunda sob demanda; documentacao, modelos e tutoriais carregados so quando necessario"
     }
   ],
   "prompt_guidance": [
     "Antes de executar, consulte fonte viva do projeto, L1, L2, skills, contrato aplicavel e docs relevantes.",
-    "Use L1 como gatilho, L2 como ancora operacional e L3 apenas sob demanda.",
+    "Na falta de Trilho, workflow local, contrato especifico ou instrucao mais prioritaria, use o workflow base PPIRTV: Pensamentos, Planejamento, Implementacao, Revisao, Teste e Validacao.",
+    "Use L1 como gatilho, L2 como ancora operacional e L3 apenas sob demanda: L1 dispara L2; L2 ancora L3; L3 aprofunda sob demanda.",
+    "Skills citadas nos principios sao rotas operacionais; carregue o SKILL.md quando a skill for acionada ou quando a validacao/execucao depender dela, nao por mencao decorativa.",
+    "Finder e rg localizam memoria por tag, localizador, anchor, block id, path ou frase; Graphify relaciona; fonte viva confirma.",
+    "Graphify acelera recall relacional, mas nao substitui L1/L2/L3, rg, dex-memoria, fonte viva, testes ou contrato; todo hit fica source: graphify ate abrir a fonte citada.",
+    "dex-memoria decide, escreve, supersede e arquiva memoria; consciencia-memorias valida qualidade L1/L2/L3, tagnames, anchors, block ids, links, backups, pontes e achabilidade depois de escrita, movimento ou curadoria.",
+    "Garimpeiro qualifica o achado; quando o achado for forte, memoravel, seguro, nao duplicado e tiver destino L1/L2 claro, dex-memoria grava no padrao canonico sem pedir aprovacao previa.",
+    "Estacionamento fica ao lado de garimpeiro e dex-memoria: segura residuo vivo, tropeco novo, pendencia, item imaturo ou candidato que nao deve virar memoria canonica agora.",
+    "Toda memoria gravada automaticamente deve passar por validacao de consciencia-memorias para conexoes bidirecionais L1 <-> L2 <-> L3, tagnames, anchors, block ids e achabilidade.",
+    "No fechamento de cada bloco, informe brevemente quantos achados fortes memoraveis foram gravados, quantos tropecos novos foram catalogados, quais gatilhos L1 quente foram usados e pergunte se o usuario deseja editar alguma memoria.",
+    "Memoria forte tem ciclo de vida: entrada, gatilho, quando, escopo, validade, supersedencia, arquivamento e descarte.",
+    "Use memory_candidate quando o achado for fraco, ambiguo, sensivel, duplicado, stale, sem L1, sem L2 ou sem destino seguro.",
     "Se uma memoria detalhada nao tiver gatilho de recuperacao, trate como risco bloqueante ao criar ou atualizar memoria.",
     "Na higiene, antes de descartar, mover para LIXEIRA, fechar estacionamento ou eliminar material antigo, garimpe aprendizados, evidencias e memorias uteis.",
     "Nao podemos jogar ouro no lixo: nunca criar L3 sem L2 e L1; nunca criar L2 sem L1.",
@@ -607,7 +703,16 @@
     "principles_source_exists",
     "principles_source_mentions_contract",
     "principles_revision_matches_contract_revision",
+    "default_workflow_fallback_documented",
     "memory_layers_documented",
+    "memory_recall_routes_documented",
+    "memory_lifecycle_documented",
+    "memory_quality_validated_after_write_move_or_curation",
+    "memorable_findings_auto_written_when_safe",
+    "memory_autowrite_bidirectional_l1_l2_l3_validated",
+    "parking_lot_keeps_residue_tropeco_pending_or_immature_items",
+    "final_block_reports_memorable_findings_tropecos_and_l1_hot_triggers",
+    "mentioned_skills_loaded_only_when_operationally_required",
     "memory_layer_files_are_linked",
     "hygiene_discards_are_garimped_before_trash",
     "traceable_destination_exists_for_learning_error_decision_or_discard",
@@ -722,6 +827,10 @@
     "O que nao foi validado",
     "Bloqueios encontrados",
     "Destino rastreavel criado",
+    "Achados fortes memoraveis gravados",
+    "Tropecos novos catalogados",
+    "Gatilhos L1 quente usados",
+    "Pergunta sobre edicao de memoria",
     "Lixo operacional removido",
     "Acoes futuras com quando",
     "Risco restante",

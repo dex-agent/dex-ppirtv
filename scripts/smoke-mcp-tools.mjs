@@ -11,6 +11,7 @@ const REQUIRED_TOOLS = [
   "goal_status",
   "ppirtv_checkout",
   "goal_gate_check",
+  "goal_progress_record",
   "goal_meeting_open",
   "goal_meeting_add_turn",
   "goal_meeting_close",
@@ -32,6 +33,8 @@ const server = args.mcpJson
   : args.configToml
     ? await readServerFromCodexConfig(path.resolve(args.configToml), args.server)
   : directServer(repoRoot, workspace);
+const workspacePlaceholder = workspacePlaceholderResolution(server, args.workspace ? workspace : null);
+const runtimeServer = workspacePlaceholder.runtimeServer;
 const configAudit = args.auditConfigTomls.length > 0
   ? await auditCodexConfigConflicts({
     serverUnderTest: server,
@@ -40,12 +43,14 @@ const configAudit = args.auditConfigTomls.length > 0
     auditConfigTomls: args.auditConfigTomls.map((item) => path.resolve(item))
   })
   : null;
-const runtimeConfigCheck = runtimeConfigCheckFor(server);
+const runtimeConfigCheck = runtimeConfigCheckFor(runtimeServer);
 
 if (args.auditOnly) {
   const result = {
     ok: runtimeConfigCheck.ok && (!args.failOnConfigConflict || !configAudit?.conflicts.length),
     server: serverSummary(server, serverSource, serverName),
+    runtime_server: workspacePlaceholder.applied ? serverSummary(runtimeServer, "effective", serverName) : undefined,
+    workspace_placeholder: workspacePlaceholder.summary,
     runtime_config_check: runtimeConfigCheck,
     config_audit: configAudit
   };
@@ -60,6 +65,8 @@ if (!runtimeConfigCheck.ok) {
   const result = {
     ok: false,
     server: serverSummary(server, serverSource, serverName),
+    runtime_server: workspacePlaceholder.applied ? serverSummary(runtimeServer, "effective", serverName) : undefined,
+    workspace_placeholder: workspacePlaceholder.summary,
     runtime_config_check: runtimeConfigCheck,
     config_audit: configAudit
   };
@@ -70,10 +77,10 @@ if (!runtimeConfigCheck.ok) {
 
 const client = new Client({ name: "dex-ppirtv-smoke-mcp-tools", version: "0.1.0" });
 const transport = new StdioClientTransport({
-  command: server.command,
-  args: server.args ?? [],
-  cwd: server.cwd,
-  env: { ...getDefaultEnvironment(), ...(server.env ?? {}) },
+  command: runtimeServer.command,
+  args: runtimeServer.args ?? [],
+  cwd: runtimeServer.cwd,
+  env: { ...getDefaultEnvironment(), ...(runtimeServer.env ?? {}) },
   stderr: "pipe"
 });
 
@@ -82,7 +89,7 @@ try {
   const listed = await client.listTools();
   const names = listed.tools.map((tool) => tool.name).sort();
   const missing = REQUIRED_TOOLS.filter((tool) => !names.includes(tool));
-  const flowWorkspace = runtimeConfigCheck.launcher_workspace ?? server.cwd ?? workspace;
+  const flowWorkspace = runtimeConfigCheck.launcher_workspace ?? runtimeServer.cwd ?? workspace;
   const flowSmoke = args.flowSmoke && missing.length === 0 ? await runFlowSmoke(client, flowWorkspace) : null;
   const result = {
     ok: missing.length === 0 && (!args.flowSmoke || Boolean(flowSmoke?.archived)) && (!args.failOnConfigConflict || !configAudit?.conflicts.length),
@@ -90,6 +97,8 @@ try {
     missing,
     required: REQUIRED_TOOLS,
     server: serverSummary(server, serverSource, serverName),
+    runtime_server: workspacePlaceholder.applied ? serverSummary(runtimeServer, "effective", serverName) : undefined,
+    workspace_placeholder: workspacePlaceholder.summary,
     runtime_config_check: runtimeConfigCheck,
     config_audit: configAudit,
     flow_smoke: flowSmoke,
@@ -246,82 +255,55 @@ async function writeSmokeSpt(workspaceRoot) {
   await writeFile(
     sptPath,
     [
-      "# Trilho - PPIRTV Smoke Runtime Isolation",
+      "---",
+      "dex_contract: spt",
+      "version: 2",
+      "status: EM_TESTE",
+      "owner: smoke-mcp-tools",
+      "date: '2026-06-30'",
+      `workspace: ${JSON.stringify(workspaceRoot)}`,
+      "origin: scripts/smoke-mcp-tools.mjs",
+      "goal:",
+      "  id: ppirtv-smoke-runtime-isolation",
+      "  title: PPIRTV Smoke Runtime Isolation",
+      "  objective: Validate PPIRTV MCP runtime isolation smoke",
+      "context: Validate the MCP runtime layout selected for the active consumer workspace.",
+      "problem: A tool-list smoke can pass while runtime state is written to the wrong project.",
+      "decision: Use official GOAL/SPT tools and inspect runtime diagnostics.",
+      "scope:",
+      "  include:",
+      "    - Start a minimal official GOAL.",
+      "    - Inspect runtime diagnostics.",
+      "  exclude:",
+      "    - Fiscal closure.",
+      "    - Long SPT execution.",
+      "spec: Runtime diagnostics must point to the caller workspace.",
+      "plan:",
+      "  - Validate this SPT.",
+      "  - Start a GOAL.",
+      "  - Read status and checkout.",
+      "  - Archive the smoke flow.",
+      "tasks:",
+      "  - Validate tool surface.",
+      "  - Validate runtime layout.",
+      "expected_evidence:",
+      "  - runtime status",
+      "  - checkout status",
+      "done_criteria:",
+      "  - runtime diagnostics point to the active workspace.",
+      "risks:",
+      "  - False green if only list_tools is checked.",
+      "uncertainties:",
+      "  - Consumer runtime configuration may select a different workspace.",
+      "gates:",
+      "  - Gate do Quando runs this smoke before long SPT execution.",
+      "validation:",
+      "  - npm run smoke:mcp-tools -- --workspace <workspace> --flow-smoke",
+      "execution_prompt: Run this smoke only for runtime isolation validation.",
+      "---",
+      "# Human smoke notes",
       "",
-      "Tipo: SPEC-PLAN-TASKs",
-      "Status: EM TESTE",
-      "Owner: smoke-mcp-tools",
-      "Data: 2026-06-30",
-      `Workspace: ${workspaceRoot}`,
-      "Origem: scripts/smoke-mcp-tools.mjs",
-      "",
-      "## GoalEnvelope",
-      "",
-      "Smoke envelope is supplied by the caller at runtime.",
-      "",
-      "## Contexto",
-      "",
-      "Validate the MCP runtime layout selected for the active consumer workspace.",
-      "",
-      "## Problema",
-      "",
-      "A tool-list smoke can pass while runtime state is written to the wrong project.",
-      "",
-      "## Decisao",
-      "",
-      "Use official GOAL/SPT tools and inspect status and checkout runtime diagnostics.",
-      "",
-      "## Escopo",
-      "",
-      "- Start a minimal official GOAL.",
-      "- Inspect runtime diagnostics.",
-      "",
-      "## Fora de escopo",
-      "",
-      "- Fiscal closure.",
-      "- Long SPT execution.",
-      "",
-      "## SPEC",
-      "",
-      "Runtime diagnostics must point to the caller workspace.",
-      "",
-      "## PLAN",
-      "",
-      "1. Validate this SPT.",
-      "2. Start a GOAL.",
-      "3. Read status and checkout.",
-      "4. Archive the smoke flow.",
-      "",
-      "## TASKs",
-      "",
-      "- [ ] Validate tool surface.",
-      "- [ ] Validate runtime layout.",
-      "",
-      "## Expected Evidence",
-      "",
-      "- runtime status",
-      "- checkout status",
-      "",
-      "## Done Criteria",
-      "",
-      "- runtime diagnostics point to the active workspace.",
-      "",
-      "## Riscos",
-      "",
-      "- False green if only list_tools is checked.",
-      "",
-      "## Gates",
-      "",
-      "- Gate do Quando: this smoke runs before long SPT execution.",
-      "",
-      "## Validacao",
-      "",
-      "`npm run smoke:mcp-tools -- --workspace <workspace> --flow-smoke`",
-      "",
-      "## Prompt /GOAL de execucao",
-      "",
-      "Run this smoke only for runtime isolation validation.",
-      ""
+      "This body is intentionally not parsed."
     ].join("\n"),
     "utf8"
   );
@@ -626,6 +608,77 @@ function directServer(repoRoot, workspace) {
   };
 }
 
+function workspacePlaceholderResolution(server, workspaceOverride) {
+  const blank = blankLauncherWorkspacePlaceholder(server);
+  const missing = missingLauncherWorkspaceSignal(server);
+  if (!blank && !missing) {
+    return {
+      applied: false,
+      runtimeServer: server,
+      summary: null
+    };
+  }
+  if (!workspaceOverride) {
+    return {
+      applied: false,
+      runtimeServer: server,
+      summary: {
+        detected: true,
+        applied: false,
+        kind: blank ? "blank_workspace_placeholder" : "missing_workspace_argument",
+        reason: "global launcher validation requires --workspace <consumer-workspace> on the smoke command"
+      }
+    };
+  }
+  const args = [...(server.args ?? [])];
+  if (blank?.kind === "separate") {
+    args[blank.index + 1] = workspaceOverride;
+  } else if (blank?.kind === "equals") {
+    args[blank.index] = `--workspace=${workspaceOverride}`;
+  } else {
+    args.push("--workspace", workspaceOverride);
+  }
+  return {
+    applied: true,
+    runtimeServer: { ...server, args },
+    summary: {
+      detected: true,
+      applied: true,
+      kind: blank ? "blank_workspace_placeholder" : "missing_workspace_argument",
+      source: "smoke_cli_workspace",
+      workspace: workspaceOverride,
+      note: "global config remains neutral; the smoke injects the consumer workspace only for this validation run"
+    }
+  };
+}
+
+function blankLauncherWorkspacePlaceholder(server) {
+  if (!isLauncherServer(server)) {
+    return null;
+  }
+  const args = server.args ?? [];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--workspace" && typeof args[index + 1] === "string" && args[index + 1].trim() === "") {
+      return { kind: "separate", index };
+    }
+    if (arg === "--workspace=") {
+      return { kind: "equals", index };
+    }
+  }
+  return null;
+}
+
+function missingLauncherWorkspaceSignal(server) {
+  if (!isLauncherServer(server)) {
+    return false;
+  }
+  if (launcherWorkspaceHint(server)) {
+    return false;
+  }
+  return samePath(server.cwd, repoRoot);
+}
+
 function sharedOperationalContractPath() {
   const userProfile = process.env.USERPROFILE ?? process.env.HOME;
   return userProfile
@@ -659,11 +712,15 @@ function printHelp() {
   node scripts/smoke-mcp-tools.mjs --config-toml <path> [--server <name>]
   node scripts/smoke-mcp-tools.mjs --mcp-json <path> --server <name> --flow-smoke
   node scripts/smoke-mcp-tools.mjs --config-toml <path> --server <name> --flow-smoke
+  node scripts/smoke-mcp-tools.mjs --config-toml <path> --server <name> --workspace <consumer> --flow-smoke
   node scripts/smoke-mcp-tools.mjs --config-toml <child> --server <name> --audit-config-toml <parent> --audit-only
 
 Validates that the real MCP server exposes the fiscal PPIRTV tools required by
 required_cooperation, meeting, regress and verdict flows. Optional
 --audit-config-toml compares other visible Codex configs for PPIRTV-like
 servers with divergent cwd or PPIRTV_HOME; --fail-on-config-conflict makes an
-enabled divergent server fail the command.`);
+enabled divergent server fail the command. When a Codex launcher config is
+global/neutral, either with a blank --workspace placeholder or without
+--workspace, --workspace <consumer> is used only for the smoke runtime and does
+not imply writing that consumer path to global config.`);
 }

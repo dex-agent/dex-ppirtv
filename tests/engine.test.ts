@@ -588,7 +588,7 @@ describe("PPIRTV flow engine", () => {
 
   it("keeps goal_resume working for official GOAL flows", async () => {
     const workspace = path.join(tempRoot, "workspace-goal-resume-official");
-    const sptPath = await writeFakeSpt(workspace);
+    const sptPath = await writeFakeSpt(workspace, "Retomar GOAL oficial");
     const started = await engine.startGoal({
       workspace,
       spt_path: sptPath,
@@ -611,7 +611,7 @@ describe("PPIRTV flow engine", () => {
 
   it("does not promote unknown parking items to gold by default", async () => {
     const workspace = path.join(tempRoot, "workspace");
-    const sptPath = await writeFakeSpt(workspace);
+    const sptPath = await writeFakeSpt(workspace, "Auditar fallback do garimpo");
     const started = await engine.startGoal({
       workspace,
       spt_path: sptPath,
@@ -825,7 +825,8 @@ describe("PPIRTV flow engine", () => {
       evidence_required: true,
       required_evidence: ["npm run check"],
       requested_verdict_policy: "evidence_required" as const,
-      source: "dex-code" as const
+      source: "dex-code" as const,
+      mode: "full" as const
     };
 
     const validation = await engine.validateSpt({ workspace, spt_path: sptPath, objective: envelope.objective });
@@ -853,6 +854,67 @@ describe("PPIRTV flow engine", () => {
     expect(goalStarted?.data.done_criteria).toEqual(expect.arrayContaining(["npm run check."]));
   });
 
+  it("rejects goal_start when the envelope objective diverges from the SPT v2 contract", async () => {
+    const workspace = path.join(tempRoot, "spt-objective-mismatch");
+    const sptPath = await writeFakeSpt(workspace);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Objetivo divergente do contrato",
+      idempotency_key: "dex-code:test-spt-objective-mismatch",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required" as const,
+      source: "dex-code",
+      mode: "full" as const
+    };
+
+    const validation = await engine.validateSpt({ workspace, spt_path: sptPath, objective: envelope.objective });
+
+    expect(validation.valid).toBe(false);
+    expect(validation.missing).toContain("spt_v2.objective_matches_request");
+    await expect(engine.startGoal(envelope)).rejects.toThrow(/spt_v2\.objective_matches_request/i);
+  });
+
+  it("keeps the SPT binding immutable across retries while allowing human-body edits", async () => {
+    const workspace = path.join(tempRoot, "spt-contract-fingerprint-retry");
+    const sptPath = await writeFakeSpt(workspace);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Executar ponte GOAL/SPT",
+      idempotency_key: "dex-code:test-spt-contract-fingerprint-retry",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required" as const,
+      source: "dex-code",
+      mode: "full" as const
+    };
+
+    const started = await engine.startGoal(envelope);
+    const originalFlow = await engine.store.loadFlow(started.flow_id as string);
+    const originalFingerprint = originalFlow.goal_binding?.spt_contract_fingerprint;
+
+    await writeFile(sptPath, fakeSptText(workspace, envelope.objective, "# Human notes rewritten\n\nHeadings and prose are free.\n"), "utf8");
+    await expect(engine.startGoal(envelope)).resolves.toMatchObject({ reused: true });
+
+    const changedContract = fakeSptText(workspace).replace("  - Rodar teste local.", "  - Rodar teste alterado.");
+    await writeFile(sptPath, changedContract, "utf8");
+    await expect(engine.startGoal(envelope)).rejects.toThrow(/GOAL_BINDING_MISMATCH.*spt_contract/i);
+
+    const persisted = await engine.store.loadFlow(started.flow_id as string);
+    expect(persisted.goal_binding?.spt_contract_fingerprint).toBe(originalFingerprint);
+    expect(persisted.tasks).toContain("Rodar teste local.");
+    expect(persisted.tasks).not.toContain("Rodar teste alterado.");
+
+    await writeFile(sptPath, fakeSptText(workspace), "utf8");
+    if (persisted.goal_binding) {
+      delete persisted.goal_binding.spt_contract_fingerprint;
+    }
+    await engine.store.saveFlow(persisted);
+    await expect(engine.startGoal(envelope)).rejects.toThrow(/GOAL_BINDING_MISMATCH.*spt_contract_fingerprint/i);
+  });
+
   it("runs live GOAL gates, meetings and phase advance with material credits", async () => {
     const workspace = path.join(tempRoot, "workspace");
     const sptPath = await writeFakeSpt(workspace);
@@ -864,7 +926,8 @@ describe("PPIRTV flow engine", () => {
       evidence_required: true,
       required_evidence: ["npm run check"],
       requested_verdict_policy: "evidence_required",
-      source: "dex-code"
+      source: "dex-code",
+      mode: "full"
     });
     const flowId = started.flow_id as string;
 
@@ -931,7 +994,7 @@ describe("PPIRTV flow engine", () => {
     const memRoot = path.join(tempRoot, "memories");
     process.env.DEX_MEMORIA_HOME = memRoot;
     try {
-      const sptPath = await writeFakeSpt(workspace);
+      const sptPath = await writeFakeSpt(workspace, "Minerar memoria GOAL");
       const started = await engine.startGoal({
         workspace,
         spt_path: sptPath,
@@ -988,7 +1051,8 @@ describe("PPIRTV flow engine", () => {
       expect(mined).toMatchObject({
         memory_written: true,
         memory_validated: true,
-        memory_consolidated: true,
+        memory_consolidated: false,
+        memory_review_status: "pending_consciencia_memorias",
         memory_post_write_validation: expect.objectContaining({
           status: "passed",
           validator: "consciencia-memorias-post-write",
@@ -1023,12 +1087,74 @@ describe("PPIRTV flow engine", () => {
       expect(memoryStatus).toMatchObject({
         memory_written: true,
         memory_validated: true,
-        memory_consolidated: true
+        memory_consolidated: false,
+        memory_review_status: "pending_consciencia_memorias"
       });
+      const evidence = await engine.addGoalEvidence({
+        flow_id: flowId,
+        title: "npm run check",
+        content: "pass",
+        satisfies: ["npm run check"]
+      });
+      const verdict = await engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Captura estrutural validada; revisao consciencia-memorias pendente pertence ao ciclo posterior.",
+        evidence_ids: [evidence.evidence_id as string],
+        meeting_id: opened.meeting_id as string,
+        residual_risks: ["curadoria posterior pelo owner de memoria"],
+        next_step: "consciencia-memorias revisa quando o lote de consolidacao for executado"
+      });
+      expect(verdict.verdict).toMatchObject({ status: "pronto_com_ressalvas" });
       expect(ledger.map((event) => event.type)).toContain("memory_mined");
     } finally {
       restoreDexMemoriaHome(originalDexMemoriaHome);
     }
+  });
+
+  it("normalizes legacy consolidation into pending review and only consolidates after explicit approval", async () => {
+    const flow = await engine.createFlow({ goal: "Normalizar memoria consolidada legada" });
+    flow.memory_mining = memoryMiningSummary({
+      write_policy: "auto_write",
+      candidates_count: 1,
+      written_count: 1,
+      memory_written: true,
+      memory_validated: true,
+      memory_consolidated: true,
+      memory_review_status: undefined,
+      memory_post_write_validation: {
+        required: true,
+        status: "passed",
+        validator: "consciencia-memorias-post-write",
+        validated_at: new Date().toISOString(),
+        touched_files: ["LEMBRANCA.md", "MEMORIA.md"],
+        l1_files: ["LEMBRANCA.md"],
+        l2_files: ["MEMORIA.md"],
+        l3_files: [],
+        checked_triggers: ["PPIRTV-MM-AUTO-WRITE-REVIEW"],
+        recall_proof: [],
+        findings: [],
+        parking_lot: [],
+        commands_required: []
+      }
+    });
+    await engine.store.saveFlow(flow);
+
+    const pending = await engine.store.loadFlow(flow.flow_id);
+    expect(pending.memory_mining).toMatchObject({
+      memory_validated: true,
+      memory_review_status: "pending_consciencia_memorias",
+      memory_consolidated: false
+    });
+
+    pending.memory_mining!.memory_review_status = "approved";
+    await engine.store.saveFlow(pending);
+    const approved = await engine.store.loadFlow(flow.flow_id);
+    expect(approved.memory_mining).toMatchObject({
+      memory_validated: true,
+      memory_review_status: "approved",
+      memory_consolidated: true
+    });
   });
 
   it("blocks written memory from being treated as consolidated when post-write L1/L2 links fail", async () => {
@@ -1107,6 +1233,7 @@ describe("PPIRTV flow engine", () => {
       memory_written: true,
       memory_validated: false,
       memory_consolidated: false,
+      memory_review_status: "failed_post_write_validation",
       memory_post_write_validation: validation
     };
     await engine.store.saveFlow(flow);
@@ -1121,12 +1248,14 @@ describe("PPIRTV flow engine", () => {
     expect(memoryRequired).toMatchObject({
       memory_written: true,
       memory_validated: false,
-      memory_consolidated: false
+      memory_consolidated: false,
+      memory_review_status: "failed_post_write_validation"
     });
     expect(memoryAccountability).toMatchObject({
       memory_written: true,
       memory_validated: false,
-      memory_consolidated: false
+      memory_consolidated: false,
+      memory_review_status: "failed_post_write_validation"
     });
     await expect(
       engine.goalVerdict({
@@ -1295,6 +1424,7 @@ describe("PPIRTV flow engine", () => {
       expect(mined.blocked_verdict).toBe(true);
       expect(mined.write_failures_count).toBe(1);
       expect(mined.memory_consolidated).toBe(false);
+      expect(mined.memory_review_status).toBe("pending_consciencia_memorias");
     } finally {
       restoreDexMemoriaHome(originalDexMemoriaHome);
     }
@@ -1443,7 +1573,7 @@ describe("PPIRTV flow engine", () => {
 
   it("covers the memory classification matrix without promoting parking-only leftovers", async () => {
     const workspace = path.join(tempRoot, "workspace");
-    const sptPath = await writeFakeSpt(workspace);
+    const sptPath = await writeFakeSpt(workspace, "Matriz de classificacao");
     const started = await engine.startGoal({
       workspace,
       spt_path: sptPath,
@@ -1452,7 +1582,8 @@ describe("PPIRTV flow engine", () => {
       evidence_required: true,
       required_evidence: ["npm run check"],
       requested_verdict_policy: "evidence_required",
-      source: "dex-code"
+      source: "dex-code",
+      mode: "full"
     });
     const flowId = started.flow_id as string;
     const opened = await engine.goalMeetingOpen({ flow_id: flowId, type: "divergent", question: "Como classificar achados?" });
@@ -1509,7 +1640,7 @@ describe("PPIRTV flow engine", () => {
     const workspace = path.join(tempRoot, "workspace");
     process.env.DEX_MEMORIA_HOME = path.join(tempRoot, "memories");
     try {
-      const sptPath = await writeFakeSpt(workspace);
+      const sptPath = await writeFakeSpt(workspace, "Bloquear tema invalido");
       const started = await engine.startGoal({
         workspace,
         spt_path: sptPath,
@@ -1560,7 +1691,9 @@ describe("PPIRTV flow engine", () => {
       evidence_required: true,
       required_evidence: ["npm run check"],
       requested_verdict_policy: "evidence_required",
-      source: "dex-code"
+      source: "dex-code",
+      mode: "full",
+      risk_level: "mechanical"
     });
     const flowId = started.flow_id as string;
     await engine.goalAdvance({ flow_id: flowId });
@@ -1847,15 +1980,60 @@ describe("PPIRTV flow engine", () => {
     const validation = await engine.validateSpt({ workspace, spt_path: sptPath });
 
     expect(validation.valid).toBe(false);
-    expect(validation.missing).toEqual(
-      expect.arrayContaining(["Workspace", "Origem", "GoalEnvelope", "Expected Evidence", "Done Criteria", "done_criteria"])
-    );
+    expect(validation.contract_version).toBeNull();
+    expect(validation.contract_errors).toContain("spt_v2.frontmatter: missing opening --- at the start of the file");
+    expect(validation.missing).toEqual(expect.arrayContaining(["spt_v2.frontmatter", "spt_v2.schema"]));
     expect(validation.next_step).toContain("corrigir_spt");
+  });
+
+  it("rejects unsupported SPT versions without falling back to V1", async () => {
+    const workspace = path.join(tempRoot, "workspace");
+    const sptPath = await writeFakeSpt(workspace, "Modo compact wire-up");
+    const text = (await readFile(sptPath, "utf8")).replace("version: 2", "version: 1");
+    await writeFile(sptPath, text, "utf8");
+
+    const validation = await engine.validateSpt({ workspace, spt_path: sptPath });
+
+    expect(validation.valid).toBe(false);
+    expect(validation.contract_errors).toContain("spt_v2.version: Invalid literal value, expected 2");
+  });
+
+  it("reports malformed SPT v2 YAML without inspecting the human body", async () => {
+    const workspace = path.join(tempRoot, "workspace");
+    const dir = path.join(workspace, ".agents", "PLAN-TASKS");
+    await mkdir(dir, { recursive: true });
+    const sptPath = path.join(dir, "malformed-v2.md");
+    await writeFile(sptPath, "---\ngoal: [broken\n---\n## TASKs\n- this body must not rescue the contract\n", "utf8");
+
+    const validation = await engine.validateSpt({ workspace, spt_path: sptPath });
+
+    expect(validation.valid).toBe(false);
+    expect(validation.checks.spt_v2_yaml_valid).toBe(false);
+    expect(validation.contract_errors[0]).toMatch(/^spt_v2\.yaml:/);
+  });
+
+  it("keeps SPT extraction stable when the human Markdown is rewritten", async () => {
+    const workspace = path.join(tempRoot, "workspace");
+    const dir = path.join(workspace, ".agents", "PLAN-TASKS");
+    await mkdir(dir, { recursive: true });
+    const firstPath = path.join(dir, "body-a.md");
+    const secondPath = path.join(dir, "body-b.md");
+    await writeFile(firstPath, `\uFEFF${fakeSptText(workspace, undefined, "# Human notes\n\n## TASKs\n- misleading body task\n")}`, "utf8");
+    await writeFile(secondPath, fakeSptText(workspace, undefined, "Texto livre sem qualquer heading canonico.\n"), "utf8");
+
+    const first = await engine.validateSpt({ workspace, spt_path: firstPath });
+    const second = await engine.validateSpt({ workspace, spt_path: secondPath });
+
+    expect(first.valid).toBe(true);
+    expect(second.valid).toBe(true);
+    expect(first.tasks).toEqual(second.tasks);
+    expect(first.tasks).toEqual(["Rodar teste local."]);
+    expect(first.tasks).not.toContain("misleading body task");
   });
 
   it("rejects positive GOAL verdicts without traceable evidence", async () => {
     const workspace = path.join(tempRoot, "workspace");
-    const sptPath = await writeFakeSpt(workspace);
+    const sptPath = await writeFakeSpt(workspace, "Validar evidencia obrigatoria");
     const started = await engine.startGoal({
       workspace,
       spt_path: sptPath,
@@ -2039,6 +2217,46 @@ describe("PPIRTV flow engine", () => {
     expect(statusAfter.blockers as string[]).not.toContain("memory_required_but_empty");
   });
 
+  it("T4b clears memory_required_but_empty after canonical auto_write mining returns 0 candidates", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t4b", "Garimpo vazio apos auto_write libera checkout");
+    await engine.updateFlowFacts(flowId, { risks: ["memoria L1/L2 obrigatoria para este risco material"] });
+
+    const statusBefore = await engine.goalStatus({ flow_id: flowId });
+    expect(statusBefore.blockers as string[]).toContain("memory_required_but_empty");
+
+    const mined = await engine.mineMemory({ flow_id: flowId });
+
+    expect(mined).toMatchObject({
+      write_policy: "auto_write",
+      candidates: [],
+      written: [],
+      strong_unwritten_count: 0,
+      memory_required_but_empty: false,
+      blocked_verdict: false
+    });
+
+    const statusAfter = await engine.goalStatus({ flow_id: flowId });
+    const checkout = statusAfter.ppirtv_checkout as Record<string, unknown>;
+    const memory = checkout.memory_accountability as Record<string, unknown>;
+    const directAction = String(checkout.direct_action ?? "");
+
+    expect(statusAfter.blockers as string[]).not.toContain("memory_required_but_empty");
+    expect(directAction).not.toContain("memory_required_but_empty");
+    expect(directAction).not.toContain("mm_memory_candidate_resolve");
+    expect(directAction).not.toContain("candidate_ids");
+    expect(memory).toMatchObject({
+      required: true,
+      mined: true,
+      write_policy: "auto_write",
+      candidates_count: 0,
+      written_count: 0,
+      strong_unwritten_count: 0,
+      memory_required_but_empty: false,
+      candidates: []
+    });
+    expect(String(memory.summary ?? "")).toContain("nenhum candidato");
+  });
+
   it("T4c preserves implementation_done across subsequent goal_gate_check calls without re-sending provided", async () => {
     // BUG 3: o usuario registra implementation_done:true + changed_files via
     // goal_gate_check na fase implementacao. Em chamadas seguintes (ex.: para
@@ -2134,7 +2352,7 @@ describe("PPIRTV flow engine", () => {
 
   it("T-MC-D startGoal with mode:compact propagates flow.mode and starts at concepcao", async () => {
     const workspace = path.join(tempRoot, "mc-mode-compact-start");
-    const sptPath = await writeFakeSpt(workspace);
+    const sptPath = await writeFakeSpt(workspace, "Modo compact wire-up");
     const started = await engine.startGoal({
       workspace,
       spt_path: sptPath,
@@ -2153,9 +2371,104 @@ describe("PPIRTV flow engine", () => {
     expect(flow.phase).toBe("concepcao");
   });
 
+  it("T-LEAN-CONTRACT maps mode:lean to canonical compact and returns a lean start response", async () => {
+    const workspace = path.join(tempRoot, "lean-mode-alias-start");
+    const sptPath = await writeFakeSpt(workspace, "Lean alias wire-up");
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Lean alias wire-up",
+      idempotency_key: "dex-code:test-lean-mode-alias-start",
+      evidence_required: false,
+      required_evidence: [],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "lean"
+    });
+    const flowId = started.flow_id as string;
+    const flow = await engine.store.loadFlow(flowId);
+
+    expect(flow.mode).toBe("compact");
+    expect(flow.phase).toBe("concepcao");
+    expect(flow.goal_binding?.envelope.mode).toBe("compact");
+    expect(started.mode).toBe("compact");
+    expect(started.checklist).toBeUndefined();
+    expect(JSON.stringify(started).length).toBeLessThan(5120);
+  });
+
+  it("T-LEAN-MUTATION goal_advance defaults to a lean snapshot for compact flows", async () => {
+    const workspace = path.join(tempRoot, "lean-goal-advance-snapshot");
+    const sptPath = await writeFakeSpt(workspace, "Lean mutation snapshot");
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Lean mutation snapshot",
+      idempotency_key: "dex-code:test-lean-goal-advance-snapshot",
+      evidence_required: false,
+      required_evidence: [],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "compact",
+      risk_level: "mechanical"
+    });
+    const advanced = await engine.goalAdvance({
+      flow_id: started.flow_id as string,
+      provided: {
+        context: "ctx",
+        risks: ["risco"],
+        scope_in: ["src"],
+        scope_out: ["fora"],
+        tasks: ["codar"],
+        done_criteria: ["passar"]
+      }
+    });
+    const snapshot = advanced.status_snapshot as Record<string, unknown>;
+
+    expect(snapshot.mode).toBe("compact");
+    expect(snapshot.checklist).toBeUndefined();
+    expect(snapshot.ppirtv_checkout).toBeUndefined();
+    expect(JSON.stringify(snapshot).length).toBeLessThan(5120);
+  });
+
+  it("T-LEAN-EVIDENCE evidence_add defaults to lean for compact flows and honors an explicit full override", async () => {
+    const workspace = path.join(tempRoot, "lean-evidence-snapshot");
+    const sptPath = await writeFakeSpt(workspace, "Lean evidence snapshot");
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Lean evidence snapshot",
+      idempotency_key: "dex-code:test-lean-evidence-snapshot",
+      evidence_required: false,
+      required_evidence: [],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "compact"
+    });
+    const flowId = started.flow_id as string;
+    const leanEvidence = await engine.addGoalEvidence({
+      flow_id: flowId,
+      title: "lean evidence",
+      content: "pass"
+    });
+    const leanStatus = leanEvidence.status as Record<string, unknown>;
+    const fullEvidence = await engine.addGoalEvidence({
+      flow_id: flowId,
+      title: "full evidence",
+      content: "pass",
+      detail: "full"
+    });
+    const fullStatus = fullEvidence.status as Record<string, unknown>;
+
+    expect(leanStatus.mode).toBe("compact");
+    expect(leanStatus.checklist).toBeUndefined();
+    expect(JSON.stringify(leanStatus).length).toBeLessThan(5120);
+    expect(fullStatus.checklist).toBeDefined();
+    expect(fullStatus.ppirtv_checkout).toBeDefined();
+  });
+
   it("T-MC-A advance in compact flow follows concepcao->implementacao->revisao->validacao", async () => {
     const workspace = path.join(tempRoot, "mc-mode-compact-advance");
-    const sptPath = await writeFakeSpt(workspace);
+    const sptPath = await writeFakeSpt(workspace, "Avanco compact");
     const started = await engine.startGoal({
       workspace,
       spt_path: sptPath,
@@ -2191,7 +2504,7 @@ describe("PPIRTV flow engine", () => {
 
   it("T-MC-C checkGate for concepcao in compact flow returns compact gates (not undefined)", async () => {
     const workspace = path.join(tempRoot, "mc-mode-compact-gate");
-    const sptPath = await writeFakeSpt(workspace);
+    const sptPath = await writeFakeSpt(workspace, "Gate compact");
     const started = await engine.startGoal({
       workspace,
       spt_path: sptPath,
@@ -2223,14 +2536,14 @@ describe("PPIRTV flow engine", () => {
     expect(labels).not.toEqual(expect.arrayContaining([expect.stringContaining("incertezas marcadas")]));
   });
 
-  it("T-MC-B flow without mode stays full with 6 phases (regression)", async () => {
-    const workspace = path.join(tempRoot, "mc-mode-full-regression");
-    const sptPath = await writeFakeSpt(workspace);
+  it("T-MC-B flow without mode defaults to compact and starts at concepcao", async () => {
+    const workspace = path.join(tempRoot, "mc-mode-default-compact");
+    const sptPath = await writeFakeSpt(workspace, "Default compact contract");
     const started = await engine.startGoal({
       workspace,
       spt_path: sptPath,
-      objective: "Default full regression",
-      idempotency_key: "dex-code:test-mc-mode-full",
+      objective: "Default compact contract",
+      idempotency_key: "dex-code:test-mc-mode-default-compact",
       evidence_required: true,
       required_evidence: ["npm run check"],
       requested_verdict_policy: "evidence_required",
@@ -2238,6 +2551,29 @@ describe("PPIRTV flow engine", () => {
     });
     const flowId = started.flow_id as string;
     const flow = await engine.store.loadFlow(flowId);
+
+    expect(flow.mode).toBe("compact");
+    expect(flow.phase).toBe("concepcao");
+    expect(started.mode).toBe("compact");
+    expect(started.checklist).toBeUndefined();
+    expect(JSON.stringify(started).length).toBeLessThan(5120);
+  });
+
+  it("T-MC-B-FULL keeps the six-phase profile only when mode full is explicit", async () => {
+    const workspace = path.join(tempRoot, "mc-mode-explicit-full");
+    const sptPath = await writeFakeSpt(workspace, "Explicit full contract");
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Explicit full contract",
+      idempotency_key: "dex-code:test-mc-mode-explicit-full",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "full"
+    });
+    const flow = await engine.store.loadFlow(started.flow_id as string);
 
     expect(flow.mode).toBe("full");
     expect(flow.phase).toBe("pensamentos");
@@ -2249,7 +2585,7 @@ describe("PPIRTV flow engine", () => {
     // em vez de sobrescrever silenciosamente o modo (o que quebraria o fluxo
     // em fase avancada).
     const workspace = path.join(tempRoot, "mc-mode-mismatch-reuse");
-    const sptPath = await writeFakeSpt(workspace);
+    const sptPath = await writeFakeSpt(workspace, "Flow original full");
     const idempotencyKey = "dex-code:test-mc-mode-mismatch";
     await engine.startGoal({
       workspace,
@@ -2267,7 +2603,7 @@ describe("PPIRTV flow engine", () => {
       engine.startGoal({
         workspace,
         spt_path: sptPath,
-        objective: "Retry com mode diferente",
+        objective: "Flow original full",
         idempotency_key: idempotencyKey,
         evidence_required: true,
         required_evidence: ["npm run check"],
@@ -2283,7 +2619,7 @@ describe("PPIRTV flow engine", () => {
     // stale nao deve liberar sem revalidacao. O gate da fase destino deve
     // ser invalidado para forcar nova checagem.
     const workspace = path.join(tempRoot, "hard-p1-regress-gate");
-    const sptPath = await writeFakeSpt(workspace);
+    const sptPath = await writeFakeSpt(workspace, "Regresso invalida gate");
     const started = await engine.startGoal({
       workspace,
       spt_path: sptPath,
@@ -2337,7 +2673,7 @@ describe("PPIRTV flow engine", () => {
     // Gates de fases POSTERIORES continuavam "passed" com provided stale
     // (do BUG 3 merge), permitindo avance sem revalidacao.
     const workspace = path.join(tempRoot, "hard-d-downstream-gates");
-    const sptPath = await writeFakeSpt(workspace);
+    const sptPath = await writeFakeSpt(workspace, "Downstream gates invalidados");
     const started = await engine.startGoal({
       workspace,
       spt_path: sptPath,
@@ -2383,7 +2719,7 @@ describe("PPIRTV flow engine", () => {
     // ser rejeitado na borda e nao entrar cru no store. O Zod do MCP protege,
     // mas chamadas diretas ao engine precisam do mesmo guard.
     const workspace = path.join(tempRoot, "hard-p2b-mode-invalid");
-    const sptPath = await writeFakeSpt(workspace);
+    const sptPath = await writeFakeSpt(workspace, "Mode invalido rejeitado");
     const started = await engine.startGoal({
       workspace,
       spt_path: sptPath,
@@ -2398,9 +2734,9 @@ describe("PPIRTV flow engine", () => {
     const flowId = started.flow_id as string;
     const flow = await engine.store.loadFlow(flowId);
 
-    // Mode invalido deve ter sido normalizado para o default "full", nao
+    // Mode invalido deve ter sido normalizado para o default "compact", nao
     // salvo cru como "Compact".
-    expect(flow.mode).toBe("full");
+    expect(flow.mode).toBe("compact");
     expect(flow.mode).not.toBe("Compact");
   });
 
@@ -2480,6 +2816,28 @@ describe("PPIRTV flow engine", () => {
     expect(jsonLean.length).toBeLessThan(5120);
   });
 
+  it("T-LEAN-CHECKOUT ppirtv_checkout detail:lean returns only actionable accountability under 5KB", async () => {
+    const flow = await engine.createFlow({ goal: "Lean checkout contract" });
+    const checkout = await engine.goalCheckout({ flow_id: flow.flow_id, detail: "lean" }) as Record<string, unknown>;
+    const json = JSON.stringify(checkout);
+
+    expect(checkout).toMatchObject({
+      flow_id: flow.flow_id,
+      mode: "full",
+      blockers: expect.any(Array),
+      evidence_count: 0,
+      meetings_count: 0,
+      librarian_accountability: {
+        recall_executed: false,
+        consumption_confirmed: false,
+        worked: false
+      }
+    });
+    expect(checkout.contract_accountability).toBeUndefined();
+    expect(checkout.prestacao_de_contas).toBeUndefined();
+    expect(json.length).toBeLessThan(5120);
+  });
+
   it("T-LEAN-ACTION lean includes actionable blocker fields (required_cooperation, next_required_action, meeting_required)", async () => {
     // BUG-LEAN-01: lean omite required_cooperation e next_required_action.
     // Operador fica preso sem saber como destravar o flow.
@@ -2540,7 +2898,7 @@ describe("PPIRTV flow engine", () => {
     // veredito positivo. Protege o valor ponta-a-ponta do modo compact,
     // nao apenas transicoes isoladas.
     const workspace = path.join(tempRoot, "mc-mode-compact-smoke");
-    const sptPath = await writeFakeSpt(workspace);
+    const sptPath = await writeFakeSpt(workspace, "Smoke compact E2E");
     const started = await engine.startGoal({
       workspace,
       spt_path: sptPath,
@@ -2862,7 +3220,7 @@ describe("PPIRTV flow engine", () => {
 
   it("T15 keeps goal_verdict and mm_memory_mining aligned on memory_required_but_empty", async () => {
     const workspace = path.join(tempRoot, "memory-policy-shared");
-    const sptPath = await writeFakeSpt(workspace);
+    const sptPath = await writeFakeSpt(workspace, "Politica de memoria compartilhada");
     const started = await engine.startGoal({
       workspace,
       spt_path: sptPath,
@@ -2941,7 +3299,7 @@ describe("PPIRTV flow engine", () => {
 
   it("T18 preserves goal_gate_check hygiene material findings without opening a meeting by default", async () => {
     const workspace = path.join(tempRoot, "gate-check-hygiene");
-    const sptPath = await writeFakeSpt(workspace);
+    const sptPath = await writeFakeSpt(workspace, "Gate check fiscal preservado");
     const started = await engine.startGoal({
       workspace,
       spt_path: sptPath,
@@ -3073,7 +3431,7 @@ describe("PPIRTV flow engine", () => {
   it("T21 reproduces the dex-code-kimi consumer validation without completing a material ressalva", async () => {
     const originalCwd = process.cwd();
     const workspace = path.join(tempRoot, "consumer-kimi");
-    const sptPath = await writeFakeSpt(workspace);
+    const sptPath = await writeFakeSpt(workspace, "Validacao consumidor dex-code-kimi");
     await mkdir(path.join(workspace, "tema"), { recursive: true });
     await writeFile(path.join(workspace, "tema", "memoria.md"), "# Memoria sem L1\n\n## Aprendizado\n", "utf8");
 
@@ -3150,7 +3508,7 @@ describe("PPIRTV flow engine", () => {
   it("T22 rejects false-green direct_action recursively and requires actionable meeting/regress contract", async () => {
     const originalCwd = process.cwd();
     const workspace = path.join(tempRoot, "consumer-kimi-mofo-bruto");
-    const sptPath = await writeFakeSpt(workspace);
+    const sptPath = await writeFakeSpt(workspace, "Validacao consumidor mofo bruto");
     await mkdir(path.join(workspace, "tema"), { recursive: true });
     await writeFile(path.join(workspace, "tema", "memoria.md"), "# Memoria sem L1\n\n## Aprendizado\n", "utf8");
 
@@ -3209,7 +3567,8 @@ describe("PPIRTV flow engine", () => {
         flow_id: flowId,
         kind: "synthetic_controlled_evidence",
         title: "evidencia pos bloqueio",
-        content: "pass"
+        content: "pass",
+        detail: "full"
       });
       const archived = await engine.archiveFlow({ flow_id: flowId, reason: "teste consumidor mofo bruto finalizado" });
 
@@ -3494,13 +3853,22 @@ describe("PPIRTV flow engine", () => {
       expect.arrayContaining([expect.objectContaining({ tool: "goal_meeting_open" })])
     );
 
-    await engine.addGoalEvidence({
+    const evidenceResult = await engine.addGoalEvidence({
       flow_id: flowId,
       kind: "code_review",
       title: "Revisao adversarial dos artefatos finais",
       content: "Review feito sobre src/flow-engine.ts. Achado: blocker antigo nao deve ser preservado apos evidencia. Decisao: liberar nova checagem.",
-      satisfies: ["review_required"]
+      satisfies: ["review_required"],
+      detail: "full"
     });
+    const evidenceStatus = evidenceResult.status as Record<string, unknown>;
+    const evidenceBlockers = evidenceStatus.blockers as string[];
+    const nestedCheckout = evidenceStatus.ppirtv_checkout as Record<string, unknown>;
+
+    expect(evidenceBlockers).not.toContain("review_required");
+    expect(evidenceStatus.status).toBe(evidenceBlockers.length > 0 ? "blocked" : "active");
+    expect(nestedCheckout.status).toBe(evidenceStatus.status);
+
     const resolved = await engine.goalStatus({ flow_id: flowId });
 
     expect(resolved.blockers).not.toContain("review_required");
@@ -3889,6 +4257,213 @@ describe("PPIRTV flow engine", () => {
     }
   });
 
+  it("T-RECALL-CONSUMPTION separates automatic recall from explicitly confirmed Graphify consumption", async () => {
+    const previousGraphifyRecall = process.env.PPIRTV_GRAPHIFY_RECALL;
+    process.env.PPIRTV_GRAPHIFY_RECALL = "1";
+    const graphPath = ".agents/PLAN-TASKS/graphify-consumption.md";
+    const provider: MemoryGraphProvider = {
+      recall: async (input) => ({
+        flow_id: input.flow_id,
+        phase: input.phase,
+        queried_at: new Date().toISOString(),
+        warnings: [],
+        items: [graphHit(input.question, "Graphify consumption contract", graphPath, 9)]
+      })
+    };
+    try {
+      const graphEngine = new FlowEngine(new PpirtvStore(tempRoot), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
+      const { flowId } = await startGoalWithEvidence("dex-code:test-recall-consumption", "Separar recall de consumo", graphEngine);
+
+      const recalledOnly = await graphEngine.goalStatus({ flow_id: flowId });
+      const recalledLibrarian = recalledOnly.librarian_status as Record<string, any>;
+      const recalledCheckout = recalledOnly.ppirtv_checkout as Record<string, any>;
+      expect(recalledLibrarian).toMatchObject({
+        recall_executed: true,
+        consumption_confirmed: false,
+        graphify: {
+          recall_executed: true,
+          consumption_confirmed: false
+        }
+      });
+      expect(recalledCheckout.librarian_accountability).toMatchObject({
+        worked: false,
+        recall_executed: true,
+        consumption_confirmed: false,
+        graphify_worked: false,
+        graphify_recall_executed: true
+      });
+
+      await expect(
+        graphEngine.goalAdvance({
+          flow_id: flowId,
+          provided: {},
+          recall_consumption: {
+            references: ["invented-memory.md"],
+            graphify_references: ["invented-memory.md"]
+          }
+        })
+      ).rejects.toThrow(/RECALL_CONSUMPTION_UNKNOWN_REFERENCES|GRAPHIFY_CONSUMPTION_UNKNOWN_REFERENCES/);
+      const afterRejectedConsumption = await graphEngine.goalStatus({ flow_id: flowId });
+      expect((afterRejectedConsumption.librarian_status as Record<string, any>).consumption_confirmed).toBe(false);
+
+      await graphEngine.goalAdvance({
+        flow_id: flowId,
+        provided: { context: "ctx", risks: ["risco"], uncertainties: ["u"] }
+      });
+      await graphEngine.goalAdvance({
+        flow_id: flowId,
+        provided: {
+          scope_in: ["src"],
+          scope_out: ["fora"],
+          tasks: ["usar recall"],
+          expected_evidence: ["teste"],
+          done_criteria: ["consumo confirmado"]
+        }
+      });
+
+      const blockedAdvance = await graphEngine.goalAdvance({
+        flow_id: flowId,
+        provided: {},
+        recall_consumption: {
+          references: [graphPath],
+          graphify_references: [graphPath],
+          note: "A referencia Graphify foi aberta e usada para decidir o gate atual."
+        },
+        detail: "full"
+      });
+      const consumedStatus = blockedAdvance.status_snapshot as Record<string, any>;
+      expect(blockedAdvance.blocked).toBe(true);
+      expect(consumedStatus.phase).toBe("implementacao");
+      expect(consumedStatus.librarian_status).toMatchObject({
+        recall_executed: true,
+        consumption_confirmed: true,
+        graphify: {
+          recall_executed: true,
+          consumption_confirmed: true
+        }
+      });
+      expect((consumedStatus.ppirtv_checkout as Record<string, any>).librarian_accountability).toMatchObject({
+        worked: true,
+        recall_executed: true,
+        consumption_confirmed: true,
+        graphify_worked: true
+      });
+
+      const repeatedAdvance = await graphEngine.goalAdvance({
+        flow_id: flowId,
+        provided: {},
+        recall_consumption: {
+          references: [graphPath],
+          graphify_references: [graphPath],
+          note: "Retry da mesma decisao."
+        },
+        detail: "lean"
+      });
+      expect(repeatedAdvance.recall_consumption).toMatchObject({ reused: true });
+      const consumptionEvents = (await graphEngine.store.readLedger(flowId)).filter((event) => event.type === "memory_recall_consumed");
+      expect(consumptionEvents).toHaveLength(1);
+    } finally {
+      if (previousGraphifyRecall === undefined) {
+        delete process.env.PPIRTV_GRAPHIFY_RECALL;
+      } else {
+        process.env.PPIRTV_GRAPHIFY_RECALL = previousGraphifyRecall;
+      }
+    }
+  });
+
+  it("records idempotent monotonic work progress with bounded retention", async () => {
+    const { flowId } = await startGoalWithEvidence("dex-code:test-work-progress", "Progresso estruturado");
+    const first = await engine.recordGoalProgress({
+      flow_id: flowId,
+      event_key: "graphify-chunk-1",
+      source: "graphify",
+      operation: "deep-extract",
+      stage: "chunks",
+      current: 1,
+      total: 4,
+      status: "running"
+    });
+    const reused = await engine.recordGoalProgress({
+      flow_id: flowId,
+      event_key: "graphify-chunk-1",
+      source: "graphify",
+      operation: "deep-extract",
+      stage: "chunks",
+      current: 1,
+      total: 4,
+      status: "running"
+    });
+    const throttled = await engine.recordGoalProgress({
+      flow_id: flowId,
+      event_key: "graphify-chunk-1-alias",
+      source: "graphify",
+      operation: "deep-extract",
+      stage: "chunks",
+      current: 1,
+      total: 4,
+      status: "running"
+    });
+    expect(first).toMatchObject({ recorded: true, reused: false, throttled: false });
+    expect(reused).toMatchObject({ recorded: false, reused: true, reason: "event_key_reused" });
+    expect(throttled).toMatchObject({ recorded: false, throttled: true, reason: "no_material_change" });
+
+    await expect(engine.recordGoalProgress({
+      flow_id: flowId,
+      event_key: "graphify-total-mismatch",
+      source: "graphify",
+      operation: "deep-extract",
+      stage: "chunks",
+      current: 2,
+      total: 5,
+      status: "running"
+    })).rejects.toThrow(/PROGRESS_TOTAL_MISMATCH/);
+
+    const seeded = await engine.store.loadFlow(flowId);
+    for (let index = 1; index <= 100; index += 1) {
+      seeded.history.push({
+        at: new Date().toISOString(),
+        type: "work_progress_recorded",
+        data: {
+          progress_id: `seed-${index}`,
+          event_key: `retention-${index}`,
+          source: "graphify",
+          operation: "retention-probe",
+          stage: "chunks",
+          current: index,
+          total: 200,
+          percent: index / 2,
+          status: "running",
+          recorded_at: new Date().toISOString()
+        }
+      });
+    }
+    await engine.store.saveFlow(seeded);
+    const capped = await engine.recordGoalProgress({
+      flow_id: flowId,
+      event_key: "retention-101",
+      source: "graphify",
+      operation: "retention-probe",
+      stage: "chunks",
+      current: 101,
+      total: 200,
+      status: "running"
+    });
+    const terminal = await engine.recordGoalProgress({
+      flow_id: flowId,
+      event_key: "retention-completed",
+      source: "graphify",
+      operation: "retention-probe",
+      stage: "completed",
+      current: 200,
+      total: 200,
+      status: "completed"
+    });
+    expect(capped).toMatchObject({ recorded: false, throttled: true, reason: "retention_limit" });
+    expect(terminal).toMatchObject({ recorded: true, progress_event: { status: "completed", current: 200 } });
+    const stored = await engine.store.loadFlow(flowId);
+    expect(stored.history.filter((event) => event.type === "work_progress_recorded" && event.data.operation === "retention-probe")).toHaveLength(101);
+  });
+
   it("T28 check-out of archived blocked flow preserves blockers instead of closing total", async () => {
     const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-checkout-archive-blocked", "Archive bloqueado");
     await expect(
@@ -4170,6 +4745,64 @@ describe("PPIRTV flow engine", () => {
       });
       expect(memory.candidates_count as number).toBeGreaterThan(0);
       expect(status.blockers as string[]).not.toContain("memory_required_but_empty");
+      await expect(readFile(path.join(memRoot, "temas", "ppirtv", "LEMBRANCA.md"), "utf8")).rejects.toThrow();
+      await expect(readFile(path.join(memRoot, "temas", "ppirtv", "MEMORIA.md"), "utf8")).rejects.toThrow();
+      await expect(readFile(path.join(workspace, ".agents", "LEMBRANCA.md"), "utf8")).rejects.toThrow();
+      await expect(readFile(path.join(workspace, ".agents", "MEMORIA.md"), "utf8")).rejects.toThrow();
+    } finally {
+      restoreDexMemoriaHome(originalDexMemoriaHome);
+    }
+  });
+
+  it("T32b keeps memory candidate resolution from upgrading classify_only to auto_write", async () => {
+    const originalDexMemoriaHome = process.env.DEX_MEMORIA_HOME;
+    const memRoot = path.join(tempRoot, "classify-only-resolve-memories");
+    process.env.DEX_MEMORIA_HOME = memRoot;
+    try {
+      const { flowId, workspace } = await startGoalWithEvidence(
+        "dex-code:test-resolve-classify-only-preserves-policy",
+        "Resolver candidato preserva classify_only"
+      );
+      const opened = await engine.goalMeetingOpen({
+        flow_id: flowId,
+        kind: "divergente",
+        participants_required: ["chato", "questionador", "reuniao", "validador-pronto"],
+        question: "Resolver candidato pode escrever memoria automaticamente?"
+      });
+      await engine.goalMeetingClose({
+        flow_id: flowId,
+        meeting_id: opened.meeting_id as string,
+        participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+        decision: "Resolver candidato classificado deve preservar a politica classify_only.",
+        satisfies_blockers: ["required_cooperation"],
+        parking_lot: [
+          "Aprendizado reutilizavel PPIRTV: mm_memory_candidate_resolve nao deve trocar classify_only por auto_write implicito.",
+          "Aprendizado reutilizavel MCP: destino rastreavel de candidato nao e opt-in para escrita canonica."
+        ]
+      });
+
+      const mined = await engine.mineMemory({ flow_id: flowId, auto_classify: true, write_policy: "classify_only" });
+      const candidateIds = (mined.candidates as Array<Record<string, unknown>>).map((candidate) => String(candidate.id)).filter(Boolean);
+
+      expect(candidateIds.length).toBeGreaterThan(0);
+      expect(mined).toMatchObject({ write_policy: "classify_only", written: [] });
+
+      const resolved = await engine.resolveMemoryCandidates({
+        flow_id: flowId,
+        candidate_ids: candidateIds,
+        action: "accept_ledger_only",
+        rationale: "Classificacao aceita como ledger local; sem opt-in para escrita canonica."
+      });
+      const resolvedMining = resolved.memory_mining as Record<string, unknown>;
+      const status = await engine.goalStatus({ flow_id: flowId });
+      const memory = (status.ppirtv_checkout as Record<string, unknown>).memory_accountability as Record<string, unknown>;
+
+      expect(resolvedMining).toMatchObject({
+        write_policy: "classify_only",
+        written: [],
+        resolved_candidate_ids: expect.arrayContaining(candidateIds)
+      });
+      expect(memory).toMatchObject({ write_policy: "classify_only", written_count: 0 });
       await expect(readFile(path.join(memRoot, "temas", "ppirtv", "LEMBRANCA.md"), "utf8")).rejects.toThrow();
       await expect(readFile(path.join(memRoot, "temas", "ppirtv", "MEMORIA.md"), "utf8")).rejects.toThrow();
       await expect(readFile(path.join(workspace, ".agents", "LEMBRANCA.md"), "utf8")).rejects.toThrow();
@@ -4818,6 +5451,117 @@ describe("PPIRTV flow engine", () => {
     }
   });
 
+  it("preserves operational-contract v8 default workflow and policy blocks in normalized contract and checkout accountability", async () => {
+    const originalCwd = process.cwd();
+    const originalEnv = process.env.PPIRTV_PRINCIPLES_PATH;
+    const contractDir = path.join(tempRoot, "contracts-v8");
+    await mkdir(contractDir, { recursive: true });
+    await writeFile(
+      path.join(contractDir, "operational-contract.json"),
+      JSON.stringify({
+        version: "1.0",
+        numeric_version: 8,
+        principles_revision: "2026-07-09.3",
+        updated_at: "2026-07-09",
+        source: "PRINCIPLES.md",
+        principles: [],
+        ready_definition: ["objetivo atendido"],
+        gate_final_output: ["Principios acionados"],
+        memory_layers: [],
+        default_workflow: {
+          id: "PPIRTV_WORKFLOW_BASE",
+          name: "Workflow Base PPIRTV",
+          fallback_rule: "Na falta de Trilho ou workflow local, usar PPIRTV.",
+          short_line: "P Pensamentos -> P Planejamento -> I Implementacao -> R Revisao -> T Teste -> V Validacao",
+          phases: [
+            { letter: "P", name: "Pensamentos", role: "entender, pesquisar e analisar" },
+            { letter: "P", name: "Planejamento", role: "gerar SPT detalhado" },
+            { letter: "I", name: "Implementacao", role: "executar trilhos" },
+            { letter: "R", name: "Revisao", role: "revisar e lapidar" },
+            { letter: "T", name: "Teste", role: "testar com evidencia" },
+            { letter: "V", name: "Validacao", role: "validar objetivo inicial" }
+          ]
+        },
+        prompt_guidance: [],
+        hygiene_checks: [],
+        secret_env_consumption_policy: {
+          principle_id: "P8",
+          localizer: "ENV-SECRET-CONSUMO-SEGURO",
+          rule: "Consumir somente a chave allowlistada sem eco.",
+          allowed_when: ["usuario autorizou fonte, chave e operacao concreta"],
+          required_actions: ["parsear apenas a chave nomeada"],
+          forbidden: ["varredura ampla de .env"],
+          blocks_ready_when: ["o caminho disponivel exporia o segredo"],
+          incident_response: ["registrar somente metadado sanitizado"]
+        },
+        early_security_proportionality_policy: {
+          principle_id: "P9",
+          localizer: "SEGURANCA-CEDO-DEMAIS-LIMITA",
+          rule: "Exigir evidencia local antes de endurecer guardrails.",
+          allowed_when: ["experimento e local, reversivel e observavel"],
+          required_actions: ["comparar a trava proposta com alternativa mais leve"],
+          forbidden: ["bloquear experimento reversivel por medo generico"],
+          blocks_ready_when: ["seguranca impede nascimento de V0 reversivel sem evidencia local"]
+        },
+        final_report_model: ["Status final: pronto | parcial | bloqueado"]
+      }),
+      "utf8"
+    );
+    await writeFile(path.join(contractDir, "PRINCIPLES.md"), "# Contrato v8\n", "utf8");
+    process.env.PPIRTV_PRINCIPLES_PATH = path.join(contractDir, "operational-contract.json");
+    process.chdir(tempRoot);
+    try {
+      const contract = loadOperationalContractSync(tempRoot);
+      const flow = await engine.createFlow({ goal: "Contrato v8" });
+      const checklist = await engine.renderChecklist(flow.flow_id);
+      const checkout = await engine.goalCheckout({ flow_id: flow.flow_id });
+      const contractAccountability = checkout.contract_accountability as Record<string, unknown>;
+      const prestacao = checkout.prestacao_de_contas as Record<string, unknown>;
+      const prestacaoContrato = prestacao.contrato_operacional as Record<string, unknown>;
+
+      expect(contract.default_workflow).toMatchObject({
+        id: "PPIRTV_WORKFLOW_BASE",
+        phases: expect.arrayContaining([expect.objectContaining({ name: "Validacao" })])
+      });
+      expect(contract.secret_env_consumption_policy).toMatchObject({
+        localizer: "ENV-SECRET-CONSUMO-SEGURO",
+        required_actions: ["parsear apenas a chave nomeada"],
+        incident_response: ["registrar somente metadado sanitizado"]
+      });
+      expect(contract.early_security_proportionality_policy).toMatchObject({
+        localizer: "SEGURANCA-CEDO-DEMAIS-LIMITA",
+        forbidden: ["bloquear experimento reversivel por medo generico"]
+      });
+      expect(checklist.secret_env_consumption_policy).toMatchObject({
+        localizer: "ENV-SECRET-CONSUMO-SEGURO"
+      });
+      expect(checklist.early_security_proportionality_policy).toMatchObject({
+        localizer: "SEGURANCA-CEDO-DEMAIS-LIMITA"
+      });
+      expect(checklist.default_workflow).toMatchObject({
+        id: "PPIRTV_WORKFLOW_BASE",
+        short_line: expect.stringContaining("P Pensamentos")
+      });
+      expect(checkout.default_workflow).toEqual(contractAccountability.default_workflow);
+      expect(contractAccountability.secret_env_consumption_policy).toMatchObject({
+        localizer: "ENV-SECRET-CONSUMO-SEGURO"
+      });
+      expect(contractAccountability.default_workflow).toMatchObject({
+        id: "PPIRTV_WORKFLOW_BASE",
+        phases: expect.arrayContaining([expect.objectContaining({ letter: "T", name: "Teste" })])
+      });
+      expect(contractAccountability.early_security_proportionality_policy).toMatchObject({
+        localizer: "SEGURANCA-CEDO-DEMAIS-LIMITA"
+      });
+      expect(prestacaoContrato.default_workflow).toEqual(contractAccountability.default_workflow);
+      expect(prestacaoContrato.secret_env_consumption_policy).toEqual(contractAccountability.secret_env_consumption_policy);
+      expect(prestacaoContrato.early_security_proportionality_policy).toEqual(contractAccountability.early_security_proportionality_policy);
+    } finally {
+      restoreEnv(originalEnv);
+      process.chdir(originalCwd);
+    }
+  });
+
   it("uses the shared principles memory before a local project contract", async () => {
     const originalCwd = process.cwd();
     const originalEnv = process.env.PPIRTV_PRINCIPLES_PATH;
@@ -5007,7 +5751,7 @@ async function startGoalWithEvidence(
   targetEngine: FlowEngine = engine
 ): Promise<{ flowId: string; evidenceId: string; workspace: string; sptPath: string }> {
   const workspace = path.join(tempRoot, idempotencyKey.replace(/[^a-z0-9_-]+/gi, "-"));
-  const sptPath = await writeFakeSpt(workspace);
+  const sptPath = await writeFakeSpt(workspace, objective);
   const started = await targetEngine.startGoal({
     workspace,
     spt_path: sptPath,
@@ -5016,7 +5760,8 @@ async function startGoalWithEvidence(
     evidence_required: true,
     required_evidence: ["npm run check"],
     requested_verdict_policy: "evidence_required",
-    source: "dex-code"
+    source: "dex-code",
+    mode: "full"
   });
   const flowId = started.flow_id as string;
   const evidence = await targetEngine.addGoalEvidence({
@@ -5076,6 +5821,7 @@ function memoryMiningSummary(overrides: Partial<NonNullable<Flow["memory_mining"
     memory_written: false,
     memory_validated: false,
     memory_consolidated: false,
+    memory_review_status: "not_required",
     ...overrides
   };
 }
@@ -5232,99 +5978,63 @@ function graphHit(question: string, title: string, pathName: string, score: numb
   };
 }
 
-async function writeFakeSpt(workspace: string): Promise<string> {
+async function writeFakeSpt(workspace: string, objective = "Executar ponte GOAL/SPT"): Promise<string> {
   const dir = path.join(workspace, ".agents", "PLAN-TASKS");
   await mkdir(dir, { recursive: true });
   const sptPath = path.join(dir, "2026-05-24-fake-goal-spt.md");
-  await writeFile(sptPath, fakeSptText(), "utf8");
+  await writeFile(sptPath, fakeSptText(workspace, objective), "utf8");
   return sptPath;
 }
 
-function fakeSptText(): string {
+function fakeSptText(
+  workspace = "<workspace>",
+  objective = "Executar ponte GOAL/SPT",
+  humanBody = "# Human test notes\n\nThis body is intentionally free-form.\n"
+): string {
   return [
-    "# Trilho - Fake GOAL SPT",
-    "",
-    "Tipo: SPEC-PLAN-TASKs",
-    "Status: EM TESTE",
-    "Owner: Teste",
-    "Data: 2026-05-24",
-    "Workspace: <workspace>",
-    "Origem: teste",
-    "",
-    "## GoalEnvelope",
-    "",
-    "```json",
-    "{",
-    "  \"workspace\": \"<workspace>\",",
-    "  \"spt_path\": \"<spt-path>\",",
-    "  \"objective\": \"Executar ponte GOAL/SPT\",",
-    "  \"idempotency_key\": \"dex-code:test-goal-001\",",
-    "  \"evidence_required\": true,",
-    "  \"required_evidence\": [\"npm run check\"],",
-    "  \"requested_verdict_policy\": \"evidence_required\",",
-    "  \"source\": \"dex-code\"",
-    "}",
-    "```",
-    "",
-    "## Contexto",
-    "",
-    "Teste local do contrato GOAL/SPT.",
-    "",
-    "## Problema",
-    "",
-    "Garantir que o flow receba campos normalizados.",
-    "",
-    "## Decisao",
-    "",
-    "Usar SPT canonico em .agents/PLAN-TASKS.",
-    "",
-    "## Escopo",
-    "",
-    "- Validar SPT local.",
-    "",
-    "## Fora de escopo",
-    "",
-    "- Ler secrets.",
-    "",
-    "## SPEC",
-    "",
-    "Executar ponte GOAL/SPT com evidencia rastreavel.",
-    "",
-    "## PLAN",
-    "",
-    "1. Validar SPT.",
-    "2. Criar flow.",
-    "3. Registrar evidencia.",
-    "",
-    "## TASKs",
-    "",
-    "- [ ] Rodar teste local.",
-    "",
-    "## Expected Evidence",
-    "",
-    "- npm run check.",
-    "",
-    "## Done Criteria",
-    "",
-    "- npm run check.",
-    "",
-    "## Riscos",
-    "",
-    "- Falso pronto sem evidencia.",
-    "",
-    "## Gates",
-    "",
-    "- tasks, expected_evidence e done_criteria preenchidos.",
-    "",
-    "## Validacao",
-    "",
-    "- npm run check.",
-    "",
-    "## Prompt /GOAL de execucao",
-    "",
-    "```text",
-    "/GOAL",
-    "Execute este SPT.",
-    "```"
+    "---",
+    "dex_contract: spt",
+    "version: 2",
+    "status: EM_TESTE",
+    "owner: Teste",
+    "date: '2026-05-24'",
+    `workspace: ${JSON.stringify(workspace)}`,
+    "origin: teste",
+    "goal:",
+    "  id: fake-goal-spt",
+    "  title: Fake GOAL SPT",
+    `  objective: ${objective}`,
+    "context: Teste local do contrato GOAL/SPT.",
+    "problem: Garantir que o flow receba campos normalizados.",
+    "decision: Usar SPT v2 em .agents/PLAN-TASKS.",
+    "scope:",
+    "  include:",
+    "    - Validar SPT local.",
+    "  exclude:",
+    "    - Alterar componentes externos.",
+    "spec: Executar ponte GOAL/SPT com evidencia rastreavel.",
+    "plan:",
+    "  - Validar SPT.",
+    "  - Criar flow.",
+    "  - Registrar evidencia.",
+    "tasks:",
+    "  - Rodar teste local.",
+    "expected_evidence:",
+    "  - npm run check.",
+    "done_criteria:",
+    "  - npm run check.",
+    "risks:",
+    "  - Falso pronto sem evidencia.",
+    "uncertainties:",
+    "  - Cliente de teste pode variar o objective do envelope.",
+    "gates:",
+    "  - tasks, expected_evidence e done_criteria preenchidos.",
+    "validation:",
+    "  - npm run check.",
+    "execution_prompt: |",
+    "  /GOAL",
+    "  Execute este SPT.",
+    "---",
+    humanBody
   ].join("\n");
 }

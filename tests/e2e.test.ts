@@ -237,6 +237,134 @@ describe("dex-PPIRTV e2e smoke", () => {
     expect(await readdir(path.join(workspace, ".ppirtv", "flows"))).toEqual([`${result.flow_smoke!.flow_id}.json`]);
   });
 
+  it("keeps global Codex launcher neutral with a blank workspace placeholder and validates a consumer by CLI context", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-launcher-placeholder-"));
+    const projectsRoot = path.join(tempRoot, "projects");
+    const workspace = path.join(projectsRoot, "consumer-a");
+    const configPath = path.join(tempRoot, "global-config", "config.toml");
+    await mkdir(workspace, { recursive: true });
+    await writeFile(path.join(workspace, "AGENTS.md"), "# consumer-a\n", "utf8");
+    await mkdir(path.dirname(configPath), { recursive: true });
+    await writeFile(
+      configPath,
+      codexConfigToml({
+        name: "dex_ppirtv",
+        cwd: process.cwd(),
+        args: [path.join(process.cwd(), "dist", "launcher.js"), "--workspace", ""],
+        env: { PPIRTV_WORKSPACE_ROOT: projectsRoot }
+      }),
+      "utf8"
+    );
+
+    const smoke = await execFileAsync(
+      process.execPath,
+      [
+        "scripts/smoke-mcp-tools.mjs",
+        "--config-toml",
+        configPath,
+        "--server",
+        "dex_ppirtv",
+        "--workspace",
+        workspace,
+        "--flow-smoke"
+      ],
+      { cwd: process.cwd(), maxBuffer: 1024 * 1024 }
+    );
+    const result = JSON.parse(smoke.stdout) as {
+      ok: boolean;
+      server?: { args?: string[] };
+      runtime_server?: { args?: string[] };
+      workspace_placeholder?: { detected?: boolean; applied?: boolean; source?: string; workspace?: string };
+      runtime_config_check?: { code?: string; launcher_workspace?: string; expected_ppirtv_home?: string };
+      flow_smoke?: { flow_id?: string; status_runtime?: RuntimeSmokeSummary };
+    };
+    const canonicalWorkspace = await realpath(workspace);
+
+    expect(result.ok).toBe(true);
+    expect(result.server?.args).toContain("");
+    expect(result.runtime_server?.args).toContain(workspace);
+    expect(result.workspace_placeholder).toMatchObject({
+      detected: true,
+      applied: true,
+      source: "smoke_cli_workspace",
+      workspace
+    });
+    expect(result.runtime_config_check).toMatchObject({
+      code: "ppirtv_launcher_workspace_resolved",
+      launcher_workspace: canonicalWorkspace,
+      expected_ppirtv_home: path.join(canonicalWorkspace, ".ppirtv")
+    });
+    expect(result.flow_smoke?.status_runtime).toMatchObject({
+      project_root: canonicalWorkspace,
+      ppirtv_home: path.join(canonicalWorkspace, ".ppirtv")
+    });
+    expect(await readFile(configPath, "utf8")).toContain('"--workspace", ""');
+    expect(await readdir(path.join(workspace, ".ppirtv", "flows"))).toEqual([`${result.flow_smoke!.flow_id}.json`]);
+  });
+
+  it("keeps global Codex launcher neutral without --workspace and validates a consumer by CLI context", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-launcher-no-workspace-cli-"));
+    const workspace = path.join(tempRoot, "consumer-a");
+    const configPath = path.join(tempRoot, "global-config", "config.toml");
+    await mkdir(workspace, { recursive: true });
+    await writeFile(path.join(workspace, "AGENTS.md"), "# consumer-a\n", "utf8");
+    await mkdir(path.dirname(configPath), { recursive: true });
+    await writeFile(
+      configPath,
+      codexConfigToml({
+        name: "dex_ppirtv",
+        cwd: process.cwd(),
+        args: [path.join(process.cwd(), "dist", "launcher.js")]
+      }),
+      "utf8"
+    );
+
+    const smoke = await execFileAsync(
+      process.execPath,
+      [
+        "scripts/smoke-mcp-tools.mjs",
+        "--config-toml",
+        configPath,
+        "--server",
+        "dex_ppirtv",
+        "--workspace",
+        workspace,
+        "--flow-smoke"
+      ],
+      { cwd: process.cwd(), maxBuffer: 1024 * 1024 }
+    );
+    const result = JSON.parse(smoke.stdout) as {
+      ok: boolean;
+      server?: { args?: string[] };
+      runtime_server?: { args?: string[] };
+      workspace_placeholder?: { kind?: string; detected?: boolean; applied?: boolean; workspace?: string };
+      runtime_config_check?: { code?: string; launcher_workspace?: string; expected_ppirtv_home?: string };
+      flow_smoke?: { flow_id?: string; status_runtime?: RuntimeSmokeSummary };
+    };
+    const canonicalWorkspace = await realpath(workspace);
+
+    expect(result.ok).toBe(true);
+    expect(result.server?.args).not.toContain("--workspace");
+    expect(result.runtime_server?.args).toEqual(expect.arrayContaining(["--workspace", workspace]));
+    expect(result.workspace_placeholder).toMatchObject({
+      kind: "missing_workspace_argument",
+      detected: true,
+      applied: true,
+      workspace
+    });
+    expect(result.runtime_config_check).toMatchObject({
+      code: "ppirtv_launcher_workspace_resolved",
+      launcher_workspace: canonicalWorkspace,
+      expected_ppirtv_home: path.join(canonicalWorkspace, ".ppirtv")
+    });
+    expect(result.flow_smoke?.status_runtime).toMatchObject({
+      project_root: canonicalWorkspace,
+      ppirtv_home: path.join(canonicalWorkspace, ".ppirtv")
+    });
+    expect(await readFile(configPath, "utf8")).not.toContain("--workspace");
+    expect(await readdir(path.join(workspace, ".ppirtv", "flows"))).toEqual([`${result.flow_smoke!.flow_id}.json`]);
+  });
+
   it("fails global launcher early from install repo without workspace signal", async () => {
     tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-launcher-no-signal-"));
     const configPath = path.join(tempRoot, "config.toml");

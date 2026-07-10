@@ -21,6 +21,7 @@ export type CompactPhase = (typeof COMPACT_PHASES)[number];
 export type AnyPhase = Phase | CompactPhase;
 
 export type PhaseMode = "full" | "compact";
+export type GoalModeInput = PhaseMode | "lean";
 
 export const MEETING_TYPES = ["divergent", "convergent", "transversal", "decision"] as const;
 export type MeetingType = (typeof MEETING_TYPES)[number];
@@ -46,20 +47,57 @@ export type GoalEnvelope = {
   requested_verdict_policy: GoalVerdictPolicy;
   source: string;
   risk_level?: RiskLevel;
-  mode?: PhaseMode;
+  mode?: GoalModeInput;
 };
 
 export type GoalBinding = {
   envelope: GoalEnvelope;
+  spt_contract_fingerprint?: string;
   started_at: string;
   last_seen_at: string;
+};
+
+export type SptV2Contract = {
+  dex_contract: "spt";
+  version: 2;
+  status: string;
+  owner: string;
+  date: string;
+  workspace: string;
+  origin: string;
+  goal: {
+    id: string;
+    title: string;
+    objective: string;
+  };
+  context: string;
+  problem: string;
+  decision: string;
+  scope: {
+    include: string[];
+    exclude: string[];
+  };
+  spec: string;
+  plan: string[];
+  tasks: string[];
+  expected_evidence: string[];
+  done_criteria: string[];
+  risks: string[];
+  uncertainties: string[];
+  gates: string[];
+  validation: string[];
+  execution_prompt: string;
 };
 
 export type SptValidationResult = {
   valid: boolean;
   workspace: string;
   spt_path: string;
+  contract_version: 2 | null;
+  goal_id: string | null;
+  contract_fingerprint: string | null;
   checks: Record<string, boolean>;
+  contract_errors: string[];
   missing: string[];
   warnings: string[];
   risks: string[];
@@ -145,6 +183,13 @@ export type MemoryPostWriteValidation = {
   commands_required: string[];
 };
 
+export type MemoryReviewStatus =
+  | "not_required"
+  | "pending_consciencia_memorias"
+  | "approved"
+  | "rejected"
+  | "failed_post_write_validation";
+
 export type MemoryMiningSummary = {
   required: boolean;
   last_run_at?: string;
@@ -174,6 +219,7 @@ export type MemoryMiningSummary = {
   memory_written?: boolean;
   memory_validated?: boolean;
   memory_consolidated?: boolean;
+  memory_review_status?: MemoryReviewStatus;
   memory_post_write_validation?: MemoryPostWriteValidation;
 };
 
@@ -273,6 +319,8 @@ export type StructuredLibrarianStatus = {
     reason: string;
     visible: boolean;
     functional_tested: boolean;
+    recall_executed: boolean;
+    consumption_confirmed: boolean;
   };
   graphify: {
     enabled: boolean;
@@ -281,10 +329,14 @@ export type StructuredLibrarianStatus = {
     reason: string;
     visible: boolean;
     functional_tested: boolean;
+    recall_executed: boolean;
+    consumption_confirmed: boolean;
   };
   warnings: string[];
   recalled_count: number;
   functional_tested: boolean;
+  recall_executed: boolean;
+  consumption_confirmed: boolean;
 };
 
 export type DisplayEnvelope = {
@@ -304,7 +356,11 @@ export type DisplayEnvelope = {
     graphify_status?: LibrarianComponentStatus;
     warnings: string[];
     recalled_count: number;
+    recall_executed?: boolean;
+    consumption_confirmed?: boolean;
+    graphify_consumption_confirmed?: boolean;
   };
+  work_progress?: WorkProgressSummary;
 };
 
 export type PresentationEnvelope = {
@@ -443,6 +499,28 @@ export type LedgerEvent = {
   data: Record<string, unknown>;
 };
 
+export type WorkProgressStatus = "queued" | "running" | "completed" | "failed";
+
+export type WorkProgressEvent = {
+  progress_id: string;
+  event_key: string;
+  source: string;
+  operation: string;
+  stage: string;
+  current: number;
+  total: number;
+  percent: number;
+  status: WorkProgressStatus;
+  message?: string;
+  recorded_at: string;
+};
+
+export type WorkProgressSummary = {
+  event_count: number;
+  operations_count: number;
+  last: WorkProgressEvent | null;
+};
+
 export type HygieneFinding = {
   id: string;
   severity: "info" | "warning" | "error";
@@ -534,6 +612,7 @@ export const REQUIRED_TOOLS = [
   "goal_resume",
   "goal_gate_check",
   "goal_advance",
+  "goal_progress_record",
   "goal_meeting_open",
   "goal_meeting_add_turn",
   "goal_meeting_close",

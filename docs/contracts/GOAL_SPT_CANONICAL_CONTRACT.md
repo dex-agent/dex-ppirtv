@@ -27,6 +27,7 @@ As tools oficiais para clientes como `dex-code` sao:
 - `goal_resume`
 - `goal_gate_check`
 - `goal_advance`
+- `goal_progress_record`
 - `goal_meeting_open`
 - `goal_meeting_add_turn`
 - `goal_meeting_close`
@@ -40,6 +41,12 @@ Tools internas como `flow_create`, `flow_advance`, `gate_check`,
 `meeting_open`, `meeting_record`, `evidence_attach` e `verdict_record`
 continuam existindo por compatibilidade, mas nao devem ser usadas como
 substituto silencioso das tools oficiais de `/GOAL`.
+
+`flow_create` e uma rota legacy/advisory: nao cria `goal_binding`, nao ativa um
+GOAL oficial e nao recebe `mode`. Sua resposta usa recibo lean por padrao, com
+`advisory=true` e `official_goal=false`; `detail:"full"` preserva o payload
+historico apenas para compatibilidade. Pedido de GOAL oficial continua seguindo
+`spt_validate -> goal_start`.
 
 As wrappers vivas `goal_gate_check`, `goal_advance`, `goal_meeting_open` e
 `goal_meeting_add_turn`/`goal_meeting_close` encapsulam explicitamente as tools
@@ -66,7 +73,7 @@ Bibliotecario. Ele nao e memoria canonica, nao altera L1/L2/L3, nao substitui
 `rg` para busca exata e todo achado dele deve ser marcado como `source:
 graphify` para permitir medicao separada.
 
-## Trilho/SPT canonico
+## Trilho/SPT canonico v2
 
 Um Trilho canonico e um arquivo Markdown salvo em:
 
@@ -74,34 +81,80 @@ Um Trilho canonico e um arquivo Markdown salvo em:
 <workspace>\.agents\PLAN-TASKS\YYYY-MM-DD-<slug>.md
 ```
 
-Ele precisa ser legivel por humanos e extraivel pelo `spt_validate`. O arquivo
-deve conter, no minimo:
+O SPT v2 separa duas responsabilidades:
 
-- titulo `# ...`
-- `Tipo: SPEC-PLAN-TASKs`
-- `Status:`
-- `Owner:`
-- `Data:`
-- `Workspace:`
-- `Origem:`
-- `## GoalEnvelope`
-- `## Contexto`
-- `## Problema`
-- `## Decisao`
-- `## Escopo`
-- `## Fora de escopo`
-- `## SPEC`
-- `## PLAN`
-- `## TASKs`
-- `## Expected Evidence`
-- `## Done Criteria`
-- `## Riscos`
-- `## Gates`
-- `## Validacao`
-- `## Prompt /GOAL de execucao`
+- a camada de maquina e um front matter YAML obrigatorio no topo do arquivo;
+- a camada humana e o Markdown livre depois do fechamento do front matter.
 
-SPT bonito em Markdown, mas sem campos extraiveis, e invalido para execucao
-canonica.
+`spt_validate` le e valida somente a camada estruturada. Titulos, idioma,
+ordem, tabelas e listas do corpo humano nao participam da validacao nem da
+extracao. O formato v2 e unico: nao existe fallback, autodeteccao ou janela de
+compatibilidade V1/V2. Trilhos V1 historicos continuam como registro, mas
+precisam ser migrados ou regenerados antes de uma nova execucao.
+
+Campos obrigatorios do front matter:
+
+- `dex_contract: spt` e `version: 2`;
+- `status`, `owner`, `date`, `workspace` e `origin`;
+- `goal.id`, `goal.title` e `goal.objective`;
+- `context`, `problem` e `decision`;
+- `scope.include` e `scope.exclude`;
+- `spec`, `plan` e `tasks`;
+- `expected_evidence` e `done_criteria`;
+- `risks`, `uncertainties`, `gates` e `validation`;
+- `execution_prompt`.
+
+Exemplo minimo executavel:
+
+```yaml
+---
+dex_contract: spt
+version: 2
+status: RASCUNHO
+owner: sprinter
+date: '2026-07-09'
+workspace: 'C:\CodexProjetos\dex-PPIRTV'
+origin: 'reuniao PPIRTV'
+goal:
+  id: exemplo-spt-v2
+  title: 'Exemplo SPT v2'
+  objective: 'Executar um objetivo verificavel sem depender do Markdown humano.'
+context: 'Contexto operacional suficiente para iniciar o flow.'
+problem: 'O contrato antigo dependia de headings literais.'
+decision: 'Usar somente front matter YAML v2.'
+scope:
+  include:
+    - 'src/'
+  exclude:
+    - 'Mudancas fora deste objetivo.'
+spec: 'Resultado ou comportamento esperado.'
+plan:
+  - 'Executar o menor passo verificavel.'
+tasks:
+  - 'Implementar a mudanca planejada.'
+expected_evidence:
+  - 'npm run check'
+done_criteria:
+  - 'A suite passa e o objetivo foi demonstrado.'
+risks:
+  - 'Falso pronto sem evidencia.'
+uncertainties:
+  - 'Consumidor externo ainda pode emitir V1.'
+gates:
+  - 'spt_validate retorna valid=true.'
+validation:
+  - 'npm run check'
+execution_prompt: |
+  /GOAL
+  Execute este Trilho pelo MCP PPIRTV.
+---
+
+# Texto livre para pessoas
+```
+
+Use aspas quando um scalar YAML contiver `:`, `#`, backslashes ou outro
+conteudo ambiguo. O parser tolera BOM UTF-8, exige `---` no inicio logico do
+arquivo, usa schema estrito e rejeita campos desconhecidos.
 
 ### Revisao PPI do Trilho
 
@@ -202,8 +255,12 @@ Regras:
 
 - `workspace` deve ser absoluto e existir.
 - `spt_path` deve apontar para um arquivo dentro de `.agents\PLAN-TASKS`.
-- `objective` deve nomear o resultado esperado do ciclo.
-- `idempotency_key` deve ser estavel para retry e nao pode duplicar flows.
+- `objective` deve nomear o resultado esperado do ciclo e corresponder a
+  `goal.objective` do front matter v2.
+- `idempotency_key` deve ser estavel para retry e nao pode duplicar flows. O
+  primeiro `goal_start` vincula o envelope e o fingerprint do front matter;
+  retries rejeitam mudanca semantica nesses dados. Alteracoes apenas no corpo
+  Markdown humano continuam permitidas.
 - `evidence_required=true` exige evidencia rastreavel antes de conclusao
   positiva.
 - `required_evidence` lista evidencias esperadas para o veredito.
@@ -224,12 +281,13 @@ Ao iniciar um GOAL com `goal_start`, o flow e o ledger precisam preservar:
 - `required_evidence`
 - `requested_verdict_policy`
 - `source`
+- `spt_contract_fingerprint`
 - `tasks`
 - `expected_evidence`
 - `done_criteria`
 
-`tasks`, `expected_evidence` e `done_criteria` sao obrigatorios antes de sair
-da fase Planejamento.
+`tasks`, `expected_evidence` e `done_criteria` vem exclusivamente do front
+matter v2 e sao obrigatorios antes de sair da fase Planejamento.
 
 Eventos de memoria operacional tambem podem aparecer no ledger quando houver
 avanco de fase:
@@ -237,6 +295,10 @@ avanco de fase:
 - `memory_hook_recorded`: resultado de `afterPhase` para a fase que esta
   sendo encerrada;
 - `memory_recalled`: resultado de `beforePhase` para a nova fase;
+- `memory_recall_reused`: recall executado na nova fase com conteudo
+  deduplicado, preservando referencias sem duplicar `memory_recalled`;
+- `memory_recall_consumed`: confirmacao opcional e idempotente de referencias
+  realmente usadas pelo executor na fase;
 - `memory_hook_warning`: falha tolerada do Bibliotecario ou provider auxiliar;
 - `memory_mined`: permanece reservado para `mm_memory_mining`.
 
@@ -267,7 +329,8 @@ runtime privado em artefato publico.
 
 Fluxo canonico:
 
-1. Criar Trilho em `.agents\PLAN-TASKS`.
+1. Criar Trilho SPT v2 em `.agents\PLAN-TASKS` usando
+   `templates/SPEC-PLAN-TASKS.template.md`.
 2. Montar `GoalEnvelope`.
 3. Chamar `spt_validate`.
 4. Se `valid=false`, corrigir o SPT. Nao iniciar GOAL.
@@ -292,6 +355,42 @@ Fluxo canonico:
     de evidencia.
 16. Chamar `goal_verdict` com `evidence_ids` rastreaveis.
 17. Conferir `ppirtv_checkout` antes de declarar fechamento total.
+
+### Contrato lean ponta a ponta
+
+O runtime usa o modo canonico `compact` quando `goal_start.mode` e omitido.
+Pedidos `lean`, `basico` ou com cerimonia minima podem continuar enviando
+`mode: "lean"`; esse alias e persistido como `compact`. Nao existe um terceiro
+perfil de fases. O perfil compacto executa:
+
+```text
+concepcao -> implementacao -> revisao -> validacao
+```
+
+O perfil `full` de seis fases so e ativado por `mode: "full"` explicito. Perfil
+de fases e detalhe de resposta sao contratos separados: tools de status e
+mutacao retornam `lean` por default mesmo em flow `full`; `detail:"full"` e o
+opt-in para diagnostico completo. `goal_status`, `goal_advance`, `evidence_add`
+e `ppirtv_checkout` devem manter somente campos acionaveis e contagens por
+default. `checklist_render` usa `visual-only` por default e so inclui principios
+e arrays completos de governanca com `detail:"full"`.
+
+Retry idempotente sem `mode` preserva o perfil ja persistido e nao migra um
+flow vivo. Depois de `evidence_add`, o recibo deve recalcular blockers e expor
+uma unica visao coerente; status externo e checkout aninhado nao podem divergir.
+
+Recall automatico e consumo pelo executor sao estados diferentes:
+
+- `recall_executed=true`: o hook Bibliotecario/Graphify rodou;
+- `consumption_confirmed=false`: nenhum uso foi comprovado ainda;
+- `goal_advance.recall_consumption.references`: referencias do ultimo recall
+  realmente usadas na fase atual;
+- `graphify_references`: subconjunto usado que deve corresponder a itens
+  `source: graphify`;
+- `worked=true`: somente depois de consumo confirmado, nunca apenas por recall.
+
+Confirmar consumo e opcional e nao cria gate, reuniao ou tool adicional.
+Referencia inexistente nao promove o estado e deve falhar explicitamente.
 
 ### Modo advisory e modo fiscal
 
@@ -324,7 +423,9 @@ mostrar `Gate pronto para avancar`. A regra vale recursivamente para
 subpayloads como checklist, evidence/status e archive de flow bloqueado.
 
 `librarian_status` deve ser estruturado sempre, inclusive quando desabilitado,
-com `bibliotecario.status`, `graphify.status` e `functional_tested`. Estado
+com `bibliotecario.status`, `graphify.status`, `functional_tested`,
+`recall_executed` e `consumption_confirmed`. `functional_tested` prova que a
+rota de recall operou; nao prova consumo. Estado
 ausente/null e falso silencio operacional. `disabled` significa reportado, nao
 participacao funcional.
 

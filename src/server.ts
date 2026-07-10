@@ -13,7 +13,7 @@ import {
   PHASES,
   VERDICTS
 } from "./domain.js";
-import { FlowEngine } from "./flow-engine.js";
+import { boundedRecallErrorReferences, FlowEngine, RecallConsumptionReferenceError, WorkProgressContractError } from "./flow-engine.js";
 import { scrubSecretLikeText } from "./security/secret-redaction.js";
 import { PpirtvStore } from "./store.js";
 
@@ -64,7 +64,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
     requested_verdict_policy: z.enum(GOAL_VERDICT_POLICIES).default("evidence_required"),
     source: z.string().min(1),
     risk_level: z.enum(["high", "medium", "low", "mechanical"]).optional(),
-    mode: z.enum(["full", "compact"]).optional()
+    mode: z.enum(["full", "compact", "lean"]).optional()
   };
   const pipelineItemSchema = z.object({
     goal: z.string().min(1),
@@ -86,17 +86,23 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
   server.registerTool(
     "flow_create",
     {
-      description: "Create a PPIRTV flow and return an explicit flow_id.",
+      description:
+        "Create a legacy/advisory PPIRTV flow without an official GOAL binding. Default response is a lean receipt; use detail:'full' for the historical payload. For official /GOAL execution, use spt_validate then goal_start.",
       inputSchema: {
         goal: z.string().min(1),
         owner: z.string().optional(),
         context: z.string().optional(),
         scope: z.object({ in: z.array(z.string()).default([]), out: z.array(z.string()).default([]) }).optional(),
         risks: z.array(z.string()).optional(),
-        uncertainties: z.array(z.string()).optional()
+        uncertainties: z.array(z.string()).optional(),
+        detail: z.enum(["lean", "full"]).optional()
       }
     },
-    async (args) => toolResponse(() => engine.createFlow(args))
+    async ({ detail, ...args }) =>
+      toolResponse(async () => {
+        const flow = await engine.createFlow(args);
+        return detail === "full" ? flow : leanFlowCreateReceipt(flow);
+      })
   );
 
   server.registerTool(
@@ -217,10 +223,13 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
   server.registerTool(
     "checklist_render",
     {
-      description: "Render the visual checklist for the flow current phase.",
-      inputSchema: { flow_id: z.string().min(1) }
+      description: "Render the current checklist. Default visual-only returns items, blockers and next step; use detail:'full' only for principles and complete governance arrays.",
+      inputSchema: {
+        flow_id: z.string().min(1),
+        detail: z.enum(["visual-only", "lean", "compact", "full"]).optional()
+      }
     },
-    async ({ flow_id }) => toolResponse(() => engine.renderChecklist(flow_id))
+    async ({ flow_id, detail }) => toolResponse(() => engine.renderChecklist(flow_id, detail ?? "visual-only"))
   );
 
   server.registerTool(
@@ -277,7 +286,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
   server.registerTool(
     "goal_start",
     {
-      description: "Start or reuse an official GOAL/SPT execution flow from dex-code.",
+      description: "Start or reuse an official GOAL/SPT execution flow. Default mode is canonical 'compact'; 'lean' is its input alias and 'full' must be requested explicitly.",
       inputSchema: goalEnvelopeSchema
     },
     async (args) => toolResponse(() => engine.startGoal(args))
@@ -286,27 +295,27 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
   server.registerTool(
     "goal_status",
     {
-      description: "Return GOAL execution status, checklist, evidence, blockers and next actionable step. Use detail: 'compact' to omit operational_principles, ready_definition, gate_final_output, final_report_model and full prestacao_de_contas (default: 'full').",
+      description: "Return GOAL execution status. Default detail is 'lean' for the actionable core under 5KB; use detail:'full' only for the complete diagnostic.",
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
         detail: z.enum(["lean", "compact", "full"]).optional()
       }
     },
-    async (args) => toolResponse(() => engine.goalStatus(args), args)
+    async (args) => toolResponse(() => engine.goalStatus({ ...args, detail: args.detail ?? "lean" }), args)
   );
 
   server.registerTool(
     "ppirtv_checkout",
     {
-      description: "Return the canonical PPIRTV closing accountability directly, with memory, learning, cooperation, librarian and utility sections at top level. Use detail: 'compact' to omit large arrays (default: 'full').",
+      description: "Return PPIRTV closing accountability. Default detail is 'lean'; use detail:'full' only for complete accountability arrays.",
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
         detail: z.enum(["lean", "compact", "full"]).optional()
       }
     },
-    async (args) => toolResponse(() => engine.goalCheckout(args), args)
+    async (args) => toolResponse(() => engine.goalCheckout({ ...args, detail: args.detail ?? "lean" }), args)
   );
 
   server.registerTool(
@@ -325,7 +334,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
   server.registerTool(
     "goal_gate_check",
     {
-      description: "Run and persist an official GOAL phase gate by flow_id or idempotency_key. Use detail: 'compact' for lighter output (default: 'full').",
+      description: "Run and persist an official GOAL phase gate by flow_id or idempotency_key. Status receipt defaults to lean; use detail:'full' only for diagnostics.",
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
@@ -341,15 +350,41 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
   server.registerTool(
     "goal_advance",
     {
-      description: "Advance an official GOAL flow only after a real persisted gate passes.",
+      description: "Advance an official GOAL flow only after a real persisted gate passes. Status receipt defaults to lean; recall_consumption can explicitly confirm cited recall references.",
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
         provided: z.record(z.unknown()).optional(),
-        evidence_ids: z.array(z.string()).optional()
+        evidence_ids: z.array(z.string()).optional(),
+        recall_consumption: z.object({
+          references: z.array(z.string().min(1)).min(1),
+          graphify_references: z.array(z.string().min(1)).default([]),
+          note: z.string().min(1).optional()
+        }).optional(),
+        detail: z.enum(["lean", "compact", "full"]).optional()
       }
     },
     async (args) => toolResponse(() => engine.goalAdvance(args), args)
+  );
+
+  server.registerTool(
+    "goal_progress_record",
+    {
+      description: "Record sanitized, idempotent work progress for an official GOAL without turning progress into evidence or a fiscal blocker.",
+      inputSchema: {
+        flow_id: z.string().optional(),
+        idempotency_key: z.string().optional(),
+        event_key: z.string().min(1).max(120),
+        source: z.string().min(1).max(80),
+        operation: z.string().min(1).max(120),
+        stage: z.string().min(1).max(120),
+        current: z.number().int().nonnegative(),
+        total: z.number().int().positive(),
+        status: z.enum(["queued", "running", "completed", "failed"]),
+        message: z.string().max(240).optional()
+      }
+    },
+    async (args) => toolResponse(() => engine.recordGoalProgress(args), args)
   );
 
   server.registerTool(
@@ -469,7 +504,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
   server.registerTool(
     "evidence_add",
     {
-      description: "Add traceable evidence to a GOAL/SPT flow without recording secret-like payloads.",
+      description: "Add traceable evidence without recording secret-like payloads. Status receipt defaults to lean; use detail:'full' only for a complete diagnostic.",
       inputSchema: {
         flow_id: z.string().min(1),
         kind: z.string().default("goal_evidence"),
@@ -477,7 +512,8 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         uri: z.string().optional(),
         content: z.string().optional(),
         note: z.string().optional(),
-        satisfies: z.array(z.string()).optional()
+        satisfies: z.array(z.string()).optional(),
+        detail: z.enum(["lean", "compact", "full"]).optional()
       }
     },
     async (args) => toolResponse(() => engine.addGoalEvidence(args))
@@ -634,6 +670,23 @@ function toolResult(value: unknown) {
   };
 }
 
+function leanFlowCreateReceipt(flow: Awaited<ReturnType<FlowEngine["createFlow"]>>) {
+  return {
+    flow_id: flow.flow_id,
+    phase: flow.phase,
+    status: flow.status,
+    detail: "lean",
+    advisory: true,
+    official_goal: false,
+    goal_binding: null,
+    official_goal_route: {
+      when: "only when the client requests an official /GOAL",
+      required_tool_sequence: ["spt_validate", "goal_start"],
+      reason: "flow_create is legacy/advisory and does not create an official GOAL binding"
+    }
+  };
+}
+
 function toolErrorResult(error: unknown, errorContext?: ToolErrorContext) {
   const envelope = classifyToolError(error, errorContext);
   const value = { error: envelope };
@@ -652,12 +705,73 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
     details: { original_error: message },
     contract_source: "docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md"
   };
+  if (error instanceof RecallConsumptionReferenceError) {
+    const unknownReferences = safeRecallReferences(error.unknownReferences);
+    const validReferences = safeRecallReferences(error.validReferences);
+    const validGraphifyReferences = safeRecallReferences(error.validGraphifyReferences);
+    const graphify = error.code === "GRAPHIFY_CONSUMPTION_UNKNOWN_REFERENCES";
+    return {
+      ...base,
+      code: error.code,
+      recoverable: true,
+      details: {
+        ...base.details,
+        ...(graphify
+          ? {
+              unknown_graphify_references: unknownReferences,
+              valid_graphify_references: validGraphifyReferences,
+              valid_references: validReferences
+            }
+          : { unknown_references: unknownReferences, valid_references: validReferences })
+      },
+      next_required_action: {
+        type: "retry_goal_advance_with_recalled_reference",
+        tool: "goal_advance",
+        args: {
+          ...(typeof errorContext?.flow_id === "string" ? { flow_id: errorContext.flow_id } : {})
+        },
+        select_from: graphify
+          ? { references: validReferences, graphify_references: validGraphifyReferences }
+          : { references: validReferences },
+        rule: "selecione somente referencias realmente abertas e usadas; nao confirme consumo de todos os candidatos automaticamente"
+      }
+    };
+  }
+  if (error instanceof WorkProgressContractError) {
+    return {
+      ...base,
+      code: error.code,
+      recoverable: error.code !== "PROGRESS_AFTER_TERMINAL",
+      details: { ...base.details, ...error.details },
+      next_required_action: error.code === "PROGRESS_AFTER_TERMINAL"
+        ? null
+        : {
+            type: "retry_goal_progress_with_current_state",
+            tool: "goal_progress_record",
+            args: {
+              ...(typeof errorContext?.flow_id === "string" ? { flow_id: errorContext.flow_id } : {})
+            },
+            rule: "preserve total and send current greater than or equal to the latest persisted progress"
+          }
+    };
+  }
   if (/^Invalid SPT for goal_start:/i.test(message)) {
     return {
       ...base,
       code: "SPT_INVALIDO",
       recoverable: true,
       next_required_action: { type: "corrigir_spt", tool: "spt_validate" }
+    };
+  }
+  if (/^GOAL_BINDING_MISMATCH:/i.test(message)) {
+    return {
+      ...base,
+      code: "GOAL_BINDING_MISMATCH",
+      recoverable: true,
+      next_required_action: {
+        type: "restore_original_binding_or_start_new_goal",
+        tool: "goal_start"
+      }
     };
   }
   if (/flow_id or idempotency_key is required|No flow found for idempotency_key|not bound to an official GOAL|Call goal_start first/i.test(message)) {
@@ -744,6 +858,10 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
     recoverable: false,
     next_required_action: null
   };
+}
+
+function safeRecallReferences(references: string[]): string[] {
+  return boundedRecallErrorReferences(references.map((reference) => scrubSecretLikeText(reference)));
 }
 
 function parsePipeListFromError(message: string, key: string): string[] {

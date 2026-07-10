@@ -1,94 +1,49 @@
-# Trilho - <title>
+---
+dex_contract: spt
+version: 2
+status: RASCUNHO
+owner: '<owner>'
+date: '<yyyy-mm-dd>'
+workspace: '<absolute-workspace-path>'
+origin: '<origin>'
+goal:
+  id: '<stable-lowercase-goal-id>'
+  title: '<human-readable-title>'
+  objective: '<clear-objective>'
+context: '<operational-context>'
+problem: '<concrete-problem>'
+decision: '<implementation-or-execution-decision>'
+scope:
+  include:
+    - '<in-scope-item>'
+  exclude:
+    - '<out-of-scope-item>'
+spec: '<expected-behavior-contract-or-result>'
+plan:
+  - '<first-step>'
+  - '<second-step>'
+tasks:
+  - '<task-summary>'
+expected_evidence:
+  - '<expected-evidence>'
+done_criteria:
+  - '<done-criterion>'
+risks:
+  - '<primary-risk>'
+uncertainties:
+  - '<material-uncertainty>'
+gates:
+  - 'spt_validate must return valid=true.'
+  - 'goal_start must return flow_id.'
+  - 'goal_verdict positive requires traceable evidence_ids.'
+validation:
+  - '<real-command-or-verification>'
+execution_prompt: |
+  /GOAL
+  Execute the trail <absolute-spt-path> in <absolute-workspace-path>.
+---
 
-Tipo: SPEC-PLAN-TASKs
-Status: RASCUNHO
-Owner: <owner>
-Data: <yyyy-mm-dd>
-Workspace: <absolute-workspace-path>
-Origem: <origin>
+# <human-readable-title>
 
-## GoalEnvelope
-
-```json
-{
-  "workspace": "<absolute-workspace-path>",
-  "spt_path": "<absolute-spt-path>",
-  "objective": "<clear-objective>",
-  "idempotency_key": "<project-or-repo>:<date-slug>",
-  "evidence_required": true,
-  "required_evidence": ["<expected-evidence>"],
-  "requested_verdict_policy": "evidence_required",
-  "source": "<origin>"
-}
-```
-
-## Contexto
-
-<contexto operacional suficiente para entender o trabalho>
-
-## Problema
-
-<problema concreto que este Trilho resolve>
-
-## Decisao
-
-<decisao de implementacao ou execucao que governa este Trilho>
-
-## Escopo
-
-- <item dentro do escopo>
-
-## Fora de escopo
-
-- <item fora do escopo>
-
-## SPEC
-
-<comportamento, contrato ou resultado esperado>
-
-## PLAN
-
-1. <primeiro passo>
-2. <segundo passo>
-3. <terceiro passo>
-
-## TASKs
-
-| ID | Status | Prioridade | Tarefa | Criterio de aceite |
-| --- | --- | ---: | --- | --- |
-| SPT-001 | todo | P1 | <task-summary> | <done-criterion> |
-
-## Expected Evidence
-
-- <expected-evidence>
-
-## Done Criteria
-
-- <done-criterion>
-
-## Riscos
-
-- <risco principal>
-
-## Gates
-
-- `spt_validate` deve retornar `valid=true`.
-- `goal_start` deve retornar `flow_id`.
-- `goal_status` deve expor `tasks`, `expected_evidence` e `done_criteria`.
-- `goal_verdict` positivo deve ter `evidence_ids` rastreaveis.
-
-## Validacao
-
-- <comando ou verificacao real>
-
-## Prompt /GOAL de execucao
-
-```text
-/GOAL
-
-Retomar em:
-<absolute-workspace-path>
-
-Execute o Trilho:
-<absolute-spt-path>
-```
+This Markdown body is for people. Its headings, language, order and level of
+detail are free-form and are not read by `spt_validate`.

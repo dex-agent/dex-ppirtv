@@ -729,7 +729,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
     const ledgerTypes = await ledgerEventTypes(flow.flow_id);
 
     expect(before).toMatchObject({
-      status: "active",
+      status: "blocked",
       phase: "validacao",
       blockers: ["verdict"],
       current_verdict: null,
@@ -834,6 +834,49 @@ describe("GOAL fiscal canonical verdict boundary", () => {
     });
     expect(ledgerTypes).toContain("flow_completed");
     expect(ledgerTypes).not.toContain("verdict_recorded");
+  });
+
+  it("drops a persisted fiscal blocker after a later canonical verdict succeeds", async () => {
+    const flow = await createOfficialValidationFlow("official-stale-fiscal-block-after-verdict");
+    const evidence = await engine.addGoalEvidence({
+      flow_id: flow.flow_id,
+      title: "Evidencia fiscal suficiente",
+      content: "Bateria funcional e validacao final passaram."
+    });
+    const stored = await engine.store.loadFlow(flow.flow_id);
+    stored.history.push({
+      at: new Date().toISOString(),
+      type: "fiscal_policy_blocked",
+      data: {
+        blocking_reasons: ["attempt_regress_count"],
+        required_cooperation: []
+      }
+    });
+    await engine.store.saveFlow(stored);
+
+    await engine.goalGateCheck({
+      flow_id: flow.flow_id,
+      phase: "validacao",
+      provided: {
+        residual_risks: ["sincronizacao de consumidor fica para a proxima release"],
+        next_step: "sincronizar quando a proxima release for aberta",
+        clean_house: true
+      }
+    });
+    await engine.goalVerdict({
+      flow_id: flow.flow_id,
+      status: "pronto_com_ressalvas",
+      rationale: "Implementacao e testes atendem ao objetivo do corte.",
+      evidence_ids: [evidence.evidence_id],
+      residual_risks: ["sincronizacao de consumidor fica para a proxima release"],
+      next_step: "sincronizar quando a proxima release for aberta"
+    });
+
+    const status = await engine.goalStatus({ flow_id: flow.flow_id });
+
+    expect(status).toMatchObject({ status: "complete", phase: "validacao" });
+    expect(status.blockers).not.toContain("attempt_regress_count");
+    expect((status.blocker_diagnostics as { persisted_fiscal_blockers: string[] }).persisted_fiscal_blockers).toEqual([]);
   });
 });
 

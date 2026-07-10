@@ -24,8 +24,12 @@ afterEach(async () => {
 describe("secret redaction SSOT", () => {
   it("detects sk-... bare token by content", () => {
     expect(isSecretLikeText("sk-live-abc123xyz789")).toBe(true);
+    expect(isSecretLikeText("sk_live_abc123xyz789")).toBe(true);
     expect(isSecretLikeText("sk-test-qwertyuiop1234")).toBe(true);
     expect(isSecretLikeText("sk-proj-abcdefghijklmnopqrstuvwxyz1234567890")).toBe(true);
+    expect(isSecretLikeText("sk-abcdefghijklmnopqrstuvwxyz")).toBe(true);
+    expect(isSecretLikeText("sk_abcdefghijklmnopqrstuvwxyz")).toBe(true);
+    expect(isSecretLikeText("skabcdefghijklmnopqrstuvwxyz")).toBe(false);
   });
 
   it("detects Bearer token by content", () => {
@@ -45,6 +49,20 @@ describe("secret redaction SSOT", () => {
   it("does not flag normal text", () => {
     expect(isSecretLikeText("objetivo normal do fluxo")).toBe(false);
     expect(isSecretLikeText("npm run check")).toBe(false);
+  });
+
+  it("does not classify book-to-skill paths or skill identifiers as sk tokens", () => {
+    const safeSamples = [
+      String.raw`C:\CodexProjetos\book-to-skill\.ppirtv\evidence\batch-1-entrypoint-repair.md`,
+      "evidence/batches/book-to-skill/skill_memory_contract.md",
+      "technical-book-to-skill-memory-routes",
+      "skill_entrypoint_repair_validated_without_secret_payload"
+    ];
+
+    for (const sample of safeSamples) {
+      expect(isSecretLikeText(sample)).toBe(false);
+      expect(scrubSecretLikeText(sample)).toBe(sample);
+    }
   });
 
   it("scrubs string with secret to [redacted]", () => {

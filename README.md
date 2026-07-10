@@ -209,6 +209,12 @@ Create a basic flow:
 }
 ```
 
+`flow_create` is a low-level legacy/advisory route. It does not create an
+official GOAL binding and must not replace `spt_validate -> goal_start`.
+Its response defaults to a lean receipt with `advisory: true` and
+`official_goal: false`; use `detail: "full"` only when a compatibility client
+needs the historical complete payload.
+
 Then inspect it with:
 
 ```json
@@ -291,6 +297,11 @@ Low-level tools:
 - `hygiene_scan`
 - `verdict_record`
 
+Low-level flows are advisory compatibility surfaces. `flow_create` returns a
+lean receipt by default and accepts `detail: "full"` as the explicit opt-in for
+the historical complete object. It never creates `goal_binding`; official
+execution continues to start with `spt_validate` and `goal_start`.
+
 Official GOAL/SPT tools:
 
 - `spt_validate`
@@ -300,6 +311,7 @@ Official GOAL/SPT tools:
 - `goal_resume`
 - `goal_gate_check`
 - `goal_advance`
+- `goal_progress_record`
 - `goal_meeting_open`
 - `goal_meeting_add_turn`
 - `goal_meeting_close`
@@ -325,7 +337,11 @@ Memory and pipeline tools:
 
 ## Typical GOAL/SPT Flow
 
-1. Validate an SPT with `spt_validate`.
+SPT v2 is the only executable format. Its YAML front matter is the machine
+contract; the Markdown body is free-form human documentation and is not parsed.
+V1 heading-based trails must be regenerated or migrated before execution.
+
+1. Validate an SPT v2 with `spt_validate`.
 2. Start or reuse a flow with `goal_start`.
 3. Inspect live state with `goal_status`, including `ppirtv_checkin`.
 4. Open, discuss and close meetings with `goal_meeting_open`,
@@ -333,12 +349,41 @@ Memory and pipeline tools:
    or ambiguity exists.
 5. Check gates with `goal_gate_check`.
 6. Advance with `goal_advance`.
-7. Attach evidence with `evidence_add`.
-8. Run `mm_memory_mining` when there is learning material to classify.
-9. If strong candidates remain without destination, resolve them with
+7. For long work, publish bounded structured progress with
+   `goal_progress_record`; progress is visual telemetry, not evidence.
+8. Attach evidence with `evidence_add`.
+9. Run `mm_memory_mining` when there is learning material to classify.
+10. If strong candidates remain without destination, resolve them with
    `mm_memory_candidate_resolve`.
-10. Close with `goal_verdict`.
-11. Inspect `ppirtv_checkout` before considering the flow fully closed.
+11. Close with `goal_verdict`.
+12. Inspect `ppirtv_checkout` before considering the flow fully closed.
+
+### End-to-end lean contract
+
+`goal_start` defaults to the canonical `compact` mode when `mode` is omitted.
+`lean` remains an input alias for `compact`; both use the four-phase profile
+`concepcao -> implementacao -> revisao -> validacao`. The six-phase `full`
+profile is opt-in through an explicit `mode: "full"`.
+
+Execution profile and response detail are separate contracts. Tool responses
+default to `detail: "lean"`, including existing `full` flows, and
+`detail: "full"` is the explicit opt-in for a complete diagnostic.
+`goal_status`, `goal_advance`, `evidence_add` and `ppirtv_checkout` keep only
+actionable fields and counts by default. `checklist_render` defaults to
+`detail: "visual-only"`; principles and complete governance arrays require
+`detail: "full"`.
+
+Omitting `mode` on an idempotent retry preserves the already persisted profile;
+it does not migrate a live legacy flow. After evidence is written, the returned
+status is recalculated from the effective blockers so the outer status and the
+nested checkout cannot disagree.
+
+Recall and use are separate facts. `recall_executed=true` means the
+Bibliotecario/Graphify hook ran. It does not make `worked=true`.
+`consumption_confirmed=true` requires `goal_advance.recall_consumption` with
+references that match the latest recall for the current phase. Graphify work
+is confirmed only when `graphify_references` match recalled Graphify items.
+The confirmation is optional and never blocks an otherwise valid compact flow.
 
 Positive verdicts require traceable evidence. In official GOAL/SPT flows, the
 engine can operate in two modes:
@@ -367,9 +412,11 @@ fields are present. The status surfaces these signals:
   fiscal blockers. This rule applies recursively to nested payloads such as
   `goal_status.checklist.display`, `evidence_add.status.checklist.display` and
   archived blocked flows.
-- `checklist_render`: proof-dependent principles use a tri-state surface. They
-  can be `checked`, `blocked`/`unchecked` or `pending`; missing hygiene or
-  memory proof must not render as green.
+- `checklist_render`: the default visual-only receipt contains phase items,
+  blockers and next step without embedding principles. With `detail: "full"`,
+  proof-dependent principles use a tri-state surface: `checked`,
+  `blocked`/`unchecked` or `pending`; missing hygiene or memory proof must not
+  render as green.
 - `fiscal_policy.meeting_policy`: the meeting rotation and provocation
   repertoire to seek blind spots, untried exits and the correct PPIRTV return
   phase.
@@ -408,7 +455,10 @@ fields are present. The status surfaces these signals:
 - `display.librarian` and `librarian_status`: visual Bibliotecario/Graphify
   state. `librarian_status` is always structured, with
   `bibliotecario.status`, `graphify.status`, `graphify.configured` and
-  `functional_tested`. If `PPIRTV_GRAPHIFY_RECALL=1`, Graphify is reported as
+  `functional_tested`, `recall_executed` and `consumption_confirmed`.
+  `functional_tested` proves that the recall path operated; only
+  `consumption_confirmed` proves that the executor cited a recovered item. If
+  `PPIRTV_GRAPHIFY_RECALL=1`, Graphify is reported as
   `configured=true` and `enabled=true`; before a runtime recall proves
   participation, the reason is `configured_awaiting_beforePhase_functional_test`
   and check-in can block with `librarian_or_graphify_not_functional` when
@@ -492,6 +542,10 @@ back to L1, and auto-written memories create a minimal L3 note plus
 `conhecimento/INDEX.md` so L2 and L3 can point to each other. New automatic
 memories also carry the review marker `PPIRTV-MM-AUTO-WRITE-REVIEW`
 so maintainers can later locate and review them with `consciencia-memorias`.
+`memory_review_status=pending_consciencia_memorias` means the capture passed
+structural post-write validation and is ready for the current flow; it does not
+by itself block a positive `goal_verdict`. `memory_consolidated=true` belongs to
+the later owner-approved curation lifecycle.
 Post-write findings are also copied to the flow parking lot with the file, line,
 code and retry condition, so they do not disappear as technical warnings.
 This does not rewrite or invalidate the existing vault by default; legacy

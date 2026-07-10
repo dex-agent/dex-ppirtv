@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import { PPIRTV_RUNTIME_DIRS, resolveRuntimePaths, runtimePathsFromHome } from "./config.js";
 import type { PpirtvRuntimeDir, PpirtvRuntimePaths } from "./config.js";
 import { scrubSecretLike } from "./security/secret-redaction.js";
-import type { Evidence, Flow, LedgerEvent, Meeting } from "./domain.js";
+import type { Evidence, Flow, LedgerEvent, Meeting, MemoryPostWriteValidation, MemoryReviewStatus } from "./domain.js";
 
 let idSequence = 0;
 
@@ -77,7 +77,7 @@ export class PpirtvStore {
     };
   }
 
-  async nextId(prefix: "flow" | "evt" | "mtg" | "evd" | "vrd" | "pipe"): Promise<string> {
+  async nextId(prefix: "flow" | "evt" | "mtg" | "evd" | "vrd" | "pipe" | "prg"): Promise<string> {
     await this.init();
     const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 17);
     const ledgerLines = await this.readLedger();
@@ -269,7 +269,19 @@ function normalizeFlow(flow: Flow): Flow {
   flow.memory_mining.memory_written ??= (flow.memory_mining.written_count ?? 0) > 0;
   flow.memory_mining.write_failures_count ??= flow.memory_mining.write_failures?.length ?? 0;
   flow.memory_mining.memory_validated ??= flow.memory_mining.memory_post_write_validation?.status === "passed";
-  flow.memory_mining.memory_consolidated ??= flow.memory_mining.memory_validated === true && flow.memory_mining.write_failures_count === 0;
+  const inferredReviewStatus = inferMemoryReviewStatus(
+    flow.memory_mining.memory_post_write_validation,
+    flow.memory_mining.written_count ?? 0
+  );
+  if (inferredReviewStatus === "pending_consciencia_memorias") {
+    flow.memory_mining.memory_review_status ??= inferredReviewStatus;
+  } else {
+    flow.memory_mining.memory_review_status = inferredReviewStatus;
+  }
+  flow.memory_mining.memory_consolidated =
+    flow.memory_mining.memory_validated === true &&
+    flow.memory_mining.write_failures_count === 0 &&
+    flow.memory_mining.memory_review_status === "approved";
   flow.memory_mining.memory_post_write_validation ??= {
     required: false,
     status: "not_required",
@@ -301,6 +313,16 @@ function normalizeFlow(flow: Flow): Flow {
     active_credits: verdict.active_credits ?? []
   }));
   return flow;
+}
+
+function inferMemoryReviewStatus(validation: MemoryPostWriteValidation | undefined, writtenCount: number): MemoryReviewStatus {
+  if (writtenCount <= 0 || validation?.status === "not_required") {
+    return "not_required";
+  }
+  if (validation?.status !== "passed") {
+    return "failed_post_write_validation";
+  }
+  return "pending_consciencia_memorias";
 }
 
 function normalizeMeeting(meeting: Meeting): Meeting {

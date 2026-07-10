@@ -34,6 +34,20 @@ export type MemoryLayer = {
   rule: string;
 };
 
+export type DefaultWorkflowPhase = {
+  letter: string;
+  name: string;
+  role: string;
+};
+
+export type DefaultWorkflow = {
+  id: string;
+  name: string;
+  fallback_rule: string;
+  short_line: string;
+  phases: DefaultWorkflowPhase[];
+};
+
 export type OperationalContract = {
   version: ContractVersion;
   numeric_version?: number;
@@ -50,12 +64,15 @@ export type OperationalContract = {
   ready_definition: string[];
   gate_final_output: string[];
   memory_layers: MemoryLayer[];
+  default_workflow?: DefaultWorkflow;
   prompt_guidance: string[];
   hygiene_checks: string[];
   ai_application?: AiApplication;
   traceable_destination_definition?: TraceableDestinationDefinition;
   operational_severity?: OperationalSeverityContract;
   operational_trash_definition?: OperationalTrashDefinition;
+  secret_env_consumption_policy?: OperationalPolicyBlock;
+  early_security_proportionality_policy?: OperationalPolicyBlock;
   sync_contract?: SyncContract;
   final_report_model: string[];
 };
@@ -101,6 +118,17 @@ export type OperationalTrashDefinition = {
   principle_id?: string;
   includes: string[];
   rule?: string;
+};
+
+export type OperationalPolicyBlock = {
+  principle_id?: string;
+  localizer?: string;
+  rule?: string;
+  allowed_when: string[];
+  required_actions: string[];
+  forbidden: string[];
+  blocks_ready_when: string[];
+  incident_response?: string[];
 };
 
 export type SyncContract = {
@@ -254,8 +282,20 @@ export function finalReportModel(root = process.cwd()): string[] {
   return loadOperationalContractSync(root).final_report_model;
 }
 
+export function defaultWorkflow(root = process.cwd()): DefaultWorkflow | undefined {
+  return loadOperationalContractSync(root).default_workflow;
+}
+
 export function operationalTrashDefinition(root = process.cwd()): OperationalTrashDefinition | undefined {
   return loadOperationalContractSync(root).operational_trash_definition;
+}
+
+export function secretEnvConsumptionPolicy(root = process.cwd()): OperationalPolicyBlock | undefined {
+  return loadOperationalContractSync(root).secret_env_consumption_policy;
+}
+
+export function earlySecurityProportionalityPolicy(root = process.cwd()): OperationalPolicyBlock | undefined {
+  return loadOperationalContractSync(root).early_security_proportionality_policy;
 }
 
 export function operationalContractMeta(root = process.cwd()): Record<string, unknown> {
@@ -496,6 +536,9 @@ async function safeReaddir(target: string) {
 
 function normalizeContract(value: unknown): OperationalContract {
   const input = value as Partial<OperationalContract>;
+  const workflow = normalizeDefaultWorkflow(input.default_workflow);
+  const secretPolicy = normalizeOperationalPolicyBlock(input.secret_env_consumption_policy);
+  const earlySecurityPolicy = normalizeOperationalPolicyBlock(input.early_security_proportionality_policy);
   return {
     version: typeof input.version === "number" || typeof input.version === "string" ? input.version : DEFAULT_CONTRACT.version,
     numeric_version: typeof input.numeric_version === "number" ? input.numeric_version : undefined,
@@ -512,14 +555,44 @@ function normalizeContract(value: unknown): OperationalContract {
     ready_definition: stringArray(input.ready_definition),
     gate_final_output: stringArray(input.gate_final_output),
     memory_layers: Array.isArray(input.memory_layers) ? input.memory_layers.filter(isMemoryLayer) : [],
+    ...(workflow ? { default_workflow: workflow } : {}),
     prompt_guidance: stringArray(input.prompt_guidance),
     hygiene_checks: stringArray(input.hygiene_checks),
     ai_application: normalizeAiApplication(input.ai_application),
     traceable_destination_definition: normalizeTraceableDestinationDefinition(input.traceable_destination_definition),
     operational_severity: normalizeOperationalSeverity(input.operational_severity),
     operational_trash_definition: normalizeOperationalTrashDefinition(input.operational_trash_definition),
+    ...(secretPolicy ? { secret_env_consumption_policy: secretPolicy } : {}),
+    ...(earlySecurityPolicy ? { early_security_proportionality_policy: earlySecurityPolicy } : {}),
     sync_contract: normalizeSyncContract(input.sync_contract),
     final_report_model: stringArray(input.final_report_model)
+  };
+}
+
+function normalizeDefaultWorkflow(value: unknown): DefaultWorkflow | undefined {
+  const record = asRecord(value);
+  if (!record || typeof record.id !== "string") {
+    return undefined;
+  }
+  return {
+    id: record.id,
+    name: typeof record.name === "string" ? record.name : record.id,
+    fallback_rule: optionalString(record.fallback_rule) ?? "",
+    short_line: optionalString(record.short_line) ?? "",
+    phases: Array.isArray(record.phases) ? record.phases.filter(isDefaultWorkflowPhase).map(normalizeDefaultWorkflowPhase) : []
+  };
+}
+
+function isDefaultWorkflowPhase(value: unknown): value is DefaultWorkflowPhase {
+  const candidate = value as DefaultWorkflowPhase;
+  return Boolean(candidate && typeof candidate.letter === "string" && typeof candidate.name === "string" && typeof candidate.role === "string");
+}
+
+function normalizeDefaultWorkflowPhase(phase: DefaultWorkflowPhase): DefaultWorkflowPhase {
+  return {
+    letter: phase.letter,
+    name: phase.name,
+    role: phase.role
   };
 }
 
@@ -598,6 +671,24 @@ function normalizeOperationalTrashDefinition(value: unknown): OperationalTrashDe
     principle_id: optionalString(record.principle_id),
     includes: stringArray(record.includes),
     rule: optionalString(record.rule)
+  };
+}
+
+function normalizeOperationalPolicyBlock(value: unknown): OperationalPolicyBlock | undefined {
+  const record = asRecord(value);
+  if (!record) {
+    return undefined;
+  }
+  const incidentResponse = stringArray(record.incident_response);
+  return {
+    principle_id: optionalString(record.principle_id),
+    localizer: optionalString(record.localizer),
+    rule: optionalString(record.rule),
+    allowed_when: stringArray(record.allowed_when),
+    required_actions: stringArray(record.required_actions),
+    forbidden: stringArray(record.forbidden),
+    blocks_ready_when: stringArray(record.blocks_ready_when),
+    ...(incidentResponse.length > 0 ? { incident_response: incidentResponse } : {})
   };
 }
 

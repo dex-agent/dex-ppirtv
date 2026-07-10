@@ -51,7 +51,8 @@ Payload minimo vindo do `dex-code`:
   "evidence_required": true,
   "required_evidence": ["npm run check", "SPT canonico/local", "documentacao do contrato"],
   "requested_verdict_policy": "evidence_required",
-  "source": "dex-code"
+  "source": "dex-code",
+  "mode": "lean"
 }
 ```
 
@@ -68,6 +69,10 @@ Campos:
 - `requested_verdict_policy`: politica solicitada; hoje aceita
   `evidence_required`, `allow_ressalvas` ou `draft`.
 - `source`: origem textual da chamada; no consumo oficial deve ser `dex-code`.
+- `mode`: opcional; quando ausente em um novo GOAL, o default canonico e
+  `compact`. O alias de entrada `lean` tambem e persistido como `compact`.
+  `full` ativa seis fases somente quando pedido explicitamente. Em retry
+  idempotente sem `mode`, o perfil ja persistido e preservado.
 
 ## 4. Tools
 
@@ -80,11 +85,12 @@ Checa:
 - workspace absoluto, existente e diretorio;
 - SPT existente, arquivo e dentro do workspace;
 - SPT em `.agents/PLAN-TASKS`;
-- secoes canonicas: titulo, `Tipo: SPEC-PLAN-TASKs`, `Status`, `Owner`,
-  `Data`/`Date`, `Workspace`, `Origem`, `GoalEnvelope`, `Contexto`,
-  `Problema`, `Decisao`, `Escopo`, `Fora de escopo`, `SPEC`, `PLAN`,
-  `TASKs`, `Expected Evidence`, `Done Criteria`, `Riscos`, `Gates`,
-  `Validacao` e `Prompt /GOAL de execucao`.
+- front matter YAML no topo com `dex_contract: spt` e `version: 2`;
+- schema v2 completo, estrito e sem campos desconhecidos;
+- `workspace` do contrato igual ao workspace da chamada;
+- metadados, objetivo, contexto, problema, decisao, escopo, spec, plano,
+  tasks, evidencias esperadas, criterios de pronto, riscos, incertezas, gates,
+  validacao e prompt de execucao na camada estruturada.
 
 Retorna tambem:
 
@@ -92,13 +98,20 @@ Retorna tambem:
 - `expected_evidence`;
 - `done_criteria`.
 
-Esses tres campos precisam ser extraiveis e entram no flow/ledger durante
-`goal_start`.
+Esses tres campos vem apenas do front matter e entram no flow/ledger durante
+`goal_start`. O corpo Markdown e livre e nao e consultado pelo parser. SPT V1,
+front matter ausente, YAML invalido ou `version` diferente de `2` falham sem
+fallback.
 
 ### `goal_start`
 
 Recebe `GoalEnvelope`, valida o SPT e cria ou reutiliza o flow por
 `idempotency_key`.
+
+O primeiro `goal_start` congela o envelope semantico e o fingerprint do front
+matter v2. Retry com objetivo divergente, envelope incompatível ou front matter
+alterado falha explicitamente; reescrita somente do Markdown humano permanece
+permitida.
 
 Retorna:
 
@@ -159,6 +172,34 @@ acionavel com `missing`, `next`, `back_to` e `status_snapshot`, sem sucesso
 falso.
 
 Quando avanca, registra `phase_advanced` no ledger.
+
+`status_snapshot` usa `detail:"lean"` por default, independentemente do perfil
+de fases. O cliente pode pedir `detail:"full"` para diagnostico. Para confirmar que um recall foi
+realmente usado, pode enviar `recall_consumption.references` e, quando
+aplicavel, `graphify_references`; as referencias precisam existir no ultimo
+`memory_recalled` da fase atual.
+
+Referencia desconhecida retorna erro recuperavel, sem fallback generico:
+`RECALL_CONSUMPTION_UNKNOWN_REFERENCES` ou
+`GRAPHIFY_CONSUMPTION_UNKNOWN_REFERENCES`. O envelope separa referencias
+rejeitadas das referencias validas sanitizadas, limitadas a 12 itens de 160
+caracteres, e
+`next_required_action.select_from` orienta o retry. O cliente deve selecionar
+somente referencias realmente abertas e usadas; o MCP nao confirma consumo de
+todos os candidatos automaticamente. A mensagem textual informa somente a
+quantidade rejeitada; valores ficam apenas nos campos estruturados limitados.
+
+### `goal_progress_record`
+
+Registra telemetria estruturada e sanitizada de trabalho longo no GOAL oficial.
+Recebe chave idempotente, source, operation, stage, current, total, status e
+mensagem curta. Eventos devem ser monotonos; duplicatas sao reutilizadas,
+atualizacoes sem progresso material sao limitadas e eventos `running` antigos
+tem retencao limitada. O resumo aparece em status, checklist e checkout.
+
+Progresso nao e evidencia, nao satisfaz gate e nao recebe stdout bruto. O
+produtor continua dono da execucao; falha da ponte de progresso nao deve
+transformar trabalho valido em falha.
 
 ### `goal_meeting_open`
 
@@ -236,7 +277,14 @@ precisa diferenciar:
 - `memory_written`: arquivo L1/L2/L3 foi tocado;
 - `memory_validated`: o corte escrito passou validacao pos-write compativel com
   `consciencia-memorias`;
-- `memory_consolidated`: a memoria pode sustentar fechamento fiscal.
+- `memory_review_status`: estado da revisao posterior; `pending_consciencia_memorias`
+  identifica captura estruturalmente valida aguardando curadoria;
+- `memory_consolidated`: estado posterior promovido pelo owner da curadoria,
+  verdadeiro somente com `approved`, validacao estrutural e zero falhas.
+
+`pending_consciencia_memorias` nao bloqueia por si so o `goal_verdict` positivo.
+O flow atual pode fechar depois da captura estrutural valida; consolidacao e um
+ciclo separado e nao e obrigacao do MCP.
 
 A validacao pos-write deve ser limitada aos arquivos tocados em `written[]` e
 verificar conexoes bidirecionais: L1 -> L2, L2 -> L1 e, quando houver L3, L2 ->
@@ -350,6 +398,27 @@ timestamp como identificador funcional.
 Adiciona evidencia rastreavel ao flow. Bloqueia texto com cara de segredo em
 campos livres (`Bearer`, `sk-`, `token=`, `api_key=`, `password=`,
 `authorization=`).
+
+O campo `status` da resposta e lean por default, independentemente do perfil de
+fases. Use `detail:"full"` somente quando a evidencia precisar devolver o
+diagnostico completo do flow. Depois da escrita, blockers e status sao
+recalculados em uma unica visao: status externo e checkout aninhado nao podem
+divergir.
+
+### `flow_create`
+
+Rota low-level legacy/advisory. Nao cria `goal_binding` e nao substitui
+`spt_validate -> goal_start`. O retorno default e um recibo lean que declara
+`advisory=true` e `official_goal=false`; `detail:"full"` e o opt-in explicito
+para o objeto historico completo. A tool nao recebe `mode` para nao criar um
+segundo perfil oficial de execucao.
+
+### `checklist_render`
+
+Retorna `visual-only` por default: itens da fase, estado, blockers e proximo
+passo. O payload nao inclui principios, definicao de pronto ou arrays completos
+de governanca. Use `detail:"full"` somente quando essa auditoria completa for
+necessaria.
 
 ### `goal_verdict`
 

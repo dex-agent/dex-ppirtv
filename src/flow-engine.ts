@@ -25,6 +25,7 @@ import {
   type MeetingType,
   type MemoryMiningSummary,
   type MemoryPostWriteValidation,
+  type MemoryReviewStatus,
   type MemoryWritePolicy,
   type PipelineFlowResult,
   type PipelineItem,
@@ -34,7 +35,10 @@ import {
   type StructuredLibrarianStatus,
   type SptValidationResult,
   type Verdict,
-  type VerdictStatus
+  type VerdictStatus,
+  type WorkProgressEvent,
+  type WorkProgressStatus,
+  type WorkProgressSummary
 } from "./domain.js";
 import {
   assertNoSecretLikeText,
@@ -52,21 +56,30 @@ import {
 } from "./memory/index.js";
 import { presentArtifact, presentChecklist, presentFlow, presentGate } from "./presentation.js";
 import {
+  defaultWorkflow,
+  earlySecurityProportionalityPolicy,
   finalReportModel,
   gateFinalOutput,
   operationalContractMeta,
   principleChecklist,
   readyDefinition,
   scanOperationalPrinciples,
+  secretEnvConsumptionPolicy,
+  type DefaultWorkflow,
+  type OperationalPolicyBlock,
   type PrincipleChecklistItem
 } from "./principles.js";
 import { PpirtvStore, type RuntimeLayoutStatus } from "./store.js";
 import { profileFor } from "./phase-profile.js";
 import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured } from "./config.js";
+import { fingerprintSptV2Contract, parseSptV2Document } from "./spt-contract.js";
 
 const DEFAULT_SCOPE: Scope = { in: [], out: [] };
 const MEMORY_MINING_BLOCKED_VERDICT_REASON = "memory_mining_blocked_verdict";
 const USER_PROFILE_POINTER = "$env:USERPROFILE";
+export const RECALL_ERROR_MAX_REFERENCES = 12;
+export const RECALL_ERROR_MAX_REFERENCE_LENGTH = 160;
+export const WORK_PROGRESS_MAX_RUNNING_EVENTS = 100;
 
 type RecallVisualStatus = NonNullable<PresentationEnvelope["display"]["librarian"]>;
 
@@ -108,6 +121,70 @@ type ResolveMemoryCandidatesInput = {
   target_scope?: MemoryCandidatePromoteScope;
   theme?: string;
 };
+
+type RecallConsumptionInput = {
+  references: string[];
+  graphify_references?: string[];
+  note?: string;
+};
+
+type WorkProgressInput = {
+  flow_id?: string;
+  idempotency_key?: string;
+  event_key: string;
+  source: string;
+  operation: string;
+  stage: string;
+  current: number;
+  total: number;
+  status: WorkProgressStatus;
+  message?: string;
+};
+
+export class WorkProgressContractError extends Error {
+  readonly code: "PROGRESS_OUT_OF_ORDER" | "PROGRESS_TOTAL_MISMATCH" | "PROGRESS_AFTER_TERMINAL";
+  readonly details: Record<string, unknown>;
+
+  constructor(code: WorkProgressContractError["code"], details: Record<string, unknown>) {
+    super(code);
+    this.name = "WorkProgressContractError";
+    this.code = code;
+    this.details = details;
+  }
+}
+
+export class RecallConsumptionReferenceError extends Error {
+  readonly code: "RECALL_CONSUMPTION_UNKNOWN_REFERENCES" | "GRAPHIFY_CONSUMPTION_UNKNOWN_REFERENCES";
+  readonly unknownReferences: string[];
+  readonly validReferences: string[];
+  readonly validGraphifyReferences: string[];
+
+  constructor(
+    code: RecallConsumptionReferenceError["code"],
+    unknownReferences: string[],
+    validReferences: string[],
+    validGraphifyReferences: string[] = []
+  ) {
+    const boundedUnknownReferences = boundedRecallErrorReferences(unknownReferences);
+    super(`${code}: ${boundedUnknownReferences.length} unknown reference(s)`);
+    this.name = "RecallConsumptionReferenceError";
+    this.code = code;
+    this.unknownReferences = boundedUnknownReferences;
+    this.validReferences = boundedRecallErrorReferences(validReferences);
+    this.validGraphifyReferences = boundedRecallErrorReferences(validGraphifyReferences);
+  }
+}
+
+export function boundedRecallErrorReferences(references: string[]): string[] {
+  return unique(
+    references
+      .map((reference) => reference.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim())
+      .filter(Boolean)
+      .map((reference) => reference.slice(0, RECALL_ERROR_MAX_REFERENCE_LENGTH))
+  ).slice(0, RECALL_ERROR_MAX_REFERENCES);
+}
+
+type CanonicalGoalEnvelope = Omit<GoalEnvelope, "mode"> & { mode?: "full" | "compact" };
 
 type BlockerDiagnostics = {
   source: "goal_status";
@@ -278,33 +355,15 @@ export class FlowEngine {
       text = await readFile(sptPath, "utf8");
     }
 
-    checks.has_title = /^#\s+\S+/m.test(text);
-    checks.has_type = /Tipo:\s*SPEC-PLAN-TASKs/i.test(text);
-    checks.has_status = /Status:\s*\S+/i.test(text);
-    checks.has_owner = /Owner:\s*\S+/i.test(text);
-    checks.has_date = /(?:Data|Date):\s*\S+/i.test(text);
-    checks.has_workspace = /Workspace:\s*\S+/i.test(text);
-    checks.has_origin = /(?:Origem|Origin):\s*\S+/i.test(text);
-    checks.has_goal_envelope = hasSection(text, ["goalenvelope", "goal envelope"]);
-    checks.has_context = hasSection(text, ["contexto", "context"]);
-    checks.has_problem = hasSection(text, ["problema", "problem"]);
-    checks.has_decision = hasSection(text, ["decisao", "decision"]);
-    checks.has_scope = hasSection(text, ["escopo", "scope"]);
-    checks.has_out_of_scope = hasSection(text, ["fora de escopo", "out of scope"]);
-    checks.has_spec = /^##\s+SPEC\b/im.test(text);
-    checks.has_plan = /^##\s+PLAN\b/im.test(text);
-    checks.has_tasks = /^##\s+TASKs?\b/im.test(text);
-    checks.has_expected_evidence_section = hasSection(text, ["expected evidence", "evidencias esperadas", "evidencia esperada"]);
-    checks.has_done_criteria_section = hasSection(text, ["done criteria", "criterios de pronto", "criterios de aceite"]);
-    checks.has_risks = hasSection(text, ["riscos", "risks"]);
-    checks.has_gates = hasSection(text, ["gates"]);
-    checks.has_validation = /^##\s+(?:Validacao|Validation)\b/im.test(text);
-    checks.has_goal_prompt = hasSection(text, ["prompt /goal de execucao", "prompt goal de execucao", "prompt /goal", "goal execution prompt"]);
-
-    const parsedSpt = parseSpt(text);
-    checks.has_extracted_tasks = parsedSpt.tasks.length > 0;
-    checks.has_extracted_expected_evidence = parsedSpt.expected_evidence.length > 0;
-    checks.has_extracted_done_criteria = parsedSpt.done_criteria.length > 0;
+    const parsedSpt = parseSptV2Document(text);
+    const contract = parsedSpt.contract;
+    checks.spt_v2_frontmatter_present = parsedSpt.checks.frontmatter_present;
+    checks.spt_v2_frontmatter_closed = parsedSpt.checks.frontmatter_closed;
+    checks.spt_v2_yaml_valid = parsedSpt.checks.yaml_valid;
+    checks.spt_v2_schema_valid = parsedSpt.checks.schema_valid;
+    checks.spt_v2_workspace_matches = !!contract && path.resolve(contract.workspace) === workspace;
+    checks.spt_v2_objective_matches =
+      !input.objective || (!!contract && normalizeComparable(contract.goal.objective) === normalizeComparable(input.objective));
 
     const requiredChecks: Record<string, string> = {
       workspace_absolute: "workspace_absolute",
@@ -315,31 +374,12 @@ export class FlowEngine {
       spt_under_plan_tasks: "spt_under_plan_tasks",
       spt_exists: "spt_exists",
       spt_is_file: "spt_is_file",
-      has_title: "title",
-      has_type: "Tipo: SPEC-PLAN-TASKs",
-      has_status: "Status",
-      has_owner: "Owner",
-      has_date: "Data/Date",
-      has_workspace: "Workspace",
-      has_origin: "Origem",
-      has_goal_envelope: "GoalEnvelope",
-      has_context: "Contexto",
-      has_problem: "Problema",
-      has_decision: "Decisao",
-      has_scope: "Escopo",
-      has_out_of_scope: "Fora de escopo",
-      has_spec: "SPEC",
-      has_plan: "PLAN",
-      has_tasks: "TASKs",
-      has_expected_evidence_section: "Expected Evidence",
-      has_done_criteria_section: "Done Criteria",
-      has_risks: "Riscos",
-      has_gates: "Gates",
-      has_validation: "Validacao",
-      has_goal_prompt: "Prompt /GOAL de execucao",
-      has_extracted_tasks: "tasks",
-      has_extracted_expected_evidence: "expected_evidence",
-      has_extracted_done_criteria: "done_criteria"
+      spt_v2_frontmatter_present: "spt_v2.frontmatter",
+      spt_v2_frontmatter_closed: "spt_v2.frontmatter_closing_marker",
+      spt_v2_yaml_valid: "spt_v2.yaml",
+      spt_v2_schema_valid: "spt_v2.schema",
+      spt_v2_workspace_matches: "spt_v2.workspace_matches_request",
+      spt_v2_objective_matches: "spt_v2.objective_matches_request"
     };
     for (const [key, label] of Object.entries(requiredChecks)) {
       if (!checks[key]) {
@@ -347,21 +387,10 @@ export class FlowEngine {
       }
     }
 
-    if (text && input.objective && !containsLoose(text, input.objective)) {
-      warnings.push("objective_not_found_exactly_in_spt");
-    }
-    if (text && /\b(api[_-]?key|token|password|secret|authorization)\b/i.test(text)) {
+    if (contract && /\b(api[_-]?key|token|password|secret|authorization)\b/i.test(JSON.stringify(contract))) {
       warnings.push("spt_mentions_sensitive_terms_review_without_echoing_values");
     }
-    if (text && parsedSpt.tasks.length === 0) {
-      warnings.push("spt_tasks_not_extracted");
-    }
-    if (text && parsedSpt.expected_evidence.length === 0) {
-      warnings.push("spt_expected_evidence_not_extracted");
-    }
-    if (text && parsedSpt.done_criteria.length === 0) {
-      warnings.push("spt_done_criteria_not_extracted");
-    }
+    missing.push(...parsedSpt.errors.filter((error) => !missing.includes(error)));
     if (!checks.spt_under_plan_tasks) {
       risks.push("SPT fora de .agents/PLAN-TASKS pode quebrar a retomada canonica.");
     }
@@ -373,13 +402,17 @@ export class FlowEngine {
       valid: missing.length === 0,
       workspace,
       spt_path: sptPath,
+      contract_version: contract?.version ?? null,
+      goal_id: contract?.goal.id ?? null,
+      contract_fingerprint: contract ? fingerprintSptV2Contract(contract) : null,
       checks,
+      contract_errors: parsedSpt.errors,
       missing,
       warnings,
       risks,
-      tasks: parsedSpt.tasks,
-      expected_evidence: parsedSpt.expected_evidence,
-      done_criteria: parsedSpt.done_criteria,
+      tasks: contract?.tasks ?? [],
+      expected_evidence: contract?.expected_evidence ?? [],
+      done_criteria: contract?.done_criteria ?? [],
       next_step: missing.length === 0 ? "goal_start" : `corrigir_spt: ${missing.join(", ")}`
     };
   }
@@ -394,7 +427,6 @@ export class FlowEngine {
     if (!validation.valid) {
       throw new Error(`Invalid SPT for goal_start: ${validation.missing.join(", ")}`);
     }
-
     const now = nowIso();
     const existingByKey = await this.findGoalFlowByIdempotencyKey(envelope.idempotency_key);
     let flow: Flow;
@@ -404,10 +436,10 @@ export class FlowEngine {
       if (existingByKey && existingByKey.flow_id !== flow.flow_id) {
         throw new Error(`idempotency_key already belongs to ${existingByKey.flow_id}`);
       }
-      assertCompatibleGoalBinding(flow.goal_binding, envelope);
+      assertCompatibleGoalBinding(flow.goal_binding, envelope, validation.contract_fingerprint);
       reused = true;
     } else if (existingByKey) {
-      assertCompatibleGoalBinding(existingByKey.goal_binding, envelope);
+      assertCompatibleGoalBinding(existingByKey.goal_binding, envelope, validation.contract_fingerprint);
       flow = existingByKey;
       reused = true;
     } else {
@@ -426,8 +458,13 @@ export class FlowEngine {
     }
 
     const previousBinding = flow.goal_binding;
+    const previousMode = flow.mode;
+    const previousPhase = flow.phase;
+    const incomingMode = envelope.mode ?? (reused ? flow.mode ?? "compact" : "compact");
+    const boundEnvelope = previousBinding?.envelope ?? { ...envelope, flow_id: flow.flow_id, mode: incomingMode };
     flow.goal_binding = {
-      envelope: { ...envelope, flow_id: flow.flow_id },
+      envelope: boundEnvelope,
+      spt_contract_fingerprint: previousBinding?.spt_contract_fingerprint ?? validation.contract_fingerprint ?? undefined,
       started_at: previousBinding?.started_at ?? now,
       last_seen_at: now
     };
@@ -443,7 +480,9 @@ export class FlowEngine {
       data: goalLedgerData(flow.goal_binding, flow)
     });
     // Patch A (modo compact wire-up): propagar envelope.mode para flow.mode.
-    // Default "full" quando ausente. Se compact e o flow ainda esta em fase
+    // Default "compact" quando ausente. Em retry sem modo explicito, preservar
+    // o perfil persistido para nao migrar um flow antigo no meio da execucao.
+    // Se compact e o flow ainda esta em fase
     // full inicial ("pensamentos"), migrar para a fase inicial compact
     // ("concepcao") para que advance/checkGate operem no perfil certo.
     // R2 (revisor-codigo): se o flow ja existe com modo diferente (idempotency
@@ -452,9 +491,6 @@ export class FlowEngine {
     // P2a (hardening): snapshot do estado pre-mutacao para rollback em caso
     // de falha em saveFlow. Sem isso, o flow em memoria fica divergente do
     // disco apos IO error.
-    const previousMode = flow.mode;
-    const previousPhase = flow.phase;
-    const incomingMode = envelope.mode ?? "full";
     if (reused && flow.mode && flow.mode !== incomingMode) {
       throw new Error(`MODE_MISMATCH: flow already in mode "${flow.mode}", cannot switch to "${incomingMode}" (idempotency_key=${envelope.idempotency_key})`);
     }
@@ -475,7 +511,7 @@ export class FlowEngine {
     await this.ledger(flow.flow_id, reused ? "goal_reused" : "goal_started", goalLedgerData(flow.goal_binding, flow), "dex-code");
 
     return {
-      ...(await this.goalStatus({ flow_id: flow.flow_id })),
+      ...(await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })),
       started: !reused,
       reused,
       spt_validation: validation,
@@ -514,9 +550,15 @@ export class FlowEngine {
       const regressLimitReached = regressCount >= FISCAL_CONFIG.maxRegressions;
       const next = allBlockers.length > 0 ? `complete_gate_${flow.phase}` : (profileFor(flow.mode).nextPhase[flow.phase] ? `advance_to_${profileFor(flow.mode).nextPhase[flow.phase]}` : "complete");
       // next_required_action: acao concreta para o operador destravar.
-      let nextRequiredAction = meetingRequired
-        ? nextRequiredActionFor(flow, meetings, allBlockers, fiscalBackTo(flow), regressCount, regressLimitReached, null)
-        : null;
+      let nextRequiredAction = nextRequiredActionFor(
+        flow,
+        meetings,
+        allBlockers,
+        allBlockers.length > 0 ? fiscalBackTo(flow) : null,
+        regressCount,
+        regressLimitReached,
+        null
+      );
       if (!nextRequiredAction) {
         if (allBlockers.includes("review_required")) {
           nextRequiredAction = { type: "attach_review", tool: "evidence_add", reason: "review_required exige evidencia de revisao" };
@@ -531,11 +573,16 @@ export class FlowEngine {
       // operador aplicar "barata nunca esta sozinha" sem precisar de full.
       const currentVerdict = flow.verdicts.at(-1) ?? null;
       const loopMonitor = fiscalLoopMonitor(flow, allBlockers);
+      const runtimeLayoutStatus = await this.store.runtimeLayoutStatus();
+      const workProgress = workProgressSummary(flow);
       const lean: Record<string, unknown> = {
         flow_id: flow.flow_id,
         phase: flow.phase,
         mode: flow.mode,
-        status: flow.status,
+        status: effectiveFlowStatus(flow, allBlockers),
+        project_root: runtimeLayoutStatus.project_root,
+        ppirtv_home: runtimeLayoutStatus.ppirtv_home,
+        runtime_layout_status: runtimeLayoutStatus,
         blockers: allBlockers,
         next_step: next,
         gate_status: gate?.status ?? "unchecked",
@@ -554,7 +601,9 @@ export class FlowEngine {
         // barata_scan (auditoria vizinhos): counts e sinal, nao arrays.
         evidence_count: flow.evidence.length,
         meetings_count: flow.meetings.length,
+        current_verdict: currentVerdict ? { verdict_id: currentVerdict.verdict_id, status: currentVerdict.status } : null,
         current_verdict_status: currentVerdict?.status ?? null,
+        work_progress: workProgress,
         loop_monitor: loopMonitor ? { count: loopMonitor.count, signature: loopMonitor.signature, escalation_active: loopMonitor.escalation?.active ?? false } : null,
         aliases: {
           fase: flow.phase,
@@ -564,7 +613,8 @@ export class FlowEngine {
         display: {
           phase_label: profileFor(flow.mode).displayMeta[flow.phase]?.label ?? flow.phase,
           phase_emoji: profileFor(flow.mode).displayMeta[flow.phase]?.emoji ?? "",
-          direct_action: directAction
+          direct_action: directAction,
+          work_progress: workProgress
         }
       };
       return lean;
@@ -596,6 +646,8 @@ export class FlowEngine {
       requiredCooperation = requiredCoo(blockers);
     }
     const blockerDiagnostics = blockerDiagnosticsFor(flow, meetings, gate, gateBlockers, fiscal, persistedFiscal, blockers, memoryMiningBlockers);
+    const effectiveStatus = effectiveFlowStatus(flow, blockers);
+    const presentationFlow = { ...flow, status: effectiveStatus };
     const directAction = blockers.length > 0 ? blockedDirectAction(blockers) : checklist.display.direct_action;
     const checklistStatus = directAction ? withDirectAction(checklist, directAction) : checklist;
     const backTo = blockers.length > 0 ? fiscalBackTo(flow) : null;
@@ -605,9 +657,10 @@ export class FlowEngine {
     const nextRequiredAction = nextRequiredActionFor(flow, meetings, blockers, backTo, regressCount, regressLimitReached, loopMonitor);
     const resolutionGuidance = blockerResolutionGuidance(blockers, nextRequiredAction, loopMonitor);
     const runtimeLayoutStatus = await this.store.runtimeLayoutStatus();
+    const workProgress = workProgressSummary(flow);
     return {
       flow_id: flow.flow_id,
-      status: flow.status,
+      status: effectiveStatus,
       phase: flow.phase,
       project_root: runtimeLayoutStatus.project_root,
       ppirtv_home: runtimeLayoutStatus.ppirtv_home,
@@ -655,6 +708,7 @@ export class FlowEngine {
       cooperators: flow.cooperators,
       active_credits: flow.active_credits,
       memory_mining: memoryMiningStatus(flow),
+      work_progress: workProgress,
       blockers,
       blocker_diagnostics: blockerDiagnostics,
       next_step: blockers.length > 0 ? fiscalResult(true, blockers).direct_action : nextGoalStep(flow, gate),
@@ -675,19 +729,48 @@ export class FlowEngine {
       display: {
         ...checklistStatus.display,
         direct_action: directAction,
-        librarian: rawLibrarianStatus ?? checklist.display.librarian
+        librarian: rawLibrarianStatus ?? checklist.display.librarian,
+        work_progress: workProgress
       },
       suggested_cooperation: gate.suggested_cooperation,
       required_cooperation: requiredCooperation,
       fiscal_policy: fiscal,
       librarian_status: librarianStatus,
-      ppirtv_checkin: ppirtvCheckIn(flow, requiredCooperation, librarianStatus, blockers, resolutionGuidance),
-      ppirtv_checkout: compactPpirtvCheckout(ppirtvCheckOut(flow, librarianStatus, blockers, resolutionGuidance, blockerDiagnostics, runtimeLayoutStatus), detail)
+      ppirtv_checkin: ppirtvCheckIn(presentationFlow, requiredCooperation, librarianStatus, blockers, resolutionGuidance),
+      ppirtv_checkout: compactPpirtvCheckout(ppirtvCheckOut(presentationFlow, librarianStatus, blockers, resolutionGuidance, blockerDiagnostics, runtimeLayoutStatus), detail)
     };
   }
 
   async goalCheckout(input: { flow_id?: string; idempotency_key?: string; detail?: "lean" | "compact" | "full" }): Promise<Record<string, unknown>> {
-    const statusDetail = input.detail === "lean" ? "compact" : input.detail;
+    if (input.detail === "lean") {
+      const flow = await this.resolveGoalFlow(input);
+      const status = await this.goalStatus({ ...input, detail: "lean" });
+      const rawLibrarianStatus = latestLibrarianStatus(flow) ?? latestLibrarianStatusFromLedger(await this.store.readLedger(flow.flow_id));
+      const librarianStatus = structuredLibrarianStatus(rawLibrarianStatus);
+      const display = (status.display as Record<string, unknown> | undefined) ?? {};
+      const currentVerdict = flow.verdicts.at(-1) ?? null;
+      return {
+        flow_id: flow.flow_id,
+        status: status.status,
+        phase: flow.phase,
+        mode: flow.mode,
+        blockers: status.blockers,
+        direct_action: display.direct_action ?? status.next_step,
+        complete: status.status === "complete",
+        verdict: currentVerdict ? { verdict_id: currentVerdict.verdict_id, status: currentVerdict.status } : null,
+        evidence_count: status.evidence_count,
+        meetings_count: status.meetings_count,
+        memory_review_status: flow.memory_mining?.memory_review_status ?? "not_required",
+        work_progress: status.work_progress,
+        project_root: status.project_root,
+        ppirtv_home: status.ppirtv_home,
+        runtime_layout_status: status.runtime_layout_status,
+        recall_executed: librarianStatus.recall_executed,
+        consumption_confirmed: librarianStatus.consumption_confirmed,
+        librarian_accountability: librarianCheckoutAccountability(librarianStatus)
+      };
+    }
+    const statusDetail = input.detail;
     const status = await this.goalStatus({ ...input, detail: statusDetail });
     const checkout = status.ppirtv_checkout as Record<string, unknown>;
     // A+C (DRY): o checkout interno ja foi processado por compactPpirtvCheckout
@@ -705,10 +788,12 @@ export class FlowEngine {
       learning_accountability: checkout.learning_accountability,
       cooperation_accountability: checkout.cooperation_accountability,
       librarian_accountability: checkout.librarian_accountability,
+      work_progress: checkout.work_progress,
       contract_accountability: checkout.contract_accountability,
       ready_definition: checkout.ready_definition,
       gate_final_output: checkout.gate_final_output,
       final_report_model: checkout.final_report_model,
+      default_workflow: checkout.default_workflow,
       project_root: checkout.project_root,
       ppirtv_home: checkout.ppirtv_home,
       runtime_layout_status: checkout.runtime_layout_status,
@@ -735,7 +820,7 @@ export class FlowEngine {
     await this.store.saveFlow(flow);
     await this.ledger(flow.flow_id, "goal_resumed", { note: input.note ?? "resume requested" }, "dex-code");
     return {
-      ...(await this.goalStatus({ flow_id: flow.flow_id })),
+      ...(await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })),
       resumed: true
     };
   }
@@ -760,7 +845,7 @@ export class FlowEngine {
     return {
       ...gate,
       persisted: input.persist ?? true,
-      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: input.detail })
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow, input.detail) })
     };
   }
 
@@ -769,10 +854,15 @@ export class FlowEngine {
     idempotency_key?: string;
     provided?: Record<string, unknown>;
     evidence_ids?: string[];
+    recall_consumption?: RecallConsumptionInput;
+    detail?: "lean" | "compact" | "full";
   }): Promise<Record<string, unknown>> {
     const flow = await this.resolveGoalFlow(input);
     assertGoalBinding(flow);
     assertNoSecretLikePayload(input.provided, "provided");
+    const recallConsumption = input.recall_consumption
+      ? await this.confirmRecallConsumption(flow, input.recall_consumption, "dex-code")
+      : null;
     const savedGate = flow.gates[flow.phase];
     const shouldReuseSavedGate =
       !input.provided &&
@@ -795,7 +885,8 @@ export class FlowEngine {
         ...gate,
         advanced: false,
         blocked: true,
-        status_snapshot: await this.goalStatus({ flow_id: flow.flow_id })
+        recall_consumption: recallConsumption,
+        status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow, input.detail) })
       };
     }
     const advanced = await this.advance({
@@ -806,7 +897,85 @@ export class FlowEngine {
     return {
       ...advanced,
       gate,
-      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id })
+      recall_consumption: recallConsumption,
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow, input.detail) })
+    };
+  }
+
+  async recordGoalProgress(input: WorkProgressInput): Promise<Record<string, unknown>> {
+    const flow = await this.resolveGoalFlow(input);
+    assertGoalBinding(flow);
+    assertNoSecretLikePayload(input, "goal_progress_record");
+    const eventKey = progressText(input.event_key, 120, "event_key");
+    const source = progressText(input.source, 80, "source");
+    const operation = progressText(input.operation, 120, "operation");
+    const stage = progressText(input.stage, 120, "stage");
+    const message = input.message ? progressText(input.message, 240, "message") : undefined;
+    validateProgressNumbers(input.current, input.total, input.status);
+
+    const operationEvents = workProgressEvents(flow).filter(
+      (event) => event.source === source && event.operation === operation
+    );
+    const existing = operationEvents.find((event) => event.event_key === eventKey);
+    if (existing) {
+      return progressReceipt(flow, existing, { recorded: false, reused: true, throttled: false, reason: "event_key_reused" });
+    }
+    const latest = operationEvents.at(-1);
+    if (latest?.status === "completed" || latest?.status === "failed") {
+      throw new WorkProgressContractError("PROGRESS_AFTER_TERMINAL", {
+        source,
+        operation,
+        terminal_status: latest.status,
+        terminal_progress_id: latest.progress_id
+      });
+    }
+    if (latest && latest.total !== input.total) {
+      throw new WorkProgressContractError("PROGRESS_TOTAL_MISMATCH", {
+        source,
+        operation,
+        expected_total: latest.total,
+        received_total: input.total
+      });
+    }
+    if (latest && input.current < latest.current) {
+      throw new WorkProgressContractError("PROGRESS_OUT_OF_ORDER", {
+        source,
+        operation,
+        latest_current: latest.current,
+        received_current: input.current,
+        total: input.total
+      });
+    }
+    if (latest && latest.current === input.current && latest.stage === stage && latest.status === input.status) {
+      return progressReceipt(flow, latest, { recorded: false, reused: false, throttled: true, reason: "no_material_change" });
+    }
+    const terminal = input.status === "completed" || input.status === "failed";
+    const runningEvents = operationEvents.filter((event) => event.status === "queued" || event.status === "running");
+    if (!terminal && runningEvents.length >= WORK_PROGRESS_MAX_RUNNING_EVENTS) {
+      return progressReceipt(flow, latest ?? null, { recorded: false, reused: false, throttled: true, reason: "retention_limit" });
+    }
+
+    const now = nowIso();
+    const event: WorkProgressEvent = {
+      progress_id: await this.store.nextId("prg"),
+      event_key: eventKey,
+      source,
+      operation,
+      stage,
+      current: input.current,
+      total: input.total,
+      percent: Math.round((input.current / input.total) * 10_000) / 100,
+      status: input.status,
+      ...(message ? { message } : {}),
+      recorded_at: now
+    };
+    flow.history.push({ at: now, type: "work_progress_recorded", data: event as unknown as Record<string, unknown> });
+    flow.updated_at = now;
+    await this.store.saveFlow(flow);
+    await this.ledger(flow.flow_id, "work_progress_recorded", event as unknown as Record<string, unknown>, source);
+    return {
+      ...progressReceipt(flow, event, { recorded: true, reused: false, throttled: false, reason: "material_progress" }),
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: "lean" })
     };
   }
 
@@ -839,7 +1008,7 @@ export class FlowEngine {
       ...meeting,
       suggested_cooperators: suggestedCooperators,
       credit_rule: "suggested_cooperators are not active credits until goal_meeting_close records material decision and participants",
-      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id })
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })
     };
   }
 
@@ -863,7 +1032,7 @@ export class FlowEngine {
     const updated = await this.addMeetingTurn(input);
     return {
       ...updated,
-      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id })
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })
     };
   }
 
@@ -888,7 +1057,7 @@ export class FlowEngine {
     const closed = await this.closeMeeting(input);
     return {
       ...closed,
-      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id })
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })
     };
   }
 
@@ -1030,9 +1199,18 @@ export class FlowEngine {
       ...postWriteValidation.findings.map((finding) => `post_write_validation:${finding.code}:${finding.file ?? "unknown"}:${finding.line ?? "unknown"}`),
       ...writeFailures.map((failure) => `write_failed:${failure.candidate_id}:${failure.reason}`)
     ];
-    const memoryRequiredButEmpty = memoryRequiredByFlow(flow) && candidates.length === 0 && written.length === 0 && !(writePolicy === "classify_only" && strongUnwritten.length === 0);
     const writeFailuresCount = writeFailures.length;
+    const emptyMiningCompleted =
+      candidates.length === 0 &&
+      written.length === 0 &&
+      strongUnwritten.length === 0 &&
+      unresolvedBlocked.length === 0 &&
+      writeFailuresCount === 0 &&
+      !postWriteBlocked;
+    const memoryRequiredButEmpty = memoryRequiredByFlow(flow) && candidates.length === 0 && written.length === 0 && !emptyMiningCompleted;
     const postWritePassed = postWriteValidation.status === "passed";
+    const memoryReviewStatus = reviewStatusForPostWrite(postWriteValidation, written.length);
+    const memoryConsolidated = memoryReviewStatus === "approved" && postWritePassed && writeFailuresCount === 0;
     const summary: MemoryMiningSummary = {
       required: candidates.length > 0 || memoryRequiredByFlow(flow),
       last_run_at: now,
@@ -1049,7 +1227,8 @@ export class FlowEngine {
       candidate_resolutions: candidateResolutions,
       memory_written: written.length > 0,
       memory_validated: postWritePassed,
-      memory_consolidated: postWritePassed && writeFailuresCount === 0,
+      memory_consolidated: memoryConsolidated,
+      memory_review_status: memoryReviewStatus,
       memory_post_write_validation: postWriteValidation,
       memory_required_but_empty: memoryRequiredButEmpty,
       candidates: candidates.map((candidate) => memoryCandidateLedgerDataWithResolution(candidate, resolutionMap.get(candidate.id))),
@@ -1078,6 +1257,7 @@ export class FlowEngine {
         memory_written: summary.memory_written,
         memory_validated: summary.memory_validated,
         memory_consolidated: summary.memory_consolidated,
+        memory_review_status: summary.memory_review_status,
         post_write_parking_lot: postWriteParkingLot,
         memory_post_write_validation: postWriteValidation
       }
@@ -1107,6 +1287,7 @@ export class FlowEngine {
         memory_written: summary.memory_written,
         memory_validated: summary.memory_validated,
         memory_consolidated: summary.memory_consolidated,
+        memory_review_status: summary.memory_review_status,
         post_write_parking_lot: postWriteParkingLot,
         memory_post_write_validation: postWriteValidation,
         blocked_verdict: summary.blocked_verdict,
@@ -1138,6 +1319,7 @@ export class FlowEngine {
       memory_written: summary.memory_written,
       memory_validated: summary.memory_validated,
       memory_consolidated: summary.memory_consolidated,
+      memory_review_status: summary.memory_review_status,
       memory_post_write_validation: postWriteValidation,
       unclassified: unresolvedBlocked.length,
       blocked_verdict: summary.blocked_verdict,
@@ -1220,15 +1402,16 @@ export class FlowEngine {
       }
     });
     flow.updated_at = now;
+    const previousWritePolicy = flow.memory_mining?.write_policy === "classify_only" ? "classify_only" : "auto_write";
     await this.store.saveFlow(flow);
     await this.ledger(flow.flow_id, "memory_candidates_resolved", { resolutions }, "dex-code");
 
-    const memoryMining = await this.mineMemory({ flow_id: flow.flow_id, auto_classify: true, write_policy: "auto_write" });
+    const memoryMining = await this.mineMemory({ flow_id: flow.flow_id, auto_classify: true, write_policy: previousWritePolicy });
     return {
       flow_id: flow.flow_id,
       resolved: resolutions,
       memory_mining: memoryMining,
-      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id })
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })
     };
   }
 
@@ -1287,7 +1470,7 @@ export class FlowEngine {
       regressed: true,
       regress_count: regressCount,
       max_regressions: FISCAL_CONFIG.maxRegressions,
-      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id })
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })
     };
   }
 
@@ -1299,6 +1482,7 @@ export class FlowEngine {
     content?: string;
     note?: string;
     satisfies?: string[];
+    detail?: "lean" | "compact" | "full";
   }): Promise<Record<string, unknown>> {
     requireText(input.flow_id, "flow_id");
     assertNoSecretLikeText(input.title, "title");
@@ -1318,7 +1502,7 @@ export class FlowEngine {
     return {
       evidence_id: evidence.evidence_id,
       evidence,
-      status: await this.goalStatus({ flow_id: input.flow_id })
+      status: await this.goalStatus({ flow_id: input.flow_id, detail: mutationStatusDetail(flow, input.detail) })
     };
   }
 
@@ -1437,7 +1621,7 @@ export class FlowEngine {
       verdict,
       verdict_learning: verdictLearning,
       memory_mining: memoryMining,
-      status: await this.goalStatus({ flow_id: input.flow_id })
+      status: await this.goalStatus({ flow_id: input.flow_id, detail: mutationStatusDetail(flow) })
     };
   }
 
@@ -1647,48 +1831,54 @@ export class FlowEngine {
   private async runBeforePhaseHook(flow: Flow, phase: AnyPhase, actor?: string): Promise<RecallVisualStatus | null> {
     try {
       const summary = await this.memoryHooks.beforePhase({ flow, phase });
+      const recallData = {
+        phase,
+        recalled_count: summary.items.length,
+        items: summary.items.map((item) => ({
+          source: item.source,
+          title: item.title,
+          path: item.path,
+          score: item.score,
+          question: item.question,
+          destination: item.destination,
+          observation: item.observation
+        })),
+        warnings: summary.warnings,
+        librarian_status: summary.visual_status.librarian,
+        graphify_status: summary.visual_status.graphify,
+        recall_executed: true,
+        consumption_confirmed: false,
+        graphify_consumption_confirmed: false
+      };
       const librarianStatus: RecallVisualStatus = {
         status: summary.visual_status.librarian,
         graphify_status: summary.visual_status.graphify,
         warnings: summary.warnings,
-        recalled_count: summary.items.length
+        recalled_count: summary.items.length,
+        recall_executed: true,
+        consumption_confirmed: false,
+        graphify_consumption_confirmed: false
       };
       if (summary.deduped) {
-        return librarianStatus;
-      }
-      await this.ledger(
-        flow.flow_id,
-        "memory_recalled",
-        {
-          phase,
-          recalled_count: summary.items.length,
-          items: summary.items.map((item) => ({
+        const reusedRecallData = {
+          ...recallData,
+          items: recallData.items.map((item) => ({
             source: item.source,
             title: item.title,
             path: item.path,
-            score: item.score,
-            question: item.question,
-            destination: item.destination,
-            observation: item.observation
-          })),
-          warnings: summary.warnings,
-          librarian_status: summary.visual_status.librarian,
-          graphify_status: summary.visual_status.graphify
-        },
-        actor ?? "bibliotecario"
-      );
+            destination: item.destination
+          }))
+        };
+        await this.ledger(flow.flow_id, "memory_recall_reused", reusedRecallData, actor ?? "bibliotecario");
+        const stored = await this.store.loadFlow(flow.flow_id);
+        stored.history.push({ at: nowIso(), type: "memory_recall_reused", data: reusedRecallData });
+        stored.updated_at = nowIso();
+        await this.store.saveFlow(stored);
+        return librarianStatus;
+      }
+      await this.ledger(flow.flow_id, "memory_recalled", recallData, actor ?? "bibliotecario");
       const stored = await this.store.loadFlow(flow.flow_id);
-      stored.history.push({
-        at: nowIso(),
-        type: "memory_recalled",
-        data: {
-          phase,
-          recalled_count: summary.items.length,
-          warnings: summary.warnings,
-          librarian_status: summary.visual_status.librarian,
-          graphify_status: summary.visual_status.graphify
-        }
-      });
+      stored.history.push({ at: nowIso(), type: "memory_recalled", data: recallData });
       stored.updated_at = nowIso();
       await this.store.saveFlow(stored);
       return librarianStatus;
@@ -1697,7 +1887,10 @@ export class FlowEngine {
         status: "failed",
         graphify_status: "failed",
         warnings: [`bibliotecario_failed: ${error instanceof Error ? error.message : String(error)}`],
-        recalled_count: 0
+        recalled_count: 0,
+        recall_executed: true,
+        consumption_confirmed: false,
+        graphify_consumption_confirmed: false
       };
       await this.recordMemoryHookWarning(flow.flow_id, "beforePhase", phase, error, actor);
       const stored = await this.store.loadFlow(flow.flow_id);
@@ -1709,13 +1902,81 @@ export class FlowEngine {
           recalled_count: 0,
           warnings: failed.warnings,
           librarian_status: "failed",
-          graphify_status: "failed"
+          graphify_status: "failed",
+          recall_executed: true,
+          consumption_confirmed: false,
+          graphify_consumption_confirmed: false
         }
       });
       stored.updated_at = nowIso();
       await this.store.saveFlow(stored);
       return failed;
     }
+  }
+
+  private async confirmRecallConsumption(flow: Flow, input: RecallConsumptionInput, actor: string): Promise<Record<string, unknown>> {
+    assertNoSecretLikePayload(input, "recall_consumption");
+    const references = unique((input.references ?? []).map((item) => item.trim()).filter(Boolean));
+    const graphifyReferences = unique((input.graphify_references ?? []).map((item) => item.trim()).filter(Boolean));
+    if (references.length === 0) {
+      throw new Error("RECALL_CONSUMPTION_REFERENCES_REQUIRED: informe ao menos uma referencia recuperada");
+    }
+    const ledger = await this.store.readLedger(flow.flow_id);
+    const recallEventIndex = lastIndexWhere(
+      ledger,
+      (event) => (event.type === "memory_recalled" || event.type === "memory_recall_reused") && event.data.phase === flow.phase
+    );
+    const recallEvent = recallEventIndex >= 0 ? ledger[recallEventIndex] : undefined;
+    const recalledItems = Array.isArray(recallEvent?.data.items) ? (recallEvent?.data.items as Array<Record<string, unknown>>) : [];
+    if (recalledItems.length === 0) {
+      throw new Error(`RECALL_CONSUMPTION_WITHOUT_RECALL: nenhum item recuperado para a fase ${flow.phase}`);
+    }
+    const validReferences = recallReferenceValues(recalledItems);
+    const knownReferences = recallReferenceSet(validReferences);
+    const unknownReferences = references.filter((reference) => !knownReferences.has(normalizeRecallReference(reference)));
+    if (unknownReferences.length > 0) {
+      throw new RecallConsumptionReferenceError(
+        "RECALL_CONSUMPTION_UNKNOWN_REFERENCES",
+        unknownReferences,
+        validReferences
+      );
+    }
+    const graphifyItems = recalledItems.filter((item) => item.source === "graphify");
+    const validGraphifyReferences = recallReferenceValues(graphifyItems);
+    const knownGraphifyReferences = recallReferenceSet(validGraphifyReferences);
+    const unknownGraphifyReferences = graphifyReferences.filter((reference) => !knownGraphifyReferences.has(normalizeRecallReference(reference)));
+    if (unknownGraphifyReferences.length > 0) {
+      throw new RecallConsumptionReferenceError(
+        "GRAPHIFY_CONSUMPTION_UNKNOWN_REFERENCES",
+        unknownGraphifyReferences,
+        validReferences,
+        validGraphifyReferences
+      );
+    }
+    const existingConfirmation = [...ledger.slice(recallEventIndex + 1)].reverse().find((event) =>
+      event.type === "memory_recall_consumed" &&
+      event.data.recall_phase === flow.phase &&
+      sameRecallReferences(stringArray(event.data.references), references) &&
+      sameRecallReferences(stringArray(event.data.graphify_references), graphifyReferences)
+    );
+    if (existingConfirmation) {
+      return { ...existingConfirmation.data, reused: true };
+    }
+    const now = nowIso();
+    const data = {
+      recall_phase: flow.phase,
+      references,
+      graphify_references: graphifyReferences,
+      note: input.note?.trim() ?? null,
+      consumption_confirmed: true,
+      graphify_consumption_confirmed: graphifyReferences.length > 0
+    };
+    const stored = await this.store.loadFlow(flow.flow_id);
+    stored.history.push({ at: now, type: "memory_recall_consumed", data });
+    stored.updated_at = now;
+    await this.store.saveFlow(stored);
+    await this.ledger(flow.flow_id, "memory_recall_consumed", data, actor);
+    return data;
   }
 
   private async recordMemoryHookWarning(flowId: string, hook: "beforePhase" | "afterPhase", phase: AnyPhase, error: unknown, actor?: string): Promise<void> {
@@ -1739,7 +2000,10 @@ export class FlowEngine {
           phase,
           message: error instanceof Error ? error.message : String(error),
           librarian_status: "failed",
-          graphify_status: "failed"
+          graphify_status: "failed",
+          recall_executed: hook === "beforePhase",
+          consumption_confirmed: false,
+          graphify_consumption_confirmed: false
         }
       });
       flow.updated_at = nowIso();
@@ -2077,18 +2341,26 @@ export class FlowEngine {
       : presented;
   }
 
-  async renderChecklist(flowId: string, detail: "compact" | "full" = "full"): Promise<{
+  async renderChecklist(flowId: string, detail: "visual-only" | "lean" | "compact" | "full" = "full"): Promise<{
     flow_id: string;
     phase?: AnyPhase;
-    markdown: string;
+    mode?: Flow["mode"];
+    status?: Flow["status"];
+    markdown?: string;
     items: Array<{ label: string; checked: boolean }>;
+    blockers?: string[];
+    next_step?: string;
     operational_principles?: PrincipleChecklistItem[];
     operational_principles_count?: number;
     ready_definition?: string[];
     gate_final_output?: string[];
     final_report_model?: string[];
+    default_workflow?: DefaultWorkflow;
+    secret_env_consumption_policy?: OperationalPolicyBlock;
+    early_security_proportionality_policy?: OperationalPolicyBlock;
     required_cooperation?: Cooperator[];
     fiscal_policy?: FiscalPolicyResult;
+    work_progress?: WorkProgressSummary;
   } & PresentationEnvelope> {
     const flow = await this.store.loadFlow(flowId);
     const checklistProfile = profileFor(flow.mode);
@@ -2100,6 +2372,34 @@ export class FlowEngine {
     const fiscal = evaluateFiscalPolicy(flow);
     const persistedFiscal = latestFiscalBlock(flow);
     const blockers = reconciledBlockers(flow, [...fiscal.blocking_reasons, ...persistedFiscal.blocking_reasons]);
+    if (detail === "visual-only" || detail === "lean") {
+      const missing = checklistRequirements
+        .filter((requirement) => !hasRequirement(flow, requirement.key, requirement.source, flow.gates[flow.phase]?.provided ?? {}))
+        .map((requirement) => requirement.key);
+      const effectiveBlockers = unique([...missing, ...blockers]);
+      const nextPhase = checklistProfile.nextPhase[flow.phase];
+      const nextStep = effectiveBlockers.length > 0 ? `complete_gate_${flow.phase}` : nextPhase ? `advance_to_${nextPhase}` : "complete";
+      const presented = presentChecklist({ flow, markdown: "", items });
+      const withAction = effectiveBlockers.length > 0 ? withDirectAction(presented, blockedDirectAction(effectiveBlockers)) : presented;
+      const workProgress = workProgressSummary(flow);
+      return {
+        flow_id: flow.flow_id,
+        phase: flow.phase,
+        mode: flow.mode,
+        status: effectiveFlowStatus(flow, effectiveBlockers),
+        items,
+        blockers: effectiveBlockers,
+        next_step: nextStep,
+        work_progress: workProgress,
+        aliases: {
+          ...withAction.aliases,
+          faltando: effectiveBlockers,
+          proximo: nextStep
+        },
+        display: { ...withAction.display, work_progress: workProgress },
+        suggested_cooperation: withAction.suggested_cooperation
+      };
+    }
     const operationalPrinciples = (await principleChecklist()).map((item) => {
       if (item.id === "memoria_sem_lembranca" && memoryRequiredByFlow(flow) && noMemoryWasPromoted(flow)) {
         return { ...item, checked: false, state: "blocked" as const };
@@ -2124,6 +2424,9 @@ export class FlowEngine {
     const readyItems = readyDefinition();
     const gateOutputItems = gateFinalOutput();
     const reportModelItems = finalReportModel();
+    const workflow = defaultWorkflow();
+    const secretPolicy = secretEnvConsumptionPolicy();
+    const earlySecurityPolicy = earlySecurityProportionalityPolicy();
     const markdown = [
       `# Checklist PPIRTV - ${flow.flow_id}`,
       "",
@@ -2158,7 +2461,8 @@ export class FlowEngine {
         ]
       });
     return {
-      ...(blockers.length > 0 || flow.status === "blocked" ? withDirectAction(presented, blockedDirectAction(blockers.length > 0 ? blockers : ["flow_blocked"])) : presented),
+      ...(blockers.length > 0 || effectiveFlowStatus(flow, blockers) === "blocked" ? withDirectAction(presented, blockedDirectAction(blockers.length > 0 ? blockers : ["flow_blocked"])) : presented),
+      work_progress: workProgressSummary(flow),
       // BUG 5 (detail compact): omitir arrays grandes quando detail=compact.
       // Substituir por contagens para manter sinal sem custo de tokens.
       operational_principles: detail === "compact" ? undefined : operationalPrinciples,
@@ -2166,6 +2470,9 @@ export class FlowEngine {
       ready_definition: detail === "compact" ? undefined : readyItems,
       gate_final_output: detail === "compact" ? undefined : gateOutputItems,
       final_report_model: detail === "compact" ? undefined : reportModelItems,
+      default_workflow: detail === "compact" ? undefined : workflow,
+      secret_env_consumption_policy: detail === "compact" ? undefined : secretPolicy,
+      early_security_proportionality_policy: detail === "compact" ? undefined : earlySecurityPolicy,
       required_cooperation: fiscal.required_cooperation,
       fiscal_policy: fiscal
     };
@@ -2833,113 +3140,12 @@ function isSensitivePath(target: string): boolean {
     .some((segment) => /^\.env(?:\.|$)/i.test(segment));
 }
 
-function containsLoose(text: string, fragment: string): boolean {
+function normalizeComparable(text: string): string {
   const normalize = (value: string) => value.toLowerCase().replace(/\s+/g, " ").trim();
-  return normalize(text).includes(normalize(fragment));
+  return normalize(text);
 }
 
-function parseSpt(text: string): Pick<SptValidationResult, "tasks" | "expected_evidence" | "done_criteria"> {
-  if (!text.trim()) {
-    return { tasks: [], expected_evidence: [], done_criteria: [] };
-  }
-  const tasksSection = sectionText(text, ["tasks", "tasks"]);
-  const validationSection = sectionText(text, ["validacao", "validation"]);
-  const evidenceSection = sectionText(text, ["evidencia", "evidencias", "evidencias esperadas", "expected evidence"]);
-  const doneSection = sectionText(text, [
-    "done criteria",
-    "criterios de pronto",
-    "criterios de validacao",
-    "criterios de aceite",
-    "definition of done",
-    "gate de pronto"
-  ]);
-  const table = parseTaskTable(tasksSection);
-  const taskList = listItems(tasksSection);
-  const evidenceList = unique([...listItems(evidenceSection), ...listItems(validationSection)]);
-  const doneCriteria = unique([...table.done_criteria, ...listItems(doneSection), ...criteriaLikeLines(validationSection)]);
-  return {
-    tasks: unique([...table.tasks, ...taskList]),
-    expected_evidence: evidenceList,
-    done_criteria: doneCriteria
-  };
-}
-
-function hasSection(text: string, headings: string[]): boolean {
-  const wanted = new Set(headings.map(normalizeHeading));
-  return text.split(/\r?\n/).some((line) => {
-    const heading = line.match(/^#{2,6}\s+(.+?)\s*#*\s*$/);
-    return !!heading && wanted.has(normalizeHeading(heading[1]));
-  });
-}
-
-function sectionText(text: string, headings: string[]): string {
-  const wanted = new Set(headings.map(normalizeHeading));
-  const lines = text.split(/\r?\n/);
-  const selected: string[] = [];
-  let active = false;
-  for (const line of lines) {
-    const heading = line.match(/^#{2,6}\s+(.+?)\s*#*\s*$/);
-    if (heading) {
-      if (active) {
-        break;
-      }
-      active = wanted.has(normalizeHeading(heading[1]));
-      continue;
-    }
-    if (active) {
-      selected.push(line);
-    }
-  }
-  return selected.join("\n");
-}
-
-function normalizeHeading(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[`*_]/g, "")
-    .trim()
-    .toLowerCase();
-}
-
-function listItems(text: string): string[] {
-  return text
-    .split(/\r?\n/)
-    .map((line) => line.match(/^\s*[-*]\s+(?:\[[ xX]\]\s*)?(.+?)\s*$/)?.[1]?.trim() ?? "")
-    .filter(Boolean);
-}
-
-function parseTaskTable(text: string): { tasks: string[]; done_criteria: string[] } {
-  const tasks: string[] = [];
-  const doneCriteria: string[] = [];
-  for (const line of text.split(/\r?\n/)) {
-    if (!line.trim().startsWith("|")) {
-      continue;
-    }
-    const cells = line
-      .split("|")
-      .map((cell) => cell.trim())
-      .filter(Boolean);
-    if (cells.length < 4 || /^-+$/.test(cells[0]) || /^id$/i.test(cells[0])) {
-      continue;
-    }
-    const task = cells.length >= 5 ? cells[3] : cells.at(-1);
-    const criterion = cells.length >= 5 ? cells[4] : undefined;
-    if (task) {
-      tasks.push(task);
-    }
-    if (criterion) {
-      doneCriteria.push(criterion);
-    }
-  }
-  return { tasks: unique(tasks), done_criteria: unique(doneCriteria) };
-}
-
-function criteriaLikeLines(text: string): string[] {
-  return listItems(text).filter((item) => /passa|passou|valid|evid|pronto|check|test/i.test(item));
-}
-
-function normalizeGoalEnvelope(input: GoalEnvelope): GoalEnvelope {
+function normalizeGoalEnvelope(input: GoalEnvelope): CanonicalGoalEnvelope {
   requireText(input.workspace, "workspace");
   requireText(input.spt_path, "spt_path");
   requireText(input.objective, "objective");
@@ -2959,12 +3165,34 @@ function normalizeGoalEnvelope(input: GoalEnvelope): GoalEnvelope {
     // P2b (hardening): validar mode e risk_level na borda. Rejeitar valores
     // invalidos em vez de passar cru para o store (Zod do MCP protege, mas
     // chamadas diretas ao engine precisam do mesmo guard).
-    mode: input.mode && ["full", "compact"].includes(input.mode) ? input.mode : undefined,
+    mode: canonicalPhaseMode(input.mode),
     risk_level: input.risk_level && ["high", "medium", "low", "mechanical"].includes(input.risk_level) ? input.risk_level : undefined
   };
 }
 
-function assertCompatibleGoalBinding(binding: GoalBinding | undefined, envelope: GoalEnvelope): void {
+function canonicalPhaseMode(mode: GoalEnvelope["mode"]): "full" | "compact" | undefined {
+  if (mode === "lean") {
+    return "compact";
+  }
+  return mode === "full" || mode === "compact" ? mode : undefined;
+}
+
+function mutationStatusDetail(_flow: Flow, requested?: "lean" | "compact" | "full"): "lean" | "compact" | "full" {
+  return requested ?? "lean";
+}
+
+function effectiveFlowStatus(flow: Flow, blockers: string[]): Flow["status"] {
+  if (flow.status === "complete" || flow.status === "archived") {
+    return flow.status;
+  }
+  return blockers.length > 0 ? "blocked" : "active";
+}
+
+function assertCompatibleGoalBinding(
+  binding: GoalBinding | undefined,
+  envelope: GoalEnvelope,
+  contractFingerprint: string | null
+): void {
   if (!binding) {
     return;
   }
@@ -2975,6 +3203,37 @@ function assertCompatibleGoalBinding(binding: GoalBinding | undefined, envelope:
   if (path.resolve(existing.workspace) !== path.resolve(envelope.workspace) || path.resolve(existing.spt_path) !== path.resolve(envelope.spt_path)) {
     throw new Error("idempotency_key is already bound to a different workspace or spt_path");
   }
+  const mismatches: string[] = [];
+  if (normalizeComparable(existing.objective) !== normalizeComparable(envelope.objective)) {
+    mismatches.push("objective");
+  }
+  if (existing.evidence_required !== envelope.evidence_required) {
+    mismatches.push("evidence_required");
+  }
+  if (!sameStringSet(existing.required_evidence, envelope.required_evidence)) {
+    mismatches.push("required_evidence");
+  }
+  if (existing.requested_verdict_policy !== envelope.requested_verdict_policy) {
+    mismatches.push("requested_verdict_policy");
+  }
+  if (existing.source !== envelope.source) {
+    mismatches.push("source");
+  }
+  if (envelope.risk_level !== undefined && existing.risk_level !== envelope.risk_level) {
+    mismatches.push("risk_level");
+  }
+  if (!binding.spt_contract_fingerprint || !contractFingerprint) {
+    mismatches.push("spt_contract_fingerprint");
+  } else if (binding.spt_contract_fingerprint !== contractFingerprint) {
+    mismatches.push("spt_contract");
+  }
+  if (mismatches.length > 0) {
+    throw new Error(`GOAL_BINDING_MISMATCH: immutable binding differs in ${mismatches.join(", ")}`);
+  }
+}
+
+function sameStringSet(left: string[], right: string[]): boolean {
+  return JSON.stringify([...new Set(left)].sort()) === JSON.stringify([...new Set(right)].sort());
 }
 
 function goalLedgerData(binding: GoalBinding, flow?: Flow): Record<string, unknown> {
@@ -2988,6 +3247,7 @@ function goalLedgerData(binding: GoalBinding, flow?: Flow): Record<string, unkno
     required_evidence: binding.envelope.required_evidence,
     requested_verdict_policy: binding.envelope.requested_verdict_policy,
     source: binding.envelope.source,
+    spt_contract_fingerprint: binding.spt_contract_fingerprint,
     tasks: flow?.tasks ?? [],
     expected_evidence: flow?.expected_evidence ?? binding.envelope.required_evidence,
     done_criteria: flow?.done_criteria ?? []
@@ -3413,15 +3673,22 @@ function noMemoryWasPromoted(flow: Flow, memoryMining?: Record<string, unknown> 
   const status = memoryMining ?? flow.memory_mining;
   const writtenCount = typeof status?.written_count === "number" ? status.written_count : 0;
   if (writtenCount > 0) {
-    return !memoryMiningConsolidated(status);
+    return !memoryMiningStructurallyPromoted(status);
   }
   const candidatesCount = typeof status?.candidates_count === "number" ? status.candidates_count : 0;
   const candidates = Array.isArray(status?.candidates) ? status.candidates : [];
-  if (candidatesCount > 0) {
+  const editQueue = Array.isArray(status?.edit_queue) ? status.edit_queue : [];
+  const effectiveCandidatesCount = Math.max(candidatesCount, candidates.length, editQueue.length);
+  if (effectiveCandidatesCount > 0) {
     return candidates.length === 0;
   }
-  // BUG 1: se a mineracao ja foi executada em modo classify_only e nao ha
-  // nenhum candidato forte pendente de destino, nao ha memoria para escrever.
+  // Se a mineracao ja foi executada e terminou vazia, nao ha candidato para
+  // escrever nem candidate_id para resolver. O blocker de "memoria vazia" so
+  // faz sentido antes da mineracao ou quando existe residuo real.
+  if (memoryMiningCompletedWithNoCandidates(status)) {
+    return false;
+  }
+  // Compatibilidade com estados antigos de classify_only sem todos os campos.
   // O blocker de "memoria vazia" so faz sentido quando a mineracao ainda
   // nao rodou ou quando existe strong_unwritten aguardando decisao.
   const miningRan = typeof status?.last_run_at === "string" && status.last_run_at.length > 0;
@@ -3433,11 +3700,43 @@ function noMemoryWasPromoted(flow: Flow, memoryMining?: Record<string, unknown> 
   return true;
 }
 
-function memoryMiningConsolidated(memoryMining: Record<string, unknown> | MemoryMiningSummary | undefined | null): boolean {
+function memoryMiningCompletedWithNoCandidates(memoryMining: Record<string, unknown> | MemoryMiningSummary | undefined | null): boolean {
   if (!memoryMining) {
     return false;
   }
-  return memoryMining.memory_consolidated === true && memoryMining.memory_validated === true;
+  const miningRan = typeof memoryMining.last_run_at === "string" && memoryMining.last_run_at.length > 0;
+  const candidates = Array.isArray(memoryMining.candidates) ? memoryMining.candidates : [];
+  const editQueue = Array.isArray(memoryMining.edit_queue) ? memoryMining.edit_queue : [];
+  return (
+    miningRan &&
+    numericMemoryField(memoryMining, "candidates_count") === 0 &&
+    candidates.length === 0 &&
+    numericMemoryField(memoryMining, "written_count") === 0 &&
+    numericMemoryField(memoryMining, "strong_unwritten_count") === 0 &&
+    numericMemoryField(memoryMining, "blocked_count") === 0 &&
+    numericMemoryField(memoryMining, "write_failures_count") === 0 &&
+    editQueue.length === 0 &&
+    !memoryPostWriteValidationBlocks(memoryMining.memory_post_write_validation as MemoryPostWriteValidation | undefined | null)
+  );
+}
+
+function memoryMiningStructurallyPromoted(memoryMining: Record<string, unknown> | MemoryMiningSummary | undefined | null): boolean {
+  if (!memoryMining) {
+    return false;
+  }
+  return memoryMining.memory_written === true
+    && memoryMining.memory_validated === true
+    && !memoryPostWriteValidationBlocks(memoryMining.memory_post_write_validation as MemoryPostWriteValidation | undefined | null);
+}
+
+function reviewStatusForPostWrite(validation: MemoryPostWriteValidation, writtenCount: number): MemoryReviewStatus {
+  if (writtenCount <= 0 || validation.status === "not_required") {
+    return "not_required";
+  }
+  if (validation.status !== "passed") {
+    return "failed_post_write_validation";
+  }
+  return "pending_consciencia_memorias";
 }
 
 function codeReviewRequired(flow: Flow, input: FiscalVerdictInput): boolean {
@@ -3689,10 +3988,17 @@ function needsReviewCoherence(flow: Flow, phase: AnyPhase, provided: Record<stri
 }
 
 function latestFiscalBlock(flow: Flow): Pick<FiscalPolicyResult, "blocking_reasons" | "required_cooperation"> {
-  const event = latestFiscalBlockEvent(flow)?.event;
-  if (!event) {
+  const latest = latestFiscalBlockEvent(flow);
+  if (!latest) {
     return { blocking_reasons: [], required_cooperation: [] };
   }
+  const verdictRecordedAfterBlock = flow.history
+    .slice(latest.index + 1)
+    .some((event) => event.type === "verdict_recorded");
+  if (verdictRecordedAfterBlock) {
+    return { blocking_reasons: [], required_cooperation: [] };
+  }
+  const event = latest.event;
   const required = Array.isArray(event.data.required_cooperation) ? (event.data.required_cooperation as Cooperator[]) : [];
   const blockingReasons = reconciledBlockers(flow, stringArray(event.data.blocking_reasons));
   return {
@@ -3898,13 +4204,14 @@ function memoryRequiredDiagnostics(flow: Flow): Record<string, unknown> {
     memory_written: status?.memory_written === true,
     memory_validated: status?.memory_validated === true,
     memory_consolidated: status?.memory_consolidated === true,
+    memory_review_status: status?.memory_review_status ?? null,
     post_write_validation: status?.memory_post_write_validation ?? null,
     candidates_count: candidatesCount,
     candidates_visible: candidates.length,
     memory_required_but_empty: noMemoryWasPromoted(flow),
     clears_when: [
       "mm_memory_mining roda no flow",
-      "memory_consolidated=true com validacao pos-write quando auto_write escreveu memoria",
+      "memory_written=true e memory_validated=true com memory_review_status pendente ou aprovado quando auto_write escreveu memoria",
       "goal_status deixa de listar memory_required_but_empty antes de novo goal_verdict positivo"
     ],
     executable_route: memoryMiningRequiredSequence(flow).slice(0, 2)
@@ -3918,6 +4225,9 @@ function memoryMiningVerdictBlockers(flow: Flow): string[] {
 function memoryMiningVerdictStillBlocked(flow: Flow): boolean {
   const status = flow.memory_mining;
   const postWriteBlocked = memoryPostWriteValidationBlocks(status?.memory_post_write_validation);
+  if (memoryMiningCompletedWithNoCandidates(status)) {
+    return false;
+  }
   if (!status?.blocked_verdict && !postWriteBlocked) {
     return false;
   }
@@ -3953,6 +4263,7 @@ function memoryMiningBlockedDiagnostics(flow: Flow): Record<string, unknown> {
     memory_written: status?.memory_written === true,
     memory_validated: status?.memory_validated === true,
     memory_consolidated: status?.memory_consolidated === true,
+    memory_review_status: status?.memory_review_status ?? null,
     post_write_validation: status?.memory_post_write_validation ?? null,
     ledger_only_count: numericMemoryField(status, "ledger_only_count"),
     blocked_count: numericMemoryField(status, "blocked_count"),
@@ -3970,29 +4281,58 @@ function memoryMiningBlockedDiagnostics(flow: Flow): Record<string, unknown> {
 }
 
 function latestLibrarianStatus(flow: Flow): RecallVisualStatus | null {
-  const event = [...flow.history].reverse().find((item) => item.type === "memory_recalled" || item.type === "memory_hook_warning");
+  const eventIndex = lastIndexWhere(
+    flow.history,
+    (item) => item.type === "memory_recalled" || item.type === "memory_recall_reused" || item.type === "memory_hook_warning"
+  );
+  const event = eventIndex >= 0 ? flow.history[eventIndex] : undefined;
   if (!event) {
     return null;
   }
+  const consumption = [...flow.history.slice(eventIndex + 1)].reverse().find((item) =>
+    item.type === "memory_recall_consumed" && item.data.recall_phase === event.data.phase
+  );
   return {
     status: statusValue(event.data.librarian_status),
     graphify_status: statusValue(event.data.graphify_status),
     warnings: stringArray(event.data.warnings ?? event.data.message),
-    recalled_count: typeof event.data.recalled_count === "number" ? event.data.recalled_count : 0
+    recalled_count: typeof event.data.recalled_count === "number" ? event.data.recalled_count : 0,
+    recall_executed: event.data.recall_executed === true || (event.data.recall_executed === undefined && event.type === "memory_recalled"),
+    consumption_confirmed: consumption?.data.consumption_confirmed === true,
+    graphify_consumption_confirmed: consumption?.data.graphify_consumption_confirmed === true
   };
 }
 
 function latestLibrarianStatusFromLedger(events: Array<{ type: string; data: Record<string, unknown> }>): RecallVisualStatus | null {
-  const event = [...events].reverse().find((item) => item.type === "memory_recalled" || item.type === "memory_hook_warning");
+  const eventIndex = lastIndexWhere(
+    events,
+    (item) => item.type === "memory_recalled" || item.type === "memory_recall_reused" || item.type === "memory_hook_warning"
+  );
+  const event = eventIndex >= 0 ? events[eventIndex] : undefined;
   if (!event) {
     return null;
   }
+  const consumption = [...events.slice(eventIndex + 1)].reverse().find((item) =>
+    item.type === "memory_recall_consumed" && item.data.recall_phase === event.data.phase
+  );
   return {
     status: statusValue(event.data.librarian_status),
     graphify_status: statusValue(event.data.graphify_status),
     warnings: stringArray(event.data.warnings ?? event.data.message),
-    recalled_count: typeof event.data.recalled_count === "number" ? event.data.recalled_count : 0
+    recalled_count: typeof event.data.recalled_count === "number" ? event.data.recalled_count : 0,
+    recall_executed: event.data.recall_executed === true || (event.data.recall_executed === undefined && event.type === "memory_recalled"),
+    consumption_confirmed: consumption?.data.consumption_confirmed === true,
+    graphify_consumption_confirmed: consumption?.data.graphify_consumption_confirmed === true
   };
+}
+
+function lastIndexWhere<T>(items: T[], predicate: (item: T) => boolean): number {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    if (predicate(items[index])) {
+      return index;
+    }
+  }
+  return -1;
 }
 
 function blockedDirectAction(blockers: string[]): { available: boolean; action: string } {
@@ -4927,13 +5267,18 @@ function structuredLibrarianStatus(raw: RecallVisualStatus | null): StructuredLi
   const librarianFunctionalTested = raw !== null && librarianStatus !== "disabled" && (raw.recalled_count > 0 || raw.warnings.length > 0);
   const graphifyFunctionalTested =
     raw !== null && graphifyStatus !== "disabled" && (raw.recalled_count > 0 || raw.warnings.some((warning) => /graphify/i.test(warning)));
+  const recallExecuted = raw?.recall_executed === true;
+  const consumptionConfirmed = raw?.consumption_confirmed === true;
+  const graphifyConsumptionConfirmed = raw?.graphify_consumption_confirmed === true;
   return {
     bibliotecario: {
       enabled: librarianStatus !== "disabled",
       status: librarianStatus,
       reason: raw ? librarianReason(librarianStatus) : "await_beforePhase_or_report_disabled",
       visible: true,
-      functional_tested: librarianFunctionalTested
+      functional_tested: librarianFunctionalTested,
+      recall_executed: recallExecuted,
+      consumption_confirmed: consumptionConfirmed
     },
     graphify: {
       enabled: graphifyConfigured || graphifyStatus !== "disabled",
@@ -4941,11 +5286,15 @@ function structuredLibrarianStatus(raw: RecallVisualStatus | null): StructuredLi
       status: graphifyStatus,
       reason: raw ? graphifyReason(graphifyStatus) : graphifyConfigured ? "configured_awaiting_beforePhase_functional_test" : "optional_disabled_reported",
       visible: true,
-      functional_tested: graphifyFunctionalTested
+      functional_tested: graphifyFunctionalTested,
+      recall_executed: recallExecuted && graphifyStatus !== "disabled",
+      consumption_confirmed: graphifyConsumptionConfirmed
     },
     warnings: raw?.warnings ?? [],
     recalled_count: raw?.recalled_count ?? 0,
-    functional_tested: librarianFunctionalTested || graphifyFunctionalTested
+    functional_tested: librarianFunctionalTested || graphifyFunctionalTested,
+    recall_executed: recallExecuted,
+    consumption_confirmed: consumptionConfirmed
   };
 }
 
@@ -5135,7 +5484,10 @@ function ppirtvCheckOut(
     ...operationalContractMeta(),
     ready_definition: readyDefinition(),
     gate_final_output: gateFinalOutput(),
-    final_report_model: finalReportModel()
+    final_report_model: finalReportModel(),
+    default_workflow: defaultWorkflow(),
+    secret_env_consumption_policy: secretEnvConsumptionPolicy(),
+    early_security_proportionality_policy: earlySecurityProportionalityPolicy()
   };
   const utilityAccountability = utilityCheckoutAccountability({
     flow,
@@ -5165,11 +5517,13 @@ function ppirtvCheckOut(
     learning_accountability: learningAccountability,
     cooperation_accountability: cooperationAccountability,
     librarian_accountability: librarianAccountability,
+    work_progress: workProgressSummary(flow),
     loop_accountability: loopAccountability,
     contract_accountability: contractAccountability,
     ready_definition: contractAccountability.ready_definition,
     gate_final_output: contractAccountability.gate_final_output,
     final_report_model: contractAccountability.final_report_model,
+    default_workflow: contractAccountability.default_workflow,
     utility_accountability: utilityAccountability,
     prestacao_de_contas: {
       utilidade: utilityAccountability,
@@ -5664,6 +6018,7 @@ function memoryCheckoutAccountability(flow: Flow, memoryMining: MemoryMiningSumm
     memory_written: memoryMining.memory_written === true,
     memory_validated: memoryMining.memory_validated === true,
     memory_consolidated: memoryMining.memory_consolidated === true,
+    memory_review_status: memoryMining.memory_review_status ?? null,
     memory_post_write_validation: memoryMining.memory_post_write_validation ?? null,
     memory_required_but_empty: memoryMining.memory_required_but_empty === true,
     written,
@@ -5678,13 +6033,17 @@ function memoryCheckoutAccountability(flow: Flow, memoryMining: MemoryMiningSumm
     summary:
       memoryMining.memory_consolidated === true
         ? `memoria consolidada: L1=${layers.L1.length}, L2=${layers.L2.length}, L3=${layers.L3.length}`
+        : memoryMining.memory_review_status === "pending_consciencia_memorias"
+          ? `memoria gravada e validada estruturalmente; revisao consciencia-memorias pendente: L1=${layers.L1.length}, L2=${layers.L2.length}, L3=${layers.L3.length}`
         : memoryMining.written_count > 0
           ? `memoria gravada, aguardando/pendente de validacao: L1=${layers.L1.length}, L2=${layers.L2.length}, L3=${layers.L3.length}`
         : memoryMining.candidates_count > 0
           ? "memoria classificada sem escrita canonica neste checkout"
-          : memoryMining.required
-            ? "memoria exigida, mas nenhum candidato gravado/classificado"
-            : "memoria nao exigida neste flow"
+          : memoryMining.required && memoryMining.last_run_at
+            ? "mineracao executada; nenhum candidato de memoria encontrado"
+            : memoryMining.required
+              ? "memoria exigida, mas nenhum candidato gravado/classificado"
+              : "memoria nao exigida neste flow"
   };
 }
 
@@ -5773,18 +6132,100 @@ function suggestedCooperatorsForFlow(flow: Flow): Cooperator[] {
 }
 
 function librarianCheckoutAccountability(librarianStatus: StructuredLibrarianStatus): Record<string, unknown> {
-  const worked = librarianStatus.functional_tested === true;
-  const graphifyWorked = librarianStatus.graphify.functional_tested === true;
+  const worked = librarianStatus.consumption_confirmed === true;
+  const graphifyWorked = librarianStatus.graphify.consumption_confirmed === true;
   return {
     worked,
-    bibliotecario_worked: librarianStatus.bibliotecario.functional_tested,
+    recall_executed: librarianStatus.recall_executed,
+    consumption_confirmed: librarianStatus.consumption_confirmed,
+    bibliotecario_worked: librarianStatus.bibliotecario.consumption_confirmed,
+    bibliotecario_recall_executed: librarianStatus.bibliotecario.recall_executed,
     graphify_worked: graphifyWorked,
+    graphify_recall_executed: librarianStatus.graphify.recall_executed,
     status: librarianStatus,
     summary: worked
-      ? "Bibliotecario/Graphify tiveram participacao funcional testada"
-      : graphifyWorked
-        ? "Graphify teve participacao funcional; Bibliotecario nao confirmou recall funcional completo"
-        : `Bibliotecario/Graphify nao tiveram participacao funcional confirmada; graphify=${librarianStatus.graphify.status}, bibliotecario=${librarianStatus.bibliotecario.status}`
+      ? "Consumo de recall confirmado por referencias rastreaveis"
+      : librarianStatus.recall_executed
+        ? "Recall executado; consumo pelo executor ainda nao confirmado"
+        : `Recall nao executado; graphify=${librarianStatus.graphify.status}, bibliotecario=${librarianStatus.bibliotecario.status}`
+  };
+}
+
+function recallReferenceValues(items: Array<Record<string, unknown>>): string[] {
+  return unique(
+    items.flatMap((item) => [item.path, item.title, item.destination])
+      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      .map((item) => item.trim())
+  );
+}
+
+function recallReferenceSet(references: string[]): Set<string> {
+  return new Set(references.map(normalizeRecallReference));
+}
+
+function normalizeRecallReference(reference: string): string {
+  return reference.trim().replace(/\\/g, "/").toLowerCase();
+}
+
+function sameRecallReferences(left: string[], right: string[]): boolean {
+  const leftNormalized = unique(left.map(normalizeRecallReference)).sort();
+  const rightNormalized = unique(right.map(normalizeRecallReference)).sort();
+  return leftNormalized.length === rightNormalized.length && leftNormalized.every((item, index) => item === rightNormalized[index]);
+}
+
+function progressText(value: string, maxLength: number, field: string): string {
+  requireText(value, field);
+  return value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
+
+function validateProgressNumbers(current: number, total: number, status: WorkProgressStatus): void {
+  if (!Number.isInteger(total) || total <= 0) {
+    throw new Error("PROGRESS_TOTAL_INVALID: total must be a positive integer");
+  }
+  if (!Number.isInteger(current) || current < 0 || current > total) {
+    throw new Error("PROGRESS_CURRENT_INVALID: current must be an integer between zero and total");
+  }
+  if (status === "completed" && current !== total) {
+    throw new Error("PROGRESS_COMPLETED_INCOMPLETE: completed progress requires current=total");
+  }
+}
+
+function workProgressEvents(flow: Flow): WorkProgressEvent[] {
+  return flow.history
+    .filter((event) => event.type === "work_progress_recorded")
+    .map((event) => event.data as unknown as WorkProgressEvent)
+    .filter((event) =>
+      typeof event.progress_id === "string" &&
+      typeof event.event_key === "string" &&
+      typeof event.source === "string" &&
+      typeof event.operation === "string" &&
+      typeof event.stage === "string" &&
+      typeof event.current === "number" &&
+      typeof event.total === "number" &&
+      typeof event.percent === "number" &&
+      ["queued", "running", "completed", "failed"].includes(event.status)
+    );
+}
+
+function workProgressSummary(flow: Flow): WorkProgressSummary {
+  const events = workProgressEvents(flow);
+  return {
+    event_count: events.length,
+    operations_count: new Set(events.map((event) => `${event.source}\u0000${event.operation}`)).size,
+    last: events.at(-1) ?? null
+  };
+}
+
+function progressReceipt(
+  flow: Flow,
+  event: WorkProgressEvent | null,
+  outcome: { recorded: boolean; reused: boolean; throttled: boolean; reason: string }
+): Record<string, unknown> {
+  return {
+    flow_id: flow.flow_id,
+    ...outcome,
+    progress_event: event,
+    work_progress: workProgressSummary(flow)
   };
 }
 
@@ -5887,6 +6328,7 @@ function memoryMiningStatus(flow: Flow): MemoryMiningSummary {
       memory_written: false,
       memory_validated: false,
       memory_consolidated: false,
+      memory_review_status: "not_required",
       memory_post_write_validation: {
         required: false,
         status: "not_required",
