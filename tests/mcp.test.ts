@@ -404,7 +404,10 @@ describe("PPIRTV MCP stdio server", () => {
         kind: "code_review",
         title: "review fiscal",
         content: "review confirmou que provided.verdict nao substitui goal_verdict",
-        satisfies: ["review_required"]
+        satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+        observed_result: { diff_reviewed: true, reviewed_targets: ["Executar fluxo PPIRTV do SPT validado"], barata_scan: true, searched_patterns: ["verdict MCP neighbors"], findings: [], regression_risks: ["falso pronto MCP"] },
+        scope_classification: "target",
+        scope_reference: "Executar fluxo PPIRTV do SPT validado"
       }
     });
     const meeting = await client!.callTool({
@@ -816,6 +819,77 @@ describe("PPIRTV MCP stdio server", () => {
     });
     expect(checkoutResult).not.toHaveProperty("ppirtv_checkout");
     expect(JSON.stringify(checkoutResult).length).toBeLessThan(5120);
+  });
+
+  it("exposes read-only gate preflight and bounds complete compact mutation responses", async () => {
+    await connectClient();
+    const listed = await client!.listTools();
+    expect(listed.tools.map((tool) => tool.name)).toContain("goal_gate_preflight");
+    const workspace = path.join(tempRoot, "gate-preflight-workspace");
+    const sptPath = await writeFakeSpt(workspace, "Validar gate preflight MCP");
+    const started = await client!.callTool({
+      name: "goal_start",
+      arguments: {
+        workspace,
+        spt_path: sptPath,
+        objective: "Validar gate preflight MCP",
+        idempotency_key: "dex-code:mcp-gate-preflight",
+        evidence_required: false,
+        required_evidence: [],
+        requested_verdict_policy: "evidence_required",
+        source: "dex-code",
+        mode: "compact"
+      }
+    });
+    const flowId = resultOf(started).flow_id as string;
+    const evidenceResponse = await client!.callTool({
+      name: "evidence_add",
+      arguments: {
+        flow_id: flowId,
+        kind: "test_run",
+        title: "vitest estruturado",
+        content: "sete testes executados",
+        satisfies: ["test_executed"],
+        observed_result: { passed: 7, failed: 0, exit_code: 0 },
+        scope_classification: "target",
+        scope_reference: "Executar fluxo PPIRTV do SPT validado",
+        detail: "compact"
+      }
+    });
+    const before = resultOf(await client!.callTool({ name: "goal_status", arguments: { flow_id: flowId } }));
+    const preflightResponse = await client!.callTool({
+      name: "goal_gate_preflight",
+      arguments: { flow_id: flowId, phase: "revisao", detail: "compact" }
+    });
+    const after = resultOf(await client!.callTool({ name: "goal_status", arguments: { flow_id: flowId } }));
+    const advanceResponse = await client!.callTool({
+      name: "goal_advance",
+      arguments: {
+        flow_id: flowId,
+        detail: "compact",
+        provided: {
+          context: "ctx",
+          risks: ["baixo"],
+          scope_in: ["src"],
+          tasks: ["validar"],
+          done_criteria: ["passar"]
+        }
+      }
+    });
+    const preflight = resultOf(preflightResponse);
+    const evidenceReceipt = resultOf(evidenceResponse);
+    const advanceReceipt = resultOf(advanceResponse);
+
+    expect(preflight).toMatchObject({ flow_id: flowId, phase: "revisao", read_only: true, persisted: false });
+    expect(preflight.already_satisfied).toEqual(expect.arrayContaining(["test_executed", "evidence"]));
+    expect(preflight.missing).toEqual(expect.arrayContaining(["diff_reviewed", "barata_scan"]));
+    expect(after).toEqual(before);
+    expect(evidenceReceipt).toMatchObject({ action: "evidence_add", flow_id: flowId });
+    expect(evidenceReceipt).not.toHaveProperty("evidence");
+    expect(advanceReceipt).toMatchObject({ action: "goal_advance", flow_id: flowId, advanced: true });
+    expect(advanceReceipt).not.toHaveProperty("status_snapshot");
+    expect(JSON.stringify(evidenceResponse).length).toBeLessThanOrEqual(6144);
+    expect(JSON.stringify(advanceResponse).length).toBeLessThanOrEqual(6144);
   });
 
   it("returns valid recall references when goal_advance receives an unknown reference", async () => {

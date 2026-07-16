@@ -377,6 +377,10 @@ export type Evidence = {
   uri?: string;
   content?: string;
   note?: string;
+  satisfies?: string[];
+  observed_result?: Record<string, unknown>;
+  scope_classification?: "target" | "declared_dependency" | "outside";
+  scope_reference?: string;
   parking_lot: string[];
   gold_mining: string[];
   cooperators: Cooperator[];
@@ -549,48 +553,9 @@ export const DEFAULT_BACK_TO: Record<Phase, Phase | null> = {
   validacao: "teste"
 };
 
-export const GATE_REQUIREMENTS: Record<
-  Phase,
-  Array<{ key: string; label: string; source: "flow" | "provided" | "evidence" | "meeting" | "verdict" }>
-> = {
-  pensamentos: [
-    { key: "goal", label: "objetivo nomeado", source: "flow" },
-    { key: "context", label: "contexto minimo conhecido", source: "flow" },
-    { key: "risks", label: "risco principal nomeado", source: "flow" },
-    { key: "uncertainties", label: "incertezas marcadas como lacunas", source: "flow" }
-  ],
-  planejamento: [
-    { key: "scope_in", label: "escopo definido", source: "flow" },
-    { key: "scope_out", label: "fora do escopo definido", source: "flow" },
-    { key: "tasks", label: "tarefas ordenadas", source: "flow" },
-    { key: "expected_evidence", label: "evidencias esperadas definidas", source: "flow" },
-    { key: "done_criteria", label: "criterio de pronto definido", source: "flow" }
-  ],
-  implementacao: [
-    { key: "implementation_done", label: "mudanca executada ou bloqueio objetivo registrado", source: "provided" },
-    { key: "changed_files", label: "arquivos alterados registrados", source: "flow" }
-  ],
-  revisao: [
-    { key: "diff_reviewed", label: "diff revisado", source: "provided" },
-    { key: "barata_scan", label: "barata nunca esta sozinha aplicado", source: "provided" },
-    { key: "regression_risks", label: "riscos de regressao listados", source: "provided" }
-  ],
-  teste: [
-    { key: "test_executed", label: "teste real executado ou limitacao explicita", source: "provided" },
-    { key: "evidence", label: "evidencia anexada", source: "evidence" }
-  ],
-  validacao: [
-    { key: "verdict", label: "veredito registrado", source: "verdict" },
-    { key: "residual_risks", label: "risco residual registrado", source: "provided" },
-    { key: "next_step", label: "proximo passo definido", source: "provided" },
-    { key: "clean_house", label: "casa limpa confirmada", source: "provided" }
-  ]
-};
-
-// E (refactor SSOT): COMPACT_NEXT_PHASE, COMPACT_DEFAULT_BACK_TO e
-// COMPACT_GATE_REQUIREMENTS foram REMOVIDOS. Eram duplicacao de
-// COMPACT_PROFILE em phase-profile.ts sem nenhum consumidor. O SSOT
-// unico para configuracao de fases e phase-profile.ts via profileFor().
+// Gate requirements live exclusively in phase-profile.ts. Keeping a second
+// full-mode catalog here previously allowed the public template and runtime
+// gate semantics to drift.
 
 export const REQUIRED_TOOLS = [
   "flow_create",
@@ -611,6 +576,7 @@ export const REQUIRED_TOOLS = [
   "ppirtv_checkout",
   "goal_resume",
   "goal_gate_check",
+  "goal_gate_preflight",
   "goal_advance",
   "goal_progress_record",
   "goal_meeting_open",

@@ -348,6 +348,21 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
   );
 
   server.registerTool(
+    "goal_gate_preflight",
+    {
+      description: "Preview the exact GOAL gate requirements without persisting state, writing ledger events, incrementing counters or triggering recall.",
+      inputSchema: {
+        flow_id: z.string().optional(),
+        idempotency_key: z.string().optional(),
+        phase: z.enum(ANY_PHASES).optional(),
+        provided: z.record(z.unknown()).optional(),
+        detail: z.enum(["lean", "compact"]).optional()
+      }
+    },
+    async (args) => toolResponse(() => engine.goalGatePreflight(args), args)
+  );
+
+  server.registerTool(
     "goal_advance",
     {
       description: "Advance an official GOAL flow only after a real persisted gate passes. Status receipt defaults to lean; recall_consumption can explicitly confirm cited recall references.",
@@ -513,6 +528,9 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         content: z.string().optional(),
         note: z.string().optional(),
         satisfies: z.array(z.string()).optional(),
+        observed_result: z.record(z.unknown()).optional(),
+        scope_classification: z.enum(["target", "declared_dependency", "outside"]).optional(),
+        scope_reference: z.string().optional(),
         detail: z.enum(["lean", "compact", "full"]).optional()
       }
     },

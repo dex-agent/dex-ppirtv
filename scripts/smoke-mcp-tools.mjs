@@ -11,6 +11,7 @@ const REQUIRED_TOOLS = [
   "goal_status",
   "ppirtv_checkout",
   "goal_gate_check",
+  "goal_gate_preflight",
   "goal_progress_record",
   "goal_meeting_open",
   "goal_meeting_add_turn",
@@ -234,7 +235,17 @@ async function runFlowSmoke(client, workspaceRoot) {
   if (!flowId) {
     return { archived: false, error: "goal_start did not return flow_id" };
   }
+  const statusBeforePreflight = resultOf(await client.callTool({ name: "goal_status", arguments: { flow_id: flowId } }));
+  const preflight = resultOf(
+    await client.callTool({ name: "goal_gate_preflight", arguments: { flow_id: flowId } })
+  );
+  if (preflight.read_only !== true || preflight.persisted !== false) {
+    throw new Error("goal_gate_preflight violated its read-only receipt contract");
+  }
   const status = resultOf(await client.callTool({ name: "goal_status", arguments: { flow_id: flowId } }));
+  if (JSON.stringify(status) !== JSON.stringify(statusBeforePreflight)) {
+    throw new Error("goal_gate_preflight mutated the observable GOAL status");
+  }
   const checkout = resultOf(await client.callTool({ name: "ppirtv_checkout", arguments: { flow_id: flowId } }));
   await client.callTool({
     name: "flow_archive",
@@ -243,6 +254,11 @@ async function runFlowSmoke(client, workspaceRoot) {
   return {
     archived: true,
     flow_id: flowId,
+    preflight_runtime: {
+      read_only: preflight.read_only,
+      persisted: preflight.persisted,
+      missing: preflight.missing
+    },
     status_runtime: runtimeSummary(status),
     checkout_runtime: runtimeSummary(checkout)
   };

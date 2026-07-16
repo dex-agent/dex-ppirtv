@@ -1816,7 +1816,10 @@ describe("PPIRTV flow engine", () => {
       kind: "code_review",
       title: "Review do fluxo de validacao",
       content: "Review executado para isolar o requisito de veredito canonico.",
-      satisfies: ["review_required"]
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      observed_result: { diff_reviewed: true, reviewed_targets: ["docs/status.md"], barata_scan: true, searched_patterns: ["verdict neighbors"], findings: [], regression_risks: ["falso pronto por texto livre"] },
+      scope_classification: "target",
+      scope_reference: "docs/status.md"
     });
     const meeting = await engine.goalMeetingOpen({
       flow_id: flowId,
@@ -2466,6 +2469,222 @@ describe("PPIRTV flow engine", () => {
     expect(fullStatus.ppirtv_checkout).toBeDefined();
   });
 
+  it("T-GATE-EVIDENCE-RED reuses explicit structured review evidence without redeclaring provided fields", async () => {
+    const flow = await engine.createFlow({
+      goal: "Reutilizar evidencia estruturada no gate",
+      context: "Revisao ja executada e anexada",
+      risks: ["falso GREEN"],
+      uncertainties: ["nenhuma"],
+      scope: { in: ["resolver de gates"], out: ["recall policy"] }
+    });
+    flow.tasks = ["validar evidencia"];
+    flow.expected_evidence = ["review estruturado"];
+    flow.done_criteria = ["sem redeclaracao"];
+    flow.phase = "revisao";
+    await engine.store.saveFlow(flow);
+
+    await engine.addGoalEvidence({
+      flow_id: flow.flow_id,
+      kind: "code_review",
+      title: "Review estruturado",
+      content: "Review executado; detalhes no resultado observado.",
+      satisfies: ["diff_reviewed", "barata_scan"],
+      observed_result: {
+        diff_reviewed: true,
+        reviewed_targets: ["resolver de gates"],
+        barata_scan: true,
+        searched_patterns: ["consumidores vizinhos"],
+        findings: [],
+        regression_risks: []
+      },
+      scope_classification: "target",
+      scope_reference: "resolver de gates"
+    } as Parameters<FlowEngine["addGoalEvidence"]>[0]);
+
+    const gate = await engine.checkGate({ flow_id: flow.flow_id, phase: "revisao", persist: false });
+
+    expect(gate.missing).not.toContain("diff_reviewed");
+    expect(gate.missing).not.toContain("barata_scan");
+    expect(gate.missing).toContain("regression_risks");
+  });
+
+  it("loads legacy review evidence without granting it new structured gate authority", async () => {
+    const flow = await engine.createFlow({
+      goal: "Carregar evidencia legada",
+      context: "compatibilidade de leitura",
+      risks: ["autoridade retroativa"],
+      uncertainties: [],
+      scope: { in: ["src/flow-engine.ts"], out: [] }
+    });
+    flow.phase = "revisao";
+    flow.changed_files = ["src/flow-engine.ts"];
+    await engine.store.saveFlow(flow);
+    await engine.addGoalEvidence({
+      flow_id: flow.flow_id,
+      kind: "code_review",
+      title: "Review legado",
+      content: "texto livre historico",
+      satisfies: ["review_required"]
+    });
+
+    const restarted = new FlowEngine(engine.store);
+    const loaded = await restarted.store.loadFlow(flow.flow_id);
+    const gate = await restarted.checkGate({ flow_id: flow.flow_id, phase: "revisao", persist: false });
+
+    expect(loaded.evidence).toHaveLength(1);
+    expect(gate.missing).toEqual(expect.arrayContaining(["diff_reviewed", "barata_scan", "regression_risks"]));
+  });
+
+  it("T-GATE-PREFLIGHT is read-only and shares structured evidence resolution", async () => {
+    let recallCalls = 0;
+    const hooks: MemoryHookRunner = {
+      beforePhase: async ({ flow, phase }) => {
+        recallCalls += 1;
+        return {
+          flow_id: flow.flow_id,
+          phase,
+          recalled_at: new Date().toISOString(),
+          items: [],
+          warnings: [],
+          visual_status: { librarian: "empty", graphify: "disabled" }
+        };
+      },
+      afterPhase: async ({ flow, phase }) => ({
+        flow_id: flow.flow_id,
+        phase,
+        recorded_at: new Date().toISOString(),
+        candidates_count: 0,
+        parking_count: 0,
+        warnings: []
+      })
+    };
+    const preflightStore = new PpirtvStore(path.join(tempRoot, "preflight-runtime"));
+    const preflightEngine = new FlowEngine(preflightStore, hooks);
+    const workspace = path.join(tempRoot, "preflight-workspace");
+    const sptPath = await writeFakeSpt(workspace, "Preflight read only");
+    const started = await preflightEngine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Preflight read only",
+      idempotency_key: "dex-code:test-preflight-read-only",
+      evidence_required: false,
+      required_evidence: [],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "full"
+    });
+    const flowId = started.flow_id as string;
+    const flow = await preflightStore.loadFlow(flowId);
+    flow.phase = "teste";
+    await preflightStore.saveFlow(flow);
+    await preflightEngine.addGoalEvidence({
+      flow_id: flowId,
+      kind: "test_run",
+      title: "vitest",
+      content: "sete testes executados",
+      satisfies: ["test_executed"],
+      observed_result: { passed: 7, failed: 0, exit_code: 0 },
+      scope_classification: "target",
+      scope_reference: "Executar fluxo PPIRTV do SPT validado"
+    });
+    const beforeFlow = JSON.stringify(await preflightStore.loadFlow(flowId));
+    const beforeLedger = await readFile(preflightStore.ledgerPath, "utf8");
+    const beforeRecallCalls = recallCalls;
+
+    const preflight = await preflightEngine.goalGatePreflight({ flow_id: flowId, phase: "teste", detail: "compact" });
+
+    expect(preflight.already_satisfied).toEqual(expect.arrayContaining(["test_executed", "evidence"]));
+    expect(preflight.missing).not.toEqual(expect.arrayContaining(["test_executed"]));
+    expect(preflight).toMatchObject({ read_only: true, persisted: false });
+    const transientProvided = { test_executed: true };
+    const actionableCurrentPreflight = await preflightEngine.goalGatePreflight({
+      flow_id: flowId,
+      phase: "teste",
+      provided: transientProvided
+    });
+    expect(actionableCurrentPreflight.next_required_action).toEqual({
+      tool: "goal_advance",
+      provided: transientProvided
+    });
+    const futureValidation = await preflightEngine.goalGatePreflight({
+      flow_id: flowId,
+      phase: "validacao",
+      provided: { verdict: "texto nao canonico", residual_risks: ["nenhum"], next_step: "fechar", clean_house: true }
+    });
+    expect(futureValidation.missing).toContain("verdict");
+    expect(futureValidation.next_required_action).toEqual({
+      type: "preview_future_phase",
+      executable: false,
+      current_phase: "teste"
+    });
+    const futurePersistlessGate = await preflightEngine.checkGate({
+      flow_id: flowId,
+      phase: "validacao",
+      provided: { verdict: "texto nao canonico", residual_risks: ["nenhum"], next_step: "fechar", clean_house: true },
+      persist: false
+    });
+    expect(futurePersistlessGate.missing).toContain("verdict");
+    expect(JSON.stringify(await preflightStore.loadFlow(flowId))).toBe(beforeFlow);
+    expect(await readFile(preflightStore.ledgerPath, "utf8")).toBe(beforeLedger);
+    expect(recallCalls).toBe(beforeRecallCalls);
+  });
+
+  it("T-MUTATION-RECEIPT keeps compact evidence_add and goal_advance bounded without changing lean/full", async () => {
+    const workspace = path.join(tempRoot, "compact-mutation-receipt");
+    const sptPath = await writeFakeSpt(workspace, "Compact mutation receipt");
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Compact mutation receipt",
+      idempotency_key: "dex-code:test-compact-mutation-receipt",
+      evidence_required: false,
+      required_evidence: [],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "full"
+    });
+    const flowId = started.flow_id as string;
+
+    const evidenceReceipt = await engine.addGoalEvidence({
+      flow_id: flowId,
+      kind: "test_run",
+      title: "compact receipt",
+      content: "pass",
+      satisfies: ["test_executed"],
+      observed_result: { passed: 1, failed: 0, exit_code: 0 },
+      scope_classification: "target",
+      scope_reference: "Executar fluxo PPIRTV do SPT validado",
+      detail: "compact"
+    });
+    expect(evidenceReceipt).toMatchObject({ action: "evidence_add", flow_id: flowId, phase: "pensamentos" });
+    expect(evidenceReceipt).not.toHaveProperty("evidence");
+    expect(evidenceReceipt).not.toHaveProperty("status_snapshot");
+    expect(JSON.stringify(evidenceReceipt).length).toBeLessThanOrEqual(6144);
+
+    const receiptFlow = await engine.store.loadFlow(flowId);
+    receiptFlow.context = "";
+    receiptFlow.risks = [];
+    receiptFlow.uncertainties = [];
+    await engine.store.saveFlow(receiptFlow);
+
+    const advanceReceipt = await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { context: "ctx", risks: ["risk"], uncertainties: ["none"] },
+      detail: "compact"
+    });
+    expect(advanceReceipt).toMatchObject({ action: "goal_advance", flow_id: flowId, advanced: true, from: "pensamentos", phase: "planejamento" });
+    expect(advanceReceipt).not.toHaveProperty("gate");
+    expect(advanceReceipt).not.toHaveProperty("status_snapshot");
+    expect(advanceReceipt.cleared_blockers).toEqual(expect.arrayContaining(["context", "risks", "uncertainties"]));
+    expect(JSON.stringify(advanceReceipt).length).toBeLessThanOrEqual(6144);
+
+    const leanEvidence = await engine.addGoalEvidence({ flow_id: flowId, title: "legacy lean", content: "pass" });
+    const fullEvidence = await engine.addGoalEvidence({ flow_id: flowId, title: "legacy full", content: "pass", detail: "full" });
+    expect(leanEvidence).toHaveProperty("status");
+    expect(fullEvidence).toHaveProperty("status");
+    expect(fullEvidence).toHaveProperty("evidence");
+  });
+
   it("T-MC-A advance in compact flow follows concepcao->implementacao->revisao->validacao", async () => {
     const workspace = path.join(tempRoot, "mc-mode-compact-advance");
     const sptPath = await writeFakeSpt(workspace, "Avanco compact");
@@ -3067,10 +3286,13 @@ describe("PPIRTV flow engine", () => {
 
     await engine.addGoalEvidence({
       flow_id: flowId,
-      kind: "parecer_adversarial",
+      kind: "code_review",
       title: "Parecer adversarial dos artefatos finais",
       content: "Findings reais, riscos residuais e decisao de revisao foram registrados.",
-      satisfies: ["review_evidence_coherent"]
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      observed_result: { diff_reviewed: true, reviewed_targets: ["src/flow-engine.ts"], barata_scan: true, searched_patterns: ["review_required neighbors"], findings: [], regression_risks: ["risco de regressao"] },
+      scope_classification: "target",
+      scope_reference: "src/flow-engine.ts"
     });
     const resolved = await engine.goalGateCheck({
       flow_id: flowId,
@@ -3844,7 +4066,20 @@ describe("PPIRTV flow engine", () => {
       tool: "evidence_add",
       loop_guard: expect.stringContaining("nao abrir nova reuniao"),
       required_tool_sequence: expect.arrayContaining([
-        expect.objectContaining({ tool: "evidence_add" }),
+        expect.objectContaining({
+          tool: "evidence_add",
+          args: expect.objectContaining({
+            satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+            observed_result: expect.objectContaining({
+              reviewed_targets: ["src/flow-engine.ts"],
+              searched_patterns: expect.any(Array),
+              findings: expect.any(Array),
+              regression_risks: expect.any(Array)
+            }),
+            scope_classification: "target",
+            scope_reference: "src/flow-engine.ts"
+          })
+        }),
         expect.objectContaining({ tool: "goal_status" }),
         expect.objectContaining({ tool: "goal_verdict", only_if: expect.stringContaining("review_required") })
       ])
@@ -3858,7 +4093,10 @@ describe("PPIRTV flow engine", () => {
       kind: "code_review",
       title: "Revisao adversarial dos artefatos finais",
       content: "Review feito sobre src/flow-engine.ts. Achado: blocker antigo nao deve ser preservado apos evidencia. Decisao: liberar nova checagem.",
-      satisfies: ["review_required"],
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      observed_result: { diff_reviewed: true, reviewed_targets: ["src/flow-engine.ts"], barata_scan: true, searched_patterns: ["fiscal blocker neighbors"], findings: [], regression_risks: ["blocker fiscal stale"] },
+      scope_classification: "target",
+      scope_reference: "src/flow-engine.ts",
       detail: "full"
     });
     const evidenceStatus = evidenceResult.status as Record<string, unknown>;
@@ -3978,7 +4216,10 @@ describe("PPIRTV flow engine", () => {
       kind: "code_review",
       title: "Review explicito reseta loop antigo",
       content: "Review feito sobre src/flow-engine.ts. Achado real registrado; review_required nao deve continuar contando.",
-      satisfies: ["review_required"]
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      observed_result: { diff_reviewed: true, reviewed_targets: ["src/flow-engine.ts"], barata_scan: true, searched_patterns: ["loop fiscal neighbors"], findings: [], regression_risks: ["loop fiscal stale"] },
+      scope_classification: "target",
+      scope_reference: "src/flow-engine.ts"
     });
     const afterProgress = await engine.goalStatus({ flow_id: flowId });
     expect(afterProgress.blockers).not.toContain("review_required");
@@ -5030,6 +5271,88 @@ describe("PPIRTV flow engine", () => {
     });
     const vr = verdict.verdict as Record<string, unknown>;
     expect(vr.status).toBe("pronto");
+  });
+
+  it("path/proveniencia nao ativa memoria sem intencao semantica", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-path-l1-proveniencia-nao-ativa-memoria",
+      "Entrega concluida sem pendencias"
+    );
+    await engine.updateFlowFacts(flowId, { changed_files: ["src/l1-adapter.ts"] });
+    const statusBeforeReview = await engine.goalStatus({ flow_id: flowId });
+    expect(statusBeforeReview.blockers).not.toContain("memory_required_but_empty");
+    expect(statusBeforeReview.blockers).toContain("review_required");
+    await engine.addGoalEvidence({
+      flow_id: flowId,
+      kind: "code_review",
+      title: "Review da proveniencia",
+      content: "Path de arquivo revisado sem inferir intencao semantica.",
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      observed_result: {
+        diff_reviewed: true,
+        reviewed_targets: ["src/l1-adapter.ts"],
+        barata_scan: true,
+        searched_patterns: ["path provenance"],
+        findings: [],
+        regression_risks: ["falso blocker fiscal por path"]
+      },
+      scope_classification: "target",
+      scope_reference: "src/l1-adapter.ts"
+    });
+
+    const verdict = await engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto",
+      rationale: "Entrega concluida e validada.",
+      evidence_ids: [evidenceId],
+      next_step: "acompanhar somente se surgir nova falha"
+    });
+
+    expect(verdict.verdict).toMatchObject({ status: "pronto" });
+  });
+
+  it("contexto humano ainda ativa memoria por intencao semantica", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-contexto-humano-semantico",
+      "Entrega concluida sem pendencias"
+    );
+    const flow = await engine.store.loadFlow(flowId);
+    flow.context = "Consolidar memoria L1/L2 para evitar repeticao.";
+    await engine.store.saveFlow(flow);
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto",
+        rationale: "Entrega concluida e validada.",
+        evidence_ids: [evidenceId],
+        next_step: "acompanhar somente se surgir nova falha"
+      })
+    ).rejects.toThrow(/memory_required_but_empty/i);
+  });
+
+  it("blocker fiscal historico de memoria permanece ativo", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-blocker-fiscal-historico",
+      "Entrega concluida sem pendencias"
+    );
+    const flow = await engine.store.loadFlow(flowId);
+    flow.history.push({
+      at: new Date().toISOString(),
+      type: "fiscal_policy_blocked",
+      data: { memory_required: true, blocking_reasons: ["memory_required_but_empty"] }
+    });
+    await engine.store.saveFlow(flow);
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto",
+        rationale: "Entrega concluida e validada.",
+        evidence_ids: [evidenceId],
+        next_step: "acompanhar somente se surgir nova falha"
+      })
+    ).rejects.toThrow(/memory_required_but_empty/i);
   });
 
   it("T34c keeps pronto when next_step has a quando (trigger word)", async () => {

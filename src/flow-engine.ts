@@ -1,9 +1,6 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import {
-  DEFAULT_BACK_TO,
-  GATE_REQUIREMENTS,
-  NEXT_PHASE,
   PHASES,
   COMPACT_PHASES,
   type AnyPhase,
@@ -40,6 +37,7 @@ import {
   type WorkProgressStatus,
   type WorkProgressSummary
 } from "./domain.js";
+import { isStructuredReviewEvidence, resolveGateRequirements, type GateRequirementResolution } from "./gate-resolution.js";
 import {
   assertNoSecretLikeText,
   classifyMemoryCandidate,
@@ -70,7 +68,7 @@ import {
   type PrincipleChecklistItem
 } from "./principles.js";
 import { PpirtvStore, type RuntimeLayoutStatus } from "./store.js";
-import { profileFor } from "./phase-profile.js";
+import { profileFor, type GateRequirement } from "./phase-profile.js";
 import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured } from "./config.js";
 import { fingerprintSptV2Contract, parseSptV2Document } from "./spt-contract.js";
 
@@ -849,6 +847,44 @@ export class FlowEngine {
     };
   }
 
+  async goalGatePreflight(input: {
+    flow_id?: string;
+    idempotency_key?: string;
+    phase?: AnyPhase;
+    provided?: Record<string, unknown>;
+    detail?: "lean" | "compact";
+  }): Promise<Record<string, unknown>> {
+    const flow = await this.resolveGoalFlow(input);
+    assertGoalBinding(flow);
+    assertNoSecretLikePayload(input.provided, "provided");
+    const phase = input.phase ?? flow.phase;
+    assertPhase(phase);
+    const persistedProvided = (flow.gates[phase]?.provided ?? {}) as Record<string, unknown>;
+    const effectiveProvided = { ...persistedProvided, ...(input.provided ?? {}) };
+    const snapshot = this.resolveGateSnapshot(flow, phase, effectiveProvided);
+    const evidenceCandidates = unique(snapshot.requirements.flatMap((item) => item.evidence_ids));
+    return {
+      flow_id: flow.flow_id,
+      phase,
+      status: snapshot.missing.length === 0 ? "passed" : "blocked",
+      required: snapshot.requirements.map((item) => ({
+        key: item.key,
+        label: item.label,
+        accepted_sources: item.accepted_sources
+      })),
+      already_satisfied: snapshot.requirements.filter((item) => item.satisfied).map((item) => item.key),
+      missing: snapshot.missing,
+      evidence_candidates: evidenceCandidates,
+      next_required_action: phase !== flow.phase
+        ? { type: "preview_future_phase", executable: false, current_phase: flow.phase }
+        : snapshot.missing.length === 0
+          ? { tool: "goal_advance", provided: input.provided ?? {} }
+          : { tool: "goal_advance", missing: snapshot.missing },
+      read_only: true,
+      persisted: false
+    };
+  }
+
   async goalAdvance(input: {
     flow_id?: string;
     idempotency_key?: string;
@@ -863,6 +899,11 @@ export class FlowEngine {
     const recallConsumption = input.recall_consumption
       ? await this.confirmRecallConsumption(flow, input.recall_consumption, "dex-code")
       : null;
+    const beforeSnapshot = this.resolveGateSnapshot(
+      flow,
+      flow.phase,
+      (flow.gates[flow.phase]?.provided ?? {}) as Record<string, unknown>
+    );
     const savedGate = flow.gates[flow.phase];
     const shouldReuseSavedGate =
       !input.provided &&
@@ -881,6 +922,14 @@ export class FlowEngine {
           persist: true
         });
     if (gate.status === "blocked") {
+      if (input.detail === "compact") {
+        const fresh = await this.store.loadFlow(flow.flow_id);
+        return this.compactMutationReceipt(fresh, {
+          action: "goal_advance",
+          advanced: false,
+          before_missing: beforeSnapshot.missing
+        });
+      }
       return {
         ...gate,
         advanced: false,
@@ -894,6 +943,15 @@ export class FlowEngine {
       evidence_ids: input.evidence_ids,
       actor: "dex-code"
     });
+    if (input.detail === "compact") {
+      const fresh = await this.store.loadFlow(flow.flow_id);
+      return this.compactMutationReceipt(fresh, {
+        action: "goal_advance",
+        advanced: true,
+        from: flow.phase,
+        before_missing: beforeSnapshot.missing
+      });
+    }
     return {
       ...advanced,
       gate,
@@ -1482,6 +1540,9 @@ export class FlowEngine {
     content?: string;
     note?: string;
     satisfies?: string[];
+    observed_result?: Record<string, unknown>;
+    scope_classification?: "target" | "declared_dependency" | "outside";
+    scope_reference?: string;
     detail?: "lean" | "compact" | "full";
   }): Promise<Record<string, unknown>> {
     requireText(input.flow_id, "flow_id");
@@ -1489,7 +1550,14 @@ export class FlowEngine {
     assertNoSecretLikeText(input.uri, "uri");
     assertNoSecretLikeText(input.content, "content");
     assertNoSecretLikeText(input.note, "note");
+    assertNoSecretLikeText(input.scope_reference, "scope_reference");
+    assertNoSecretLikePayload(input.observed_result, "observed_result");
     const flow = await this.store.loadFlow(input.flow_id);
+    const beforeSnapshot = this.resolveGateSnapshot(
+      flow,
+      flow.phase,
+      (flow.gates[flow.phase]?.provided ?? {}) as Record<string, unknown>
+    );
     const evidence = await this.attachEvidence({
       flow_id: input.flow_id,
       kind: input.kind ?? "goal_evidence",
@@ -1497,8 +1565,20 @@ export class FlowEngine {
       uri: input.uri,
       content: input.content,
       note: mergeEvidenceNotes(input.note, goalEvidenceMetadataNote(flow, input)),
+      satisfies: input.satisfies,
+      observed_result: input.observed_result,
+      scope_classification: input.scope_classification,
+      scope_reference: input.scope_reference,
       gold_mining: input.satisfies?.map((item) => `evidence_required:${item}`) ?? []
     });
+    if (input.detail === "compact") {
+      const fresh = await this.store.loadFlow(input.flow_id);
+      return this.compactMutationReceipt(fresh, {
+        action: "evidence_add",
+        evidence_id: evidence.evidence_id,
+        before_missing: beforeSnapshot.missing
+      });
+    }
     return {
       evidence_id: evidence.evidence_id,
       evidence,
@@ -1690,9 +1770,9 @@ export class FlowEngine {
     const phase = input.phase ?? flow.phase;
     assertPhase(phase);
     const provided = input.provided ?? {};
-    if (phase === "implementacao") {
-      flow.changed_files = unique([...flow.changed_files, ...stringArray(provided.changed_files)]);
-    }
+    const changedFiles = phase === "implementacao"
+      ? unique([...flow.changed_files, ...stringArray(provided.changed_files)])
+      : flow.changed_files;
     // BUG 3 (pragmatic DRY): requisitos source=provided (ex.: implementation_done)
     // precisam persistir entre chamadas de goal_gate_check. O registro anterior
     // da fase ja esta em flow.gates[phase].provided; fazemos merge aditivo para
@@ -1704,17 +1784,10 @@ export class FlowEngine {
     // Patch C (modo compact wire-up): usar profileFor(flow.mode) para decidir
     // gates e transicoes. Default cai em FULL_PROFILE quando flow.mode e'
     // undefined ou desconhecido.
+    const flowForResolution = changedFiles === flow.changed_files ? flow : { ...flow, changed_files: changedFiles };
     const profile = profileFor(flow.mode);
-    const gateRequirements = profile.gateRequirements[phase] ?? [];
-    const missing = gateRequirements
-      .filter((requirement) => !hasRequirement(flow, requirement.key, requirement.source, effectiveProvided))
-      .map((requirement) => requirement.key);
-    if (needsReviewCoherence(flow, phase, provided)) {
-      missing.push("review_evidence_coherent");
-    }
-    if (missing.length === 0) {
-      missing.push(...evaluateFiscalPolicy(flow).blocking_reasons);
-    }
+    const snapshot = this.resolveGateSnapshot(flowForResolution, phase, effectiveProvided);
+    const missing = snapshot.missing;
     const status = missing.length === 0 ? "passed" : "blocked";
     const record: GateRecord = {
       phase,
@@ -1726,6 +1799,7 @@ export class FlowEngine {
       back_to: status === "passed" ? null : (profile.defaultBackTo[phase] as Phase | null)
     };
     if (input.persist ?? true) {
+      flow.changed_files = changedFiles;
       flow.gates[phase] = record;
       flow.status = status === "blocked" ? "blocked" : flow.status === "blocked" ? "active" : flow.status;
       flow.updated_at = record.checked_at;
@@ -1739,6 +1813,60 @@ export class FlowEngine {
       presented.loop_monitor = loopMonitor;
     }
     return presented;
+  }
+
+  private resolveGateSnapshot(
+    flow: Flow,
+    phase: AnyPhase,
+    provided: Record<string, unknown>
+  ): { requirements: GateRequirementResolution[]; missing: string[] } {
+    const requirements = resolveGateRequirements({
+      flow,
+      requirements: profileFor(flow.mode).gateRequirements[phase] ?? [],
+      provided,
+      canonicalVerdictRequired: officialGoalNeedsCanonicalVerdict(flow, phase)
+    });
+    const missing = requirements.filter((item) => !item.satisfied).map((item) => item.key);
+    if (needsReviewCoherence(flow, phase, provided)) {
+      missing.push("review_evidence_coherent");
+    }
+    if (missing.length === 0) {
+      missing.push(...evaluateFiscalPolicy(flow).blocking_reasons);
+    }
+    return { requirements, missing: unique(missing) };
+  }
+
+  private compactMutationReceipt(
+    flow: Flow,
+    input: {
+      action: "evidence_add" | "goal_advance";
+      evidence_id?: string;
+      advanced?: boolean;
+      from?: AnyPhase;
+      before_missing: string[];
+    }
+  ): Record<string, unknown> {
+    const snapshot = this.resolveGateSnapshot(
+      flow,
+      flow.phase,
+      (flow.gates[flow.phase]?.provided ?? {}) as Record<string, unknown>
+    );
+    const remainingBlockers = snapshot.missing;
+    return {
+      action: input.action,
+      flow_id: flow.flow_id,
+      ...(input.evidence_id ? { evidence_id: input.evidence_id } : {}),
+      ...(input.from ? { from: input.from } : {}),
+      phase: flow.phase,
+      status: effectiveFlowStatus(flow, remainingBlockers),
+      ...(typeof input.advanced === "boolean" ? { advanced: input.advanced } : {}),
+      satisfied: snapshot.requirements.filter((item) => item.satisfied).map((item) => item.key),
+      cleared_blockers: input.before_missing.filter((item) => !remainingBlockers.includes(item)),
+      remaining_blockers: remainingBlockers,
+      next_step: remainingBlockers.length === 0
+        ? `advance_to_${profileFor(flow.mode).nextPhase[flow.phase] ?? "complete"}`
+        : `complete_gate_${flow.phase}`
+    };
   }
 
   async advance(input: {
@@ -2300,6 +2428,10 @@ export class FlowEngine {
     uri?: string;
     content?: string;
     note?: string;
+    satisfies?: string[];
+    observed_result?: Record<string, unknown>;
+    scope_classification?: "target" | "declared_dependency" | "outside";
+    scope_reference?: string;
     parking_lot?: string[];
     gold_mining?: string[];
     cooperators?: Flow["cooperators"];
@@ -2316,6 +2448,10 @@ export class FlowEngine {
       uri: input.uri,
       content: input.content,
       note: input.note,
+      satisfies: input.satisfies,
+      observed_result: input.observed_result,
+      scope_classification: input.scope_classification,
+      scope_reference: input.scope_reference,
       parking_lot: input.parking_lot ?? [],
       gold_mining: input.gold_mining ?? [],
       cooperators: input.cooperators ?? [],
@@ -3332,47 +3468,17 @@ async function scanTrashWithoutGarimpoGate(root: string, store: PpirtvStore): Pr
   ];
 }
 
-function hasRequirement(flow: Flow, key: string, source: string, provided: Record<string, unknown>): boolean {
-  if (source === "provided") {
-    return truthy(provided[key]);
-  }
-  if (source === "evidence") {
-    return flow.evidence.length > 0 || truthy(provided[key]);
-  }
-  if (source === "verdict") {
-    if (officialGoalNeedsCanonicalVerdict(flow)) {
-      return false;
-    }
-    return flow.verdicts.length > 0 || truthy(provided[key]);
-  }
-  switch (key) {
-    case "goal":
-      return truthy(flow.goal);
-    case "context":
-      return truthy(flow.context) || truthy(provided.context);
-    case "risks":
-      return flow.risks.length > 0 || truthy(provided.risks);
-    case "uncertainties":
-      return flow.uncertainties.length > 0 || truthy(provided.uncertainties);
-    case "scope_in":
-      return flow.scope.in.length > 0 || truthy(provided.scope_in);
-    case "scope_out":
-      return flow.scope.out.length > 0 || truthy(provided.scope_out);
-    case "tasks":
-      return flow.tasks.length > 0 || truthy(provided.tasks);
-    case "expected_evidence":
-      return flow.expected_evidence.length > 0 || truthy(provided.expected_evidence);
-    case "done_criteria":
-      return flow.done_criteria.length > 0 || truthy(provided.done_criteria);
-    case "changed_files":
-      return flow.changed_files.length > 0 || truthy(provided.changed_files);
-    default:
-      return truthy(provided[key]);
-  }
+function hasRequirement(flow: Flow, key: string, source: GateRequirement["source"], provided: Record<string, unknown>): boolean {
+  return resolveGateRequirements({
+    flow,
+    requirements: [{ key, label: key, source }],
+    provided,
+    canonicalVerdictRequired: officialGoalNeedsCanonicalVerdict(flow)
+  })[0]?.satisfied === true;
 }
 
-function officialGoalNeedsCanonicalVerdict(flow: Flow): boolean {
-  return Boolean(flow.goal_binding && flow.phase === "validacao" && flow.verdicts.length === 0);
+function officialGoalNeedsCanonicalVerdict(flow: Flow, phase: AnyPhase = flow.phase): boolean {
+  return Boolean(flow.goal_binding && phase === "validacao" && flow.verdicts.length === 0);
 }
 
 function evaluateFiscalPolicy(flow: Flow, input: FiscalVerdictInput = {}): FiscalPolicyResult {
@@ -3543,6 +3649,30 @@ function fiscalText(flow: Flow, input: FiscalVerdictInput): string {
     .join("\n");
 }
 
+function memoryIntentText(flow: Flow, input: FiscalVerdictInput): string {
+  const envelope = flow.goal_binding?.envelope;
+  const generatedProvenanceContext = envelope
+    ? `GOAL/SPT via dex-code. Workspace: ${envelope.workspace}. SPT: ${envelope.spt_path}.`
+    : null;
+  const semanticContext = flow.context === generatedProvenanceContext ? "" : flow.context;
+
+  return [
+    flow.goal,
+    semanticContext,
+    ...flow.risks,
+    ...flow.uncertainties,
+    ...flow.tasks,
+    ...flow.expected_evidence,
+    ...flow.done_criteria,
+    input.rationale,
+    input.next_step,
+    ...(input.residual_risks ?? []),
+    ...(input.review_findings ?? [])
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 function materialRiskText(text: string): boolean {
   return /(risco material|risco de produto|regress|erro recorrente|falh|bloque|sem reuniao|sem reunião|sem revisor|sem memoria|sem memória|bibliotecario|bibliotecário|graphify|hygiene|codigo|código|mudanca de codigo|mudança de código|principios|princípios)/i.test(text);
 }
@@ -3665,7 +3795,7 @@ function memoryRequiredByFlow(flow: Flow, input: FiscalVerdictInput = {}): boole
         event.type === "fiscal_policy_blocked" &&
         (event.data.memory_required === true || stringArray(event.data.blocking_reasons).includes("memory_required_but_empty"))
     ) ||
-    /(memoria|memória|L1|L2|L3|lembranca|lembrança|aprendizado reutilizavel|aprendizado reutilizável|garimpo|pepita)/i.test(fiscalText(flow, input))
+    /(memoria|memória|\bL[123]\b|lembranca|lembrança|aprendizado reutilizavel|aprendizado reutilizável|garimpo|pepita)/i.test(memoryIntentText(flow, input))
   );
 }
 
@@ -3751,13 +3881,8 @@ function hasReviewEvidence(flow: Flow, input: FiscalVerdictInput): boolean {
   return (
     truthy(input.review_artifact_path) ||
     truthy(input.review_findings) ||
-    hasEvidenceSatisfying(flow, "review_required") ||
-    flow.evidence.some((evidence) => /review|revisor|diff/i.test([evidence.kind, evidence.title, evidence.note, evidence.content].filter(Boolean).join("\n")))
+    flow.evidence.some((evidence) => isStructuredReviewEvidence(flow, evidence))
   );
-}
-
-function hasEvidenceSatisfying(flow: Flow, key: string): boolean {
-  return flow.evidence.some((evidence) => evidence.gold_mining.includes(`evidence_required:${key}`));
 }
 
 function hasMaterialMeeting(flow: Flow): boolean {
@@ -3982,8 +4107,7 @@ function needsReviewCoherence(flow: Flow, phase: AnyPhase, provided: Record<stri
     truthy(provided.diff_reviewed) &&
     !truthy(provided.review_artifact_path) &&
     !truthy(provided.review_findings) &&
-    !hasReviewEvidence(flow, {}) &&
-    !hasEvidenceSatisfying(flow, "review_evidence_coherent")
+    !hasReviewEvidence(flow, {})
   );
 }
 
@@ -4999,6 +5123,7 @@ function cooperatorSkillResolution(workspace: string, skill: string, role: strin
 }
 
 function reviewRequiredSequence(flow: Flow): Array<Record<string, unknown>> {
+  const scopeReference = flow.changed_files[0] ?? flow.scope.in[0] ?? "<required:exact scope.in or changed_files reference>";
   return [
     {
       order: 1,
@@ -5010,7 +5135,18 @@ function reviewRequiredSequence(flow: Flow): Array<Record<string, unknown>> {
         title: "Revisao adversarial do SPT / artefatos finais",
         content:
           "Escopo revisado: <arquivos/artefatos>. Achados: <lista real>. Riscos: <risco residual>. Decisao: <bloquear/liberar com ressalva>.",
-        satisfies: ["review_required"]
+        satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+        observed_result: {
+          diff_reviewed: true,
+          reviewed_targets: [scopeReference],
+          barata_scan: true,
+          searched_patterns: ["<required:padroes ou consumidores vizinhos realmente pesquisados>"],
+          findings: [],
+          regression_risks: []
+        },
+        scope_classification: "target",
+        scope_reference: scopeReference,
+        operator_must_replace: ["content", "observed_result.searched_patterns", "observed_result.findings", "observed_result.regression_risks"]
       },
       capture: "review_evidence_id"
     },

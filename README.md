@@ -15,6 +15,10 @@ Pensamentos -> Planejamento -> Implementacao -> Revisao -> Teste -> Validacao
 The server does not replace engineering judgment. It gives agents and local
 clients a structured way to keep work visible, resumable and evidence based.
 
+Long-running producers may publish bounded progress with
+`goal_progress_record`. Progress is visual telemetry and never substitutes for
+evidence or a passing gate.
+
 ## Status
 
 This package currently provides:
@@ -310,6 +314,7 @@ Official GOAL/SPT tools:
 - `ppirtv_checkout`
 - `goal_resume`
 - `goal_gate_check`
+- `goal_gate_preflight`
 - `goal_advance`
 - `goal_progress_record`
 - `goal_meeting_open`
@@ -348,15 +353,17 @@ V1 heading-based trails must be regenerated or migrated before execution.
    `goal_meeting_add_turn` and `goal_meeting_close` when a real decision, risk
    or ambiguity exists.
 5. Check gates with `goal_gate_check`.
-6. Advance with `goal_advance`.
-7. For long work, publish bounded structured progress with
+6. Preview the same gate resolution without persistence with
+   `goal_gate_preflight` when a read-only diagnosis is useful.
+7. Advance with `goal_advance`.
+8. For long work, publish bounded structured progress with
    `goal_progress_record`; progress is visual telemetry, not evidence.
-8. Attach evidence with `evidence_add`.
-9. Run `mm_memory_mining` when there is learning material to classify.
-10. If strong candidates remain without destination, resolve them with
+9. Attach evidence with `evidence_add`.
+10. Run `mm_memory_mining` when there is learning material to classify.
+11. If strong candidates remain without destination, resolve them with
    `mm_memory_candidate_resolve`.
-11. Close with `goal_verdict`.
-12. Inspect `ppirtv_checkout` before considering the flow fully closed.
+12. Close with `goal_verdict`.
+13. Inspect `ppirtv_checkout` before considering the flow fully closed.
 
 ### End-to-end lean contract
 
@@ -372,6 +379,26 @@ default to `detail: "lean"`, including existing `full` flows, and
 actionable fields and counts by default. `checklist_render` defaults to
 `detail: "visual-only"`; principles and complete governance arrays require
 `detail: "full"`.
+
+`goal_gate_preflight` is the read-only view of the same requirement resolver
+used by `goal_gate_check`: it does not persist a gate, append ledger events,
+trigger recall or mutate counters. In this first cut, structured evidence may
+satisfy only `diff_reviewed`, `barata_scan`, `regression_risks` and
+`test_executed`. The evidence must declare the exact requirement in
+`satisfies`, carry a coherent `observed_result` and use an allowed `kind`.
+`scope_classification: "target"` requires an exact `scope_reference` already in
+the flow's `scope.in` or `changed_files`; a `declared_dependency` is accepted
+only when its exact reference was declared in `scope.in`; `outside` never
+satisfies a local gate. Review results name reviewed targets and neighboring
+patterns searched, while test results carry non-negative passed/failed counts
+and a zero exit code. Free text and legacy evidence do not become authority.
+
+Mutation receipts are also opt-in in this cut. Calling `evidence_add` or
+`goal_advance` with `detail: "compact"` returns a bounded receipt with the
+action, satisfied requirements, cleared/remaining blockers and next step,
+without nesting the complete evidence, checkout, history, meetings or memory.
+Omitted detail, `detail: "lean"` and `detail: "full"` preserve their existing
+response shapes for compatibility.
 
 Omitting `mode` on an idempotent retry preserves the already persisted profile;
 it does not migrate a live legacy flow. After evidence is written, the returned

@@ -1,5 +1,6 @@
 import type { FlowEngine } from "./flow-engine.js";
-import { GATE_REQUIREMENTS, REQUIRED_PROMPTS, REQUIRED_RESOURCES, REQUIRED_TOOLS, type MeetingType } from "./domain.js";
+import { REQUIRED_PROMPTS, REQUIRED_RESOURCES, REQUIRED_TOOLS, type MeetingType } from "./domain.js";
+import { FULL_PROFILE } from "./phase-profile.js";
 import { finalReportModel, gateFinalOutput, operationalTrashDefinition, promptGuidance, readyDefinition } from "./principles.js";
 
 export const TOOL_NAMES = [...REQUIRED_TOOLS];
@@ -8,7 +9,7 @@ export const RESOURCE_URIS = [...REQUIRED_RESOURCES];
 
 export function gatesTemplate(): Record<string, unknown> {
   return Object.fromEntries(
-    Object.entries(GATE_REQUIREMENTS).map(([phase, requirements]) => [
+    Object.entries(FULL_PROFILE.gateRequirements).map(([phase, requirements]) => [
       phase,
       requirements.map((requirement) => ({
         key: requirement.key,
