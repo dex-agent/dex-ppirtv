@@ -4029,7 +4029,7 @@ describe("PPIRTV flow engine", () => {
     );
   });
 
-  it("T25b reconciles review_required after explicit code review evidence without opening another meeting", async () => {
+  it("T25b reconciles stale review_required in full and lean after explicit code review evidence", async () => {
     const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-review-required-reconcile", "Review fiscal explicito");
     await engine.updateFlowFacts(flowId, { changed_files: ["src/flow-engine.ts"] });
     const opened = await engine.goalMeetingOpen({
@@ -4058,6 +4058,13 @@ describe("PPIRTV flow engine", () => {
         next_step: "anexar review"
       })
     ).rejects.toThrow(/review_required/i);
+
+    const persistedGate = await engine.goalGateCheck({
+      flow_id: flowId,
+      phase: "pensamentos",
+      persist: true
+    });
+    expect(persistedGate.missing).toContain("review_required");
 
     const blocked = await engine.goalStatus({ flow_id: flowId });
     expect(blocked.blockers).toContain("review_required");
@@ -4108,8 +4115,12 @@ describe("PPIRTV flow engine", () => {
     expect(nestedCheckout.status).toBe(evidenceStatus.status);
 
     const resolved = await engine.goalStatus({ flow_id: flowId });
+    const resolvedLean = await engine.goalStatus({ flow_id: flowId, detail: "lean" });
 
     expect(resolved.blockers).not.toContain("review_required");
+    expect(resolvedLean.blockers).toEqual(resolved.blockers);
+    expect(resolvedLean.blockers).not.toContain("review_required");
+    expect(resolvedLean.gate_missing).not.toContain("review_required");
     expect(resolved.next_required_action).not.toMatchObject({ type: "attach_review" });
     expect(resolved.ppirtv_checkout).toMatchObject({
       resolution_guidance: resolved.blockers.length > 0 ? expect.any(Object) : null

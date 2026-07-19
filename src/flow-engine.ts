@@ -530,10 +530,16 @@ export class FlowEngine {
       const fiscal = evaluateFiscalPolicy(flow);
       const persistedFiscal = latestFiscalBlock(flow);
       const meetings = await this.store.listMeetings(flow.flow_id);
-      const blockers: string[] = gate?.missing ?? [];
-      const reconciledBlockersList = reconciledBlockers(flow, [...fiscal.blocking_reasons, ...persistedFiscal.blocking_reasons]);
-      const baseBlockers = blockers.length > 0 ? blockers : reconciledBlockersList;
-      const allBlockers = blockers.length === 0 && requiredCooperationNeedsMeetingIdRetry(flow, meetings)
+      const gateBlockers = flow.status === "complete" || flow.status === "archived" || gate?.status !== "blocked"
+        ? []
+        : gate.missing;
+      const reconciledGateBlockers = reconciledBlockers(flow, gateBlockers);
+      const baseBlockers = reconciledBlockers(flow, [
+        ...gateBlockers,
+        ...fiscal.blocking_reasons,
+        ...persistedFiscal.blocking_reasons
+      ]);
+      const allBlockers = reconciledGateBlockers.length === 0 && requiredCooperationNeedsMeetingIdRetry(flow, meetings)
         ? unique([...baseBlockers, "required_cooperation"])
         : baseBlockers;
       const meetingRequired = allBlockers.includes("required_cooperation");
@@ -584,7 +590,7 @@ export class FlowEngine {
         blockers: allBlockers,
         next_step: next,
         gate_status: gate?.status ?? "unchecked",
-        gate_missing: gate?.missing ?? [],
+        gate_missing: reconciledGateBlockers,
         goal: flow.goal,
         goal_envelope: flow.goal_binding?.envelope ?? null,
         // Campos acionaveis de blocker (BUG-LEAN-01+02): pequenos em bytes
