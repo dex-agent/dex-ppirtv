@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -41,6 +41,14 @@ describe("PPIRTV MCP stdio server", () => {
     expect(flowCreateTool?.description).toContain("spt_validate then goal_start");
     expect(flowCreateProperties?.detail?.enum).toEqual(["lean", "full"]);
     expect(flowCreateProperties?.mode).toBeUndefined();
+    const memoryMiningTool = tools.tools.find((tool) => tool.name === "mm_memory_mining");
+    const memoryMiningProperties = (memoryMiningTool?.inputSchema as { properties?: Record<string, Record<string, unknown>> }).properties;
+    expect(memoryMiningTool?.description).toContain("ordinary call needs only flow_id");
+    expect(memoryMiningTool?.description).toContain("v2_* fields are advanced overrides");
+    expect(memoryMiningProperties?.v2_destinations).toMatchObject({ type: "array", minItems: 1, maxItems: 2 });
+    expect(memoryMiningProperties?.v2_density?.enum).toEqual(["light", "deep"]);
+    expect(memoryMiningProperties?.v2_owner_skill?.type).toBe("string");
+    expect(memoryMiningProperties?.v2_tags).toMatchObject({ type: "array", minItems: 1 });
     expect(resources.resources.map((resource) => resource.uri)).toEqual([
       "ppirtv://flows",
       "ppirtv://templates/gates",
@@ -1282,6 +1290,70 @@ describe("PPIRTV MCP stdio server", () => {
     expect(memoria).toContain("Delphi DUnitX standalone");
   });
 
+  it.runIf(Boolean(process.env.PPIRTV_TEST_DEX_MEMORIA_CANONICAL_ROOT && process.env.PPIRTV_TEST_DEX_MEMORIA_V2_ENTRYPOINT))(
+    "writes an explicit everyday V2 project memory on the first clean MCP call without internal directives",
+    async () => {
+      const workspace = path.join(tempRoot, "mcp-workspace");
+      await connectClient({
+        PPIRTV_MEMORY_WRITER_PROFILE: "v2",
+        PPIRTV_WORKSPACE: workspace,
+        PPIRTV_DEX_MEMORIA_CANONICAL_ROOT: process.env.PPIRTV_TEST_DEX_MEMORIA_CANONICAL_ROOT!,
+        PPIRTV_DEX_MEMORIA_V2_ENTRYPOINT: process.env.PPIRTV_TEST_DEX_MEMORIA_V2_ENTRYPOINT!
+      });
+      const sptPath = await writeFakeSpt(mcpWorkspace, "Gravar aprendizado local cotidiano pela Memória V2");
+      const started = await client!.callTool({
+        name: "goal_start",
+        arguments: {
+          workspace: mcpWorkspace,
+          spt_path: sptPath,
+          objective: "Gravar aprendizado local cotidiano pela Memória V2",
+          idempotency_key: "ppirtv:mcp-v2-everyday-first-attempt-001",
+          evidence_required: true,
+          required_evidence: ["mcp-clean-first-attempt"],
+          requested_verdict_policy: "evidence_required",
+          source: "mcp-clean-test"
+        }
+      });
+      const flowId = resultOf(started).flow_id as string;
+      const opened = await client!.callTool({
+        name: "goal_meeting_open",
+        arguments: { flow_id: flowId, type: "divergent", question: "Qual aprendizado confirmado precisa ser lembrado?" }
+      });
+      await client!.callTool({
+        name: "goal_meeting_close",
+        arguments: {
+          flow_id: flowId,
+          meeting_id: resultOf(opened).meeting_id,
+          participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+          decision: "Memória local deste projeto: sempre confirmar o workspace antes da escrita.",
+          satisfies_blockers: ["required_cooperation"]
+        }
+      });
+
+      const mined = await client!.callTool({ name: "mm_memory_mining", arguments: { flow_id: flowId } });
+      const result = resultOf(mined);
+      const written = result.written as Array<{ candidate_id: string; files: string[] }>;
+
+      expect((mined as { isError?: boolean }).isError, JSON.stringify(mined)).not.toBe(true);
+      expect(result).toMatchObject({
+        memory_profile: "v2",
+        v2_status: "complete",
+        blocked_verdict: false,
+        unclassified: 0,
+        written_count: 1,
+        candidates: [{ destinations: [{ scope: "project" }] }],
+        v2_receipts: [{ implementation_version: "v2", status: "COMMITTED" }]
+      });
+      expect(written).toHaveLength(1);
+      expect(written[0]!.files).toHaveLength(2);
+      for (const file of written[0]!.files) {
+        expect(path.relative(path.join(mcpWorkspace, ".agents"), file)).not.toMatch(/^\.\.(?:[\\/]|$)/);
+        await expect(access(file)).resolves.toBeUndefined();
+      }
+    },
+    30_000
+  );
+
   it("does not ask MCP clients to resolve candidate_ids after empty auto_write memory mining", async () => {
     await connectClient();
     const workspace = path.join(tempRoot, "empty-memory-workspace");
@@ -1614,6 +1686,74 @@ describe("PPIRTV MCP stdio server", () => {
     });
   });
 
+  it("returns actionable MCP contracts for invalid meeting lifecycle operations", async () => {
+    await connectClient();
+    const workspace = path.join(tempRoot, "meeting-errors-workspace");
+    const sptPath = await writeFakeSpt(workspace);
+    const started = await client!.callTool({
+      name: "goal_start",
+      arguments: {
+        workspace,
+        spt_path: sptPath,
+        objective: "Auditar ponte GOAL/SPT por MCP",
+        idempotency_key: "mcp-meeting-errors",
+        evidence_required: true,
+        required_evidence: [],
+        requested_verdict_policy: "evidence_required",
+        source: "meeting-errors-test",
+        mode: "full"
+      }
+    });
+    const flowId = resultOf(started).flow_id as string;
+    const opened = await client!.callTool({
+      name: "goal_meeting_open",
+      arguments: { flow_id: flowId, kind: "decisao", question: "Como fechar?" }
+    });
+    const meetingId = resultOf(opened).meeting_id as string;
+
+    const openConsumption = await client!.callTool({
+      name: "goal_verdict",
+      arguments: {
+        flow_id: flowId,
+        status: "nao_pronto",
+        rationale: "Reuniao ainda aberta.",
+        evidence_ids: [],
+        residual_risks: ["aberta"],
+        meeting_id: meetingId,
+        next_step: "fechar reuniao"
+      }
+    });
+    expect(resultOf(openConsumption).error).toMatchObject({
+      code: "MEETING_NOT_CLOSED",
+      recoverable: true,
+      next_required_action: { tool: "goal_meeting_close" }
+    });
+
+    const wrongOwner = await client!.callTool({
+      name: "goal_meeting_close",
+      arguments: { flow_id: flowId, meeting_id: meetingId, decision: "Review pertence ao owner correto.", satisfies_blockers: ["review_required"] }
+    });
+    expect(resultOf(wrongOwner).error).toMatchObject({
+      code: "MEETING_BLOCKER_NOT_OWNED",
+      recoverable: true,
+      next_required_action: { tool: "evidence_add" }
+    });
+
+    await client!.callTool({
+      name: "goal_meeting_close",
+      arguments: { flow_id: flowId, meeting_id: meetingId, decision: "Resultado congelado." }
+    });
+    const repeatedClose = await client!.callTool({
+      name: "goal_meeting_close",
+      arguments: { flow_id: flowId, meeting_id: meetingId, decision: "Outro resultado." }
+    });
+    expect(resultOf(repeatedClose).error).toMatchObject({
+      code: "MEETING_ALREADY_CLOSED",
+      recoverable: true,
+      next_required_action: { type: "use_frozen_meeting_result", tool: "goal_status" }
+    });
+  });
+
   it("runs five PPIRTV flows sequentially through mm_pipeline_run over MCP", async () => {
     await connectClient();
     const pipeline = Array.from({ length: 5 }, (_, index) => validPipelineItem(`MCP pipeline item ${index + 1}`));
@@ -1709,7 +1849,7 @@ describe("PPIRTV MCP stdio server", () => {
     expect(((result.suggested_cooperation as Array<Record<string, unknown>>)[0].material)).toBe(false);
   });
 
-  it("returns visual-only checklist by default and full checklist only on explicit request", async () => {
+  it("returns only the current phase by default and the canonical workflow only on explicit full detail", async () => {
     await connectClient();
     const created = await client!.callTool({
       name: "flow_create",
@@ -1734,8 +1874,10 @@ describe("PPIRTV MCP stdio server", () => {
     expect(result.final_report_model).toBeUndefined();
     expect(Array.isArray(result.blockers)).toBe(true);
     expect(result.next_step).toBeDefined();
+    expect(display.phase_label).toBe("Pensamentos");
     expect(display.phase_emoji).toBe("🧠");
     expect(Array.isArray(display.checklist_visual)).toBe(true);
+    expect(result.default_workflow).toBeUndefined();
     expect(JSON.stringify(result).length).toBeLessThan(5120);
 
     const fullChecklist = resultOf(await client!.callTool({
@@ -1747,6 +1889,13 @@ describe("PPIRTV MCP stdio server", () => {
     expect(Array.isArray(fullChecklist.ready_definition)).toBe(true);
     expect(Array.isArray(fullChecklist.gate_final_output)).toBe(true);
     expect(Array.isArray(fullChecklist.final_report_model)).toBe(true);
+    expect((fullChecklist.default_workflow as Record<string, unknown>).short_line).toContain("P🧠 Pensamentos");
+
+    const checklistResource = await client!.readResource({ uri: `ppirtv://flow/${flowId}/checklist` });
+    const resourceChecklist = JSON.parse(checklistResource.contents[0]?.text ?? "{}") as Record<string, unknown>;
+    expect(resourceChecklist.markdown).toContain("Checklist PPIRTV");
+    expect(Array.isArray(resourceChecklist.operational_principles)).toBe(true);
+    expect((resourceChecklist.default_workflow as Record<string, unknown>).short_line).toContain("P🧠 Pensamentos");
   });
 
   it("returns useful prompt templates", async () => {

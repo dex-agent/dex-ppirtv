@@ -1,11 +1,13 @@
 import { realpathSync, statSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport, getDefaultEnvironment } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 const REQUIRED_TOOLS = [
+  "runtime_probe",
   "spt_validate",
   "goal_start",
   "goal_status",
@@ -90,10 +92,25 @@ try {
   const listed = await client.listTools();
   const names = listed.tools.map((tool) => tool.name).sort();
   const missing = REQUIRED_TOOLS.filter((tool) => !names.includes(tool));
+  const runtimeProbe = names.includes("runtime_probe")
+    ? resultOf(await client.callTool({ name: "runtime_probe", arguments: {} }))
+    : null;
+  const memoryV2Profile = runtimeProbe?.memory_writer_runtime?.profile ?? "unconfigured";
+  const memoryV2Requirement = {
+    required: Boolean(args.requireMemoryV2),
+    ok: memoryV2Profile === "v2",
+    profile: memoryV2Profile
+  };
+  const memoryV2Capability = args.requireMemoryV2 && memoryV2Requirement.ok
+    ? await runMemoryV2Capability(runtimeProbe)
+    : null;
   const flowWorkspace = runtimeConfigCheck.launcher_workspace ?? runtimeServer.cwd ?? workspace;
   const flowSmoke = args.flowSmoke && missing.length === 0 ? await runFlowSmoke(client, flowWorkspace) : null;
   const result = {
-    ok: missing.length === 0 && (!args.flowSmoke || Boolean(flowSmoke?.archived)) && (!args.failOnConfigConflict || !configAudit?.conflicts.length),
+    ok: missing.length === 0
+      && (!args.flowSmoke || Boolean(flowSmoke?.archived))
+      && (!args.failOnConfigConflict || !configAudit?.conflicts.length)
+      && (!args.requireMemoryV2 || (memoryV2Requirement.ok && memoryV2Capability?.ok === true)),
     count: names.length,
     missing,
     required: REQUIRED_TOOLS,
@@ -103,6 +120,9 @@ try {
     runtime_config_check: runtimeConfigCheck,
     config_audit: configAudit,
     flow_smoke: flowSmoke,
+    memory_v2_requirement: memoryV2Requirement,
+    memory_v2_capability: memoryV2Capability,
+    runtime_probe: runtimeProbe,
     names
   };
   console.log(JSON.stringify(result, null, 2));
@@ -123,6 +143,7 @@ function parseArgs(argv) {
     else if (arg === "--audit-config-toml") parsed.auditConfigTomls.push(argv[++i]);
     else if (arg === "--server") parsed.server = argv[++i];
     else if (arg === "--flow-smoke") parsed.flowSmoke = true;
+    else if (arg === "--require-memory-v2") parsed.requireMemoryV2 = true;
     else if (arg === "--audit-only") parsed.auditOnly = true;
     else if (arg === "--fail-on-config-conflict") parsed.failOnConfigConflict = true;
     else if (arg === "--help" || arg === "-h") {
@@ -133,6 +154,87 @@ function parseArgs(argv) {
     }
   }
   return parsed;
+}
+
+async function runMemoryV2Capability(runtimeProbe) {
+  const runtime = runtimeProbe?.memory_writer_runtime ?? {};
+  const canonicalRoot = runtime.canonical_root;
+  const entrypoint = runtime.entrypoint;
+  if (!canonicalRoot || !entrypoint) {
+    return { ok: false, proof_level: "writer_capability", code: "memory_v2_runtime_paths_missing" };
+  }
+  const request = {
+    capability: "v2-obsidian",
+    require_obsidian: true,
+    block_ids: ["ppi-install-probe"],
+    markdown_links: ["memorias/ppi-install-probe.md"],
+    wikilinks: ["[[memorias/ppi-install-probe|PPI install probe]]"],
+    backlinks: ["L1->L2", "L2->L1"],
+    unresolved_markdown_links: [],
+    unresolved_wikilinks: []
+  };
+  try {
+    const receipt = await runJsonCli(process.execPath, [entrypoint, "v2", "capability"], canonicalRoot, request);
+    const expectedKeys = ["capability", "contract", "errors", "expected_require_obsidian", "ok", "require_obsidian"];
+    const actualKeys = receipt && typeof receipt === "object" && !Array.isArray(receipt)
+      ? Object.keys(receipt).sort()
+      : [];
+    const ok = JSON.stringify(actualKeys) === JSON.stringify(expectedKeys)
+      && receipt?.contract === "dex.memory.capability.receipt.v2"
+      && receipt?.capability === "v2-obsidian"
+      && receipt?.require_obsidian === true
+      && receipt?.expected_require_obsidian === true
+      && receipt?.ok === true
+      && Array.isArray(receipt?.errors)
+      && receipt.errors.length === 0;
+    return {
+      ok,
+      proof_level: "writer_capability",
+      contract: receipt?.contract ?? null,
+      capability: receipt?.capability ?? null,
+      code: ok ? "memory_v2_capability_verified" : "memory_v2_capability_invalid"
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      proof_level: "writer_capability",
+      code: error instanceof Error ? error.message : "memory_v2_capability_failed"
+    };
+  }
+}
+
+async function runJsonCli(command, commandArgs, cwd, payload) {
+  return await new Promise((resolve, reject) => {
+    const child = spawn(command, commandArgs, { cwd, stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
+    let stdout = "";
+    let settled = false;
+    const finish = (callback) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      callback();
+    };
+    const timeout = setTimeout(() => {
+      child.kill();
+      finish(() => reject(new Error("memory_v2_capability_timeout")));
+    }, 10_000);
+    child.stdout.setEncoding("utf8");
+    child.stderr.resume();
+    child.stdout.on("data", (chunk) => { stdout = (stdout + chunk).slice(0, 1024 * 1024); });
+    child.on("error", () => finish(() => reject(new Error("memory_v2_capability_spawn_failed"))));
+    child.on("close", (exitCode) => finish(() => {
+      if (exitCode !== 0) {
+        reject(new Error(`memory_v2_capability_exit_${exitCode ?? "unknown"}`));
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout));
+      } catch {
+        reject(new Error("memory_v2_capability_invalid_json"));
+      }
+    }));
+    child.stdin.end(JSON.stringify(payload));
+  });
 }
 
 async function readServerFromCodexConfig(configPath, serverName) {
@@ -330,7 +432,8 @@ function runtimeSummary(result) {
   return {
     project_root: result.project_root,
     ppirtv_home: result.ppirtv_home,
-    runtime_layout_status: result.runtime_layout_status
+    runtime_layout_status: result.runtime_layout_status,
+    memory_writer_runtime: result.memory_writer_runtime
   };
 }
 
@@ -342,6 +445,7 @@ function serverSummary(server, source, name) {
   return {
     source,
     name,
+    enabled: server.enabled !== false,
     command: server.command,
     args: server.args ?? [],
     cwd: server.cwd,
@@ -350,6 +454,13 @@ function serverSummary(server, source, name) {
 }
 
 function runtimeConfigCheckFor(server) {
+  if (server.enabled === false) {
+    return {
+      ok: false,
+      code: "mcp_server_disabled",
+      message: "Selected MCP server is disabled and cannot prove the runtime used by the consumer."
+    };
+  }
   const launcherCheck = launcherRuntimeConfigCheckFor(server);
   if (launcherCheck) {
     return launcherCheck;
@@ -619,6 +730,7 @@ function directServer(repoRoot, workspace) {
     cwd: workspace,
     env: {
       PPIRTV_HOME: path.join(workspace, ".ppirtv"),
+      PPIRTV_WORKSPACE: workspace,
       ...(principlesPath ? { PPIRTV_PRINCIPLES_PATH: principlesPath } : {})
     }
   };
@@ -728,6 +840,7 @@ function printHelp() {
   node scripts/smoke-mcp-tools.mjs --config-toml <path> [--server <name>]
   node scripts/smoke-mcp-tools.mjs --mcp-json <path> --server <name> --flow-smoke
   node scripts/smoke-mcp-tools.mjs --config-toml <path> --server <name> --flow-smoke
+  node scripts/smoke-mcp-tools.mjs --config-toml <path> --server <name> --workspace <consumer> --require-memory-v2
   node scripts/smoke-mcp-tools.mjs --config-toml <path> --server <name> --workspace <consumer> --flow-smoke
   node scripts/smoke-mcp-tools.mjs --config-toml <child> --server <name> --audit-config-toml <parent> --audit-only
 
@@ -738,5 +851,7 @@ servers with divergent cwd or PPIRTV_HOME; --fail-on-config-conflict makes an
 enabled divergent server fail the command. When a Codex launcher config is
 global/neutral, either with a blank --workspace placeholder or without
 --workspace, --workspace <consumer> is used only for the smoke runtime and does
-not imply writing that consumer path to global config.`);
+not imply writing that consumer path to global config. --require-memory-v2
+fails unless runtime_probe reports memory_writer_runtime.profile=v2 and the
+configured canonical entrypoint returns a valid v2-obsidian capability receipt.`);
 }

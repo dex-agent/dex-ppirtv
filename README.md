@@ -91,9 +91,11 @@ npm start
 
 For a single global installation, prefer the launcher entrypoint. It resolves
 the consumer workspace before the MCP server starts, changes the process cwd to
-that workspace and sets `PPIRTV_HOME` to `<workspace>/.ppirtv`.
+that workspace and sets `PPIRTV_HOME` to `<workspace>/.ppirtv`. This minimal
+configuration enables PPIRTV core only; it intentionally reports the memory
+writer as `unconfigured`.
 
-Minimal global launcher configuration shape:
+Minimal global PPIRTV-core launcher configuration shape:
 
 ```json
 {
@@ -137,6 +139,14 @@ With that config, `my-project` resolves to
 C:/CodexProjetos/my-project/.ppirtv/
 ```
 
+The launcher propagates that canonical resolved path as `PPIRTV_WORKSPACE`.
+This supplies only the workspace member of the V2 bundle; it does not activate
+the V2 writer by itself. `PPIRTV_WORKSPACE_ROOT` remains the neutral global
+lookup root and is not overwritten. If an explicit
+`PPIRTV_WORKSPACE` resolves to a different project than `--workspace`, startup
+fails with `PPIRTV_LAUNCHER_WORKSPACE_CONFLICT`; the launcher never silently
+chooses one.
+
 If the launcher starts from the install repository without `--workspace`,
 `PPIRTV_WORKSPACE` or a reliable consumer cwd, it fails early with
 `PPIRTV_LAUNCHER_WORKSPACE_REQUIRED`. This is intentional: without any
@@ -151,7 +161,7 @@ on. `PPIRTV_HOME`, when provided, must resolve exactly to
 `<workspace>/.ppirtv`; otherwise the server fails early to prevent
 cross-repository writes.
 
-Direct mode configuration shape:
+Direct mode PPIRTV-core configuration shape:
 
 ```json
 {
@@ -160,6 +170,7 @@ Direct mode configuration shape:
   "cwd": "<workspace-root>",
   "env": {
     "PPIRTV_HOME": "<workspace-root>/.ppirtv",
+    "PPIRTV_WORKSPACE": "<workspace-root>",
     "PPIRTV_PRINCIPLES_PATH": "<optional-operational-contract-json>"
   }
 }
@@ -167,6 +178,45 @@ Direct mode configuration shape:
 
 Do not point `PPIRTV_HOME` at a public, versioned, install-repo or other
 workspace directory.
+
+### Repo-local Dex Memoria V2 bundle
+
+V2 is active only when the consumer repository supplies the complete bundle.
+Keep the global launcher workspace-neutral; bind `PPIRTV_WORKSPACE` or
+`--workspace` in each repo-local consumer configuration:
+
+```json
+{
+  "command": "node",
+  "args": ["<dex-ppirtv-root>/dist/launcher.js", "--workspace", "<workspace-root>"],
+  "cwd": "<dex-ppirtv-root>",
+  "env": {
+    "PPIRTV_MEMORY_WRITER_PROFILE": "v2",
+    "PPIRTV_DEX_MEMORIA_CANONICAL_ROOT": "<dex-memoria-root>",
+    "PPIRTV_DEX_MEMORIA_V2_ENTRYPOINT": "<dex-memoria-root>/bin/dex-memoria.js",
+    "DEX_MEMORIA_HOME": "<global-memory-home>"
+  }
+}
+```
+
+For direct mode, use the same four values and add
+`PPIRTV_WORKSPACE=<workspace-root>` explicitly. A partial bundle is invalid;
+`runtime_probe.memory_writer_runtime.profile=unconfigured` is not a successful
+V2 installation.
+
+The installation receipt must run:
+
+```bash
+node scripts/smoke-mcp-tools.mjs --config-toml <repo-config> --server dex_ppirtv --workspace <workspace-root> --require-memory-v2
+```
+
+Success requires `ok=true`, `memory_v2_requirement.ok=true`,
+`runtime_probe.memory_writer_runtime.profile=v2` and
+`memory_v2_capability.ok=true`, with a
+`dex.memory.capability.receipt.v2` returned by the configured canonical
+entrypoint. Effective canonical root, entrypoint, memory home and workspace
+must also match the requested values. A profile echo alone proves only that the
+bundle was loaded; it is not an operational writer receipt.
 
 When validating a repo-local Codex MCP config, a direct smoke with
 `--config-toml` proves only the selected server. If a parent workspace may also
@@ -181,9 +231,78 @@ reported as `ppirtv_config_conflict`. A disabled inherited server is reported as
 `disabled_ppirtv_config_visible`, which means restart or revalidate stale Codex
 clients before treating the environment as clean.
 
+### Memory-writer selector control plane
+
+Owner: the PPIRTV memory integration boundary in
+`src/memory/memory-writer-selector-cutover.ts`.
+
+Purpose: execute a reversible `unconfigured | legacy-v1 -> v2` selector transition inside an
+explicit caller-owned boundary. Callers provide `controlRoot`, `configPath` and
+`journalPath`; the control plane contains no user-profile, vault or laboratory
+path and performs no path discovery. `prepareMemoryWriterSelectorCutover` stores a byte-exact snapshot and a
+`PENDING` journal, `resumeMemoryWriterSelectorCutover` applies or resumes the
+selector change, and `rollbackMemoryWriterSelectorCutover` restores the exact
+snapshot idempotently.
+
+Changing TOML does not restart or reconnect a running MCP client. A transition
+becomes `COMMITTED` only when the control plane runs its own causal probe and produces the explicit
+`dex.ppirtv.memory-writer-selector.restart-receipt.v2` receipt bound to the
+journal challenge, action, reason, fixed `dex_ppirtv` server identity, enabled state, config hash, workspace, complete memory
+bundle and a newly observed process/session generation. Without that receipt the
+result remains `PENDING_RESTART`; the same rule protects a rollback after a
+committed activation.
+
+Risk and boundary: the API and CLI are live-capable but inert until called with
+explicit paths. Every config, journal and snapshot path must resolve below the
+caller-provided control root. The CLI never discovers a Codex configuration,
+never accepts a caller-authored receipt and never fabricates a receipt. `confirm`
+starts a fresh launcher/MCP process from the bound, enabled `dex_ppirtv` section
+and consumes its read-only `runtime_probe` response. A caller may use a
+temporary workspace for rehearsal or deliberately pass a live workspace root;
+that operational choice remains outside this module.
+
+After `npm run build`, the executable owner supports `prepare`, `status`,
+`resume`, `confirm` and `rollback`:
+
+Choose `--before` from the TOML state that actually exists. If
+`PPIRTV_MEMORY_WRITER_PROFILE` is absent, use `unconfigured`; if the key is
+explicitly `legacy-v1`, use `legacy-v1`. The control plane rejects any declared
+origin that disagrees with the file and accepts only `--after v2`.
+
+```bash
+node dist/memory-writer-selector-cutover-cli.js prepare --control-root "<workspace>" --config "<workspace>/.codex/config.toml" --journal "<workspace>/.agents/CUTOVER/memory-writer-selector.json" --before unconfigured --after v2 --canonical-root "<dex-memoria-root>" --entrypoint "<dex-memoria-entrypoint>" --activation-action restart --rollback-action restart
+node dist/memory-writer-selector-cutover-cli.js prepare --control-root "<workspace>" --config "<workspace>/.codex/config.toml" --journal "<workspace>/.agents/CUTOVER/memory-writer-selector.json" --before legacy-v1 --after v2 --canonical-root "<dex-memoria-root>" --entrypoint "<dex-memoria-entrypoint>" --activation-action restart --rollback-action restart
+node dist/memory-writer-selector-cutover-cli.js status --control-root "<workspace>" --config "<workspace>/.codex/config.toml" --journal "<workspace>/.agents/CUTOVER/memory-writer-selector.json"
+node dist/memory-writer-selector-cutover-cli.js resume --control-root "<workspace>" --config "<workspace>/.codex/config.toml" --journal "<workspace>/.agents/CUTOVER/memory-writer-selector.json"
+node dist/memory-writer-selector-cutover-cli.js confirm --control-root "<workspace>" --config "<workspace>/.codex/config.toml" --journal "<workspace>/.agents/CUTOVER/memory-writer-selector.json" --reason activate --action restart
+node dist/memory-writer-selector-cutover-cli.js rollback --control-root "<workspace>" --config "<workspace>/.codex/config.toml" --journal "<workspace>/.agents/CUTOVER/memory-writer-selector.json"
+node dist/memory-writer-selector-cutover-cli.js confirm --control-root "<workspace>" --config "<workspace>/.codex/config.toml" --journal "<workspace>/.agents/CUTOVER/memory-writer-selector.json" --reason rollback --action restart
+```
+
+`resume` and `rollback` apply or restore bytes while deliberately remaining at
+`PENDING_RESTART`. The productive CLI rejects `--restart-receipt`; only `confirm`
+may advance the journal. Its internally owned probe starts a new launcher/MCP process and derives the
+receipt from the read-only `runtime_probe` response; it does not echo expected
+values into a receipt. Disabled or differently named servers, replays and
+mismatched challenge, action, reason, path, hash, bundle or runtime generation
+are rejected.
+
+For V2 activation, `confirm` also resolves the canonical root and entrypoint on
+the real filesystem, rejects links, non-regular entrypoints and escapes, then
+executes the canonical CLI's read-only `v2 capability` command. `COMMITTED`
+requires the exact successful `dex.memory.capability.receipt.v2` contract; a
+configuration that merely names plausible paths is not activation evidence.
+
+Focused validation:
+
+```bash
+npx vitest run tests/memory-writer-selector-cutover.test.ts tests/memory-writer-selector-cutover-cli.test.ts tests/memory-writer-selector-cutover-hardening.test.ts tests/memory-writer-selector-activation-probe.test.ts
+```
+
 ## Quick Start
 
-Preferred global launcher configuration:
+Preferred global PPIRTV-core launcher configuration (memory writer remains
+`unconfigured` until a repo-local V2 bundle is applied):
 
 ```json
 {
@@ -439,9 +558,12 @@ fields are present. The status surfaces these signals:
   fiscal blockers. This rule applies recursively to nested payloads such as
   `goal_status.checklist.display`, `evidence_add.status.checklist.display` and
   archived blocked flows.
-- `checklist_render`: the default visual-only receipt contains phase items,
-  blockers and next step without embedding principles. With `detail: "full"`,
-  proof-dependent principles use a tri-state surface: `checked`,
+- `checklist_render`: the default visual-only receipt shows only the current
+  phase, its items, blockers and next step without repeating the full PPIRTV
+  ruler or embedding principles. The canonical
+  `Pensamentos -> Planejamento -> Implementacao -> Revisao -> Teste -> Validacao`
+  workflow remains unchanged and is available with `detail: "full"`. In that
+  full view, proof-dependent principles use a tri-state surface: `checked`,
   `blocked`/`unchecked` or `pending`; missing hygiene or memory proof must not
   render as green.
 - `fiscal_policy.meeting_policy`: the meeting rotation and provocation
@@ -472,6 +594,24 @@ fields are present. The status surfaces these signals:
   `evidence_ids`. A positive fiscal verdict that cites material
   `required_cooperation` must provide a closed `meeting_id` whose decision and
   participants satisfy the blocker.
+  The first close freezes the meeting result, including concurrent close
+  attempts. A retry with the same frozen decision is idempotent; a different
+  decision is rejected. Meeting mutations sharing a flow use a
+  flow-scoped filesystem lock: a live owner is never stolen, a valid dead-owner
+  lock is recoverable, and malformed or identity-changing state fails closed.
+  If persistence stops after the frozen meeting or flow was saved, an identical
+  close retry reconciles the missing flow or canonical ledger event without
+  changing the decision or duplicating evidence. Open meetings cannot be consumed by a verdict or regress.
+  Meetings do not inherit fiscal
+  blockers and currently own only `required_cooperation`; `review_required`
+  remains owned by structured `evidence_add` review. `goal_status` exposes
+  full `meeting_outcomes`, while lean/compact expose only
+  `meeting_outcome_summary`; checkout exposes `meeting_outcome_accountability`.
+  `recorded_legacy`, `closed_unconsumed`, `consumed_by_regress`,
+  `consumed_by_verdict` and `unattributed_legacy` measure downstream
+  traceability by `meeting_id`.
+  They do not claim semantic effectiveness: attendance, turns, findings,
+  credits and meeting volume are never sufficient evidence of impact.
 - `goal_regress`: the executable regress contract. It persists the phase
   return, links optional meeting/evidence and increments the fiscal anti-loop
   count. A `regress_count` reported by `goal_verdict` is consumed into flow
@@ -549,6 +689,21 @@ and reason for each candidate (`written`, `classify_only`, `ledger_only`,
 lists candidates the user can improve, approve, park or discard. In
 `auto_write`, a strong unwritten candidate without a canonical destination
 raises `blocked_verdict=true` with `destination_warnings`.
+
+With the V2 writer selected, callers do not need to know the internal
+`v2_destinations`, density or tag fields for an ordinary light memory. Explicit
+human intent such as `local deste projeto`, `global/cross-project`, or both is
+classified deterministically as `project`, `global`, or dual. An intent that
+does not identify a destination remains closed with
+`classification_reason=destinations_required`; it never falls back to
+`classifier_unavailable` or asks the caller to inspect source code. Explicit
+V2 fields remain available for controlled overrides and deep/L3 operations.
+
+For V2 results, `written_count` counts candidate records, while each
+`written[].files` is the deduplicated union of files independently reopened and
+validated for that candidate. Route-level evidence remains available in
+`v2_validation_receipts`; a coordinator receipt alone cannot populate
+`written[]`.
 
 `mm_memory_candidate_resolve` is the explicit recovery action for strong
 `ledger_only` or otherwise unwritten candidates that block `goal_verdict`. It

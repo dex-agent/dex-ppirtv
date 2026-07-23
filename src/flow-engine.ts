@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import {
@@ -37,11 +38,14 @@ import {
   type WorkProgressStatus,
   type WorkProgressSummary
 } from "./domain.js";
-import { isStructuredReviewEvidence, resolveGateRequirements, type GateRequirementResolution } from "./gate-resolution.js";
+import { isStructuredReviewEvidence, resolveGateRequirements, reviewEvidenceDiagnostics, type GateRequirementResolution } from "./gate-resolution.js";
 import {
   assertNoSecretLikeText,
+  classifyDexMemoriaV2MiningCandidate,
   classifyMemoryCandidate,
+  classifyDexMemoriaV2Intent,
   collectMemoryNuggets,
+  executeDexMemoriaV2Adapter,
   governAutoWriteCandidate,
   isWritableCandidate,
   linkParkingToGold,
@@ -50,6 +54,11 @@ import {
   resolveDexMemoriaHome,
   validateMemoryPostWrite,
   writeMemoryCandidate,
+  type DexMemoriaV2CanonicalReceipt,
+  type DexMemoriaV2Destination,
+  type DexMemoriaV2FlowWriterConfig,
+  type DexMemoriaV2MiningClassification,
+  type DexMemoriaV2ValidationReceiptRef,
   type MemoryHookRunner
 } from "./memory/index.js";
 import { presentArtifact, presentChecklist, presentFlow, presentGate } from "./presentation.js";
@@ -69,7 +78,7 @@ import {
 } from "./principles.js";
 import { PpirtvStore, type RuntimeLayoutStatus } from "./store.js";
 import { profileFor, type GateRequirement } from "./phase-profile.js";
-import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured } from "./config.js";
+import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured, sameRuntimePath } from "./config.js";
 import { fingerprintSptV2Contract, parseSptV2Document } from "./spt-contract.js";
 
 const DEFAULT_SCOPE: Scope = { in: [], out: [] };
@@ -230,13 +239,29 @@ type LoopMonitor = {
   };
 };
 
+export type FlowEngineOptions = {
+  memory_writer?: { profile: "unconfigured" | "legacy-v1" } | DexMemoriaV2FlowWriterConfig;
+  legacy_candidate_writer?: typeof writeMemoryCandidate;
+};
+
+type MemoryMiningV2Summary = MemoryMiningSummary & {
+  memory_profile: "v2";
+  v2_status: "complete" | "classify_only" | "classification_required" | "partial_pending" | "resume_pending_sibling";
+  v2_receipts: DexMemoriaV2CanonicalReceipt[];
+  v2_validation_receipts: DexMemoriaV2ValidationReceiptRef[];
+  v2_pending_destinations: Array<Record<string, unknown>>;
+  v2_failures: Array<Record<string, unknown>>;
+};
+
 export class FlowEngine {
   readonly store: PpirtvStore;
   readonly memoryHooks: MemoryHookRunner;
+  readonly options: FlowEngineOptions;
 
-  constructor(store: PpirtvStore, memoryHooks?: MemoryHookRunner) {
+  constructor(store: PpirtvStore, memoryHooks?: MemoryHookRunner, options: FlowEngineOptions = {}) {
     this.store = store;
     this.memoryHooks = memoryHooks ?? new MemoryLibrarian(store.root);
+    this.options = options;
   }
 
   async createFlow(input: {
@@ -530,7 +555,7 @@ export class FlowEngine {
       const fiscal = evaluateFiscalPolicy(flow);
       const persistedFiscal = latestFiscalBlock(flow);
       const meetings = await this.store.listMeetings(flow.flow_id);
-      const blockers: string[] = gate?.missing ?? [];
+      const blockers = reconciledBlockers(flow, gate?.missing ?? []);
       const reconciledBlockersList = reconciledBlockers(flow, [...fiscal.blocking_reasons, ...persistedFiscal.blocking_reasons]);
       const baseBlockers = blockers.length > 0 ? blockers : reconciledBlockersList;
       const allBlockers = blockers.length === 0 && requiredCooperationNeedsMeetingIdRetry(flow, meetings)
@@ -581,10 +606,11 @@ export class FlowEngine {
         project_root: runtimeLayoutStatus.project_root,
         ppirtv_home: runtimeLayoutStatus.ppirtv_home,
         runtime_layout_status: runtimeLayoutStatus,
+        memory_writer_runtime: memoryWriterRuntimeSummary(this.options.memory_writer, runtimeLayoutStatus.project_root),
         blockers: allBlockers,
         next_step: next,
-        gate_status: gate?.status ?? "unchecked",
-        gate_missing: gate?.missing ?? [],
+        gate_status: gate ? (blockers.length === 0 ? "passed" : "blocked") : "unchecked",
+        gate_missing: blockers,
         goal: flow.goal,
         goal_envelope: flow.goal_binding?.envelope ?? null,
         // Campos acionaveis de blocker (BUG-LEAN-01+02): pequenos em bytes
@@ -599,6 +625,7 @@ export class FlowEngine {
         // barata_scan (auditoria vizinhos): counts e sinal, nao arrays.
         evidence_count: flow.evidence.length,
         meetings_count: flow.meetings.length,
+        meeting_outcome_summary: meetingOutcomeCounts(flow),
         current_verdict: currentVerdict ? { verdict_id: currentVerdict.verdict_id, status: currentVerdict.status } : null,
         current_verdict_status: currentVerdict?.status ?? null,
         work_progress: workProgress,
@@ -663,6 +690,7 @@ export class FlowEngine {
       project_root: runtimeLayoutStatus.project_root,
       ppirtv_home: runtimeLayoutStatus.ppirtv_home,
       runtime_layout_status: runtimeLayoutStatus,
+      memory_writer_runtime: memoryWriterRuntimeSummary(this.options.memory_writer, runtimeLayoutStatus.project_root),
       phase_label: checklistStatus.display.phase_label,
       phase_emoji: checklistStatus.display.phase_emoji,
       checklist: checklistStatus,
@@ -699,6 +727,8 @@ export class FlowEngine {
         cooperators: meeting.cooperators,
         active_credits: meeting.active_credits
       })),
+      ...(detail === "full" ? { meeting_outcomes: meetingOutcomeSummaries(flow) } : {}),
+      meeting_outcome_summary: meetingOutcomeCounts(flow),
       gates: flow.gates,
       parking_lot: flow.parking_lot,
       gold_mining: flow.gold_mining,
@@ -708,6 +738,8 @@ export class FlowEngine {
       memory_mining: memoryMiningStatus(flow),
       work_progress: workProgress,
       blockers,
+      gate_status: gate.status,
+      gate_missing: reconciledBlockers(flow, gate.missing),
       blocker_diagnostics: blockerDiagnostics,
       next_step: blockers.length > 0 ? fiscalResult(true, blockers).direct_action : nextGoalStep(flow, gate),
       meeting_required: blockers.includes("required_cooperation"),
@@ -1123,6 +1155,10 @@ export class FlowEngine {
     flow_id: string;
     auto_classify?: boolean;
     write_policy?: MemoryWritePolicy;
+    v2_destinations?: DexMemoriaV2Destination[];
+    v2_density?: "light" | "deep";
+    v2_owner_skill?: string;
+    v2_tags?: string[];
   }): Promise<Record<string, unknown>> {
     requireText(input.flow_id, "flow_id");
     const flow = await this.store.loadFlow(input.flow_id);
@@ -1134,7 +1170,10 @@ export class FlowEngine {
     if (!autoClassify && writePolicy === "auto_write") {
       throw new Error("AUTO_CLASSIFY_DISABLED_AUTO_WRITE: use auto_classify=true for auto_write or switch write_policy to classify_only");
     }
-    const dexMemoriaHome = resolveDexMemoriaHome();
+    const v2Writer = this.options.memory_writer?.profile === "v2" ? this.options.memory_writer : undefined;
+    const dexMemoriaHome = v2Writer
+      ? requireConfiguredV2Root(v2Writer.memory_home, "MEMORY_HOME")
+      : resolveDexMemoriaHome();
     if (!autoClassify) {
       return {
         flow_id: flow.flow_id,
@@ -1156,12 +1195,30 @@ export class FlowEngine {
         blocked_verdict: false
       };
     }
-    const workspace = path.resolve(flow.goal_binding?.envelope.workspace ?? process.cwd());
+    const workspace = v2Writer
+      ? confinedV2Workspace({
+        storeWorkspace: this.store.runtimePaths.projectRoot,
+        writerWorkspace: v2Writer.workspace_root,
+        envelopeWorkspace: flow.goal_binding?.envelope.workspace
+      })
+      : path.resolve(flow.goal_binding?.envelope.workspace ?? process.cwd());
     const linkNow = nowIso();
     const promotedGold = linkParkingToGold(flow, flow.parking_lot, "memory_mining", flow.flow_id, linkNow);
     flow.gold_mining = unique([...flow.gold_mining, ...promotedGold]);
     const meetings = await this.store.listMeetings(flow.flow_id);
     const nuggets = collectMemoryNuggets(flow, meetings);
+    if (this.options.memory_writer?.profile === "v2") {
+      return await this.mineMemoryV2({
+        flow,
+        nuggets,
+        writePolicy,
+        autoClassify,
+        workspace,
+        memoryHome: dexMemoriaHome,
+        writer: this.options.memory_writer,
+        requestClassification: requestedV2MiningClassification(input)
+      });
+    }
     const resolutionMap = latestTraceableCandidateResolutionMap(flow);
     const rawCandidates = nuggets.map((nugget, index) =>
       classifyMemoryCandidate({
@@ -1185,9 +1242,10 @@ export class FlowEngine {
     const writeFailures: Array<{ candidate_id: string; reason: string }> = [];
 
     if (writePolicy === "auto_write") {
+      const legacyCandidateWriter = this.options.legacy_candidate_writer ?? writeMemoryCandidate;
       for (const candidate of writable) {
         try {
-          const files = await writeMemoryCandidate(candidate);
+          const files = await legacyCandidateWriter(candidate);
           written.push({ candidate_id: candidate.id, files });
         } catch (error) {
           writeFailures.push({ candidate_id: candidate.id, reason: errorMessage(error) });
@@ -1385,6 +1443,186 @@ export class FlowEngine {
     };
   }
 
+  private async mineMemoryV2(input: {
+    flow: Flow;
+    nuggets: Array<{ item: string; source: "gold_mining" | "parking_lot"; evidenceScore: number }>;
+    writePolicy: MemoryWritePolicy;
+    autoClassify: boolean;
+    workspace: string;
+    memoryHome: string;
+    writer: DexMemoriaV2FlowWriterConfig;
+    requestClassification?: DexMemoriaV2MiningClassification;
+  }): Promise<Record<string, unknown>> {
+    const now = nowIso();
+    const previous = input.flow.memory_mining as MemoryMiningV2Summary | undefined;
+    const previousReceipts = previous?.memory_profile === "v2" ? previous.v2_receipts ?? [] : [];
+    const candidates = [] as Array<Record<string, unknown>>;
+    const receipts: DexMemoriaV2CanonicalReceipt[] = [];
+    const validationReceipts: DexMemoriaV2ValidationReceiptRef[] = [];
+    const writtenByCandidate = new Map<string, Set<string>>();
+    const pendingDestinations: Array<Record<string, unknown>> = [];
+    const v2Failures: Array<Record<string, unknown>> = [];
+    let v2Status: MemoryMiningV2Summary["v2_status"] = input.writePolicy === "auto_write" ? "complete" : "classify_only";
+    let unclassifiedCount = 0;
+
+    for (const [index, nugget] of input.nuggets.entries()) {
+      assertNoSecretLikeText(nugget.item, `memory_v2_candidate_${index + 1}`);
+      const candidateId = memoryV2CandidateId(nugget.item);
+      const classifierInput = {
+        flow_id: input.flow.flow_id,
+        candidate_id: candidateId,
+        item: nugget.item,
+        source: nugget.source,
+        evidence_score: nugget.evidenceScore
+      };
+      const directive = input.requestClassification
+        ?? input.writer.classify?.(classifierInput)
+        ?? input.writer.default_classification
+        ?? classifyDexMemoriaV2MiningCandidate(classifierInput);
+      if (directive.status === "unresolved") {
+        unclassifiedCount += 1;
+        candidates.push({
+          candidate_id: candidateId,
+          operation_id: `mmv2_pending_${candidateId}`,
+          flow_id: input.flow.flow_id,
+          slug: memoryV2Slug(nugget.item, candidateId),
+          item: nugget.item,
+          source: nugget.source,
+          classification_status: "unresolved",
+          classification_reason: directive.reason,
+          destinations: [],
+          route: null
+        });
+        if (input.writePolicy === "auto_write") v2Status = "classification_required";
+        continue;
+      }
+      const classification = classifyDexMemoriaV2Intent({
+        item: nugget.item,
+        density: directive.density,
+        requested_destinations: directive.requested_destinations,
+        owner_skill: directive.owner_skill,
+        tags: directive.tags
+      });
+      const operationId = memoryV2OperationId(nugget.item, classification);
+      const slug = memoryV2Slug(nugget.item, candidateId);
+      candidates.push({
+        candidate_id: candidateId,
+        operation_id: operationId,
+        flow_id: input.flow.flow_id,
+        slug,
+        item: nugget.item,
+        source: nugget.source,
+        destinations: classification.destinations,
+        route: classification.route
+      });
+      if (input.writePolicy !== "auto_write") {
+        continue;
+      }
+      const adapterResult = await executeDexMemoriaV2Adapter({
+        operation_id: operationId,
+        slug,
+        workspace_root: input.workspace,
+        memory_home: input.memoryHome,
+        classification,
+        executor: input.writer.executor,
+        resume_receipts: previousReceipts.filter((receipt) => receipt.operation_id === operationId)
+      });
+      receipts.push(...adapterResult.receipts);
+      validationReceipts.push(...adapterResult.validation_receipts);
+      const validatedFiles = adapterResult.validation_receipts.flatMap((validationReceipt) => validationReceipt.files);
+      if (validatedFiles.length > 0) {
+        const candidateFiles = writtenByCandidate.get(candidateId) ?? new Set<string>();
+        for (const file of validatedFiles) candidateFiles.add(file);
+        writtenByCandidate.set(candidateId, candidateFiles);
+      }
+      pendingDestinations.push(...adapterResult.pending_destinations);
+      if (adapterResult.status !== "complete") {
+        v2Status = adapterResult.status;
+        if (adapterResult.failure) {
+          v2Failures.push(adapterResult.failure);
+        }
+      }
+    }
+
+    const blockedVerdict = v2Status === "classification_required" || v2Status === "partial_pending" || v2Status === "resume_pending_sibling";
+    const committedRouteCount = validationReceipts.length;
+    const written = Array.from(writtenByCandidate, ([candidate_id, files]) => ({ candidate_id, files: Array.from(files) }));
+    const summary: MemoryMiningV2Summary = {
+      required: candidates.length > 0 || memoryRequiredByFlow(input.flow),
+      last_run_at: now,
+      write_policy: input.writePolicy,
+      blocked_verdict: blockedVerdict,
+      candidates_count: candidates.length,
+      written_count: written.length,
+      blocked_count: blockedVerdict ? 1 : 0,
+      ledger_only_count: 0,
+      discarded_count: 0,
+      memory_required_but_empty: false,
+      memory_written: committedRouteCount > 0,
+      memory_validated: committedRouteCount > 0
+        && !blockedVerdict,
+      memory_consolidated: false,
+      memory_review_status: "not_required",
+      candidates,
+      written,
+      memory_profile: "v2",
+      v2_status: v2Status,
+      v2_receipts: receipts,
+      v2_validation_receipts: validationReceipts,
+      v2_pending_destinations: pendingDestinations,
+      v2_failures: v2Failures
+    };
+    input.flow.memory_mining = summary;
+    input.flow.history.push({
+      at: now,
+      type: "memory_mined",
+      data: {
+        write_policy: input.writePolicy,
+        memory_profile: "v2",
+        v2_status: v2Status,
+        candidates_count: candidates.length,
+        receipts_count: receipts.length,
+        blocked_verdict: blockedVerdict
+      }
+    });
+    input.flow.updated_at = now;
+    await this.store.saveFlow(input.flow);
+    await this.ledger(input.flow.flow_id, "memory_mined", {
+      write_policy: input.writePolicy,
+      memory_profile: "v2",
+      v2_status: v2Status,
+      candidates,
+      written,
+      v2_receipts: receipts,
+      v2_validation_receipts: validationReceipts,
+      v2_pending_destinations: pendingDestinations,
+      v2_failures: v2Failures,
+      blocked_verdict: blockedVerdict
+    }, "dex-code");
+
+    return {
+      flow_id: input.flow.flow_id,
+      auto_classify: input.autoClassify,
+      write_policy: input.writePolicy,
+      memory_profile: "v2",
+      v2_status: v2Status,
+      candidates,
+      written,
+      v2_receipts: receipts,
+      v2_validation_receipts: validationReceipts,
+      v2_pending_destinations: pendingDestinations,
+      v2_failures: v2Failures,
+      memory_written: summary.memory_written,
+      memory_validated: summary.memory_validated,
+      memory_consolidated: summary.memory_consolidated,
+      memory_review_status: summary.memory_review_status,
+      blocked_verdict: blockedVerdict,
+      memory_required_but_empty: false,
+      written_count: written.length,
+      unclassified: unclassifiedCount
+    };
+  }
+
   async resolveMemoryCandidates(input: ResolveMemoryCandidatesInput): Promise<Record<string, unknown>> {
     requireText(input.flow_id, "flow_id");
     const candidateIds = unique((input.candidate_ids ?? []).map((candidateId) => candidateId.trim()).filter(Boolean));
@@ -1483,6 +1721,19 @@ export class FlowEngine {
     actor?: string;
   }): Promise<Record<string, unknown>> {
     const flow = await this.resolveGoalFlow(input);
+    return this.store.withFlowLock(flow.flow_id, () => this.goalRegressUnlocked(input));
+  }
+
+  private async goalRegressUnlocked(input: {
+    flow_id?: string;
+    idempotency_key?: string;
+    to?: AnyPhase;
+    reason: string;
+    meeting_id?: string;
+    evidence_ids?: string[];
+    actor?: string;
+  }): Promise<Record<string, unknown>> {
+    const flow = await this.resolveGoalFlow(input);
     assertGoalBinding(flow);
     assertNoSecretLikePayload(input, "goal_regress");
     if (input.meeting_id) {
@@ -1490,6 +1741,7 @@ export class FlowEngine {
       if (meeting.flow_id !== flow.flow_id) {
         throw new Error(`meeting_id ${input.meeting_id} does not belong to GOAL flow ${flow.flow_id}`);
       }
+      assertMeetingClosed(meeting);
     }
     const to = input.to ?? fiscalBackTo(flow);
     const returned = await this.returnTo({
@@ -1571,17 +1823,22 @@ export class FlowEngine {
       scope_reference: input.scope_reference,
       gold_mining: input.satisfies?.map((item) => `evidence_required:${item}`) ?? []
     });
+    const reviewDiagnostics = reviewEvidenceRequested(input) ? reviewEvidenceDiagnostics(flow, evidence) : null;
     if (input.detail === "compact") {
       const fresh = await this.store.loadFlow(input.flow_id);
-      return this.compactMutationReceipt(fresh, {
+      return {
+        ...this.compactMutationReceipt(fresh, {
         action: "evidence_add",
         evidence_id: evidence.evidence_id,
         before_missing: beforeSnapshot.missing
-      });
+        }),
+        ...(reviewDiagnostics ? { review_evidence_diagnostics: reviewDiagnostics } : {})
+      };
     }
     return {
       evidence_id: evidence.evidence_id,
       evidence,
+      ...(reviewDiagnostics ? { review_evidence_diagnostics: reviewDiagnostics } : {}),
       status: await this.goalStatus({ flow_id: input.flow_id, detail: mutationStatusDetail(flow, input.detail) })
     };
   }
@@ -1618,6 +1875,25 @@ export class FlowEngine {
     for (const item of input.verdict_gold_mining ?? []) {
       assertNoSecretLikeText(item, "verdict_gold_mining");
     }
+    return this.store.withFlowLock(input.flow_id, () => this.goalVerdictUnlocked(input));
+  }
+
+  private async goalVerdictUnlocked(input: {
+    flow_id: string;
+    status: VerdictStatus;
+    rationale: string;
+    evidence_ids?: string[];
+    residual_risks?: string[];
+    review_artifact_path?: string;
+    review_findings?: string[];
+    verdict_parking_lot?: string[];
+    verdict_gold_mining?: string[];
+    attempt_count?: number;
+    regress_count?: number;
+    meeting_id?: string;
+    meeting_ids?: string[];
+    next_step: string;
+  }): Promise<Record<string, unknown>> {
     let flow = await this.store.loadFlow(input.flow_id);
     assertGoalBinding(flow);
     if (typeof input.regress_count === "number" && input.regress_count > countRegressions(flow)) {
@@ -1638,6 +1914,7 @@ export class FlowEngine {
       if (meeting.flow_id !== flow.flow_id) {
         throw new Error(`meeting_id ${meetingId} does not belong to GOAL flow ${flow.flow_id}`);
       }
+      assertMeetingClosed(meeting);
     }
     const evidenceIds = input.evidence_ids ?? [];
     const existingEvidenceIds = new Set(flow.evidence.map((evidence) => evidence.evidence_id));
@@ -1686,7 +1963,7 @@ export class FlowEngine {
     if (quandoRessalva) {
       verdictLearning.gold_mining.push(quandoRessalva);
     }
-    const verdict = await this.recordVerdict({
+    const verdict = await this.recordVerdictUnlocked({
       flow_id: input.flow_id,
       status: effectiveStatus,
       rationale: input.rationale,
@@ -1695,6 +1972,7 @@ export class FlowEngine {
       review_findings: input.review_findings ?? [],
       parking_lot: verdictLearning.parking_lot,
       gold_mining: verdictLearning.gold_mining,
+      meeting_ids: meetingIds,
       next_step: input.next_step
     });
     return {
@@ -2191,6 +2469,19 @@ export class FlowEngine {
       evidence_ids?: string[];
   }): Promise<Meeting & PresentationEnvelope> {
     requireText(input.question, "question");
+    return this.store.withFlowLock(input.flow_id, () => this.openMeetingUnlocked(input));
+  }
+
+  private async openMeetingUnlocked(input: {
+      flow_id: string;
+      type?: MeetingType;
+      kind?: MeetingKind;
+      question: string;
+      participants_required?: string[];
+      suggested_cooperators?: Cooperator[];
+      created_by?: string;
+      evidence_ids?: string[];
+  }): Promise<Meeting & PresentationEnvelope> {
     const flow = await this.store.loadFlow(input.flow_id);
     const now = nowIso();
     const fiscal = evaluateFiscalPolicy(flow);
@@ -2269,6 +2560,18 @@ export class FlowEngine {
     evidence_ids?: string[];
   }): Promise<Meeting & PresentationEnvelope> {
     const meeting = await this.store.loadMeeting(input.meeting_id);
+    return this.store.withFlowLock(meeting.flow_id, () => this.addMeetingTurnUnlocked(input));
+  }
+
+  private async addMeetingTurnUnlocked(input: {
+    meeting_id: string;
+    speaker?: string;
+    question?: string;
+    finding?: string;
+    note?: string;
+    evidence_ids?: string[];
+  }): Promise<Meeting & PresentationEnvelope> {
+    const meeting = await this.store.loadMeeting(input.meeting_id);
     if (meeting.status === "closed") {
       throw new Error(`meeting_id ${input.meeting_id} is already closed`);
     }
@@ -2307,6 +2610,14 @@ export class FlowEngine {
 
   async recordMeeting(input: Partial<Meeting> & { meeting_id: string }): Promise<Meeting & PresentationEnvelope> {
     const meeting = await this.store.loadMeeting(input.meeting_id);
+    return this.store.withFlowLock(meeting.flow_id, () => this.recordMeetingUnlocked(input));
+  }
+
+  private async recordMeetingUnlocked(input: Partial<Meeting> & { meeting_id: string }): Promise<Meeting & PresentationEnvelope> {
+    const meeting = await this.store.loadMeeting(input.meeting_id);
+    if (meeting.status === "closed") {
+      throw new Error(`MEETING_ALREADY_CLOSED: ${meeting.meeting_id}`);
+    }
     const now = nowIso();
     meeting.status = "recorded";
     meeting.recorded_at = now;
@@ -2361,13 +2672,60 @@ export class FlowEngine {
     satisfies_blockers?: string[];
     evidence_ids?: string[];
   }): Promise<Meeting & PresentationEnvelope> {
+    const meeting = await this.store.loadMeeting(input.meeting_id);
+    return this.store.withFlowLock(meeting.flow_id, () => this.closeMeetingUnlocked(input));
+  }
+
+  private async closeMeetingUnlocked(input: Partial<Meeting> & {
+    meeting_id: string;
+    participants_present?: string[];
+    findings?: string[];
+    decision: string;
+    next_required_action?: Record<string, unknown> | null;
+    satisfies_blockers?: string[];
+    evidence_ids?: string[];
+  }): Promise<Meeting & PresentationEnvelope> {
     requireText(input.decision, "decision");
     const meeting = await this.store.loadMeeting(input.meeting_id);
     const flow = await this.store.loadFlow(meeting.flow_id);
+    if (meeting.status === "closed") {
+      if (meeting.decision !== input.decision) {
+        throw new Error(`MEETING_ALREADY_CLOSED: ${meeting.meeting_id}`);
+      }
+      let closedData: Record<string, unknown>;
+      const closedIndex = meetingClosedIndex(flow, meeting.meeting_id);
+      if (closedIndex === null) {
+        closedData = applyClosedMeetingToFlow(flow, meeting, meeting.closed_at ?? nowIso());
+        await this.store.saveFlow(flow);
+      } else {
+        closedData = flow.history[closedIndex]?.data ?? meetingClosedLedgerData(meeting);
+      }
+      const ledgerEvents = await this.store.readLedger(meeting.flow_id);
+      const hasCloseLedger = ledgerEvents.some(
+        (event) =>
+          (event.type === "meeting_closed" || event.type === "meeting_closed_recovered") &&
+          String(event.data.meeting_id ?? "") === meeting.meeting_id
+      );
+      if (!hasCloseLedger) {
+        await this.ledger(meeting.flow_id, "meeting_closed", {
+          ...closedData,
+          recovered_components: closedIndex === null ? ["flow", "ledger"] : ["ledger"]
+        });
+      }
+      // The same frozen decision is an idempotent retry. This also covers the
+      // ambiguous append-then-throw boundary where the ledger write succeeded
+      // but the caller never received success.
+      return presentArtifact(meeting as Meeting & Record<string, unknown>, flow);
+    }
     const now = nowIso();
     const participantsPresent = unique(input.participants_present ?? meeting.participants_present);
     const missingParticipants = meeting.participants_required.filter((participant) => !participantsPresent.includes(participant));
-    const requestedSatisfies = unique(input.satisfies_blockers ?? latestFiscalBlock(flow).blocking_reasons);
+    const requestedSatisfies = unique(input.satisfies_blockers ?? []);
+    const unsupportedBlockers = requestedSatisfies.filter((blocker) => !MEETING_RESOLVABLE_BLOCKERS.has(blocker));
+    if (unsupportedBlockers.length > 0) {
+      const owners = unsupportedBlockers.map((blocker) => `${blocker}:${blockerOwner(blocker)}`).join(", ");
+      throw new Error(`MEETING_BLOCKER_NOT_OWNED: ${owners}`);
+    }
     meeting.status = "closed";
     meeting.recorded_at = meeting.recorded_at ?? now;
     meeting.closed_at = now;
@@ -2393,31 +2751,12 @@ export class FlowEngine {
     meeting.evidence_ids = unique([...(input.evidence_ids ?? []), ...meeting.evidence_ids]);
     meeting.satisfies_blockers =
       missingParticipants.length === 0 && meeting.decision ? unique(requestedSatisfies) : meeting.satisfies_blockers.filter((blocker) => !requestedSatisfies.includes(blocker));
-    flow.decisions = unique([...flow.decisions, ...meeting.decisions]);
-    flow.risks = unique([...flow.risks, ...meeting.risks]);
     const meetingPromotedGold = linkParkingToGold(flow, meeting.parking_lot, "meeting_record", meeting.meeting_id, now);
     meeting.gold_mining = unique([...meeting.gold_mining, ...meetingPromotedGold]);
-    flow.parking_lot = unique([...flow.parking_lot, ...meeting.parking_lot]);
-    flow.gold_mining = unique([...flow.gold_mining, ...meeting.gold_mining]);
-    flow.cooperators = uniqueCooperators([...flow.cooperators, ...meeting.cooperators]);
-    flow.active_credits = unique([...flow.active_credits, ...meeting.active_credits]);
-    flow.updated_at = now;
-    flow.history.push({
-      at: now,
-      type: "meeting_closed",
-      data: {
-        ...meetingClosedLedgerData(meeting),
-        missing_participants: missingParticipants,
-        participants_minimum_satisfied: missingParticipants.length === 0
-      }
-    });
+    const closedData = applyClosedMeetingToFlow(flow, meeting, now);
     await this.store.saveMeeting(meeting);
     await this.store.saveFlow(flow);
-    await this.ledger(meeting.flow_id, "meeting_closed", {
-      ...meetingClosedLedgerData(meeting),
-      missing_participants: missingParticipants,
-      participants_minimum_satisfied: missingParticipants.length === 0
-    });
+    await this.ledger(meeting.flow_id, "meeting_closed", closedData);
     return presentArtifact(meeting as Meeting & Record<string, unknown>, flow);
   }
 
@@ -2477,7 +2816,7 @@ export class FlowEngine {
       : presented;
   }
 
-  async renderChecklist(flowId: string, detail: "visual-only" | "lean" | "compact" | "full" = "full"): Promise<{
+  async renderChecklist(flowId: string, detail: "visual-only" | "lean" | "compact" | "full" = "visual-only"): Promise<{
     flow_id: string;
     phase?: AnyPhase;
     mode?: Flow["mode"];
@@ -2625,11 +2964,37 @@ export class FlowEngine {
     gold_mining?: string[];
     cooperators?: Flow["cooperators"];
     active_credits?: string[];
+    meeting_ids?: string[];
     next_step: string;
   }): Promise<Verdict & PresentationEnvelope> {
     requireText(input.rationale, "rationale");
     requireText(input.next_step, "next_step");
+    return this.store.withFlowLock(input.flow_id, () => this.recordVerdictUnlocked(input));
+  }
+
+  private async recordVerdictUnlocked(input: {
+    flow_id: string;
+    status: VerdictStatus;
+    rationale: string;
+    evidence_ids?: string[];
+    residual_risks?: string[];
+    review_findings?: string[];
+    parking_lot?: string[];
+    gold_mining?: string[];
+    cooperators?: Flow["cooperators"];
+    active_credits?: string[];
+    meeting_ids?: string[];
+    next_step: string;
+  }): Promise<Verdict & PresentationEnvelope> {
     const flow = await this.store.loadFlow(input.flow_id);
+    const meetingIds = unique(input.meeting_ids ?? []);
+    for (const meetingId of meetingIds) {
+      const meeting = await this.store.loadMeeting(meetingId);
+      if (meeting.flow_id !== flow.flow_id) {
+        throw new Error(`meeting_id ${meetingId} does not belong to flow ${flow.flow_id}`);
+      }
+      assertMeetingClosed(meeting);
+    }
     const evidenceIds = input.evidence_ids ?? [];
     let status = input.status;
     const residualRisks = input.residual_risks ?? [];
@@ -2649,6 +3014,7 @@ export class FlowEngine {
       gold_mining: input.gold_mining ?? [],
       cooperators: input.cooperators ?? [],
       active_credits: input.active_credits ?? [],
+      meeting_ids: meetingIds,
       next_step: input.next_step,
       created_at: now
     };
@@ -4029,7 +4395,75 @@ function previousFiscalBlockIndex(flow: Flow, beforeIndex: number): number | nul
 
 function meetingConsumedByLaterVerdict(flow: Flow, meeting: Meeting): boolean {
   const closedIndex = meetingClosedIndex(flow, meeting.meeting_id);
-  return closedIndex !== null && hasVerdictRecordedAfterIndex(flow, closedIndex);
+  return closedIndex !== null && flow.history.slice(closedIndex + 1).some(
+    (event) => event.type === "verdict_recorded" && (
+      stringArray(event.data.meeting_ids).includes(meeting.meeting_id) ||
+      !Object.prototype.hasOwnProperty.call(event.data, "meeting_ids")
+    )
+  );
+}
+
+function meetingOutcomeSummaries(flow: Flow): Array<Record<string, unknown>> {
+  return flow.meetings.map((meetingId) => {
+    const closedIndex = meetingClosedIndex(flow, meetingId);
+    if (closedIndex === null) {
+      const wasRecorded = flow.history.some(
+        (event) => event.type === "meeting_recorded" && String(event.data.meeting_id ?? "") === meetingId
+      );
+      return meetingOutcomeSummary(meetingId, wasRecorded ? "recorded_legacy" : "open", null);
+    }
+    const laterEvents = flow.history.slice(closedIndex + 1);
+    const exactConsumption = laterEvents.find(
+      (event) =>
+        (event.type === "goal_regressed" && String(event.data.meeting_id ?? "") === meetingId) ||
+        (event.type === "verdict_recorded" && stringArray(event.data.meeting_ids).includes(meetingId))
+    );
+    if (exactConsumption) {
+      return meetingOutcomeSummary(
+        meetingId,
+        exactConsumption.type === "goal_regressed" ? "consumed_by_regress" : "consumed_by_verdict",
+        {
+          at: exactConsumption.at,
+          event_type: exactConsumption.type,
+          consumer_id: exactConsumption.type === "verdict_recorded" ? String(exactConsumption.data.verdict_id ?? "") || null : null
+        }
+      );
+    }
+    const hasUnattributedLegacyVerdict = laterEvents.some(
+      (event) => event.type === "verdict_recorded" && !Object.prototype.hasOwnProperty.call(event.data, "meeting_ids")
+    );
+    return meetingOutcomeSummary(meetingId, hasUnattributedLegacyVerdict ? "unattributed_legacy" : "closed_unconsumed", null);
+  });
+}
+
+function meetingOutcomeSummary(
+  meetingId: string,
+  traceabilityStatus: "open" | "recorded_legacy" | "closed_unconsumed" | "consumed_by_regress" | "consumed_by_verdict" | "unattributed_legacy",
+  consumption: Record<string, unknown> | null
+): Record<string, unknown> {
+  return {
+    meeting_id: meetingId,
+    traceability_status: traceabilityStatus,
+    consumed: traceabilityStatus === "consumed_by_regress" || traceabilityStatus === "consumed_by_verdict",
+    reusable: traceabilityStatus === "closed_unconsumed",
+    reuse_reason: traceabilityStatus === "closed_unconsumed"
+      ? "closed result has no later attributed or legacy verdict"
+      : traceabilityStatus === "unattributed_legacy"
+        ? "legacy verdict prevents safe reuse without inventing attribution"
+        : "meeting is not an eligible unconsumed closed result",
+    consumption,
+    semantic_effectiveness: "not_measured",
+    evidence_rule: "meeting close, presence, turns, findings and credits never prove effectiveness; attributed consumption requires a later event with the exact meeting_id"
+  };
+}
+
+function meetingOutcomeCounts(flow: Flow): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const outcome of meetingOutcomeSummaries(flow)) {
+    const status = String(outcome.traceability_status);
+    counts[status] = (counts[status] ?? 0) + 1;
+  }
+  return counts;
 }
 
 function hasVerdictRecordedAfterIndex(flow: Flow, historyIndex: number): boolean {
@@ -4145,7 +4579,7 @@ function isBlockerStillActive(flow: Flow, reason: string): boolean {
   if (reason === MEMORY_MINING_BLOCKED_VERDICT_REASON) {
     return memoryMiningVerdictStillBlocked(flow);
   }
-  if (reason === "review_required") {
+  if (reason === "review_required" || reason === "review_evidence_coherent") {
     return !hasReviewEvidence(flow, {});
   }
   return true;
@@ -4581,6 +5015,40 @@ function meetingClosedLedgerData(meeting: Meeting): Record<string, unknown> {
     created_by: meeting.created_by,
     evidence_ids: meeting.evidence_ids
   };
+}
+
+function applyClosedMeetingToFlow(flow: Flow, meeting: Meeting, at: string): Record<string, unknown> {
+  const missingParticipants = missingParticipantsFor(meeting);
+  const data = {
+    ...meetingClosedLedgerData(meeting),
+    missing_participants: missingParticipants,
+    participants_minimum_satisfied: missingParticipants.length === 0
+  };
+  flow.decisions = unique([...flow.decisions, ...meeting.decisions]);
+  flow.risks = unique([...flow.risks, ...meeting.risks]);
+  flow.parking_lot = unique([...flow.parking_lot, ...meeting.parking_lot]);
+  flow.gold_mining = unique([...flow.gold_mining, ...meeting.gold_mining]);
+  flow.cooperators = uniqueCooperators([...flow.cooperators, ...meeting.cooperators]);
+  flow.active_credits = unique([...flow.active_credits, ...meeting.active_credits]);
+  flow.updated_at = at;
+  flow.history.push({ at, type: "meeting_closed", data });
+  return data;
+}
+
+const MEETING_RESOLVABLE_BLOCKERS = new Set(["required_cooperation"]);
+
+function assertMeetingClosed(meeting: Meeting): void {
+  if (meeting.status !== "closed") {
+    throw new Error(`MEETING_NOT_CLOSED: ${meeting.meeting_id}; status=${meeting.status}`);
+  }
+}
+
+function blockerOwner(blocker: string): string {
+  if (blocker === "review_required") return "evidence_add";
+  if (blocker === "memory_required_but_empty") return "mm_memory_mining";
+  if (blocker === "hygiene_blocking") return "hygiene_scan";
+  if (blocker === "librarian_status") return "memory_recall";
+  return "unknown/unregistered";
 }
 
 function nextRequiredActionFor(
@@ -5592,9 +6060,14 @@ function compactPpirtvCheckout(checkout: Record<string, unknown>, detail: "compa
   const prestacaoCount = Array.isArray(prestacao)
     ? prestacao.length
     : (prestacao && typeof prestacao === "object" ? Object.keys(prestacao).length : 0);
+  const meetingAccountability = checkout.meeting_outcome_accountability as Record<string, unknown> | undefined;
+  const compactMeetingAccountability = meetingAccountability
+    ? Object.fromEntries(Object.entries(meetingAccountability).filter(([key]) => key !== "outcomes"))
+    : undefined;
   const { prestacao_de_contas, ready_definition, gate_final_output, final_report_model, ...rest } = checkout;
   return {
     ...rest,
+    meeting_outcome_accountability: compactMeetingAccountability,
     prestacao_de_contas_count: prestacaoCount
   };
 }
@@ -5616,6 +6089,15 @@ function ppirtvCheckOut(
   const librarianAccountability = librarianCheckoutAccountability(librarianStatus);
   const loopAccountability = loopCheckoutAccountability(flow, blockers);
   const evidenceAccountability = evidenceCheckoutAccountability(flow);
+  const meetingOutcomes = meetingOutcomeSummaries(flow);
+  const meetingOutcomeAccountability = {
+    outcomes: meetingOutcomes,
+    consumed_count: meetingOutcomes.filter((item) => item.consumed === true).length,
+    closed_unconsumed_count: meetingOutcomes.filter((item) => item.traceability_status === "closed_unconsumed").length,
+    unattributed_legacy_count: meetingOutcomes.filter((item) => item.traceability_status === "unattributed_legacy").length,
+    semantic_effectiveness: "not_measured",
+    rule: "traceable downstream consumption is measurable; semantic effectiveness requires independent product evidence"
+  };
   const contractAccountability = {
     ...operationalContractMeta(),
     ready_definition: readyDefinition(),
@@ -5641,6 +6123,7 @@ function ppirtvCheckOut(
     ppirtv_home: runtimeLayoutStatus?.ppirtv_home ?? null,
     runtime_layout_status: runtimeLayoutStatus,
     meetings_count: flow.meetings.length,
+    meeting_outcome_accountability: meetingOutcomeAccountability,
     evidence_count: flow.evidence.length,
     evidence_accountability: evidenceAccountability,
     review_visible: flow.evidence.some((evidence) => /review|revisor|diff/i.test([evidence.kind, evidence.title, evidence.note, evidence.content].filter(Boolean).join("\n"))),
@@ -5669,6 +6152,7 @@ function ppirtvCheckOut(
       estacionamento: learningAccountability.estacionado,
       pontos_cegos: learningAccountability.pontos_cegos,
       cooperadores: cooperationAccountability,
+      reunioes: meetingOutcomeAccountability,
       bibliotecario: librarianAccountability,
       loops: loopAccountability,
       contrato_operacional: contractAccountability
@@ -5736,6 +6220,14 @@ function classifyEvidenceQuality(evidence: Evidence): EvidenceQuality {
     reasons: evidenceQualityReasons(status, hasTrace, missingFields),
     missing_fields: missingFields
   };
+}
+
+function reviewEvidenceRequested(input: { kind?: string; satisfies?: string[] }): boolean {
+  if (/^(?:code_)?review$/i.test(input.kind ?? "")) {
+    return true;
+  }
+  const reviewClaims = new Set(["diff_reviewed", "barata_scan", "regression_risks", "review_required"]);
+  return (input.satisfies ?? []).some((claim) => reviewClaims.has(claim));
 }
 
 function evidenceQualityReasons(status: EvidenceQuality["status"], hasTrace: boolean, missingFields: string[]): string[] {
@@ -5882,6 +6374,80 @@ function memoryTargetFilesForResolution(scope: MemoryCandidatePromoteScope, them
     return [path.join(dexMemoriaHome, "temas", theme, "LEMBRANCA.md"), path.join(dexMemoriaHome, "temas", theme, "MEMORIA.md")];
   }
   return [path.join(workspace, ".agents", "LEMBRANCA.md"), path.join(workspace, ".agents", "MEMORIA.md")];
+}
+
+function memoryV2Slug(item: string, fallback: string): string {
+  const base = item
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  const identitySuffix = fallback.toLowerCase().replace(/[^a-f0-9]/g, "").slice(-12);
+  const readablePrefix = base.slice(0, 51).replace(/-+$/g, "") || "memory";
+  return identitySuffix ? `${readablePrefix}-${identitySuffix}` : readablePrefix.slice(0, 64);
+}
+
+function memoryV2CandidateId(item: string): string {
+  const normalized = item.normalize("NFC").replace(/\s+/g, " ").trim();
+  return `mc_${createHash("sha256").update(normalized, "utf8").digest("hex").slice(0, 24)}`;
+}
+
+function memoryV2OperationId(item: string, classification: ReturnType<typeof classifyDexMemoriaV2Intent>): string {
+  const materialUnit = {
+    item: item.normalize("NFC").replace(/\s+/g, " ").trim(),
+    target_layer: classification.route.target,
+    owner_skill: classification.route.target === "L3" ? classification.route.owner_skill : null,
+    tags: [...classification.tags],
+    destinations: classification.destinations.map((destination) => destination.scope === "theme"
+      ? { scope: destination.scope, theme: destination.theme }
+      : { scope: destination.scope })
+  };
+  return `mmv2_${createHash("sha256").update(JSON.stringify(materialUnit), "utf8").digest("hex")}`;
+}
+
+function requireConfiguredV2Root(value: string | undefined, field: "MEMORY_HOME" | "WORKSPACE"): string {
+  if (!value?.trim()) throw new Error(`PPIRTV_DEX_MEMORIA_V2_${field}_REQUIRED`);
+  if (!path.isAbsolute(value)) throw new Error(`PPIRTV_DEX_MEMORIA_V2_${field}_MUST_BE_ABSOLUTE`);
+  return path.resolve(value);
+}
+
+function confinedV2Workspace(input: {
+  storeWorkspace: string;
+  writerWorkspace: string | undefined;
+  envelopeWorkspace?: string;
+}): string {
+  const storeWorkspace = requireConfiguredV2Root(input.storeWorkspace, "WORKSPACE");
+  const writerWorkspace = requireConfiguredV2Root(input.writerWorkspace, "WORKSPACE");
+  const envelopeWorkspace = input.envelopeWorkspace
+    ? requireConfiguredV2Root(input.envelopeWorkspace, "WORKSPACE")
+    : undefined;
+  if (!sameRuntimePath(storeWorkspace, writerWorkspace)
+    || (envelopeWorkspace && !sameRuntimePath(storeWorkspace, envelopeWorkspace))) {
+    throw new Error(
+      `PPIRTV_DEX_MEMORIA_V2_WORKSPACE_MISMATCH: store=${storeWorkspace}; writer=${writerWorkspace}; envelope=${envelopeWorkspace ?? "not_bound"}`
+    );
+  }
+  return storeWorkspace;
+}
+
+function requestedV2MiningClassification(input: {
+  v2_destinations?: DexMemoriaV2Destination[];
+  v2_density?: "light" | "deep";
+  v2_owner_skill?: string;
+  v2_tags?: string[];
+}): DexMemoriaV2MiningClassification | undefined {
+  const hasAnyDirective = Boolean(input.v2_destinations || input.v2_density || input.v2_owner_skill || input.v2_tags);
+  if (!hasAnyDirective) return undefined;
+  if (!input.v2_destinations?.length) return { status: "unresolved", reason: "destinations_required" };
+  if (!input.v2_tags?.length) return { status: "unresolved", reason: "tags_required" };
+  const requestedDestinations = input.v2_destinations as [DexMemoriaV2Destination, ...DexMemoriaV2Destination[]];
+  const tags = input.v2_tags as [string, ...string[]];
+  if (input.v2_density === "deep") {
+    if (!input.v2_owner_skill?.trim()) return { status: "unresolved", reason: "owner_skill_required" };
+    return { status: "resolved", density: "deep", requested_destinations: requestedDestinations, tags, owner_skill: input.v2_owner_skill };
+  }
+  return { status: "resolved", density: "light", requested_destinations: requestedDestinations, tags };
 }
 
 function memoryCandidateLedgerDataWithResolution(candidate: MemoryCandidate, resolution: MemoryCandidateResolution | undefined): Record<string, unknown> {
@@ -6171,6 +6737,8 @@ function memoryCheckoutAccountability(flow: Flow, memoryMining: MemoryMiningSumm
         ? `memoria consolidada: L1=${layers.L1.length}, L2=${layers.L2.length}, L3=${layers.L3.length}`
         : memoryMining.memory_review_status === "pending_consciencia_memorias"
           ? `memoria gravada e validada estruturalmente; revisao consciencia-memorias pendente: L1=${layers.L1.length}, L2=${layers.L2.length}, L3=${layers.L3.length}`
+        : memoryMining.memory_validated === true
+          ? `memoria gravada e validada: L1=${layers.L1.length}, L2=${layers.L2.length}, L3=${layers.L3.length}`
         : memoryMining.written_count > 0
           ? `memoria gravada, aguardando/pendente de validacao: L1=${layers.L1.length}, L2=${layers.L2.length}, L3=${layers.L3.length}`
         : memoryMining.candidates_count > 0
@@ -6189,7 +6757,7 @@ function memoryLayersFromFiles(files: string[]): Record<"L1" | "L2" | "L3" | "ot
     const normalized = file.replace(/\\/g, "/");
     if (/\/?LEMBRANCA\.md$/i.test(normalized) || /\/?lembranca\.md$/i.test(normalized)) {
       layers.L1.push(file);
-    } else if (/\/?MEMORIA\.md$/i.test(normalized) || /\/?memoria\.md$/i.test(normalized)) {
+    } else if (/\/?MEMORIA\.md$/i.test(normalized) || /\/?memoria\.md$/i.test(normalized) || /\/memorias\/[^/]+\.md$/i.test(normalized)) {
       layers.L2.push(file);
     } else if (/\/conhecimento\//i.test(normalized) || /\/L3\//i.test(normalized)) {
       layers.L3.push(file);
@@ -6481,6 +7049,16 @@ function memoryMiningStatus(flow: Flow): MemoryMiningSummary {
       }
     }
   );
+}
+
+function memoryWriterRuntimeSummary(
+  config: FlowEngineOptions["memory_writer"],
+  projectRoot: string
+): { profile: "unconfigured" | "legacy-v1" | "v2"; workspace_root: string; memory_home: string | null } {
+  if (config?.profile === "v2") {
+    return { profile: "v2", workspace_root: config.workspace_root ?? projectRoot, memory_home: config.memory_home ?? null };
+  }
+  return { profile: config?.profile ?? "unconfigured", workspace_root: projectRoot, memory_home: null };
 }
 
 async function collectTempFiles(root: string): Promise<string[]> {

@@ -176,6 +176,26 @@ Veredito esperado do PPI:
 - `PPI: voltar para Planejamento`
 - `PPI: bloquear`
 
+### Fechamento operacional e retomada
+
+O schema continua SPT v2. O fechamento abaixo e um gate operacional depois do
+veredito e nao adiciona campos ao front matter:
+
+1. Use `memoria-viva` em todo fechamento de Trilho/SPT para reconciliar a
+   menor camada local que permite retomada sem o chat. Atualize, conforme o
+   drift real, `.agents/ACTIVE.md`, `.agents/HANDOFF.md`,
+   `.agents/PLAN-TASKS/ACTIVE.md` e os indices aplicaveis. O estado deve deixar
+   objetivo/status, evidencia, bloqueio e proximo passo com `quando`.
+2. Avalie `napkin-projeto` em todo fechamento, mas escreva somente quando o
+   bloco produziu avanco substancial, mudanca operacional, gotcha, comando
+   confiavel ou regra `Faca em vez disso:` com valor recorrente. Progresso
+   trivial, ata e diario de sessao nao entram.
+3. Quando a fonte viva ja estiver coerente ou nao houver item elegivel para o
+   napkin, registre `nenhuma escrita necessaria` em vez de fabricar conteudo.
+
+`memoria-viva` guarda o estado recuperavel do projeto; `napkin-projeto` guarda
+como operar melhor naquele repositorio. Um nao substitui o outro.
+
 ## Trilho Multi-Flow / Pipeline SPT
 
 Um Trilho Multi-Flow e um SPT coordenador que descreve uma fila de trabalhos
@@ -354,7 +374,11 @@ Fluxo canonico:
 15. Registrar evidencias reais com `evidence_add`, seguindo o contrato minimo
     de evidencia.
 16. Chamar `goal_verdict` com `evidence_ids` rastreaveis.
-17. Conferir `ppirtv_checkout` antes de declarar fechamento total.
+17. Conferir `ppirtv_checkout` e seus blockers antes do fechamento humano.
+18. Aplicar `memoria-viva` para reconciliar o estado de retomada com o
+    veredito e o checkout finais.
+19. Avaliar `napkin-projeto` pelo gate moderado; escrever somente aprendizado
+    operacional substancial ou registrar `nenhuma escrita necessaria`.
 
 ### Contrato lean ponta a ponta
 
@@ -436,9 +460,11 @@ Tambem deve expor `trail_alignment` para conferir MCP cwd, workspace, SPT,
 objetivo e contrato de evidencia antes de partir.
 
 `ppirtv_checkout` e obrigatorio no fim: deve preservar blockers, evidencias,
-reunioes, review, testes, garimpo, memoria e destino. Arquivar flow bloqueado
-nao transforma bloqueio em sucesso; deve dizer que foi arquivado com bloqueios
-preservados.
+reunioes, review, testes, garimpo, memoria e destino. Antes do fechamento
+humano total, a continuidade local deve estar reconciliada por `memoria-viva`
+e o gate moderado de `napkin-projeto` deve ter resultado explicito, inclusive
+`nenhuma escrita necessaria`. Arquivar flow bloqueado nao transforma bloqueio
+em sucesso; deve dizer que foi arquivado com bloqueios preservados.
 
 `required_cooperation` material deve gerar contrato acionavel:
 `meeting_required`, `regress_required`, `back_to`, `next_required_action` e

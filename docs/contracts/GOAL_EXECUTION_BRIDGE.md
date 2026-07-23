@@ -144,6 +144,9 @@ Retorna:
 - veredito atual, se houver;
 - `memory_mining`, quando ja houve mineracao;
 - `goal_learning_links`, quando estacionamento foi garimpado no GOAL;
+- `meeting_outcomes` em `full` e `meeting_outcome_summary` em `lean`/`compact`,
+  com consumo downstream atribuido somente por `meeting_id` exato e eficacia
+  semantica explicitamente nao inferida;
 - envelope vinculado.
 
 ### `goal_resume`
@@ -222,10 +225,35 @@ estacionamento, garimpo e cooperadores sugeridos. Sugestao nao satisfaz
 Wrapper oficial para fechar uma reuniao de GOAL vivo.
 
 Registra decisao, participantes presentes, cooperadores materiais,
-`satisfies_blockers`, creditos ativos validos e saidas finais da reuniao.
+`satisfies_blockers`, creditos ativos validos e saidas finais da reuniao. O
+primeiro fechamento e imutavel inclusive sob concorrencia. Retry com a mesma
+decisao congelada e idempotente; decisao diferente falha. Mutacoes de reuniao do mesmo flow usam lock de
+filesystem por `flow_id`: owner vivo nao e roubado, lock valido de processo
+morto e recuperavel e estado malformado ou com identidade instavel falha
+fechado. Se o processo falhar depois de salvar a reuniao congelada ou o flow,
+um retry com a mesma decisao reconcilia o flow ou o evento canonico
+`meeting_closed` ausente sem duplicar evidencia. Reuniao aberta nao pode ser
+referenciada por veredito ou regresso. `satisfies_blockers` nao herda o estado fiscal
+e aceita apenas blockers cujo owner seja meeting; neste contrato,
+`required_cooperation`. `review_required` pertence a review estruturado por
+`evidence_add` e um claim divergente falha com owner acionavel.
 `required_cooperation` so e satisfeito quando a reuniao fechada tem
 participantes minimos, `satisfies_blockers` e o `meeting_id` e informado no
 `goal_verdict` positivo.
+
+O veredito persiste `meeting_ids`. O status deriva `recorded_legacy`,
+`closed_unconsumed`, `consumed_by_regress`, `consumed_by_verdict` ou
+`unattributed_legacy` somente de eventos posteriores com referencia exata.
+Um veredito legado sem `meeting_ids` mantem a reuniao indisponivel para reuso,
+mas nao recebe atribuicao inventada. Esses estados medem rastreabilidade
+causal, nao valor semantico. Presenca, turnos, findings, creditos e volume nao
+provam eficacia e nao alteram o estado.
+
+Erros de lifecycle sao estruturados no MCP: `MEETING_NOT_CLOSED` orienta o
+fechamento antes do consumo; `MEETING_BLOCKER_NOT_OWNED` aponta para o owner do
+blocker; `MEETING_ALREADY_CLOSED` orienta reutilizar o resultado congelado; e
+falhas de lock viram `MEETING_CONCURRENT_MUTATION`, distinguindo retry seguro de
+inspecao obrigatoria de integridade.
 
 Item estacionado sem regra explicita de promocao nao vira pepita por default:
 fica classificado como `nao_promover`, preservado no estacionamento/ledger e
@@ -250,6 +278,20 @@ bloqueados sao gravados automaticamente em L1/L2 e a resposta informa os
 arquivos em `written[].files`. A ordem operacional e gravar primeiro e avisar
 depois, dando ao usuario a chance de editar, complementar ou corrigir. Use
 `classify_only` apenas para diagnostico e validacao controlada.
+
+Quando o writer selecionado e V2, uma intenção light que diga claramente
+`local deste projeto`, `global/cross-project` ou ambos e suficiente para
+resolver `project`, `global` ou dual. O cliente nao precisa enviar
+`v2_destinations`, `v2_density` ou `v2_tags` nesse caminho cotidiano. Se o
+destino continuar ambíguo, o candidate permanece sem escrita com
+`classification_reason=destinations_required`; a resposta nao usa
+`classifier_unavailable` como convite para inspecionar a implementação.
+Operações deep/L3 continuam exigindo owner explícito.
+
+No retorno V2, `written_count` conta candidates que possuem ao menos um arquivo
+validado. Cada `written[].files` e derivado exclusivamente dos write sets que o
+adapter reabriu e verificou por hash; recibos de coordenacao nao sao, sozinhos,
+oráculo de escrita.
 
 Somente `mm_memory_mining` escreve memoria curada. Graphify e Bibliotecario
 nao promovem memoria canonica.

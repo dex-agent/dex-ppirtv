@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, rename, stat, writeFile, appendFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, stat, writeFile, appendFile, lstat, unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { existsSync } from "node:fs";
@@ -137,6 +137,52 @@ export class PpirtvStore {
       .map(normalizeMeeting)
       .filter((meeting) => !flowId || meeting.flow_id === flowId)
       .sort((a, b) => a.meeting_id.localeCompare(b.meeting_id));
+  }
+
+  async withFlowLock<T>(flowId: string, operation: () => Promise<T>): Promise<T> {
+    await this.init();
+    safeArtifactId(flowId, "flow_id");
+    const lockPath = `${this.flowPath(flowId)}.meeting.lock`;
+    const ownerToken = randomUUID();
+    const lockRecord = { owner_token: ownerToken, pid: process.pid, created_at: new Date().toISOString() };
+    const deadline = Date.now() + 2_000;
+    let acquiredIdentity = "";
+    while (true) {
+      try {
+        await writeFile(lockPath, `${JSON.stringify(lockRecord)}\n`, { flag: "wx" });
+        acquiredIdentity = fileIdentity(await lstat(lockPath, { bigint: true }));
+        break;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+          throw error;
+        }
+        const existing = await readStableFlowLock(lockPath, flowId);
+        if (existing.record.pid === process.pid) {
+          if (Date.now() >= deadline) {
+            throw new Error(`MEETING_LOCK_TIMEOUT: ${flowId}`);
+          }
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          continue;
+        }
+        if (processAlive(existing.record.pid)) {
+          throw new Error(`MEETING_LOCKED: ${flowId}; owner=${existing.record.owner_token}; pid=${existing.record.pid}`);
+        }
+        if (fileIdentity(await lstat(lockPath, { bigint: true })) !== existing.identity) {
+          throw new Error(`MEETING_STALE_LOCK_IDENTITY_CHANGED: ${flowId}`);
+        }
+        await unlink(lockPath);
+      }
+    }
+    try {
+      return await operation();
+    } finally {
+      if (await this.pathExists(lockPath)) {
+        const current = await readStableFlowLock(lockPath, flowId);
+        if (current.record.owner_token === ownerToken && current.identity === acquiredIdentity) {
+          await unlink(lockPath);
+        }
+      }
+    }
   }
 
   async saveEvidence(evidence: Evidence): Promise<void> {
@@ -313,6 +359,49 @@ function normalizeFlow(flow: Flow): Flow {
     active_credits: verdict.active_credits ?? []
   }));
   return flow;
+}
+
+type MeetingLockRecord = { owner_token: string; pid: number; created_at: string };
+
+async function readStableFlowLock(lockPath: string, flowId: string): Promise<{ record: MeetingLockRecord; identity: string }> {
+  const before = await lstat(lockPath, { bigint: true });
+  const bytes = await readFile(lockPath, "utf8");
+  const after = await lstat(lockPath, { bigint: true });
+  const identity = fileIdentity(before);
+  if (identity !== fileIdentity(after)) {
+    throw new Error(`MEETING_LOCK_IDENTITY_CHANGED: ${flowId}`);
+  }
+  let value: unknown;
+  try {
+    value = JSON.parse(bytes);
+  } catch {
+    throw new Error(`MEETING_LOCK_INVALID: ${flowId}`);
+  }
+  if (!value || typeof value !== "object") {
+    throw new Error(`MEETING_LOCK_INVALID: ${flowId}`);
+  }
+  const record = value as Partial<MeetingLockRecord>;
+  if (typeof record.owner_token !== "string" || !record.owner_token || !Number.isInteger(record.pid) || (record.pid ?? 0) <= 0 || typeof record.created_at !== "string") {
+    throw new Error(`MEETING_LOCK_INVALID: ${flowId}`);
+  }
+  return { record: record as MeetingLockRecord, identity };
+}
+
+function fileIdentity(info: { dev: bigint; ino: bigint }): string {
+  // Size and mtime can settle asynchronously on Windows immediately after a
+  // write. Device + inode identify the directory entry without turning normal
+  // metadata propagation into a false replacement signal. The random owner
+  // token still proves logical ownership before cleanup.
+  return `${info.dev}:${info.ino}`;
+}
+
+function processAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
 }
 
 function inferMemoryReviewStatus(validation: MemoryPostWriteValidation | undefined, writtenCount: number): MemoryReviewStatus {

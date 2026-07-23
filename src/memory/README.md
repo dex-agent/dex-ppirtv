@@ -2,23 +2,31 @@
 
 O modulo `src/memory/` implementa o Bibliotecario do Dex-PPIRTV.
 
-Na v1 ele nao e juiz, banco vetorial nem promotor automatico de memoria curada.
+O Bibliotecario nao e juiz, banco vetorial nem writer de memoria curada.
 Ele fica entre o fluxo PPIRTV e os registros L1/L2/L3 para lembrar antes de uma
 fase, registrar depois de uma fase, estacionar achados e preparar garimpo.
+Quando uma escrita e autorizada, `mm_memory_mining` delega ao selector/writer
+canonico Dex Memoria V2; compatibilidade V1 permanece somente para leitura e
+restauracao.
 
 ## Camadas
 
 - `.ppirtv/memory/`: runtime quente local com recalls, hooks, candidatos e
   estacionamento operacional.
-- L1: gatilhos curtos, como `.agents/LEMBRANCA.md`.
-- L2: memoria detalhada, como `.agents/MEMORIA.md`.
-- L3: conhecimento reutilizavel sob demanda, apontado por L1/L2. A v1 nao varre
-  L3 inteiro.
+- L1: gatilhos curtos em `.agents/lembranca.md`.
+- L2: unidades em `.agents/memorias/<slug>.md`; `.agents/memoria.md` e ancora
+  legada/compatibilidade, nao destino de novas unidades V2.
+- L3: conhecimento reutilizavel em
+  `.agents/conhecimento/<slug>/README.md`, apontado por L1/L2. O recall nao
+  carrega L3 inteiro sem demanda.
 
 ## Hooks
 
-- `beforePhase`: consulta runtime quente e memoria curada L1/L2, ranqueia o que
-  parece util e registra `memory_recalled` no ledger via `flow-engine`.
+- `beforePhase`: consulta runtime quente e memoria curada V1+V2, ranqueia o que
+  parece util e registra `memory_recalled` no ledger via `flow-engine`. No V2,
+  segue somente o unico href Markdown canonico de um gatilho L1 no formato
+  `->`: `memorias/<slug>.md` ou `conhecimento/<slug>/README.md`. O wikilink
+  companheiro nao e uma segunda rota; unidades orfas nao sao varridas.
 - `afterPhase`: coleta sinais da fase encerrada, registra candidatos e
   estacionamento em `.ppirtv/memory/`, e registra `memory_hook_recorded` no
   ledger via `flow-engine`.
@@ -47,9 +55,9 @@ Achados vindos do Graphify entram no recall como pistas, por exemplo:
 }
 ```
 
-Na v1 ele nao escreve memoria, nao chama `save-result`, nao altera L1/L2/L3,
-nao decide veredito, nao promove memoria curada e nao substitui `rg` para
-strings exatas.
+O provider Graphify nao escreve memoria, nao chama o writer, nao altera
+L1/L2/L3, nao decide veredito, nao promove memoria curada e nao substitui `rg`
+para strings exatas.
 
 ## Medicao de eficiencia
 
@@ -66,7 +74,7 @@ Resultado operacional:
 - Falta de hit Graphify nao e falha de memoria; e sinal para usar fallback `rg`
   ou refinar a pergunta.
 
-## O que a v1 nao faz
+## O que o Bibliotecario nao faz
 
 - Nao bloqueia avance de fase.
 - Nao decide veredito.
@@ -82,5 +90,25 @@ bloqueados sao gravados automaticamente primeiro; a resposta informa depois os
 arquivos em `written[].files` para o usuario poder editar, complementar ou
 corrigir.
 
+No writer V2, a intenção cotidiana explícita escolhe `project`, `global` ou a
+rota dual sem exigir os parâmetros internos `v2_*`. Pedido sem destino humano
+suficiente retorna `classification_reason=destinations_required`; não retorna
+`classifier_unavailable` nem transfere ao cliente a obrigação de estudar o
+código. `written[].files` contém somente arquivos reabertos e confirmados pelo
+recibo independente de validação; `written_count` conta candidatos escritos,
+não o número de rotas.
+
 Diagnostico e validacao controlada devem usar `write_policy=classify_only`.
 Graphify e Bibliotecario nao promovem memoria canonica.
+
+## Fronteiras do recall V2
+
+- nomes fisicos L1 sao resolvidos por equivalencia de casing sem ambiguidade;
+  os segmentos internos V2 exigem casing canonico portavel;
+- metadata `implementation_version`, `layer` e `slug` deve coincidir com a
+  rota; L3 tambem exige `owner_skill`;
+- destinos sao deduplicados e ordenados antes do limite de oito unidades; se o
+  limite for excedido, o recall emite `curated_v2_targets_truncated`;
+- cada arquivo curado e limitado a 1 MiB e permanece confinado ao `.agents`;
+- o adapter pos-escrita nao escolhe root nem writer: ele reabre recibos e exige
+  exatamente um L1 case-equivalent e o destino derivado da camada e do slug.

@@ -45,7 +45,13 @@ export function meetingsTemplate(): Record<MeetingType, Record<string, unknown>>
     },
     decision: {
       use_when: ["regress_count >= 3", "loop ruim", "bloqueio material recorrente"],
-      required_output: ["decisao final de fiscalizacao", "responsavel", "acao obrigatoria", "criterio para destravar ou encerrar"]
+      required_output: [
+        "decisao final de fiscalizacao",
+        "responsavel",
+        "acao obrigatoria",
+        "criterio para destravar ou encerrar",
+        "consumo downstream posterior com meeting_id exato; fechamento, presenca e creditos nao provam eficacia"
+      ]
     }
   };
 }
@@ -95,7 +101,9 @@ export async function resourceText(engine: FlowEngine, uri: string): Promise<unk
     return engine.status(flowId);
   }
   if (kind === "checklist") {
-    return engine.renderChecklist(flowId);
+    // Resource URIs have no detail argument. Preserve their historical full
+    // contract while direct calls and checklist_render default to current-phase.
+    return engine.renderChecklist(flowId, "full");
   }
   if (kind === "ledger") {
     return engine.store.readLedger(flowId);

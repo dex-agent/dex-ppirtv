@@ -1,6 +1,7 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import path from "node:path";
 import { PROMPT_NAMES, RESOURCE_URIS, TOOL_NAMES, gatesTemplate, mcpReference, meetingsTemplate, promptText, resourceText } from "./catalogs.js";
 import {
   COMPACT_PHASES,
@@ -16,12 +17,17 @@ import {
 import { boundedRecallErrorReferences, FlowEngine, RecallConsumptionReferenceError, WorkProgressContractError } from "./flow-engine.js";
 import { scrubSecretLikeText } from "./security/secret-redaction.js";
 import { PpirtvStore } from "./store.js";
+import { resolveMemoryWriterConfigFromEnv } from "./config.js";
 
 const ANY_PHASES = [...PHASES, ...COMPACT_PHASES] as const;
 
-export function createPpirtvServer(options: { storeRoot?: string } = {}): McpServer {
+export function createPpirtvServer(options: { storeRoot?: string; env?: NodeJS.ProcessEnv } = {}): McpServer {
+  const runtimeEnv = options.env ?? process.env;
   const store = new PpirtvStore(options.storeRoot);
-  const engine = new FlowEngine(store);
+  const memoryWriter = resolveMemoryWriterConfigFromEnv(runtimeEnv);
+  const engine = new FlowEngine(store, undefined, {
+    memory_writer: memoryWriter
+  });
   const server = new McpServer(
     {
       name: "dex-ppirtv",
@@ -36,7 +42,7 @@ export function createPpirtvServer(options: { storeRoot?: string } = {}): McpSer
     }
   );
 
-  registerTools(server, engine);
+  registerTools(server, engine, store, memoryWriter, runtimeEnv);
   registerResources(server, engine);
   registerPrompts(server);
   return server;
@@ -47,7 +53,13 @@ export async function runStdioServer(): Promise<void> {
   await server.connect(new StdioServerTransport());
 }
 
-function registerTools(server: McpServer, engine: FlowEngine): void {
+function registerTools(
+  server: McpServer,
+  engine: FlowEngine,
+  store: PpirtvStore,
+  memoryWriter: ReturnType<typeof resolveMemoryWriterConfigFromEnv>,
+  runtimeEnv: NodeJS.ProcessEnv
+): void {
   const cooperatorSchema = z.object({
     name: z.string().min(1),
     reason: z.string().min(1),
@@ -66,6 +78,45 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
     risk_level: z.enum(["high", "medium", "low", "mechanical"]).optional(),
     mode: z.enum(["full", "compact", "lean"]).optional()
   };
+
+  server.registerTool(
+    "runtime_probe",
+    {
+      description: "Return a read-only runtime identity receipt for launcher, workspace and memory-writer activation checks.",
+      inputSchema: {}
+    },
+    async () => toolResponse(async () => {
+      const layout = await store.runtimeLayoutStatus();
+      return {
+        project_root: layout.project_root,
+        ppirtv_home: layout.ppirtv_home,
+        memory_writer_runtime: memoryWriter.profile === "v2"
+          ? {
+              profile: "v2",
+              workspace_root: memoryWriter.workspace_root,
+              memory_home: memoryWriter.memory_home,
+              canonical_root: memoryWriter.canonical_root,
+              entrypoint: memoryWriter.entrypoint
+            }
+          : {
+              profile: memoryWriter.profile,
+              workspace_root: layout.project_root,
+              memory_home: runtimeEnv.DEX_MEMORIA_HOME ? path.resolve(runtimeEnv.DEX_MEMORIA_HOME) : null,
+              canonical_root: null,
+              entrypoint: null
+            },
+        configured_memory_bundle: {
+          profile: runtimeEnv.PPIRTV_MEMORY_WRITER_PROFILE?.trim() || "unconfigured",
+          canonical_root: runtimeEnv.PPIRTV_DEX_MEMORIA_CANONICAL_ROOT ? path.resolve(runtimeEnv.PPIRTV_DEX_MEMORIA_CANONICAL_ROOT) : null,
+          entrypoint: runtimeEnv.PPIRTV_DEX_MEMORIA_V2_ENTRYPOINT ? path.resolve(runtimeEnv.PPIRTV_DEX_MEMORIA_V2_ENTRYPOINT) : null,
+          memory_home: runtimeEnv.DEX_MEMORIA_HOME ? path.resolve(runtimeEnv.DEX_MEMORIA_HOME) : null
+        },
+        process_generation: runtimeEnv.PPIRTV_PROCESS_GENERATION ?? `pid:${process.pid}`,
+        session_generation: runtimeEnv.PPIRTV_SESSION_GENERATION ?? `session:${process.pid}`,
+        process_id: process.pid
+      };
+    })
+  );
   const pipelineItemSchema = z.object({
     goal: z.string().min(1),
     context: z.string().optional(),
@@ -223,7 +274,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
   server.registerTool(
     "checklist_render",
     {
-      description: "Render the current checklist. Default visual-only returns items, blockers and next step; use detail:'full' only for principles and complete governance arrays.",
+      description: "Render only the current phase by default. The visual-only receipt returns that phase's items, blockers and next step; use detail:'full' only for principles, the canonical workflow and complete governance arrays.",
       inputSchema: {
         flow_id: z.string().min(1),
         detail: z.enum(["visual-only", "lean", "compact", "full"]).optional()
@@ -235,7 +286,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
   server.registerTool(
     "verdict_record",
     {
-      description: "Record a final verdict. A pronto verdict without evidence is downgraded.",
+      description: "Record a final verdict. A pronto verdict without evidence is downgraded; meeting_ids preserve exact downstream meeting-result traceability.",
       inputSchema: {
         flow_id: z.string().min(1),
         status: z.enum(VERDICTS),
@@ -246,6 +297,7 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         gold_mining: z.array(z.string()).optional(),
         cooperators: z.array(cooperatorSchema).optional(),
         active_credits: z.array(z.string()).optional(),
+        meeting_ids: z.array(z.string().min(1)).optional(),
         next_step: z.string().min(1)
       }
     },
@@ -436,13 +488,13 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         evidence_ids: z.array(z.string()).optional()
       }
     },
-    async (args) => toolResponse(() => engine.goalMeetingAddTurn(args))
+    async (args) => toolResponse(() => engine.goalMeetingAddTurn(args), { flow_id: args.flow_id, tool: "goal_meeting_add_turn" })
   );
 
   server.registerTool(
     "goal_meeting_close",
     {
-      description: "Close a GOAL meeting with decision, participants and blockers satisfied.",
+      description: "Close and freeze a GOAL meeting result. Only meeting-owned blockers are accepted; downstream impact requires an exact later meeting_id reference.",
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
@@ -470,17 +522,25 @@ function registerTools(server: McpServer, engine: FlowEngine): void {
         active_credits: z.array(z.string()).optional()
       }
     },
-    async (args) => toolResponse(() => engine.goalMeetingClose(args))
+    async (args) => toolResponse(() => engine.goalMeetingClose(args), { flow_id: args.flow_id, tool: "goal_meeting_close" })
   );
 
   server.registerTool(
     "mm_memory_mining",
     {
-      description: "Classify and automatically write valid GOAL memory candidates, reporting every action.",
+      description: "Classify and automatically write valid GOAL memory candidates, reporting every action. The ordinary call needs only flow_id when the human learning text states project/local, global/cross-project, both, or a recognizable theme; v2_* fields are advanced overrides.",
       inputSchema: {
         flow_id: z.string().min(1),
         auto_classify: z.boolean().default(true),
-        write_policy: z.enum(MEMORY_WRITE_POLICIES).default("auto_write")
+        write_policy: z.enum(MEMORY_WRITE_POLICIES).default("auto_write"),
+        v2_destinations: z.array(z.union([
+          z.object({ scope: z.literal("project") }),
+          z.object({ scope: z.literal("global") }),
+          z.object({ scope: z.literal("theme"), theme: z.string().trim().min(1) })
+        ])).min(1).max(2).optional(),
+        v2_density: z.enum(["light", "deep"]).optional(),
+        v2_owner_skill: z.string().trim().min(1).optional(),
+        v2_tags: z.array(z.string().regex(/^#[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)+$/)).min(1).optional()
       }
     },
     async (args) => toolResponse(() => engine.mineMemory(args))
@@ -671,6 +731,7 @@ function registerPrompts(server: McpServer): void {
 
 type ToolErrorContext = {
   flow_id?: unknown;
+  tool?: string;
 };
 
 async function toolResponse(operation: () => Promise<unknown>, errorContext?: ToolErrorContext) {
@@ -860,6 +921,40 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
       code: "PPIRTV_FISCAL_BLOCKED",
       recoverable: true,
       next_required_action: { type: "resolve_fiscal_blockers", tool: "goal_status" }
+    };
+  }
+  if (/MEETING_NOT_CLOSED/i.test(message)) {
+    return {
+      ...base,
+      code: "MEETING_NOT_CLOSED",
+      recoverable: true,
+      next_required_action: { type: "close_meeting_before_consumption", tool: "goal_meeting_close" }
+    };
+  }
+  if (/MEETING_BLOCKER_NOT_OWNED/i.test(message)) {
+    return {
+      ...base,
+      code: "MEETING_BLOCKER_NOT_OWNED",
+      recoverable: true,
+      next_required_action: { type: "route_blocker_to_contract_owner", tool: /evidence_add/i.test(message) ? "evidence_add" : "goal_status" }
+    };
+  }
+  if (/MEETING_ALREADY_CLOSED/i.test(message)) {
+    return {
+      ...base,
+      code: "MEETING_ALREADY_CLOSED",
+      recoverable: true,
+      next_required_action: { type: "use_frozen_meeting_result", tool: "goal_status", detail: "full" }
+    };
+  }
+  if (/MEETING_(?:LOCKED|LOCK_TIMEOUT|LOCK_INVALID|LOCK_IDENTITY_CHANGED|STALE_LOCK_IDENTITY_CHANGED)/i.test(message)) {
+    return {
+      ...base,
+      code: "MEETING_CONCURRENT_MUTATION",
+      recoverable: !/LOCK_INVALID|IDENTITY_CHANGED/i.test(message),
+      next_required_action: /LOCK_INVALID|IDENTITY_CHANGED/i.test(message)
+        ? { type: "inspect_meeting_lock_integrity", tool: "goal_status", detail: "full" }
+        : { type: "retry_meeting_mutation", tool: errorContext?.tool ?? "goal_status" }
     };
   }
   if (/secret-like|Authorization|Bearer|token|api[_-]?key|password|secret/i.test(rawMessage)) {

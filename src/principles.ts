@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { RUNTIME_ENV, resolveConfiguredPrinciplesPath, resolveUserHome } from "./config.js";
 import type { HygieneFinding } from "./domain.js";
+import { declaresV2Unit, inspectCanonicalV2Routes, parseV2UnitMetadata, selectExactPortableName, selectPhysicalCaseEquivalent } from "./memory/memory-v2-layout.js";
 
 export type PrincipleSeverity = "info" | "warning" | "error";
 export type ContractVersion = number | string;
@@ -257,7 +258,7 @@ export async function scanOperationalPrinciples(root = process.cwd()): Promise<H
       category: "memory",
       message: "Principio de memoria nao documenta claramente L1, L2 e L3.",
       evidence: [contract.source],
-      action: "Documentar L1 lembranca.md, L2 memoria.md e L3 conhecimento/."
+      action: "Documentar L1 lembranca.md, L2 memorias/<slug>.md e L3 conhecimento/<slug>/README.md."
     });
   }
 
@@ -437,7 +438,10 @@ function checklistFromContract(contract: OperationalContract, sourceText: string
 }
 
 function hasMemoryLayers(text: string): boolean {
-  return /\bL1\b[\s\S]*lembranca\.md/i.test(text) && /\bL2\b[\s\S]*memoria\.md/i.test(text) && /\bL3\b[\s\S]*conhecimento\//i.test(text);
+  const hasL1 = /\bL1\b[\s\S]*lembranca\.md/i.test(text);
+  const hasL2 = /\bL2\b[\s\S]*(?:memoria\.md|memorias[\\/][^\s`]+\.md)/i.test(text);
+  const hasL3 = /\bL3\b[\s\S]*conhecimento[\\/]/i.test(text);
+  return hasL1 && hasL2 && hasL3;
 }
 
 async function scanMemoryLayerFiles(root: string): Promise<HygieneFinding[]> {
@@ -448,9 +452,18 @@ async function scanMemoryLayerFiles(root: string): Promise<HygieneFinding[]> {
   for (const dir of dirs) {
     const dirPath = path.join(root, dir.name);
     const files = await safeReaddir(dirPath);
+    const fileNames = files.filter((entry) => entry.isFile()).map((entry) => entry.name);
+    let l1Name: string | null = null;
+    let legacyL2Name: string | null = null;
+    try {
+      l1Name = selectPhysicalCaseEquivalent(fileNames, "lembranca.md");
+      legacyL2Name = selectPhysicalCaseEquivalent(fileNames, "memoria.md");
+    } catch {
+      findings.push(memoryFinding(dir.name, "v2_case_equivalent_ambiguous", "memory casing ambiguo no mesmo diretorio.", dir.name, "Manter exatamente um nome fisico case-equivalent por camada."));
+    }
     const names = new Set(files.map((entry) => entry.name.toLowerCase()));
-    const hasL1 = names.has("lembranca.md");
-    const hasL2 = names.has("memoria.md");
+    const hasL1 = l1Name !== null;
+    const hasL2 = legacyL2Name !== null;
     const hasL3 = names.has("conhecimento");
     if (hasL2 && !hasL1) {
       findings.push({
@@ -462,7 +475,12 @@ async function scanMemoryLayerFiles(root: string): Promise<HygieneFinding[]> {
         action: "Criar L1 lembranca.md com gatilhos curtos apontando para ancoras L2."
       });
     }
-    if (hasL3 && !existsSync(path.join(dirPath, "conhecimento", "INDEX.md"))) {
+    const discoveredV2 = await discoverV2Units(dirPath);
+    const v2Units = discoveredV2.units;
+    for (const issue of discoveredV2.issues) {
+      findings.push(memoryFinding(dir.name, issue.suffix, issue.message, issue.evidence, issue.action));
+    }
+    if (hasL3 && discoveredV2.hasLegacyKnowledge && !existsSync(path.join(dirPath, "conhecimento", "INDEX.md"))) {
       findings.push({
         id: `memory:${dir.name}:l3_without_index`,
         severity: "warning",
@@ -472,8 +490,8 @@ async function scanMemoryLayerFiles(root: string): Promise<HygieneFinding[]> {
         action: "Adicionar conhecimento/INDEX.md para descoberta sob demanda."
       });
     }
-    if (hasL1 && hasL2) {
-      const l1 = await readFile(path.join(dirPath, "lembranca.md"), "utf8");
+    if (l1Name && legacyL2Name) {
+      const l1 = await readFile(path.join(dirPath, l1Name), "utf8");
       if (!/memoria\.md#/i.test(l1)) {
         findings.push({
           id: `memory:${dir.name}:l1_without_l2_anchor`,
@@ -485,8 +503,134 @@ async function scanMemoryLayerFiles(root: string): Promise<HygieneFinding[]> {
         });
       }
     }
+
+    const linkedPaths = new Set<string>();
+    if (l1Name) {
+      const l1 = await readFile(path.join(dirPath, l1Name), "utf8");
+      let rejectedRouteFound = false;
+      for (const line of l1.split(/\r?\n/)) {
+        const inspection = inspectCanonicalV2Routes(line);
+        if (inspection.rejectedHrefs.length > 0) rejectedRouteFound = true;
+        if (inspection.routes.length > 1) {
+          const slug = inspection.routes[0]?.slug ?? "unknown";
+          findings.push(memoryFinding(dir.name, `v2_l1_multiple_targets:${slug}`, "Um gatilho L1 aponta para mais de uma unidade V2.", l1Name, "Manter exatamente um destino Markdown canonico por gatilho L1."));
+          continue;
+        }
+        const route = inspection.routes[0];
+        if (!route) continue;
+        linkedPaths.add(route.relativePath);
+        if (!v2Units.some((unit) => unit.relativePath === route.relativePath)) {
+          findings.push(memoryFinding(dir.name, `v2_target_missing:${route.relativePath}`, "O destino V2 do gatilho L1 nao existe ou nao possui metadata V2 valida.", route.relativePath, "Criar ou corrigir a unidade V2 referenciada pelo L1."));
+        }
+      }
+      if (rejectedRouteFound) {
+        findings.push(memoryFinding(dir.name, "v2_route_rejected", "Um ou mais gatilhos L1 contem rota com aparencia V2, mas fora da gramatica canonica.", l1Name, "Usar somente memorias/<slug>.md ou conhecimento/<slug>/README.md, sem URI, anchor, traversal ou backslash."));
+      }
+    }
+    for (const unit of v2Units) {
+      if (!linkedPaths.has(unit.relativePath)) {
+        findings.push(memoryFinding(dir.name, `v2_orphan:${unit.relativePath}`, "Unidade V2 nao possui gatilho L1 canonico.", unit.relativePath, "Adicionar um unico gatilho L1 ou retirar a unidade da topologia ativa."));
+      }
+      if (unit.metadata.layer === "L3" && !unit.metadata.ownerSkill) {
+        findings.push(memoryFinding(dir.name, `v2_l3_owner_skill_missing:${unit.metadata.slug}`, "Unidade V2 L3 nao declara owner_skill.", unit.relativePath, "Declarar owner_skill no front matter da unidade L3."));
+      }
+    }
+    const layersBySlug = new Map<string, Set<string>>();
+    for (const unit of v2Units) {
+      const layers = layersBySlug.get(unit.metadata.slug) ?? new Set<string>();
+      layers.add(unit.metadata.layer);
+      layersBySlug.set(unit.metadata.slug, layers);
+    }
+    for (const [slug, layers] of layersBySlug) {
+      if (layers.size > 1) {
+        findings.push(memoryFinding(dir.name, `v2_slug_active_in_l2_and_l3:${slug}`, "O mesmo slug esta ativo simultaneamente em L2 e L3.", slug, "Escolher uma unica camada ativa para o slug."));
+      }
+    }
   }
   return findings;
+}
+
+async function discoverV2Units(dirPath: string) {
+  const units: Array<{ relativePath: string; metadata: NonNullable<ReturnType<typeof parseV2UnitMetadata>> }> = [];
+  const issues: Array<{ suffix: string; message: string; evidence: string; action: string }> = [];
+  let hasLegacyKnowledge = false;
+  const rootEntries = await safeReaddir(dirPath);
+  const rootDirectoryNames = rootEntries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  try { selectExactPortableName(rootDirectoryNames, "memorias"); }
+  catch (error) {
+    const suffix = error instanceof Error && error.message.includes("AMBIGUOUS") ? "v2_case_equivalent_ambiguous:memorias" : `v2_noncanonical_casing:${rootDirectoryNames.find((name) => name.toLowerCase() === "memorias")}`;
+    issues.push({ suffix, message: "Diretorio V2 L2 usa casing ambiguo ou nao portavel.", evidence: "memorias", action: "Manter um unico diretorio fisico com o nome exato memorias." });
+  }
+  const memoryRootEntry = rootEntries.find((entry) => entry.isDirectory() && entry.name === "memorias")
+    ?? rootEntries.find((entry) => entry.isDirectory() && entry.name.toLowerCase() === "memorias");
+  const memoryRootName = memoryRootEntry?.name ?? "memorias";
+  const memoryDir = path.join(dirPath, memoryRootName);
+  for (const entry of await safeReaddir(memoryDir)) {
+    if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".md")) continue;
+    const physicalRelativePath = `${memoryRootName}/${entry.name}`;
+    const text = await readFile(path.join(memoryDir, entry.name), "utf8");
+    const metadata = parseV2UnitMetadata(text);
+    const isDeclaredV2 = frontMatterDeclaresV2(text);
+    if (isDeclaredV2 && (!metadata || metadata.layer !== "L2" || memoryRootName !== "memorias" || entry.name !== `${metadata.slug}.md`)) {
+      issues.push({ suffix: `v2_metadata_invalid:${physicalRelativePath}`, message: "Unidade declarada V2 possui metadata, camada, slug ou path incoerente.", evidence: physicalRelativePath, action: "Alinhar implementation_version, layer, slug e path fisico canonico." });
+      continue;
+    }
+    if (metadata?.layer === "L2") units.push({ relativePath: `memorias/${entry.name}`, metadata });
+  }
+  try { selectExactPortableName(rootDirectoryNames, "conhecimento"); }
+  catch (error) {
+    const suffix = error instanceof Error && error.message.includes("AMBIGUOUS") ? "v2_case_equivalent_ambiguous:conhecimento" : `v2_noncanonical_casing:${rootDirectoryNames.find((name) => name.toLowerCase() === "conhecimento")}`;
+    issues.push({ suffix, message: "Diretorio V2 L3 usa casing ambiguo ou nao portavel.", evidence: "conhecimento", action: "Manter um unico diretorio fisico com o nome exato conhecimento." });
+  }
+  const knowledgeRootEntry = rootEntries.find((entry) => entry.isDirectory() && entry.name === "conhecimento")
+    ?? rootEntries.find((entry) => entry.isDirectory() && entry.name.toLowerCase() === "conhecimento");
+  const knowledgeRootName = knowledgeRootEntry?.name ?? "conhecimento";
+  const knowledgeDir = path.join(dirPath, knowledgeRootName);
+  for (const entry of await safeReaddir(knowledgeDir)) {
+    if (entry.isFile()) {
+      if (entry.name.toLowerCase() !== "index.md") hasLegacyKnowledge = true;
+      continue;
+    }
+    if (!entry.isDirectory()) continue;
+    const childEntries = await safeReaddir(path.join(knowledgeDir, entry.name));
+    const childFileNames = childEntries.filter((child) => child.isFile()).map((child) => child.name);
+    try { selectExactPortableName(childFileNames, "README.md"); }
+    catch {
+      issues.push({ suffix: `v2_noncanonical_casing:${knowledgeRootName}/${entry.name}/README.md`, message: "Arquivo V2 L3 usa casing ambiguo ou nao portavel.", evidence: `${knowledgeRootName}/${entry.name}`, action: "Manter um unico arquivo fisico com o nome exato README.md." });
+    }
+    const readmeEntry = childEntries.find((child) => child.isFile() && child.name === "README.md")
+      ?? childEntries.find((child) => child.isFile() && child.name.toLowerCase() === "readme.md");
+    if (!readmeEntry) {
+      if (childEntries.length > 0) hasLegacyKnowledge = true;
+      continue;
+    }
+    const physicalRelativePath = `${knowledgeRootName}/${entry.name}/${readmeEntry.name}`;
+    const text = await readFile(path.join(knowledgeDir, entry.name, readmeEntry.name), "utf8");
+    const metadata = parseV2UnitMetadata(text);
+    const isDeclaredV2 = frontMatterDeclaresV2(text);
+    if (!isDeclaredV2 || childEntries.some((child) => child.isFile() && child.name.toLowerCase() !== "readme.md")) hasLegacyKnowledge = true;
+    if (isDeclaredV2 && (!metadata || metadata.layer !== "L3" || knowledgeRootName !== "conhecimento" || entry.name !== metadata.slug || readmeEntry.name !== "README.md")) {
+      issues.push({ suffix: `v2_metadata_invalid:${physicalRelativePath}`, message: "Unidade declarada V2 possui metadata, camada, slug ou path incoerente.", evidence: physicalRelativePath, action: "Alinhar implementation_version, layer, slug e path fisico canonico." });
+      continue;
+    }
+    if (metadata?.layer === "L3") units.push({ relativePath: `conhecimento/${entry.name}/README.md`, metadata });
+  }
+  return { units, issues, hasLegacyKnowledge };
+}
+
+function frontMatterDeclaresV2(text: string): boolean {
+  return declaresV2Unit(text);
+}
+
+function memoryFinding(directory: string, suffix: string, message: string, evidence: string, action: string): HygieneFinding {
+  return {
+    id: `memory:${directory}:${suffix}`,
+    severity: "warning",
+    category: "memory",
+    message,
+    evidence: [evidence.replace(/\\/g, "/")],
+    action
+  };
 }
 
 async function scanSecretLikeConfig(root: string): Promise<HygieneFinding[]> {

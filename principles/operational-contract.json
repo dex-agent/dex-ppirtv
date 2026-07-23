@@ -1,8 +1,8 @@
 {
   "version": "1.0",
   "numeric_version": 10,
-  "principles_revision": "2026-07-09.4",
-  "updated_at": "2026-07-10",
+  "principles_revision": "2026-07-19.3",
+  "updated_at": "2026-07-19",
   "source": "principles/PRINCIPLES.md",
   "canonical_source": "$env:USERPROFILE\\.agents\\memories\\principles\\PRINCIPLES.md",
   "canonical_contract": "$env:USERPROFILE\\.agents\\memories\\principles\\operational-contract.json",
@@ -10,6 +10,50 @@
   "contract_role": "operationalizacao derivada dos principios humanos",
   "rule": "se o contrato divergir da fonte canonica, corrigir o contrato sem alterar o principio",
   "sync_rule": "Depois de alterar a fonte global, sincronizar a copia do repo e validar hash ou diff; se PRINCIPLES.md mudar conscientemente, revisar este contrato derivado antes de declarar pronto.",
+  "memory_architecture_profiles": {
+    "contract_role": "metadata_documental",
+    "runtime_effect": "none",
+    "metadata_changes_observable": true,
+    "behavioral_effect": "none",
+    "active_write_profile": "v2",
+    "active_route": "L1 -> L2 OR L1 -> L3",
+    "product_identity": "Dex Memoria V2",
+    "implementation_version": "v2",
+    "implementation_scope_root_independent": true,
+    "scope_values": [
+      "project",
+      "global",
+      "theme"
+    ],
+    "scope_routes": {
+      "project": "<WORKSPACE>/.agents",
+      "global": "<DEX_MEMORIA_HOME>/global",
+      "theme": "<DEX_MEMORIA_HOME>/temas/<tema>"
+    },
+    "dual_scope": {
+      "destinations": 2,
+      "independent_receipts": 2
+    },
+    "root_does_not_define_internal_layout": true,
+    "v1_historical_recall_required": true,
+    "historical_fixture_identifier": "governed-theme-v2",
+    "historical_fixture_is_product_profile": false,
+    "runtime_support": "active_v2_v1_read_restore_only",
+    "target_routes": [
+      "L1 -> L2",
+      "L1 -> L3"
+    ],
+    "target_paths": {
+      "L1": "existing case-equivalent L1 wins; otherwise project/lembranca.md or global-theme/LEMBRANCA.md",
+      "L2": "<resolved_root>/memorias/<slug>.md",
+      "L3": "<resolved_root>/conhecimento/<slug>/README.md"
+    },
+    "target_owner_rule": "Conhecimento L3 ativo exige owner_skill. Justificativa humana sem skill mantem candidato com owner temporario e quando; nao ativa L3.",
+    "structural_contract_status": "active_v2",
+    "reuse_event_source_status": "future_append_only_record_not_created_path_and_format_undecided_owner_dex-memoria",
+    "activation_gate": "SPTs 03/04 concluidos: writer, readers, validators, recall misto e selector V2 comprovados.",
+    "prohibition": "Este bloco normativo nao executa escrita por si so. Writes passam pelo writer V2 explicito; legacy-v1 nunca e fallback writer."
+  },
   "principles": [
     {
       "id": "P1",
@@ -57,7 +101,7 @@
       "legacy_id": "memoria_sem_lembranca",
       "name": "Memoria sem lembranca e entulho inutil",
       "label": "Memoria sem lembranca e entulho inutil",
-      "summary": "L1 dispara L2; L2 ancora L3; L3 aprofunda sob demanda. Finder/rg localizam, Graphify relaciona, fonte viva confirma, garimpeiro qualifica, dex-memoria escreve achado memoravel forte e consciencia-memorias valida qualidade.",
+      "summary": "L1 dispara exatamente um destino L2 ou L3; L3 aprofunda sob demanda. Finder/rg localizam, Graphify relaciona, fonte viva confirma, garimpeiro qualifica, dex-memoria escreve achado memoravel forte e consciencia-memorias valida qualidade.",
       "trigger": [
         "memoria criada",
         "memoria atualizada",
@@ -68,25 +112,25 @@
         "busca de contexto lembrado"
       ],
       "required_actions": [
-        "garantir gatilho L1 antes de L2",
-        "garantir ancora L2 antes de L3",
-        "manter L3 recuperavel por L2 e L1",
+        "garantir gatilho L1 antes do destino L2 ou L3",
+        "garantir exatamente uma rota ativa L1 -> L2 ou L1 -> L3",
+        "manter L3 direto recuperavel por L1 e com owner_skill",
         "usar obsidian-memory-finder ou find-memory.ps1 para localizar memoria por tag, localizador, anchor, block id ou frase",
         "usar rg para confirmacao deterministica e ausencia",
         "usar Graphify apenas para pergunta relacional e confirmar hit abrindo a fonte viva",
         "usar dex-memoria para decidir, escrever, superseder ou arquivar memoria",
-        "quando garimpeiro classificar um achado como forte, memoravel, nao sensivel, nao duplicado e com destino L1/L2 claro, usar dex-memoria para gravar no padrao canonico sem pedir aprovacao previa",
+        "quando garimpeiro classificar um achado como forte, memoravel, nao sensivel, nao duplicado e com destino L1 + L2/L3 claro, usar dex-memoria para gravar no padrao canonico sem pedir aprovacao previa",
         "usar consciencia-memorias para validar qualidade L1/L2/L3, tagnames, anchors, block ids, links, backups, pontes e achabilidade depois de escrita, movimento ou curadoria",
-        "validar conexoes bidirecionais L1 <-> L2 <-> L3 com consciencia-memorias depois de memoria gravada automaticamente",
+        "validar conexoes bidirecionais L1 <-> L2 ou L1 <-> L3 com consciencia-memorias depois de memoria gravada automaticamente",
         "manter dex-memoria ao lado de garimpeiro e estacionamento: garimpeiro qualifica, dex-memoria grava o memoravel e estacionamento segura residuo vivo, tropeco novo, pendencia ou item imaturo",
         "ao final do bloco, reportar contagem de achados fortes memoraveis gravados, tropecos novos catalogados e gatilhos L1 quente usados",
         "perguntar no fechamento se o usuario deseja editar alguma memoria gravada",
-        "usar memory_candidate quando o achado for fraco, ambiguo, sensivel, duplicado, stale, sem L1, sem L2 ou sem destino seguro",
+        "usar memory_candidate quando o achado for fraco, ambiguo, sensivel, duplicado, stale, sem L1 recuperavel ou sem destino L2/L3 seguro",
         "carregar skill citada quando ela for acionada ou quando a validacao/execucao depender dela, nao por mencao decorativa"
       ],
       "evidence": [
-        "lembranca.md aponta para memoria.md",
-        "memoria.md aponta para conhecimento quando houver L3",
+        "lembranca.md ou seu casing historico aponta para exatamente um destino V2",
+        "destino L2 ou L3 aponta de volta para L1",
         "gatilho curto recupera a memoria",
         "Finder ou rg recuperou o gatilho, tag, anchor, block id ou frase",
         "Graphify confirmado por fonte viva quando participou",
@@ -95,10 +139,10 @@
         "pergunta de edicao de memoria feita no fechamento quando houve escrita automatica"
       ],
       "blocks_ready_when": [
-        "existe L2 sem L1",
-        "existe L3 sem L2",
+        "existe L2 ou L3 sem L1",
+        "o mesmo slug esta ativo simultaneamente em L2 e L3",
         "memoria detalhada nao tem gatilho de recuperacao",
-        "memoria criada ou atualizada sem L1 recuperavel apontando para ancora L2",
+        "memoria criada ou atualizada sem L1 recuperavel apontando para exatamente um destino ativo L2 ou L3",
         "Graphify foi usado como prova final sem fonte aberta",
         "memoria forte nao declara ciclo de vida: entrada, gatilho, quando, escopo, validade, supersedencia, arquivamento e descarte",
         "skill citada foi usada como autoridade sem ter sido carregada quando necessaria",
@@ -654,38 +698,38 @@
       "level": "L1",
       "path": "lembranca.md",
       "role": "gatilhos curtos",
-      "rule": "recuperavel sempre; dispara L2; nao deve virar tutorial"
+      "rule": "recuperavel sempre; dispara exatamente um destino L2 ou L3; nao deve virar tutorial"
     },
     {
       "level": "L2",
-      "path": "memoria.md",
-      "role": "ancoras operacionais",
-      "rule": "ancora L3 quando houver; detalhe acionavel com secoes referenciaveis"
+      "path": "memorias/<slug>.md",
+      "role": "memoria operacional",
+      "rule": "destino direto de L1; detalhe acionavel com backlink para L1"
     },
     {
       "level": "L3",
-      "path": "conhecimento/",
+      "path": "conhecimento/<slug>/README.md",
       "role": "conhecimento sob demanda",
-      "rule": "aprofunda sob demanda; documentacao, modelos e tutoriais carregados so quando necessario"
+      "rule": "destino direto de L1 com owner_skill; documentacao, modelos e tutoriais carregados so quando necessario"
     }
   ],
   "prompt_guidance": [
     "Antes de executar, consulte fonte viva do projeto, L1, L2, skills, contrato aplicavel e docs relevantes.",
     "Na falta de Trilho, workflow local, contrato especifico ou instrucao mais prioritaria, use o workflow base PPIRTV: Pensamentos, Planejamento, Implementacao, Revisao, Teste e Validacao.",
-    "Use L1 como gatilho, L2 como ancora operacional e L3 apenas sob demanda: L1 dispara L2; L2 ancora L3; L3 aprofunda sob demanda.",
+    "Use L1 como gatilho para exatamente um destino: L1 -> L2 operacional OU L1 -> L3 profundo; L3 direto exige owner_skill.",
     "Skills citadas nos principios sao rotas operacionais; carregue o SKILL.md quando a skill for acionada ou quando a validacao/execucao depender dela, nao por mencao decorativa.",
     "Finder e rg localizam memoria por tag, localizador, anchor, block id, path ou frase; Graphify relaciona; fonte viva confirma.",
     "Graphify acelera recall relacional, mas nao substitui L1/L2/L3, rg, dex-memoria, fonte viva, testes ou contrato; todo hit fica source: graphify ate abrir a fonte citada.",
     "dex-memoria decide, escreve, supersede e arquiva memoria; consciencia-memorias valida qualidade L1/L2/L3, tagnames, anchors, block ids, links, backups, pontes e achabilidade depois de escrita, movimento ou curadoria.",
-    "Garimpeiro qualifica o achado; quando o achado for forte, memoravel, seguro, nao duplicado e tiver destino L1/L2 claro, dex-memoria grava no padrao canonico sem pedir aprovacao previa.",
+    "Garimpeiro qualifica o achado; quando o achado for forte, memoravel, seguro, nao duplicado e tiver destino L1 + L2/L3 claro, dex-memoria grava no padrao canonico sem pedir aprovacao previa.",
     "Estacionamento fica ao lado de garimpeiro e dex-memoria: segura residuo vivo, tropeco novo, pendencia, item imaturo ou candidato que nao deve virar memoria canonica agora.",
-    "Toda memoria gravada automaticamente deve passar por validacao de consciencia-memorias para conexoes bidirecionais L1 <-> L2 <-> L3, tagnames, anchors, block ids e achabilidade.",
+    "Toda memoria gravada automaticamente deve passar por validacao de consciencia-memorias para conexoes bidirecionais L1 <-> L2 ou L1 <-> L3, tagnames, anchors, block ids e achabilidade.",
     "No fechamento de cada bloco, informe brevemente quantos achados fortes memoraveis foram gravados, quantos tropecos novos foram catalogados, quais gatilhos L1 quente foram usados e pergunte se o usuario deseja editar alguma memoria.",
     "Memoria forte tem ciclo de vida: entrada, gatilho, quando, escopo, validade, supersedencia, arquivamento e descarte.",
-    "Use memory_candidate quando o achado for fraco, ambiguo, sensivel, duplicado, stale, sem L1, sem L2 ou sem destino seguro.",
+    "Use memory_candidate quando o achado for fraco, ambiguo, sensivel, duplicado, stale, sem L1 recuperavel ou sem destino L2/L3 seguro.",
     "Se uma memoria detalhada nao tiver gatilho de recuperacao, trate como risco bloqueante ao criar ou atualizar memoria.",
     "Na higiene, antes de descartar, mover para LIXEIRA, fechar estacionamento ou eliminar material antigo, garimpe aprendizados, evidencias e memorias uteis.",
-    "Nao podemos jogar ouro no lixo: nunca criar L3 sem L2 e L1; nunca criar L2 sem L1.",
+    "Nao podemos jogar ouro no lixo: nunca criar L2 ou L3 sem L1; nunca manter o mesmo slug ativo nas duas camadas.",
     "Se o mesmo erro apareceu tres vezes ou de modo operacionalmente equivalente, bloqueie pronto ate haver destino rastreavel.",
     "Gate do Quando: se ha o que acionavel ou promessa futura, exija data, gatilho, cadencia, condicao, janela de revisao, vencimento, dependencia desbloqueadora ou responsavel pela retomada.",
     "Sem quando, o item pode ser ideia, hipotese ou estacionamento, mas nao pronto, plano executavel ou regra promovida.",

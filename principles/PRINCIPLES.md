@@ -1,8 +1,8 @@
 # Principios do dex-PPIRTV
 
 Status: vigente
-Principles-Revision: `2026-07-09.4`
-Last-Updated: `2026-07-09`
+Principles-Revision: `2026-07-19.3`
+Last-Updated: `2026-07-19`
 Canonical-Source: `$env:USERPROFILE\.agents\memories\principles\PRINCIPLES.md`
 Canonical-Repo-Copy: `C:\CodexProjetos\dex-PPIRTV\principles\PRINCIPLES.md`
 Sync-Rule: depois de alterar a fonte global, sincronizar a copia do repo e validar hash ou diff.
@@ -79,6 +79,66 @@ descarte justificado. Se nao puder ser encontrado depois, nao conta.
 
 ## Principios
 
+### Arquitetura de memoria V2 ativa
+
+```text
+Product: Dex Memoria V2
+Implementation-Version: v2
+Scope: project | global | theme
+Active-Write-Profile: v2
+```
+
+`Dex Memoria V2` e a identidade da implementacao, nao um novo perfil ou escopo.
+As dimensoes `implementation`, `scope` e `root` sao independentes. A selecao de
+escopo preserva exatamente as rotas publicas:
+
+```text
+project/local -> <WORKSPACE>/.agents
+global -> <DEX_MEMORIA_HOME>/global
+theme -> <DEX_MEMORIA_HOME>/temas/<tema>
+dual-scope -> dois destinos e dois recibos
+```
+
+A selecao do root nao define nem congela o layout interno. O V2 pode evoluir a
+topologia dentro de cada root sem mudar o significado de `project`, `global` ou
+`theme`. O corpus V1 historico permanece read-only, restauravel e recuperavel;
+readers, Finder e validators devem recuperar V1 antigo e V2 novo sem exigir que
+o usuario informe um profile.
+
+O identificador `governed-theme-v2` pertence ao prototipo historico de fixture.
+Ele nao e o produto, nao e umbrella, nao e perfil ativo e nao limita o V2 ao
+escopo tema. O writer/selector ativo e `v2`; `legacy-v1` permanece somente
+reader/restore do corpus historico e nunca atua como fallback writer.
+
+No V2, cada gatilho L1 aponta para exatamente um destino ativo:
+
+```text
+L1 -> L2
+OU
+L1 -> L3
+```
+
+- L1 continua sendo a camada quente de lembranca e roteamento.
+- L2 passa a representar memoria leve, descritiva ou operacional em
+  `memorias/<slug>.md`.
+- L3 passa a representar conhecimento profundo em
+  `conhecimento/<slug>/README.md`, com `referencias/` e `artefatos/` sob
+  demanda.
+- Os escopos `project`, `global` e `theme` compartilham a mesma semantica de
+  camadas; no Windows, casing nunca cria destino novo.
+- Densidade, e nao idade ou quantidade de reusos, decide entre L2 e L3.
+- Conhecimento profundo nao cria L2 artificial apenas para servir de passagem.
+- L3 ativo no alvo V2 exige `owner_skill`. Uma justificativa humana sem skill
+  pode manter o item como candidato com owner temporario e `quando`, mas nao o
+  torna conhecimento ativo.
+- O mesmo slug nao pode ficar ativo simultaneamente em L2 e L3 no mesmo
+  `resolved_root`. Para `theme`, o `resolved_root` ja inclui `temas/<tema>`;
+  `project` e `global` nao inventam uma camada de tema.
+
+A ativacao live do Dex Memoria V2 foi concluida pelo Trilho de cutover depois de
+congelar writer, readers, validators, recovery/rollback e recall misto. As
+regras operacionais abaixo descrevem V2; V1 permanece legivel e restauravel.
+
 ### P1. Barata nunca esta sozinha
 
 Gatilho: erro, warning, falha, comportamento estranho ou inconsistencia.
@@ -97,7 +157,7 @@ conhecimento L3 criado ou busca de contexto lembrado.
 Frases-guia:
 
 - Memoria sem lembranca e entulho inutil.
-- L1 dispara L2; L2 ancora L3; L3 aprofunda sob demanda.
+- L1 dispara um unico destino L2 ou L3; L3 aprofunda sob demanda.
 - Finder e rg localizam; Graphify relaciona; fonte viva confirma.
 - dex-memoria decide/escreve; consciencia-memorias valida qualidade.
 - Achado memoravel forte e seguro nao pede permissao: grava no padrao canonico
@@ -110,17 +170,17 @@ Mapa minimo:
 | Camada | Arquivo/pasta | Papel | Regra |
 | --- | --- | --- | --- |
 | L1 | `lembranca.md` / `LEMBRANCA.md` | gatilhos curtos | recuperavel sempre; nao vira tutorial |
-| L2 | `memoria.md` / `MEMORIA.md` | ancora operacional | detalhe acionavel com secao referenciavel |
-| L3 | `conhecimento/` | conhecimento sob demanda | modelos, exemplos e docs profundas puxadas pela L2 |
+| L2 | `memorias/<slug>.md` | memoria operacional | detalhe acionavel com backlink para L1 |
+| L3 | `conhecimento/<slug>/README.md` | conhecimento sob demanda | modelos, exemplos e docs profundas com backlink para L1 |
 
 Fluxo:
 
 ```mermaid
 flowchart TD
   A["Sinal vivo: tarefa, erro, aprendizado, decisao"] --> B["L1 lembranca.md: gatilho curto"]
-  B --> C["L2 memoria.md: ancora operacional"]
-  C --> D["L3 conhecimento/: detalhe sob demanda"]
-  D --> C
+  B --> C["L2 memorias/<slug>.md: memoria operacional"]
+  B --> D["L3 conhecimento/<slug>/README.md: detalhe sob demanda"]
+  D --> B
   C --> B
   C --> J["Ciclo de vida: quando, validade, supersedencia, saida"]
   B --> E["Finder/rg: localizar gatilho, tag, anchor, frase"]
@@ -134,7 +194,8 @@ flowchart TD
 
 Acao:
 
-- garantir L1 antes de L2, L2 antes de L3, e L3 recuperavel por L1/L2;
+- garantir L1 antes de qualquer destino e exatamente uma rota ativa L1 -> L2
+  ou L1 -> L3; L3 direto deve ser recuperavel por L1 e ter `owner_skill`;
 - manter ciclo de vida: entrada, gatilho, quando, escopo, validade,
   supersedencia, arquivamento e descarte;
 - usar `obsidian-memory-finder` ou `find-memory.ps1` para localizar memoria por
@@ -144,27 +205,28 @@ Acao:
   `source: graphify` ate abrir a fonte viva;
 - usar `dex-memoria` para decidir, escrever, superseder ou arquivar memoria;
 - quando `garimpeiro` classificar um achado como forte, memoravel, nao
-  sensivel, nao duplicado e com destino L1/L2 claro, usar `dex-memoria` para
+  sensivel, nao duplicado e com destino L1 + L2/L3 claro, usar `dex-memoria` para
   gravar no padrao canonico sem pedir aprovacao previa; informar no fechamento;
 - usar `consciencia-memorias` para validar qualidade L1/L2/L3, tagnames,
   anchors, block ids, links, backups, pontes e achabilidade depois de escrita,
   movimento ou curadoria;
-- validar sempre as conexoes bidirecionais L1 <-> L2 <-> L3 com
+- validar sempre as conexoes bidirecionais L1 <-> L2 ou L1 <-> L3 com
   `consciencia-memorias` depois de memoria gravada automaticamente;
 - manter `dex-memoria` ao lado de `garimpeiro` e `estacionamento`: garimpeiro
   qualifica, dex-memoria grava o que e memoravel, estacionamento segura residuo
   vivo, tropeço novo, pendencia ou item ainda imaturo;
 - usar `memory_candidate` quando o achado for fraco, ambiguo, sensivel,
-  duplicado, stale, sem L1, sem L2 ou sem destino seguro.
+  duplicado, stale, sem L1 ou sem destino seguro.
 
-Evidencia: L1 aponta para L2; L2 aponta para L3 quando houver; Finder/rg
+Evidencia: L1 aponta para exatamente um L2 ou L3; Finder/rg
 recuperam; Graphify foi confirmado por fonte viva quando participou; validacao
 de `consciencia-memorias` ficou registrada quando houve escrita, movimento ou
 curadoria; fechamento declara quantos achados fortes memoraveis foram gravados,
 quantos tropecos novos foram catalogados, quais gatilhos L1 quente foram usados
 e pergunta se o usuario deseja editar alguma memoria.
 
-Bloqueia pronto quando: existe L2 sem L1, L3 sem L2, memoria detalhada sem
+Bloqueia pronto quando: existe L2 ou L3 sem L1, L2 e L3 ativos para o mesmo
+slug, memoria detalhada sem
 gatilho, Graphify usado como prova final sem fonte aberta, memoria forte sem
 ciclo de vida, skill citada como autoridade sem ter sido carregada quando
 necessaria, memoria escrita/movida/curada sem validacao proporcional, achado
@@ -293,7 +355,7 @@ ou deixa risco real subprotegido.
 Antes do veredito, responda:
 
 1. P1: se houve problema, busquei vizinhos?
-2. P2: memoria nova/alterada tem L1 -> L2 -> L3 quando houver?
+2. P2: memoria nova/alterada tem exatamente uma rota ativa L1 -> L2 ou L1 -> L3?
 3. P3: aprendizado util foi guardado e temporario teve destino?
 4. P4: ficou lixo operacional ou doc contraditoria?
 5. P5: consultei fonte viva antes da acao tecnica?

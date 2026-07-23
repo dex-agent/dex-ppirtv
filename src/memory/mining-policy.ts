@@ -1,6 +1,7 @@
 import path from "node:path";
 import { resolveDexMemoriaHome as resolveConfiguredDexMemoriaHome } from "../config.js";
 import type { Flow, Meeting, MemoryCandidate } from "../domain.js";
+import type { DexMemoriaV2Destination, DexMemoriaV2MiningClassification, DexMemoriaV2MiningClassifierInput } from "./dex-memoria-v2-adapter.js";
 import type { MemoryNugget } from "./memory-types.js";
 
 // #5 (security SSOT): reexportar SECRET_LIKE_PATTERN do modulo centralizado
@@ -22,6 +23,8 @@ const PARKING_ONLY_PATTERN = /avaliar|depois|futuro|talvez|pendente|backlog|prox
 const DISCARD_PATTERN = /descartar|ruido|sem promocao/i;
 const LEDGER_ONLY_PATTERN = /ledger[-_ ]only|somente ledger/i;
 const GLOBAL_SCOPE_PATTERN = /global|cross-project|reutilizavel em qualquer projeto|qualquer repo/i;
+const V2_GLOBAL_SCOPE_INTENT_PATTERN = /\bmem[oó]ria\s+global\b|\bescopo\s+global\b|cross-project|reutilizavel em qualquer projeto|qualquer repo/i;
+const V2_PROJECT_SCOPE_INTENT_PATTERN = /\bmem[oó]ria\s+local\b|\baprendizado\s+local\b|\blocal\s+(?:deste|desse|neste|nesse|do)\s+(?:projeto|repositorio|repositório|repo)\b|\b(?:deste|desse|neste|nesse)\s+(?:projeto|repositorio|repositório|repo)\b|\b(?:projeto|repositorio|repositório|repo)\s+atual\b/i;
 const RECURRING_SIGNAL_PATTERN = /sempre|nunca|padrao|regra|recorrent|quando|contrato|gate|validar|verificar/i;
 const FORGETTING_COST_PATTERN = /falh|bug|regress|bloque|quebra|falso|secret|token|evidencia|veredito/i;
 export const AUTO_WRITE_REVIEW_MARKER = "PPIRTV-MM-AUTO-WRITE-REVIEW";
@@ -144,6 +147,26 @@ export function classifyMemoryCandidate(input: {
     target_files: targetFiles,
     blocked: Boolean(blockedReason),
     blocked_reason: blockedReason
+  };
+}
+
+export function classifyDexMemoriaV2MiningCandidate(input: DexMemoriaV2MiningClassifierInput): DexMemoriaV2MiningClassification {
+  if (input.evidence_score < 1) return { status: "unresolved", reason: "destinations_required" };
+  const projectRequested = V2_PROJECT_SCOPE_INTENT_PATTERN.test(input.item);
+  const globalRequested = V2_GLOBAL_SCOPE_INTENT_PATTERN.test(input.item);
+  const theme = detectTheme(input.item);
+  let requestedDestinations: [DexMemoriaV2Destination, ...DexMemoriaV2Destination[]] | undefined;
+  if (projectRequested && globalRequested) requestedDestinations = [{ scope: "project" }, { scope: "global" }];
+  else if (globalRequested) requestedDestinations = [{ scope: "global" }];
+  else if (projectRequested) requestedDestinations = [{ scope: "project" }];
+  else if (theme) requestedDestinations = [{ scope: "theme", theme }];
+  if (!requestedDestinations) return { status: "unresolved", reason: "destinations_required" };
+  const tagOwner = theme ?? "ppirtv";
+  return {
+    status: "resolved",
+    density: "light",
+    requested_destinations: requestedDestinations,
+    tags: [`#${tagOwner}/memory-v2`]
   };
 }
 

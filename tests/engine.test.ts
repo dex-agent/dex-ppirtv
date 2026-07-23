@@ -2112,7 +2112,7 @@ describe("PPIRTV flow engine", () => {
     const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t2", "Memoria exigida no checklist");
     await engine.updateFlowFacts(flowId, { risks: ["memoria L1/L2 exigida para nao repetir erro"], tasks: ["promover aprendizado reutilizavel"] });
 
-    const checklist = await engine.renderChecklist(flowId);
+    const checklist = await engine.renderChecklist(flowId, "full");
     const memoryPrinciple = checklist.operational_principles.find((item) => item.id === "memoria_sem_lembranca");
 
     expect(memoryPrinciple?.checked).toBe(false);
@@ -3505,7 +3505,7 @@ describe("PPIRTV flow engine", () => {
   it("T17 keeps proof-dependent checklist principles pending before hygiene/fiscal evidence exists", async () => {
     const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t17", "Checklist pendente antes da prova");
 
-    const checklist = await engine.renderChecklist(flowId);
+    const checklist = await engine.renderChecklist(flowId, "full");
     const proofPrinciples = checklist.operational_principles.filter((item) =>
       ["casa_limpa", "memoria_sem_lembranca", "barata_nunca_esta_sozinha"].includes(item.id)
     );
@@ -5477,7 +5477,7 @@ describe("PPIRTV flow engine", () => {
     expect(validation.missing).toContain("spt_under_plan_tasks");
   });
 
-  it("renders a Fernanda display checklist without removing legacy fields", async () => {
+  it("renders only the current phase by default and keeps the full checklist explicit", async () => {
     const flow = await engine.createFlow({
       goal: "Checklist visual",
       context: "ctx",
@@ -5487,16 +5487,22 @@ describe("PPIRTV flow engine", () => {
 
     const checklist = await engine.renderChecklist(flow.flow_id);
 
-    expect(checklist.markdown).toContain("Checklist PPIRTV");
+    expect(checklist.markdown).toBeUndefined();
     expect(checklist.items.length).toBeGreaterThan(0);
     expect(checklist.display.phase_label).toBe("Pensamentos");
     expect(checklist.display.phase_emoji).toBe("🧠");
     expect(checklist.display.checklist_visual?.[0]).toHaveProperty("emoji");
-    expect(checklist.operational_principles.some((item) => item.id === "memoria_sem_lembranca")).toBe(true);
-    expect(checklist.operational_principles.find((item) => item.id === "casa_limpa")?.label).toContain("ouro");
-    expect(checklist.display.checklist_visual?.length).toBeGreaterThan(checklist.items.length);
+    expect(checklist.operational_principles).toBeUndefined();
+    expect(checklist.default_workflow).toBeUndefined();
     expect(checklist.aliases.estacionamento).toEqual([]);
     expect(checklist.aliases.garimpo).toEqual([]);
+
+    const fullChecklist = await engine.renderChecklist(flow.flow_id, "full");
+    expect(fullChecklist.markdown).toContain("Checklist PPIRTV");
+    expect(fullChecklist.operational_principles?.some((item) => item.id === "memoria_sem_lembranca")).toBe(true);
+    expect(fullChecklist.operational_principles?.find((item) => item.id === "casa_limpa")?.label).toContain("ouro");
+    expect(fullChecklist.display.checklist_visual?.length).toBeGreaterThan(fullChecklist.items.length);
+    expect(fullChecklist.default_workflow?.short_line).toContain("P🧠 Pensamentos");
   });
 
   it("loads editable operational principles into prompts", () => {
@@ -5600,6 +5606,152 @@ describe("PPIRTV flow engine", () => {
     expect(gate.missing).not.toContain("hygiene_blocking");
   });
 
+  it("recognizes the governed V2 memory layer paths during hygiene scan", async () => {
+    const originalCwd = process.cwd();
+    const originalEnv = process.env.PPIRTV_PRINCIPLES_PATH;
+    const contractDir = path.join(tempRoot, "v2-memory-layers");
+    await mkdir(contractDir, { recursive: true });
+    await writeFile(
+      path.join(contractDir, "operational-contract.json"),
+      JSON.stringify({
+        version: "1.0",
+        source: "PRINCIPLES.md",
+        principles: [],
+        memory_layers: [],
+        prompt_guidance: [],
+        hygiene_checks: [],
+        ready_definition: [],
+        gate_final_output: [],
+        final_report_model: []
+      }),
+      "utf8"
+    );
+    await writeFile(
+      path.join(contractDir, "PRINCIPLES.md"),
+      [
+        "# Camadas V2",
+        "L1 `lembranca.md` aponta para um destino.",
+        "L2 `memorias/<slug>.md` guarda memoria operacional.",
+        "L3 `conhecimento/<slug>/README.md` guarda conhecimento profundo."
+      ].join("\n"),
+      "utf8"
+    );
+    process.env.PPIRTV_PRINCIPLES_PATH = path.join(contractDir, "operational-contract.json");
+    process.chdir(tempRoot);
+    try {
+      const hygiene = await engine.hygieneScan();
+
+      expect(hygiene.findings).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: "memory:l1_l2_l3_not_documented" })
+        ])
+      );
+    } finally {
+      restoreEnv(originalEnv);
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("accepts a direct V2 L1-to-L3 route without requiring conhecimento INDEX", async () => {
+    const originalCwd = process.cwd();
+    const agentsRoot = path.join(tempRoot, ".agents");
+    await mkdir(path.join(agentsRoot, "conhecimento", "rota-direta"), { recursive: true });
+    await writeFile(path.join(agentsRoot, "lembranca.md"), "- ROTA-DIRETA -> [Rota direta](conhecimento/rota-direta/README.md) [[conhecimento/rota-direta/README|Rota direta]] ^rota-direta\n", "utf8");
+    await writeFile(path.join(agentsRoot, "conhecimento", "rota-direta", "README.md"), "---\nimplementation_version: v2\nlayer: L3\nslug: rota-direta\nowner_skill: dex-memoria\n---\n# Rota direta\n", "utf8");
+    process.chdir(tempRoot);
+    try {
+      const hygiene = await engine.hygieneScan();
+      expect(hygiene.findings).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: "memory:.agents:l3_without_index" })
+      ]));
+      expect(hygiene.blocking_findings.filter((item) => item.id.startsWith("memory:.agents:v2_"))).toEqual([]);
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("blocks orphan, dual-target, duplicate-layer and ownerless V2 topology", async () => {
+    const originalCwd = process.cwd();
+    const agentsRoot = path.join(tempRoot, ".agents");
+    await mkdir(path.join(agentsRoot, "memorias"), { recursive: true });
+    await mkdir(path.join(agentsRoot, "conhecimento", "duplo"), { recursive: true });
+    await mkdir(path.join(agentsRoot, "conhecimento", "sem-owner"), { recursive: true });
+    await writeFile(path.join(agentsRoot, "lembranca.md"), [
+      "- DUPLO -> [Duplo L2](memorias/duplo.md) [Duplo L3](conhecimento/duplo/README.md) ^duplo",
+      "- AUSENTE -> [Ausente](memorias/ausente.md) ^ausente",
+      "- SEM-OWNER -> [Sem owner](conhecimento/sem-owner/README.md) ^sem-owner"
+    ].join("\n"), "utf8");
+    await writeFile(path.join(agentsRoot, "memorias", "duplo.md"), "---\nimplementation_version: v2\nlayer: L2\nslug: duplo\n---\n# Duplo L2\n", "utf8");
+    await writeFile(path.join(agentsRoot, "memorias", "orfao.md"), "---\nimplementation_version: v2\nlayer: L2\nslug: orfao\n---\n# Orfao\n", "utf8");
+    await writeFile(path.join(agentsRoot, "conhecimento", "duplo", "README.md"), "---\nimplementation_version: v2\nlayer: L3\nslug: duplo\nowner_skill: dex-memoria\n---\n# Duplo L3\n", "utf8");
+    await writeFile(path.join(agentsRoot, "conhecimento", "sem-owner", "README.md"), "---\nimplementation_version: v2\nlayer: L3\nslug: sem-owner\n---\n# Sem owner\n", "utf8");
+    process.chdir(tempRoot);
+    try {
+      const hygiene = await engine.hygieneScan();
+      const ids = hygiene.blocking_findings.map((item) => item.id);
+      expect(ids).toEqual(expect.arrayContaining([
+        "memory:.agents:v2_l1_multiple_targets:duplo",
+        "memory:.agents:v2_target_missing:memorias/ausente.md",
+        "memory:.agents:v2_orphan:memorias/orfao.md",
+        "memory:.agents:v2_slug_active_in_l2_and_l3:duplo",
+        "memory:.agents:v2_l3_owner_skill_missing:sem-owner"
+      ]));
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("blocks rejected V2 routes, invalid V2 metadata and noncanonical nested casing", async () => {
+    const originalCwd = process.cwd();
+    const agentsRoot = path.join(tempRoot, ".agents");
+    await mkdir(path.join(agentsRoot, "Memorias"), { recursive: true });
+    await writeFile(path.join(agentsRoot, "lembranca.md"), "- INVALIDA -> [Invalida](memorias/../invalida.md) ^invalida\n", "utf8");
+    await writeFile(path.join(agentsRoot, "Memorias", "invalida.md"), "---\nimplementation_version: v2\nlayer: L3\nslug: outro-slug\n---\n# Invalida\n", "utf8");
+    process.chdir(tempRoot);
+    try {
+      const hygiene = await engine.hygieneScan();
+      const ids = hygiene.blocking_findings.map((item) => item.id);
+      expect(ids).toEqual(expect.arrayContaining([
+        "memory:.agents:v2_route_rejected",
+        "memory:.agents:v2_noncanonical_casing:Memorias",
+        "memory:.agents:v2_metadata_invalid:Memorias/invalida.md"
+      ]));
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("blocks invalid V2 topology when implementation_version is YAML quoted", async () => {
+    const originalCwd = process.cwd();
+    const agentsRoot = path.join(tempRoot, ".agents");
+    await mkdir(path.join(agentsRoot, "memorias"), { recursive: true });
+    await writeFile(path.join(agentsRoot, "memorias", "citada.md"), "---\nimplementation_version: \"v2\"\nlayer: L3\nslug: outro\n---\n# Citada\n", "utf8");
+    process.chdir(tempRoot);
+    try {
+      const hygiene = await engine.hygieneScan();
+      expect(hygiene.blocking_findings.map((item) => item.id)).toContain("memory:.agents:v2_metadata_invalid:memorias/citada.md");
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("preserves the legacy L3 INDEX warning beside an active V2 L2 unit", async () => {
+    const originalCwd = process.cwd();
+    const agentsRoot = path.join(tempRoot, ".agents");
+    await mkdir(path.join(agentsRoot, "memorias"), { recursive: true });
+    await mkdir(path.join(agentsRoot, "conhecimento", "legacy-topic"), { recursive: true });
+    await writeFile(path.join(agentsRoot, "lembranca.md"), "- V2-L2 -> [V2 L2](memorias/v2-l2.md) ^v2-l2\n", "utf8");
+    await writeFile(path.join(agentsRoot, "memorias", "v2-l2.md"), "---\nimplementation_version: v2\nlayer: L2\nslug: v2-l2\n---\n# V2 L2\n", "utf8");
+    await writeFile(path.join(agentsRoot, "conhecimento", "legacy-topic", "note.md"), "# Conhecimento legado\n", "utf8");
+    process.chdir(tempRoot);
+    try {
+      const hygiene = await engine.hygieneScan();
+      expect(hygiene.blocking_findings.map((item) => item.id)).toContain("memory:.agents:l3_without_index");
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
   it("warns when LIXEIRA has discarded content without a garimpo gate", async () => {
     const originalCwd = process.cwd();
     await mkdir(path.join(tempRoot, ".agents"), { recursive: true });
@@ -5656,7 +5808,7 @@ describe("PPIRTV flow engine", () => {
     process.chdir(tempRoot);
     try {
       const flow = await engine.createFlow({ goal: "Contrato via env" });
-      const checklist = await engine.renderChecklist(flow.flow_id);
+      const checklist = await engine.renderChecklist(flow.flow_id, "full");
 
       expect(checklist.operational_principles.map((item) => item.id)).toEqual(["custom_env_contract"]);
     } finally {
@@ -5740,7 +5892,7 @@ describe("PPIRTV flow engine", () => {
     try {
       const contract = loadOperationalContractSync(tempRoot);
       const flow = await engine.createFlow({ goal: "Contrato v4" });
-      const checklist = await engine.renderChecklist(flow.flow_id);
+      const checklist = await engine.renderChecklist(flow.flow_id, "full");
 
       expect(contract.version).toBe("1.0");
       expect(contract.numeric_version).toBe(4);
@@ -5836,7 +5988,7 @@ describe("PPIRTV flow engine", () => {
     try {
       const contract = loadOperationalContractSync(tempRoot);
       const flow = await engine.createFlow({ goal: "Contrato v8" });
-      const checklist = await engine.renderChecklist(flow.flow_id);
+      const checklist = await engine.renderChecklist(flow.flow_id, "full");
       const checkout = await engine.goalCheckout({ flow_id: flow.flow_id });
       const contractAccountability = checkout.contract_accountability as Record<string, unknown>;
       const prestacao = checkout.prestacao_de_contas as Record<string, unknown>;
@@ -5943,7 +6095,7 @@ describe("PPIRTV flow engine", () => {
     process.chdir(tempRoot);
     try {
       const flow = await engine.createFlow({ goal: "Contrato compartilhado" });
-      const checklist = await engine.renderChecklist(flow.flow_id);
+      const checklist = await engine.renderChecklist(flow.flow_id, "full");
 
       expect(checklist.operational_principles.map((item) => item.id)).toEqual(["shared_memory_contract"]);
     } finally {
@@ -5986,7 +6138,7 @@ describe("PPIRTV flow engine", () => {
     process.chdir(tempRoot);
     try {
       const flow = await engine.createFlow({ goal: "Contrato local" });
-      const checklist = await engine.renderChecklist(flow.flow_id);
+      const checklist = await engine.renderChecklist(flow.flow_id, "full");
 
       expect(checklist.operational_principles.map((item) => item.id)).toEqual(["local_contract"]);
     } finally {
@@ -6005,7 +6157,7 @@ describe("PPIRTV flow engine", () => {
     process.chdir(tempRoot);
     try {
       const flow = await engine.createFlow({ goal: "Contrato fallback" });
-      const checklist = await engine.renderChecklist(flow.flow_id);
+      const checklist = await engine.renderChecklist(flow.flow_id, "full");
       const hygiene = await engine.hygieneScan();
 
       expect(checklist.operational_principles.some((item) => item.id === "memoria_sem_lembranca")).toBe(true);

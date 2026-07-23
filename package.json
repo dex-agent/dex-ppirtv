@@ -6,7 +6,9 @@
   "main": "dist/index.js",
   "bin": {
     "dex-ppirtv": "dist/index.js",
-    "dex-ppirtv-launcher": "dist/launcher.js"
+    "dex-ppirtv-launcher": "dist/launcher.js",
+    "dex-ppirtv-memory-selector": "dist/memory-writer-selector-cutover-cli.js",
+    "dex-ppirtv-memory-selector-probe": "dist/memory-writer-selector-activation-probe-cli.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -15,6 +17,8 @@
     "audit:canonical": "node scripts/audit-canonical-sync.mjs",
     "diagnostic:bundle": "node scripts/export-diagnostic-bundle.mjs",
     "smoke:mcp-tools": "node scripts/smoke-mcp-tools.mjs",
+    "memory-selector": "node dist/memory-writer-selector-cutover-cli.js",
+    "memory-selector:probe": "node dist/memory-writer-selector-activation-probe-cli.js",
     "test": "vitest run",
     "test:e2e": "npm run build && vitest run tests/e2e.test.ts",
     "check": "npm run audit:canonical && npm run build && npm test"

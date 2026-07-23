@@ -452,6 +452,7 @@ export type Verdict = {
   gold_mining: string[];
   cooperators: Cooperator[];
   active_credits: string[];
+  meeting_ids?: string[];
   next_step: string;
   created_at: string;
 };
@@ -558,6 +559,7 @@ export const DEFAULT_BACK_TO: Record<Phase, Phase | null> = {
 // gate semantics to drift.
 
 export const REQUIRED_TOOLS = [
+  "runtime_probe",
   "flow_create",
   "flow_status",
   "flow_advance",

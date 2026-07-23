@@ -1,13 +1,16 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import type { Flow, Phase, AnyPhase } from "../domain.js";
 import type { MemoryRecallItem, MemoryRecallSummary } from "./memory-types.js";
 import type { MemoryGraphProvider } from "./memory-graph-provider.js";
 import { MemoryRuntimeStore } from "./memory-store.js";
 import { normalizeTextKey, redactSecretLikeText } from "./mining-policy.js";
+import { inspectCanonicalV2Routes, parseV2UnitMetadata, resolvePhysicalCaseEquivalent, selectExactPortableName, type CanonicalV2Route } from "./memory-v2-layout.js";
 
 const MIN_RECALL_TOKEN_LENGTH = 3;
 const MAX_RECALL_QUERY_TOKENS = 40;
+const MAX_CURATED_FILE_BYTES = 1024 * 1024;
+const MAX_LINKED_V2_TARGETS = 8;
 
 export async function beforePhase(input: { flow: Flow; phase: AnyPhase; runtime: MemoryRuntimeStore; graphProvider?: MemoryGraphProvider }): Promise<MemoryRecallSummary> {
   const recalledAt = new Date().toISOString();
@@ -16,7 +19,9 @@ export async function beforePhase(input: { flow: Flow; phase: AnyPhase; runtime:
   const runtimeItems = await runtimeRecall(input.runtime, input.flow.flow_id, query, warnings);
   const curatedItems = await curatedRecall(input.flow, query, warnings);
   const graphItems = await graphRecall(input.graphProvider, input.flow, input.phase, warnings);
-  const items = [...runtimeItems, ...curatedItems, ...graphItems].sort((a, b) => b.score - a.score).slice(0, 10);
+  const items = [...runtimeItems, ...curatedItems, ...graphItems]
+    .sort((a, b) => b.score - a.score || recallItemPriority(b) - recallItemPriority(a))
+    .slice(0, 10);
   const graphifyStatus = graphifyStatusFrom(warnings, graphItems.length);
   const summary: MemoryRecallSummary = {
     flow_id: input.flow.flow_id,
@@ -130,36 +135,137 @@ async function runtimeRecall(runtime: MemoryRuntimeStore, flowId: string, query:
 
 async function curatedRecall(flow: Flow, query: string[], warnings: string[]): Promise<MemoryRecallItem[]> {
   const workspace = path.resolve(flow.goal_binding?.envelope.workspace ?? process.cwd());
-  const candidates = [
-    { source: "curated_l1" as const, path: path.join(workspace, ".agents", "LEMBRANCA.md") },
-    { source: "curated_l2" as const, path: path.join(workspace, ".agents", "MEMORIA.md") }
-  ];
+  const memoryRoot = path.join(workspace, ".agents");
   const items: MemoryRecallItem[] = [];
-  for (const candidate of candidates) {
-    let text = "";
-    try {
-      text = await readFile(candidate.path, "utf8");
-    } catch {
+  const linkedRoutes: Array<{ route: CanonicalV2Route; triggerScore: number }> = [];
+
+  const l1Name = await physicalMemoryName(memoryRoot, "lembranca.md", warnings);
+  if (l1Name) {
+    const l1Path = path.join(memoryRoot, l1Name);
+    const text = await readCuratedFile(memoryRoot, l1Path, warnings);
+    for (const chunk of l1Chunks(text ?? "")) {
+      const score = scoreText(chunk, query);
+      if (score <= 0) continue;
+      items.push({ source: "curated_l1", title: firstLine(chunk), snippet: chunk.slice(0, 320), path: l1Path, score });
+      const inspected = inspectCanonicalV2Routes(chunk);
+      if (inspected.rejectedHrefs.length > 0) warnings.push("curated_v2_route_rejected");
+      if (inspected.routes.length > 1) {
+        warnings.push("curated_v2_route_ambiguous");
+        continue;
+      }
+      if (inspected.routes[0]) linkedRoutes.push({ route: inspected.routes[0], triggerScore: score });
+    }
+  }
+
+  const legacyL2Name = await physicalMemoryName(memoryRoot, "memoria.md", warnings);
+  if (legacyL2Name) {
+    const legacyPath = path.join(memoryRoot, legacyL2Name);
+    const text = await readCuratedFile(memoryRoot, legacyPath, warnings);
+    for (const chunk of l2Chunks(text ?? "")) {
+      const score = scoreText(chunk, query);
+      if (score > 0) items.push({ source: "curated_l2", title: firstLine(chunk), snippet: chunk.slice(0, 320), path: legacyPath, score });
+    }
+  }
+
+  const dedupedRoutes = new Map<string, { route: CanonicalV2Route; triggerScore: number }>();
+  for (const linked of linkedRoutes) {
+    const key = `${linked.route.layer}:${linked.route.relativePath}`;
+    const previous = dedupedRoutes.get(key);
+    if (!previous || linked.triggerScore > previous.triggerScore) dedupedRoutes.set(key, linked);
+  }
+  const prioritizedRoutes = [...dedupedRoutes.values()]
+    .sort((left, right) => right.triggerScore - left.triggerScore || left.route.relativePath.localeCompare(right.route.relativePath))
+    .slice(0, MAX_LINKED_V2_TARGETS);
+  if (dedupedRoutes.size > MAX_LINKED_V2_TARGETS) warnings.push("curated_v2_targets_truncated");
+  for (const linked of prioritizedRoutes) {
+    const resolved = await resolveCanonicalTarget(memoryRoot, linked.route.relativePath);
+    if (resolved.status !== "ok") {
+      warnings.push(resolved.status === "noncanonical_casing" ? "curated_v2_target_noncanonical_casing" : "curated_v2_target_missing");
       continue;
     }
-    const chunks = candidate.source === "curated_l1" ? l1Chunks(text) : l2Chunks(text);
-    for (const chunk of chunks) {
-      const score = scoreText(chunk, query);
-      if (score > 0) {
-        items.push({
-          source: candidate.source,
-          title: firstLine(chunk),
-          snippet: chunk.slice(0, 320),
-          path: candidate.path,
-          score
-        });
-      }
+    const targetPath = resolved.path;
+    const text = await readCuratedFile(memoryRoot, targetPath, warnings, "curated_v2_target_unreadable");
+    if (text === null) continue;
+    const metadata = parseV2UnitMetadata(text);
+    if (!metadata || metadata.layer !== linked.route.layer || metadata.slug !== linked.route.slug) {
+      warnings.push("curated_v2_target_metadata_mismatch");
+      continue;
     }
+    if (linked.route.layer === "L3" && !metadata.ownerSkill) {
+      warnings.push("curated_v2_target_owner_missing");
+      continue;
+    }
+    const content = text.replace(/^---[\s\S]*?---\s*/m, "");
+    const score = Math.max(scoreText(text, query), linked.triggerScore);
+    items.push({
+      source: linked.route.layer === "L3" ? "curated_l3" : "curated_l2",
+      title: firstLine(content),
+      snippet: content.slice(0, 320),
+      path: targetPath,
+      score
+    });
   }
   if (items.length === 0 && query.length > 0) {
     warnings.push("curated_recall_empty");
   }
   return items;
+}
+
+async function physicalMemoryName(memoryRoot: string, expectedName: string, warnings: string[]): Promise<string | null> {
+  try {
+    return await resolvePhysicalCaseEquivalent(memoryRoot, expectedName);
+  } catch (error) {
+    warnings.push(errorMessage(error));
+    return null;
+  }
+}
+
+async function readCuratedFile(memoryRoot: string, targetPath: string, warnings: string[], failureWarning?: string): Promise<string | null> {
+  try {
+    const [physicalRoot, physicalTarget, targetStat] = await Promise.all([realpath(memoryRoot), realpath(targetPath), stat(targetPath)]);
+    const relative = path.relative(physicalRoot, physicalTarget);
+    if (relative.startsWith("..") || path.isAbsolute(relative) || !targetStat.isFile()) {
+      warnings.push("curated_recall_boundary_rejected");
+      return null;
+    }
+    if (targetStat.size > MAX_CURATED_FILE_BYTES) {
+      warnings.push("curated_recall_file_too_large");
+      return null;
+    }
+    return await readFile(physicalTarget, "utf8");
+  } catch {
+    if (failureWarning) warnings.push(failureWarning);
+    return null;
+  }
+}
+
+async function resolveCanonicalTarget(memoryRoot: string, relativePath: string): Promise<{ status: "ok"; path: string } | { status: "missing" | "noncanonical_casing" }> {
+  let current = memoryRoot;
+  for (const segment of relativePath.split("/")) {
+    const entries = await readdirNames(current);
+    try {
+      const selected = selectExactPortableName(entries, segment);
+      if (!selected) return { status: "missing" };
+      current = path.join(current, selected);
+    } catch {
+      return { status: "noncanonical_casing" };
+    }
+  }
+  return { status: "ok", path: current };
+}
+
+function recallItemPriority(item: MemoryRecallItem): number {
+  if (item.source === "curated_l3") return 3;
+  if (item.source === "curated_l2") return item.path && path.basename(item.path).toLowerCase() === "memoria.md" ? 1 : 3;
+  return item.source === "curated_l1" ? 2 : 0;
+}
+
+async function readdirNames(directory: string): Promise<string[]> {
+  try {
+    return (await readdir(directory, { withFileTypes: true })).map((entry) => entry.name);
+  } catch {
+    return [];
+  }
 }
 
 function buildQuery(flow: Flow, phase: AnyPhase): string[] {

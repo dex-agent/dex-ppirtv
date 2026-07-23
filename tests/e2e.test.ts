@@ -17,6 +17,147 @@ afterEach(async () => {
 });
 
 describe("dex-PPIRTV e2e smoke", () => {
+  it("fails explicitly when a caller requires V2 but the runtime is unconfigured", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-v2-required-"));
+    let failure: { stdout?: string } | undefined;
+    try {
+      await execFileAsync(
+        process.execPath,
+        ["scripts/smoke-mcp-tools.mjs", "--workspace", tempRoot, "--require-memory-v2"],
+        { cwd: process.cwd(), maxBuffer: 1024 * 1024 }
+      );
+    } catch (error) {
+      failure = error as { stdout?: string };
+    }
+
+    expect(failure?.stdout).toBeTruthy();
+    const result = JSON.parse(failure!.stdout!) as {
+      ok: boolean;
+      memory_v2_requirement?: { required?: boolean; ok?: boolean; profile?: string };
+    };
+    expect(result.ok).toBe(false);
+    expect(result.memory_v2_requirement).toEqual({
+      required: true,
+      ok: false,
+      profile: "unconfigured"
+    });
+  });
+
+  it("rejects a configured V2 bundle whose canonical entrypoint returns only a partial capability receipt", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-v2-configured-"));
+    const workspace = path.join(tempRoot, "consumer");
+    const canonicalRoot = path.join(tempRoot, "dex-memoria");
+    const entrypoint = path.join(canonicalRoot, "bin", "dex-memoria.js");
+    const memoryHome = path.join(tempRoot, "memory-home");
+    const configPath = path.join(tempRoot, "config.toml");
+    await mkdir(path.dirname(entrypoint), { recursive: true });
+    await mkdir(workspace, { recursive: true });
+    await writeFile(
+      entrypoint,
+      [
+        "let input = '';",
+        "process.stdin.setEncoding('utf8');",
+        "process.stdin.on('data', chunk => { input += chunk; });",
+        "process.stdin.on('end', () => {",
+        "  JSON.parse(input);",
+        "  process.stdout.write(JSON.stringify({ contract: 'dex.memory.capability.receipt.v2', capability: 'v2-obsidian', require_obsidian: true, ok: true, errors: [] }));",
+        "});"
+      ].join("\n"),
+      "utf8"
+    );
+    await writeFile(
+      configPath,
+      codexConfigToml({
+        name: "dex_ppirtv",
+        cwd: workspace,
+        args: [path.join(process.cwd(), "dist", "index.js")],
+        env: {
+          PPIRTV_HOME: path.join(workspace, ".ppirtv"),
+          PPIRTV_WORKSPACE: workspace,
+          PPIRTV_MEMORY_WRITER_PROFILE: "v2",
+          PPIRTV_DEX_MEMORIA_CANONICAL_ROOT: canonicalRoot,
+          PPIRTV_DEX_MEMORIA_V2_ENTRYPOINT: entrypoint,
+          DEX_MEMORIA_HOME: memoryHome
+        }
+      }),
+      "utf8"
+    );
+
+    let failure: { stdout?: string } | undefined;
+    try {
+      await execFileAsync(
+        process.execPath,
+        [
+          "scripts/smoke-mcp-tools.mjs",
+          "--config-toml",
+          configPath,
+          "--server",
+          "dex_ppirtv",
+          "--workspace",
+          workspace,
+          "--require-memory-v2"
+        ],
+        { cwd: process.cwd(), maxBuffer: 1024 * 1024 }
+      );
+    } catch (error) {
+      failure = error as { stdout?: string };
+    }
+    expect(failure?.stdout).toBeTruthy();
+    const result = JSON.parse(failure!.stdout!) as {
+      ok: boolean;
+      memory_v2_requirement?: { required?: boolean; ok?: boolean; profile?: string };
+      memory_v2_capability?: { ok?: boolean };
+    };
+
+    expect(result.ok).toBe(false);
+    expect(result.memory_v2_requirement).toEqual({ required: true, ok: true, profile: "v2" });
+    expect(result.memory_v2_capability?.ok).toBe(false);
+
+    await writeFile(
+      entrypoint,
+      [
+        "let input = '';",
+        "process.stdin.setEncoding('utf8');",
+        "process.stdin.on('data', chunk => { input += chunk; });",
+        "process.stdin.on('end', () => {",
+        "  JSON.parse(input);",
+        "  process.stdout.write(JSON.stringify({ contract: 'dex.memory.capability.receipt.v2', capability: 'v2-obsidian', require_obsidian: true, expected_require_obsidian: true, ok: true, errors: [] }));",
+        "});"
+      ].join("\n"),
+      "utf8"
+    );
+    const greenSmoke = await execFileAsync(
+      process.execPath,
+      [
+        "scripts/smoke-mcp-tools.mjs",
+        "--config-toml",
+        configPath,
+        "--server",
+        "dex_ppirtv",
+        "--workspace",
+        workspace,
+        "--require-memory-v2"
+      ],
+      { cwd: process.cwd(), maxBuffer: 1024 * 1024 }
+    );
+    const greenResult = JSON.parse(greenSmoke.stdout) as {
+      ok: boolean;
+      memory_v2_capability?: { ok?: boolean; contract?: string };
+      runtime_probe?: { memory_writer_runtime?: { workspace_root?: string; memory_home?: string; canonical_root?: string; entrypoint?: string } };
+    };
+    expect(greenResult.ok).toBe(true);
+    expect(greenResult.memory_v2_capability).toMatchObject({
+      ok: true,
+      contract: "dex.memory.capability.receipt.v2"
+    });
+    expect(greenResult.runtime_probe?.memory_writer_runtime).toMatchObject({
+      workspace_root: workspace,
+      memory_home: memoryHome,
+      canonical_root: canonicalRoot,
+      entrypoint
+    });
+  });
+
   it("lists MCP tools, runs a flow smoke and exports a redacted diagnostic bundle", async () => {
     tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-e2e-"));
     const smoke = await execFileAsync(process.execPath, ["scripts/smoke-mcp-tools.mjs", "--workspace", tempRoot, "--flow-smoke"], {
@@ -190,6 +331,8 @@ describe("dex-PPIRTV e2e smoke", () => {
     const workspace = path.join(projectsRoot, "consumer-a");
     const configRoot = path.join(tempRoot, "global-config");
     const configPath = path.join(configRoot, "config.toml");
+    const memoryHome = path.join(tempRoot, "memory-home");
+    const canonicalMemoryRoot = path.join(tempRoot, "dex-memoria");
     await mkdir(workspace, { recursive: true });
     await writeFile(path.join(workspace, "AGENTS.md"), "# consumer-a\n", "utf8");
     await mkdir(path.dirname(configPath), { recursive: true });
@@ -199,7 +342,13 @@ describe("dex-PPIRTV e2e smoke", () => {
         name: "dex_ppirtv",
         cwd: process.cwd(),
         args: [path.join(process.cwd(), "dist", "launcher.js"), "--workspace", "consumer-a"],
-        env: { PPIRTV_WORKSPACE_ROOT: projectsRoot }
+        env: {
+          PPIRTV_WORKSPACE_ROOT: projectsRoot,
+          PPIRTV_MEMORY_WRITER_PROFILE: "v2",
+          PPIRTV_DEX_MEMORIA_CANONICAL_ROOT: canonicalMemoryRoot,
+          PPIRTV_DEX_MEMORIA_V2_ENTRYPOINT: path.join(canonicalMemoryRoot, "bin", "dex-memoria.js"),
+          DEX_MEMORIA_HOME: memoryHome
+        }
       }),
       "utf8"
     );
@@ -228,7 +377,12 @@ describe("dex-PPIRTV e2e smoke", () => {
     });
     expect(result.flow_smoke?.status_runtime).toMatchObject({
       project_root: canonicalWorkspace,
-      ppirtv_home: path.join(canonicalWorkspace, ".ppirtv")
+      ppirtv_home: path.join(canonicalWorkspace, ".ppirtv"),
+      memory_writer_runtime: {
+        profile: "v2",
+        workspace_root: canonicalWorkspace,
+        memory_home: memoryHome
+      }
     });
     expect(result.flow_smoke?.checkout_runtime).toMatchObject({
       project_root: canonicalWorkspace,
@@ -277,6 +431,7 @@ describe("dex-PPIRTV e2e smoke", () => {
       workspace_placeholder?: { detected?: boolean; applied?: boolean; source?: string; workspace?: string };
       runtime_config_check?: { code?: string; launcher_workspace?: string; expected_ppirtv_home?: string };
       flow_smoke?: { flow_id?: string; status_runtime?: RuntimeSmokeSummary };
+      runtime_probe?: { memory_writer_runtime?: { profile?: string }; configured_memory_bundle?: { profile?: string } };
     };
     const canonicalWorkspace = await realpath(workspace);
 
@@ -296,7 +451,12 @@ describe("dex-PPIRTV e2e smoke", () => {
     });
     expect(result.flow_smoke?.status_runtime).toMatchObject({
       project_root: canonicalWorkspace,
-      ppirtv_home: path.join(canonicalWorkspace, ".ppirtv")
+      ppirtv_home: path.join(canonicalWorkspace, ".ppirtv"),
+      memory_writer_runtime: { profile: "unconfigured" }
+    });
+    expect(result.runtime_probe).toMatchObject({
+      memory_writer_runtime: { profile: "unconfigured" },
+      configured_memory_bundle: { profile: "unconfigured" }
     });
     expect(await readFile(configPath, "utf8")).toContain('"--workspace", ""');
     expect(await readdir(path.join(workspace, ".ppirtv", "flows"))).toEqual([`${result.flow_smoke!.flow_id}.json`]);
@@ -515,6 +675,11 @@ type RuntimeSmokeSummary = {
   runtime_layout_status?: {
     status?: string;
     missing_directories?: string[];
+  };
+  memory_writer_runtime?: {
+    profile?: string;
+    workspace_root?: string;
+    memory_home?: string | null;
   };
 };
 

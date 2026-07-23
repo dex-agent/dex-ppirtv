@@ -17,6 +17,14 @@ export type GateResolutionInput = {
   canonicalVerdictRequired?: boolean;
 };
 
+export type ReviewEvidenceDiagnostics = {
+  valid: boolean;
+  owner: "evidence_add";
+  reasons: string[];
+  scope_reference: string | null;
+  authorized_scope: string[];
+};
+
 const EXPLICIT_EVIDENCE_REQUIREMENTS = new Set([
   "diff_reviewed",
   "barata_scan",
@@ -106,6 +114,37 @@ export function isStructuredReviewEvidence(flow: Flow, evidence: Evidence): bool
   );
 }
 
+export function reviewEvidenceDiagnostics(flow: Flow, evidence: Evidence): ReviewEvidenceDiagnostics {
+  const reasons: string[] = [];
+  const result = evidence.observed_result;
+  const scopeReference = evidence.scope_reference?.trim() || null;
+  if (evidence.flow_id !== flow.flow_id) reasons.push("flow_id_mismatch");
+  if (!REVIEW_KINDS.has(evidence.kind)) reasons.push("review_kind_required");
+  if (!scopeReference) reasons.push("scope_reference_required");
+  else if (!scopeIsAuthorized(flow, evidence)) reasons.push("scope_reference_not_authorized");
+  if (!evidence.satisfies?.includes("diff_reviewed")) reasons.push("diff_reviewed_not_claimed");
+  if (!evidence.satisfies?.includes("barata_scan")) reasons.push("barata_scan_not_claimed");
+  if (!evidence.satisfies?.includes("regression_risks")) reasons.push("regression_risks_not_claimed");
+  if (!result) {
+    reasons.push("observed_result_required");
+  } else {
+    if (result.diff_reviewed !== true) reasons.push("diff_reviewed_not_observed");
+    if (!nonEmptyStringArray(result.reviewed_targets)) reasons.push("reviewed_targets_required");
+    else if (scopeReference && !result.reviewed_targets.includes(scopeReference)) reasons.push("scope_reference_not_in_reviewed_targets");
+    if (result.barata_scan !== true) reasons.push("barata_scan_not_observed");
+    if (!nonEmptyStringArray(result.searched_patterns)) reasons.push("searched_patterns_required");
+    if (!stringArray(result.findings)) reasons.push("findings_array_required");
+    if (!stringArray(result.regression_risks)) reasons.push("regression_risks_array_required");
+  }
+  return {
+    valid: reasons.length === 0,
+    owner: "evidence_add",
+    reasons,
+    scope_reference: scopeReference,
+    authorized_scope: uniqueStrings([...flow.changed_files, ...flow.scope.in]).filter((item) => !flow.scope.out.includes(item))
+  };
+}
+
 function requirementSatisfiedBySource(
   flow: Flow,
   key: string,
@@ -184,5 +223,9 @@ function truthy(value: unknown): boolean {
 }
 
 function uniqueSources(values: GateRequirementResolution["accepted_sources"]): GateRequirementResolution["accepted_sources"] {
+  return [...new Set(values)];
+}
+
+function uniqueStrings(values: string[]): string[] {
   return [...new Set(values)];
 }

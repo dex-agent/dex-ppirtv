@@ -1,9 +1,12 @@
 import { realpathSync, statSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { createDexMemoriaV2CliExecutor, type DexMemoriaV2FlowWriterConfig } from "./memory/dex-memoria-v2-adapter.js";
 
 export const RUNTIME_ENV = {
   dexMemoriaHome: "DEX_MEMORIA_HOME",
+  dexMemoriaV2CanonicalRoot: "PPIRTV_DEX_MEMORIA_CANONICAL_ROOT",
+  dexMemoriaV2Entrypoint: "PPIRTV_DEX_MEMORIA_V2_ENTRYPOINT",
   graphifyBudget: "PPIRTV_GRAPHIFY_BUDGET",
   graphifyCommand: "PPIRTV_GRAPHIFY_COMMAND",
   graphifyGraphPath: "PPIRTV_GRAPHIFY_GRAPH_PATH",
@@ -12,11 +15,40 @@ export const RUNTIME_ENV = {
   home: "HOME",
   ppirtvHome: "PPIRTV_HOME",
   principlesPath: "PPIRTV_PRINCIPLES_PATH",
+  memoryWriterProfile: "PPIRTV_MEMORY_WRITER_PROFILE",
   userProfile: "USERPROFILE",
   workspace: "PPIRTV_WORKSPACE",
   workspaceRoot: "PPIRTV_WORKSPACE_ROOT",
   workspaceRoots: "PPIRTV_WORKSPACE_ROOTS"
 } as const;
+
+export type MemoryWriterRuntimeConfig = { profile: "unconfigured" | "legacy-v1" } | DexMemoriaV2FlowWriterConfig;
+
+export function resolveMemoryWriterConfigFromEnv(env: NodeJS.ProcessEnv = process.env): MemoryWriterRuntimeConfig {
+  const profile = env[RUNTIME_ENV.memoryWriterProfile]?.trim();
+  if (!profile) return { profile: "unconfigured" };
+  if (profile === "legacy-v1") return { profile: "legacy-v1" };
+  if (profile !== "v2") throw new Error(`PPIRTV_MEMORY_WRITER_PROFILE_INVALID: ${profile}`);
+  const canonicalRoot = env[RUNTIME_ENV.dexMemoriaV2CanonicalRoot]?.trim();
+  const entrypoint = env[RUNTIME_ENV.dexMemoriaV2Entrypoint]?.trim();
+  if (!canonicalRoot || !entrypoint) {
+    throw new Error("PPIRTV_DEX_MEMORIA_V2_CONFIG_REQUIRED: set canonical root and V2 entrypoint explicitly");
+  }
+  const memoryHome = env[RUNTIME_ENV.dexMemoriaHome]?.trim();
+  if (!memoryHome) throw new Error("PPIRTV_DEX_MEMORIA_HOME_REQUIRED");
+  if (!path.isAbsolute(memoryHome)) throw new Error("PPIRTV_DEX_MEMORIA_HOME_MUST_BE_ABSOLUTE");
+  const workspaceRoot = env[RUNTIME_ENV.workspace]?.trim();
+  if (!workspaceRoot) throw new Error("PPIRTV_DEX_MEMORIA_V2_WORKSPACE_REQUIRED");
+  if (!path.isAbsolute(workspaceRoot)) throw new Error("PPIRTV_DEX_MEMORIA_V2_WORKSPACE_MUST_BE_ABSOLUTE");
+  return {
+    profile: "v2",
+    canonical_root: path.resolve(canonicalRoot),
+    entrypoint: path.resolve(entrypoint),
+    memory_home: path.resolve(memoryHome),
+    workspace_root: path.resolve(workspaceRoot),
+    executor: createDexMemoriaV2CliExecutor({ canonical_root: canonicalRoot, entrypoint })
+  };
+}
 
 export const FISCAL_CONFIG = {
   maxRegressions: 3
@@ -171,7 +203,7 @@ function positiveInteger(value: string | undefined): number | undefined {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
-function sameRuntimePath(left: string, right: string): boolean {
+export function sameRuntimePath(left: string, right: string): boolean {
   return comparablePath(left) === comparablePath(right);
 }
 
