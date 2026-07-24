@@ -64,6 +64,49 @@ describe("PPIRTV MCP stdio server", () => {
     expect(prompts.prompts.map((prompt) => prompt.name)).toEqual([...REQUIRED_PROMPTS]);
   });
 
+  it("traces an evidence id through the real MCP stdio tool without returning payload content", async () => {
+    await connectClient();
+    const sptPath = await writeFakeSpt(mcpWorkspace);
+    const started = resultOf(await client!.callTool({
+      name: "goal_start",
+      arguments: {
+        workspace: mcpWorkspace,
+        spt_path: sptPath,
+        objective: "Auditar ponte GOAL/SPT por MCP",
+        idempotency_key: "dex-code:test-mcp-provenance-trace",
+        evidence_required: true,
+        required_evidence: ["trace"],
+        requested_verdict_policy: "evidence_required",
+        source: "test",
+        mode: "full"
+      }
+    }));
+    const evidence = resultOf(await client!.callTool({
+      name: "evidence_add",
+      arguments: {
+        flow_id: started.flow_id,
+        kind: "test",
+        title: "Traceable synthetic evidence",
+        content: "PRIVATE_MCP_TRACE_SENTINEL_4927"
+      }
+    }));
+
+    const traced = resultOf(await client!.callTool({
+      name: "ppirtv_trace",
+      arguments: { evidence_id: evidence.evidence_id }
+    }));
+
+    expect(traced).toMatchObject({
+      contract: "ppirtv.trace.receipt.v1",
+      selector_type: "evidence_id",
+      selector_value: evidence.evidence_id,
+      consistency: "non_transactional_read",
+      mutated: false
+    });
+    expect((traced.matches as Array<Record<string, unknown>>)).toHaveLength(1);
+    expect(JSON.stringify(traced)).not.toContain("PRIVATE_MCP_TRACE_SENTINEL_4927");
+  });
+
   it("creates a flow through MCP and exposes it through resources after restart", async () => {
     await connectClient();
     const created = await client!.callTool({
@@ -143,7 +186,7 @@ describe("PPIRTV MCP stdio server", () => {
 
   it("runs the GOAL/SPT bridge through MCP with idempotency and evidence", async () => {
     await connectClient();
-    const workspace = path.join(tempRoot, "workspace");
+    const workspace = mcpWorkspace;
     const sptPath = await writeFakeSpt(workspace);
     const envelope = {
       workspace,
@@ -256,7 +299,7 @@ describe("PPIRTV MCP stdio server", () => {
 
   it("returns a recoverable MCP error when an idempotent retry changes the SPT front matter", async () => {
     await connectClient();
-    const workspace = path.join(tempRoot, "workspace-binding-mismatch");
+    const workspace = mcpWorkspace;
     const objective = "Manter binding MCP imutavel";
     const sptPath = await writeFakeSpt(workspace, objective);
     const envelope = {
@@ -385,7 +428,7 @@ describe("PPIRTV MCP stdio server", () => {
 
   it("keeps goal_verdict_required over MCP when validation only has provided verdict text", async () => {
     await connectClient();
-    const workspace = path.join(tempRoot, "workspace-verdict-required");
+    const workspace = mcpWorkspace;
     const sptPath = await writeFakeSpt(workspace, "Bloquear falso pronto MCP em validacao");
     const envelope = {
       workspace,
@@ -508,7 +551,7 @@ describe("PPIRTV MCP stdio server", () => {
 
   it("does not turn negative meeting trigger text into required_cooperation over MCP", async () => {
     await connectClient();
-    const workspace = path.join(tempRoot, "negative-meeting-trigger");
+    const workspace = mcpWorkspace;
     const sptPath = await writeFakeSpt(workspace, "Validar texto negativo sem rito fiscal");
     const envelope = {
       workspace,
@@ -547,7 +590,7 @@ describe("PPIRTV MCP stdio server", () => {
 
   it("rejects silent missing meeting_id for eligible required_cooperation meeting over MCP", async () => {
     await connectClient();
-    const workspace = path.join(tempRoot, "silent-meeting-id-retry");
+    const workspace = mcpWorkspace;
     const sptPath = await writeFakeSpt(workspace, "Validar retry de meeting_id silencioso");
     const envelope = {
       workspace,
@@ -607,7 +650,7 @@ describe("PPIRTV MCP stdio server", () => {
 
   it("runs the live GOAL wrappers through MCP", async () => {
     await connectClient();
-    const workspace = path.join(tempRoot, "workspace");
+    const workspace = mcpWorkspace;
     const sptPath = await writeFakeSpt(workspace);
     const envelope = {
       workspace,
@@ -708,7 +751,7 @@ describe("PPIRTV MCP stdio server", () => {
 
   it("accepts compact phase in goal_gate_check over MCP without treating detail compact as mode", async () => {
     await connectClient();
-    const workspace = path.join(tempRoot, "compact-phase-workspace");
+    const workspace = mcpWorkspace;
     const sptPath = await writeFakeSpt(workspace, "Fluxo curto");
     const started = await client!.callTool({
       name: "goal_start",
@@ -754,7 +797,7 @@ describe("PPIRTV MCP stdio server", () => {
 
   it("serves compact execution and lean receipts by default over MCP", async () => {
     await connectClient();
-    const workspace = path.join(tempRoot, "lean-detail-workspace");
+    const workspace = mcpWorkspace;
     const sptPath = await writeFakeSpt(workspace, "Validar detail lean publico");
     const started = await client!.callTool({
       name: "goal_start",
@@ -833,7 +876,7 @@ describe("PPIRTV MCP stdio server", () => {
     await connectClient();
     const listed = await client!.listTools();
     expect(listed.tools.map((tool) => tool.name)).toContain("goal_gate_preflight");
-    const workspace = path.join(tempRoot, "gate-preflight-workspace");
+    const workspace = mcpWorkspace;
     const sptPath = await writeFakeSpt(workspace, "Validar gate preflight MCP");
     const started = await client!.callTool({
       name: "goal_start",
@@ -902,7 +945,7 @@ describe("PPIRTV MCP stdio server", () => {
 
   it("returns valid recall references when goal_advance receives an unknown reference", async () => {
     await connectClient();
-    const workspace = path.join(tempRoot, "recall-reference-error-workspace");
+    const workspace = mcpWorkspace;
     const sptPath = await writeFakeSpt(workspace, "Validar erro acionavel de recall MCP");
     const memoryDir = path.join(workspace, ".agents");
     const memoryPath = path.join(memoryDir, "LEMBRANCA.md");
@@ -1018,7 +1061,7 @@ describe("PPIRTV MCP stdio server", () => {
       PPIRTV_GRAPHIFY_COMMAND: process.execPath,
       PPIRTV_GRAPHIFY_TIMEOUT_MS: "5000"
     });
-    const workspace = path.join(tempRoot, "graphify-positive-mcp-workspace");
+    const workspace = mcpWorkspace;
     const sptPath = await writeFakeSpt(workspace, "Confirmar consumo Graphify positivo por MCP");
     const graphDir = path.join(workspace, "graphify-out");
     const graphReference = ".agents/PLAN-TASKS/graphify-positive.md";
@@ -1121,7 +1164,7 @@ describe("PPIRTV MCP stdio server", () => {
 
   it("streams bounded Graphify progress into ledger and lean visual surfaces", async () => {
     await connectClient();
-    const workspace = path.join(tempRoot, "graphify-progress-mcp-workspace");
+    const workspace = mcpWorkspace;
     const sptPath = await writeFakeSpt(workspace, "Transmitir progresso Graphify por MCP");
     const started = resultOf(await client!.callTool({
       name: "goal_start",
@@ -1232,7 +1275,7 @@ describe("PPIRTV MCP stdio server", () => {
 
   it("exposes mm_memory_mining and writes valid candidates through MCP", async () => {
     await connectClient();
-    const workspace = path.join(tempRoot, "workspace");
+    const workspace = mcpWorkspace;
     const sptPath = await writeFakeSpt(workspace, "Auditar memoria por MCP");
     const envelope = {
       workspace,
@@ -1356,7 +1399,7 @@ describe("PPIRTV MCP stdio server", () => {
 
   it("does not ask MCP clients to resolve candidate_ids after empty auto_write memory mining", async () => {
     await connectClient();
-    const workspace = path.join(tempRoot, "empty-memory-workspace");
+    const workspace = mcpWorkspace;
     const sptPath = await writeFakeSpt(workspace, "Validar memoria L1/L2 obrigatoria sem pepita mineravel por MCP");
     const started = await client!.callTool({
       name: "goal_start",
@@ -1511,7 +1554,7 @@ describe("PPIRTV MCP stdio server", () => {
       }
     });
 
-    const workspace = path.join(tempRoot, "workspace-mcp-error-envelope");
+    const workspace = mcpWorkspace;
     const sptPath = await writeFakeSpt(workspace, "Validar envelope de erro MCP");
     const started = await client!.callTool({
       name: "goal_start",
@@ -1688,7 +1731,7 @@ describe("PPIRTV MCP stdio server", () => {
 
   it("returns actionable MCP contracts for invalid meeting lifecycle operations", async () => {
     await connectClient();
-    const workspace = path.join(tempRoot, "meeting-errors-workspace");
+    const workspace = mcpWorkspace;
     const sptPath = await writeFakeSpt(workspace);
     const started = await client!.callTool({
       name: "goal_start",

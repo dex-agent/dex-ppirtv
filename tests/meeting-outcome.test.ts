@@ -12,7 +12,7 @@ let engine: FlowEngine;
 
 beforeEach(async () => {
   tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-meeting-outcome-"));
-  engine = new FlowEngine(new PpirtvStore(tempRoot));
+  engine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
 });
 
 afterEach(async () => {

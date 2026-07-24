@@ -273,14 +273,16 @@ mm_pipeline_run PRONTO nao significa codigo real PRONTO.
 
 Regras:
 
-- `workspace` deve ser absoluto e existir.
+- `workspace` deve ser absoluto, existir e corresponder ao `project_root` do
+  store ativo. Divergencia falha antes de criar flow ou anexar ledger.
 - `spt_path` deve apontar para um arquivo dentro de `.agents\PLAN-TASKS`.
 - `objective` deve nomear o resultado esperado do ciclo e corresponder a
   `goal.objective` do front matter v2.
 - `idempotency_key` deve ser estavel para retry e nao pode duplicar flows. O
-  primeiro `goal_start` vincula o envelope e o fingerprint do front matter;
-  retries rejeitam mudanca semantica nesses dados. Alteracoes apenas no corpo
-  Markdown humano continuam permitidas.
+  primeiro `goal_start` vincula o envelope, `goal.id`, o fingerprint do front
+  matter e o SHA-256 dos bytes exatos do documento iniciado. O fingerprint
+  continua sendo o gate semantico de retry; o SHA documental e recibo imutavel
+  de proveniencia e nao bloqueia alteracoes apenas no corpo Markdown humano.
 - `evidence_required=true` exige evidencia rastreavel antes de conclusao
   positiva.
 - `required_evidence` lista evidencias esperadas para o veredito.
@@ -301,13 +303,30 @@ Ao iniciar um GOAL com `goal_start`, o flow e o ledger precisam preservar:
 - `required_evidence`
 - `requested_verdict_policy`
 - `source`
+- `goal_id`
 - `spt_contract_fingerprint`
+- `spt_document_sha256_at_start`
 - `tasks`
 - `expected_evidence`
 - `done_criteria`
 
 `tasks`, `expected_evidence` e `done_criteria` vem exclusivamente do front
 matter v2 e sao obrigatorios antes de sair da fase Planejamento.
+
+## Rastreamento reverso
+
+`ppirtv_trace` reconstrói proveniencia sem criar indice ou storage paralelo.
+A tool aceita exatamente um seletor exato entre `flow_id`, `goal_id`,
+`idempotency_key`, `evidence_id`, `meeting_id`, `verdict_id`, `event_id` e
+`spt_path`. Zero resultado e sucesso vazio; seletores que alcançam varios flows
+retornam todos os matches em ordem deterministica.
+
+O receipt `ppirtv.trace.receipt.v1` usa somente metadados allowlisted, declara
+`consistency=non_transactional_read` e `mutated=false`, e representa as fontes
+reais com localizadores `file`, `json_pointer` ou `ndjson_record`. Payloads de
+evidence, meeting, verdict e ledger nao fazem parte do receipt. Historico sem
+os novos campos e classificado como `legacy_derived`, `unresolved` ou `unbound`
+sem reescrita; bindings novos e completos usam `explicit`.
 
 Eventos de memoria operacional tambem podem aparecer no ledger quando houver
 avanco de fase:

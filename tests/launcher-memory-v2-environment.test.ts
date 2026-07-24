@@ -7,6 +7,27 @@ import { resolveMemoryWriterConfigFromEnv, resolveLauncherWorkspace } from "../s
 import { applyLauncherWorkspaceEnvironment } from "../src/launcher-environment.js";
 
 describe("launcher V2 workspace propagation", () => {
+  it("allows the install repository only when argv selects it explicitly", async () => {
+    const installRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-launcher-owner-"));
+    await mkdir(path.join(installRoot, ".git"), { recursive: true });
+
+    const resolution = resolveLauncherWorkspace({
+      argv: ["--workspace", installRoot],
+      cwd: installRoot,
+      env: {},
+      installRoot
+    });
+
+    expect(resolution).toMatchObject({
+      workspace: await realpath(installRoot),
+      ppirtvHome: path.join(await realpath(installRoot), ".ppirtv"),
+      source: "argv"
+    });
+    expect(() =>
+      resolveLauncherWorkspace({ argv: [], cwd: installRoot, env: {}, installRoot })
+    ).toThrow("PPIRTV_LAUNCHER_WORKSPACE_REQUIRED");
+  });
+
   it("propagates the resolved workspace for the V2 writer without replacing a global workspace root", async () => {
     const projectsRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-launcher-v2-"));
     const workspace = path.join(projectsRoot, "consumer-a");

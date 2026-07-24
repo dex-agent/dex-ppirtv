@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
+import { REQUIRED_TOOLS } from "../src/domain.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -173,11 +174,14 @@ describe("dex-PPIRTV e2e smoke", () => {
         checkout_runtime?: RuntimeSmokeSummary;
       };
       missing?: string[];
+      required?: string[];
       runtime_config_check?: { ok: boolean; ppirtv_home: string };
     };
 
     expect(smokeResult.ok).toBe(true);
     expect(smokeResult.missing).toEqual([]);
+    expect(smokeResult.required).toEqual([...REQUIRED_TOOLS]);
+    expect(smokeResult.required).toContain("ppirtv_trace");
     expect(smokeResult.runtime_config_check).toMatchObject({
       ok: true,
       ppirtv_home: path.resolve(tempRoot, ".ppirtv")
@@ -545,6 +549,37 @@ describe("dex-PPIRTV e2e smoke", () => {
         { cwd: process.cwd(), maxBuffer: 1024 * 1024 }
       )
     ).rejects.toMatchObject({ stdout: expect.stringContaining("ppirtv_launcher_workspace_required") });
+  });
+
+  it("accepts the install owner only when launcher argv selects it explicitly", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-launcher-owner-explicit-"));
+    const configPath = path.join(tempRoot, "config.toml");
+    const installRoot = process.cwd();
+    await writeFile(
+      configPath,
+      codexConfigToml({
+        name: "dex_ppirtv",
+        cwd: installRoot,
+        args: [path.join(installRoot, "dist", "launcher.js"), "--workspace", installRoot]
+      }),
+      "utf8"
+    );
+
+    const audited = await execFileAsync(
+      process.execPath,
+      ["scripts/smoke-mcp-tools.mjs", "--config-toml", configPath, "--server", "dex_ppirtv", "--audit-only"],
+      { cwd: installRoot, maxBuffer: 1024 * 1024 }
+    );
+    const result = JSON.parse(audited.stdout) as {
+      ok: boolean;
+      runtime_config_check?: { code?: string; launcher_workspace?: string };
+    };
+
+    expect(result.ok).toBe(true);
+    expect(result.runtime_config_check).toMatchObject({
+      code: "ppirtv_launcher_workspace_resolved",
+      launcher_workspace: await realpath(installRoot)
+    });
   });
 
   it("audits inherited Codex PPIRTV configs with divergent PPIRTV_HOME without relying on list_tools", async () => {

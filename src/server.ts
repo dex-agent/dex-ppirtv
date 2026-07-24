@@ -18,6 +18,7 @@ import { boundedRecallErrorReferences, FlowEngine, RecallConsumptionReferenceErr
 import { scrubSecretLikeText } from "./security/secret-redaction.js";
 import { PpirtvStore } from "./store.js";
 import { resolveMemoryWriterConfigFromEnv } from "./config.js";
+import { PPIRTV_TRACE_SELECTOR_KEYS, tracePpirtvArtifact } from "./provenance-trace.js";
 
 const ANY_PHASES = [...PHASES, ...COMPACT_PHASES] as const;
 
@@ -116,6 +117,17 @@ function registerTools(
         process_id: process.pid
       };
     })
+  );
+  server.registerTool(
+    "ppirtv_trace",
+    {
+      description:
+        "Reconstruct read-only provenance from exactly one exact PPIRTV selector without creating an index or returning artifact payloads.",
+      inputSchema: Object.fromEntries(
+        PPIRTV_TRACE_SELECTOR_KEYS.map((key) => [key, z.string().min(1).optional()])
+      )
+    },
+    async (args) => toolResponse(() => tracePpirtvArtifact(store, args))
   );
   const pipelineItemSchema = z.object({
     goal: z.string().min(1),

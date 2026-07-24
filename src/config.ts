@@ -119,7 +119,7 @@ export function resolveLauncherWorkspace(input: {
 
   if (hint) {
     const workspace = resolveWorkspaceHint(hint, cwd, env);
-    validateLauncherWorkspace(workspace, installRoot, hint);
+    validateLauncherWorkspace(workspace, installRoot, hint, Boolean(cliWorkspace));
     return {
       workspace,
       ppirtvHome: path.join(workspace, ".ppirtv"),
@@ -265,11 +265,16 @@ function launcherWorkspaceRoots(cwd: string, env: NodeJS.ProcessEnv): string[] {
   });
 }
 
-function validateLauncherWorkspace(workspace: string, installRoot?: string, hint?: string): void {
+function validateLauncherWorkspace(
+  workspace: string,
+  installRoot?: string,
+  hint?: string,
+  explicitArgvSelection = false
+): void {
   if (!isDirectory(workspace)) {
     throw new Error(`PPIRTV_LAUNCHER_WORKSPACE_NOT_FOUND: workspace is not a directory: ${workspace}`);
   }
-  if (installRoot && sameRuntimePath(workspace, installRoot)) {
+  if (installRoot && sameRuntimePath(workspace, installRoot) && !explicitArgvSelection) {
     throw new Error(
       [
         "PPIRTV_LAUNCHER_INSTALL_ROOT_SELECTED:",

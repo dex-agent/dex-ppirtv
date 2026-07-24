@@ -153,6 +153,11 @@ If the launcher starts from the install repository without `--workspace`,
 workspace signal from the host, choosing a project would be a guess and could
 write runtime state to the wrong repository.
 
+The dex-PPIRTV repository itself may be selected for self-host maintenance only
+by an explicit `--workspace <absolute-install-root>` argument. Merely starting
+the launcher from the install repository remains fail-closed; an environment
+fallback does not turn that directory into an implicit workspace.
+
 ### Direct Mode
 
 Direct mode remains supported for local or legacy configurations. In direct
@@ -442,10 +447,23 @@ Official GOAL/SPT tools:
 - `goal_regress`
 - `evidence_add`
 - `goal_verdict`
+- `ppirtv_trace`
 
 `goal_status` and `ppirtv_checkout` expose `project_root`, `ppirtv_home` and
 `runtime_layout_status` so clients can verify where the active MCP process is
 writing state.
+
+`goal_start` rejects a requested workspace that differs from the active
+runtime `project_root` before creating a flow. On the first valid binding it
+preserves `goal_id`, the semantic front-matter fingerprint and
+`spt_document_sha256_at_start`; the byte-exact document hash is provenance,
+not a retry gate.
+
+`ppirtv_trace` is the read-only reverse lookup for exact `flow_id`, `goal_id`,
+`idempotency_key`, `evidence_id`, `meeting_id`, `verdict_id`, `event_id` or
+`spt_path`. It returns deterministic metadata-only locators over the existing
+files, JSON pointers and NDJSON records. It creates no index or storage and
+never returns artifact payloads.
 
 `ppirtv_checkout` is the direct closing/accountability tool. It returns the
 same canonical checkout embedded in `goal_status.ppirtv_checkout`, but promotes

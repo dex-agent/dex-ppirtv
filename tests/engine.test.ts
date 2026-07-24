@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -33,7 +34,7 @@ beforeEach(async () => {
     delete process.env[key];
   }
   process.env.USERPROFILE = path.join(tempRoot, "home-without-shared-principles");
-  engine = new FlowEngine(new PpirtvStore(tempRoot));
+  engine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
 });
 
 afterEach(async () => {
@@ -52,7 +53,7 @@ describe("PPIRTV flow engine", () => {
       uncertainties: ["cliente alvo"]
     });
 
-    const restarted = new FlowEngine(new PpirtvStore(tempRoot));
+    const restarted = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
     const status = await restarted.status(flow.flow_id);
     const ledger = await restarted.store.readLedger(flow.flow_id);
 
@@ -277,7 +278,7 @@ describe("PPIRTV flow engine", () => {
         items: [graphHit(input.question, "MemoryLibrarian", "src/memory/memory-hooks.ts", 12)]
       })
     };
-    const graphEngine = new FlowEngine(new PpirtvStore(tempRoot), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
+    const graphEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
     const flow = await graphEngine.createFlow({ goal: "Graphify ledger recall" });
 
     const advanced = await graphEngine.advance({
@@ -322,7 +323,7 @@ describe("PPIRTV flow engine", () => {
         warnings: []
       })
     };
-    const dedupedEngine = new FlowEngine(new PpirtvStore(tempRoot), dedupedHooks);
+    const dedupedEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }), dedupedHooks);
     const flow = await dedupedEngine.createFlow({ goal: "Dedup recall ledger" });
 
     const advanced = await dedupedEngine.advance({
@@ -345,7 +346,7 @@ describe("PPIRTV flow engine", () => {
         throw new Error("graphify unavailable");
       }
     };
-    const graphEngine = new FlowEngine(new PpirtvStore(tempRoot), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
+    const graphEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
     const flow = await graphEngine.createFlow({ goal: "Graphify falha tolerada" });
 
     const advanced = await graphEngine.advance({
@@ -406,7 +407,7 @@ describe("PPIRTV flow engine", () => {
         throw new Error("after unavailable");
       }
     };
-    const guardedEngine = new FlowEngine(new PpirtvStore(tempRoot), failingHooks);
+    const guardedEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }), failingHooks);
     const flow = await guardedEngine.createFlow({ goal: "Bibliotecario tolerante" });
 
     const advanced = await guardedEngine.advance({
@@ -817,6 +818,8 @@ describe("PPIRTV flow engine", () => {
   it("starts GOAL/SPT flows idempotently after validating a local SPT", async () => {
     const workspace = path.join(tempRoot, "workspace");
     const sptPath = await writeFakeSpt(workspace);
+    const initialSptBytes = await readFile(sptPath);
+    const initialSptSha256 = createHash("sha256").update(initialSptBytes).digest("hex");
     const envelope = {
       workspace,
       spt_path: sptPath,
@@ -835,6 +838,7 @@ describe("PPIRTV flow engine", () => {
     const status = await engine.goalStatus({ idempotency_key: envelope.idempotency_key });
 
     expect(validation.valid).toBe(true);
+    expect(validation.document_sha256).toBe(initialSptSha256);
     expect(validation.tasks).toContain("Rodar teste local.");
     expect(validation.expected_evidence).toContain("npm run check.");
     expect(validation.done_criteria).toContain("npm run check.");
@@ -849,6 +853,15 @@ describe("PPIRTV flow engine", () => {
     expect((status.checklist as Record<string, unknown>).phase).toBe("pensamentos");
     const ledger = await engine.store.readLedger(started.flow_id as string);
     const goalStarted = ledger.find((event) => event.type === "goal_started");
+    const persisted = await engine.store.loadFlow(started.flow_id as string);
+    expect(persisted.goal_binding).toMatchObject({
+      goal_id: "fake-goal-spt",
+      spt_document_sha256_at_start: initialSptSha256
+    });
+    expect(goalStarted?.data).toMatchObject({
+      goal_id: "fake-goal-spt",
+      spt_document_sha256_at_start: initialSptSha256
+    });
     expect(goalStarted?.data.tasks).toEqual(expect.arrayContaining(["Rodar teste local."]));
     expect(goalStarted?.data.expected_evidence).toEqual(expect.arrayContaining(["npm run check."]));
     expect(goalStarted?.data.done_criteria).toEqual(expect.arrayContaining(["npm run check."]));
@@ -894,6 +907,7 @@ describe("PPIRTV flow engine", () => {
     const started = await engine.startGoal(envelope);
     const originalFlow = await engine.store.loadFlow(started.flow_id as string);
     const originalFingerprint = originalFlow.goal_binding?.spt_contract_fingerprint;
+    const originalDocumentSha256 = originalFlow.goal_binding?.spt_document_sha256_at_start;
 
     await writeFile(sptPath, fakeSptText(workspace, envelope.objective, "# Human notes rewritten\n\nHeadings and prose are free.\n"), "utf8");
     await expect(engine.startGoal(envelope)).resolves.toMatchObject({ reused: true });
@@ -904,6 +918,7 @@ describe("PPIRTV flow engine", () => {
 
     const persisted = await engine.store.loadFlow(started.flow_id as string);
     expect(persisted.goal_binding?.spt_contract_fingerprint).toBe(originalFingerprint);
+    expect(persisted.goal_binding?.spt_document_sha256_at_start).toBe(originalDocumentSha256);
     expect(persisted.tasks).toContain("Rodar teste local.");
     expect(persisted.tasks).not.toContain("Rodar teste alterado.");
 
@@ -913,6 +928,94 @@ describe("PPIRTV flow engine", () => {
     }
     await engine.store.saveFlow(persisted);
     await expect(engine.startGoal(envelope)).rejects.toThrow(/GOAL_BINDING_MISMATCH.*spt_contract_fingerprint/i);
+  });
+
+  it("does not silently upgrade historical bindings during an idempotent retry", async () => {
+    const workspace = path.join(tempRoot, "legacy-binding-retry");
+    const sptPath = await writeFakeSpt(workspace);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Executar ponte GOAL/SPT",
+      idempotency_key: "dex-code:test-legacy-binding-retry",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required" as const,
+      source: "dex-code",
+      mode: "full" as const
+    };
+    const started = await engine.startGoal(envelope);
+    const historical = await engine.store.loadFlow(started.flow_id as string);
+    if (!historical.goal_binding) {
+      throw new Error("fixture must have a goal binding");
+    }
+    delete historical.goal_binding.goal_id;
+    delete historical.goal_binding.spt_document_sha256_at_start;
+    await engine.store.saveFlow(historical);
+
+    await expect(engine.startGoal(envelope)).resolves.toMatchObject({ reused: true });
+    const retried = await engine.store.loadFlow(started.flow_id as string);
+    expect(retried.goal_binding?.goal_id).toBeUndefined();
+    expect(retried.goal_binding?.spt_document_sha256_at_start).toBeUndefined();
+  });
+
+  it("rejects goal_start before persistence when the requested workspace differs from the runtime store project", async () => {
+    const runtimeWorkspace = path.join(tempRoot, "runtime-workspace");
+    const requestedWorkspace = path.join(tempRoot, "requested-workspace");
+    const isolatedEngine = new FlowEngine(new PpirtvStore(path.join(runtimeWorkspace, ".ppirtv")));
+    const sptPath = await writeFakeSpt(requestedWorkspace);
+
+    await expect(isolatedEngine.startGoal({
+      workspace: requestedWorkspace,
+      spt_path: sptPath,
+      objective: "Executar ponte GOAL/SPT",
+      idempotency_key: "dex-code:test-workspace-store-mismatch",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "full"
+    })).rejects.toThrow(/GOAL_WORKSPACE_STORE_MISMATCH/i);
+
+    expect(await isolatedEngine.store.listFlows()).toEqual([]);
+  });
+
+  it("does not bypass the workspace boundary when an explicit store root has a noncanonical name", async () => {
+    const runtimeWorkspace = path.join(tempRoot, "runtime-custom-store");
+    const requestedWorkspace = path.join(tempRoot, "requested-custom-store");
+    const isolatedEngine = new FlowEngine(new PpirtvStore(path.join(runtimeWorkspace, "custom-store")));
+    const sptPath = await writeFakeSpt(requestedWorkspace);
+
+    await expect(isolatedEngine.startGoal({
+      workspace: requestedWorkspace,
+      spt_path: sptPath,
+      objective: "Executar ponte GOAL/SPT",
+      idempotency_key: "dex-code:test-custom-store-workspace-mismatch",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "full"
+    })).rejects.toThrow(/GOAL_WORKSPACE_STORE_MISMATCH|PPIRTV_STORE_PROJECT_ROOT_REQUIRED/i);
+  });
+
+  it("does not authorize a nested workspace merely because it lives below a noncanonical store root", async () => {
+    const customStoreRoot = path.join(tempRoot, "custom-store-nested");
+    const requestedWorkspace = path.join(customStoreRoot, "consumer");
+    const isolatedEngine = new FlowEngine(new PpirtvStore(customStoreRoot));
+    const sptPath = await writeFakeSpt(requestedWorkspace);
+
+    await expect(isolatedEngine.startGoal({
+      workspace: requestedWorkspace,
+      spt_path: sptPath,
+      objective: "Executar ponte GOAL/SPT",
+      idempotency_key: "dex-code:test-nested-custom-store-mismatch",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "full"
+    })).rejects.toThrow(/PPIRTV_STORE_PROJECT_ROOT_REQUIRED/i);
   });
 
   it("runs live GOAL gates, meetings and phase advance with material credits", async () => {
@@ -2558,7 +2661,7 @@ describe("PPIRTV flow engine", () => {
         warnings: []
       })
     };
-    const preflightStore = new PpirtvStore(path.join(tempRoot, "preflight-runtime"));
+    const preflightStore = new PpirtvStore(path.join(tempRoot, "preflight-runtime"), { fixtureOnlyNoncanonicalRoot: true });
     const preflightEngine = new FlowEngine(preflightStore, hooks);
     const workspace = path.join(tempRoot, "preflight-workspace");
     const sptPath = await writeFakeSpt(workspace, "Preflight read only");
@@ -3224,7 +3327,7 @@ describe("PPIRTV flow engine", () => {
         items: []
       })
     };
-    const graphEngine = new FlowEngine(new PpirtvStore(tempRoot), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
+    const graphEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
     const flow = await graphEngine.createFlow({ goal: "Status visual Graphify" });
 
     const advanced = await graphEngine.advance({ flow_id: flow.flow_id, provided: { context: "ctx", risks: ["r"], uncertainties: ["u"] } });
@@ -3244,7 +3347,7 @@ describe("PPIRTV flow engine", () => {
       },
       afterPhase: async () => ({ flow_id: "x", phase: "pensamentos", recorded_at: new Date().toISOString(), candidates_count: 0, parking_count: 0, warnings: [] })
     };
-    const guarded = new FlowEngine(new PpirtvStore(tempRoot), failingHooks);
+    const guarded = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }), failingHooks);
     const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-fiscal-t8", "Hook warning fiscal", guarded);
     const advanced = await guarded.advance({ flow_id: flowId, provided: { context: "ctx", risks: ["risco"], uncertainties: ["u"] } });
 
@@ -3352,7 +3455,7 @@ describe("PPIRTV flow engine", () => {
         items: []
       })
     };
-    const graphEngine = new FlowEngine(new PpirtvStore(tempRoot), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
+    const graphEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
     const flow = await graphEngine.createFlow({ goal: "Check-in visual Graphify" });
     await graphEngine.advance({ flow_id: flow.flow_id, provided: { context: "ctx", risks: ["r"], uncertainties: ["u"] } });
 
@@ -3879,7 +3982,7 @@ describe("PPIRTV flow engine", () => {
         items: [graphHit(input.question, "Bibliotecario funcional", "src/memory/memory-recall.ts", 20)]
       })
     };
-    const graphEngine = new FlowEngine(new PpirtvStore(tempRoot), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
+    const graphEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
     const flow = await graphEngine.createFlow({ goal: "Bibliotecario funcionalmente testado" });
 
     await graphEngine.advance({ flow_id: flow.flow_id, provided: { context: "ctx", risks: ["r"], uncertainties: ["u"] } });
@@ -4376,7 +4479,7 @@ describe("PPIRTV flow engine", () => {
       })
     };
     try {
-      const graphEngine = new FlowEngine(new PpirtvStore(tempRoot), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
+      const graphEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
       const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-graphify-checkin", "Graphify check-in funcional", graphEngine);
 
       await graphEngine.advance({ flow_id: flowId, provided: { context: "ctx", risks: ["bibliotecario graphify"], uncertainties: ["u"] } });
@@ -4473,7 +4576,7 @@ describe("PPIRTV flow engine", () => {
       })
     };
     try {
-      const graphEngine = new FlowEngine(new PpirtvStore(tempRoot), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
+      const graphEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
       const { flowId } = await startGoalWithEvidence("dex-code:test-graphify-status-probe", "Graphify status probe sem advance", graphEngine);
 
       const status = await graphEngine.goalStatus({ flow_id: flowId });
@@ -4512,7 +4615,7 @@ describe("PPIRTV flow engine", () => {
       })
     };
     try {
-      const graphEngine = new FlowEngine(new PpirtvStore(tempRoot), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
+      const graphEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
       const { flowId } = await startGoalWithEvidence("dex-code:test-recall-consumption", "Separar recall de consumo", graphEngine);
 
       const recalledOnly = await graphEngine.goalStatus({ flow_id: flowId });

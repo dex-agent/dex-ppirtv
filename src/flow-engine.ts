@@ -79,7 +79,7 @@ import {
 import { PpirtvStore, type RuntimeLayoutStatus } from "./store.js";
 import { profileFor, type GateRequirement } from "./phase-profile.js";
 import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured, sameRuntimePath } from "./config.js";
-import { fingerprintSptV2Contract, parseSptV2Document } from "./spt-contract.js";
+import { fingerprintSptV2Contract, parseSptV2Document, sha256SptDocument } from "./spt-contract.js";
 
 const DEFAULT_SCOPE: Scope = { in: [], out: [] };
 const MEMORY_MINING_BLOCKED_VERDICT_REASON = "memory_mining_blocked_verdict";
@@ -374,8 +374,10 @@ export class FlowEngine {
     checks.spt_is_file = checks.spt_exists && (await isFile(sptPath));
 
     let text = "";
+    let documentBytes: Buffer | null = null;
     if (checks.spt_is_file && checks.spt_inside_workspace && checks.spt_under_plan_tasks) {
-      text = await readFile(sptPath, "utf8");
+      documentBytes = await readFile(sptPath);
+      text = documentBytes.toString("utf8");
     }
 
     const parsedSpt = parseSptV2Document(text);
@@ -428,6 +430,7 @@ export class FlowEngine {
       contract_version: contract?.version ?? null,
       goal_id: contract?.goal.id ?? null,
       contract_fingerprint: contract ? fingerprintSptV2Contract(contract) : null,
+      document_sha256: documentBytes ? sha256SptDocument(documentBytes) : null,
       checks,
       contract_errors: parsedSpt.errors,
       missing,
@@ -442,6 +445,20 @@ export class FlowEngine {
 
   async startGoal(input: GoalEnvelope): Promise<Record<string, unknown>> {
     const envelope = normalizeGoalEnvelope(input);
+    const canonicalStore = path.basename(this.store.root).toLowerCase() === ".ppirtv";
+    if (!canonicalStore && !this.store.fixtureOnlyNoncanonicalRoot) {
+      throw new Error(
+        "PPIRTV_STORE_PROJECT_ROOT_REQUIRED: goal_start requires a canonical <workspace>/.ppirtv store; noncanonical roots are fixture-only and must be declared explicitly"
+      );
+    }
+    const workspaceMatchesStore =
+      this.store.fixtureOnlyNoncanonicalRoot
+      || sameRuntimePath(envelope.workspace, this.store.runtimePaths.projectRoot);
+    if (!workspaceMatchesStore) {
+      throw new Error(
+        `GOAL_WORKSPACE_STORE_MISMATCH: requested workspace ${envelope.workspace} differs from runtime project_root ${this.store.runtimePaths.projectRoot}`
+      );
+    }
     const validation = await this.validateSpt({
       workspace: envelope.workspace,
       spt_path: envelope.spt_path,
@@ -487,7 +504,10 @@ export class FlowEngine {
     const boundEnvelope = previousBinding?.envelope ?? { ...envelope, flow_id: flow.flow_id, mode: incomingMode };
     flow.goal_binding = {
       envelope: boundEnvelope,
+      goal_id: previousBinding ? previousBinding.goal_id : validation.goal_id ?? undefined,
       spt_contract_fingerprint: previousBinding?.spt_contract_fingerprint ?? validation.contract_fingerprint ?? undefined,
+      spt_document_sha256_at_start:
+        previousBinding ? previousBinding.spt_document_sha256_at_start : validation.document_sha256 ?? undefined,
       started_at: previousBinding?.started_at ?? now,
       last_seen_at: now
     };
@@ -3749,7 +3769,9 @@ function goalLedgerData(binding: GoalBinding, flow?: Flow): Record<string, unkno
     required_evidence: binding.envelope.required_evidence,
     requested_verdict_policy: binding.envelope.requested_verdict_policy,
     source: binding.envelope.source,
+    goal_id: binding.goal_id,
     spt_contract_fingerprint: binding.spt_contract_fingerprint,
+    spt_document_sha256_at_start: binding.spt_document_sha256_at_start,
     tasks: flow?.tasks ?? [],
     expected_evidence: flow?.expected_evidence ?? binding.envelope.required_evidence,
     done_criteria: flow?.done_criteria ?? []

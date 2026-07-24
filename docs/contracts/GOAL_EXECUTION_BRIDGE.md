@@ -106,12 +106,14 @@ fallback.
 ### `goal_start`
 
 Recebe `GoalEnvelope`, valida o SPT e cria ou reutiliza o flow por
-`idempotency_key`.
+`idempotency_key`. Antes de persistir, exige que `GoalEnvelope.workspace`
+corresponda ao `project_root` do store ativo.
 
-O primeiro `goal_start` congela o envelope semantico e o fingerprint do front
-matter v2. Retry com objetivo divergente, envelope incompatível ou front matter
-alterado falha explicitamente; reescrita somente do Markdown humano permanece
-permitida.
+O primeiro `goal_start` congela o envelope semantico, `goal.id`, o fingerprint
+do front matter v2 e o SHA-256 dos bytes exatos do documento. Retry com
+objetivo divergente, envelope incompatível ou front matter alterado falha
+explicitamente. O SHA documental e recibo de proveniencia, nao gate de retry;
+reescrita somente do Markdown humano permanece permitida.
 
 Retorna:
 
@@ -124,6 +126,23 @@ Retorna:
 - proximo passo acionavel;
 - `spt_validation`;
 - indicador `started` ou `reused`.
+
+### `ppirtv_trace`
+
+Reconstrói a cadeia entre SPT, flow, evidence, meeting, verdict e ledger usando
+exatamente um seletor: `flow_id`, `goal_id`, `idempotency_key`, `evidence_id`,
+`meeting_id`, `verdict_id`, `event_id` ou `spt_path`.
+
+O retorno `ppirtv.trace.receipt.v1`:
+
+- retorna zero, um ou varios matches sem escolha silenciosa;
+- ordena matches e localizadores deterministicamente;
+- usa `file`, `json_pointer` e `ndjson_record` conforme a fonte real;
+- classifica bindings como `explicit`, `legacy_derived`, `unresolved` ou
+  `unbound`;
+- inclui apenas metadados allowlisted, nunca payload de artefato;
+- declara `consistency=non_transactional_read` e `mutated=false`;
+- nao cria indice, cache, projecao ou storage.
 
 ### `goal_status`
 

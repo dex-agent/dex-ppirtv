@@ -118,6 +118,10 @@ export function fingerprintSptV2Contract(contract: SptV2Contract): string {
   return createHash("sha256").update(JSON.stringify(contract), "utf8").digest("hex");
 }
 
+export function sha256SptDocument(input: Uint8Array): string {
+  return createHash("sha256").update(input).digest("hex");
+}
+
 function invalid(checks: SptV2ParseResult["checks"], ...errors: string[]): SptV2ParseResult {
   return { contract: null, checks, errors };
 }

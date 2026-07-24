@@ -52,7 +52,9 @@ export type GoalEnvelope = {
 
 export type GoalBinding = {
   envelope: GoalEnvelope;
+  goal_id?: string;
   spt_contract_fingerprint?: string;
+  spt_document_sha256_at_start?: string;
   started_at: string;
   last_seen_at: string;
 };
@@ -96,6 +98,7 @@ export type SptValidationResult = {
   contract_version: 2 | null;
   goal_id: string | null;
   contract_fingerprint: string | null;
+  document_sha256: string | null;
   checks: Record<string, boolean>;
   contract_errors: string[];
   missing: string[];
@@ -560,6 +563,7 @@ export const DEFAULT_BACK_TO: Record<Phase, Phase | null> = {
 
 export const REQUIRED_TOOLS = [
   "runtime_probe",
+  "ppirtv_trace",
   "flow_create",
   "flow_status",
   "flow_advance",

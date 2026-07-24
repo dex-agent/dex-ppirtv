@@ -5,26 +5,7 @@ import path from "node:path";
 import process from "node:process";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport, getDefaultEnvironment } from "@modelcontextprotocol/sdk/client/stdio.js";
-
-const REQUIRED_TOOLS = [
-  "runtime_probe",
-  "spt_validate",
-  "goal_start",
-  "goal_status",
-  "ppirtv_checkout",
-  "goal_gate_check",
-  "goal_gate_preflight",
-  "goal_progress_record",
-  "goal_meeting_open",
-  "goal_meeting_add_turn",
-  "goal_meeting_close",
-  "evidence_add",
-  "mm_memory_mining",
-  "mm_memory_candidate_resolve",
-  "goal_regress",
-  "goal_verdict",
-  "flow_archive"
-];
+import { REQUIRED_TOOLS } from "../dist/domain.js";
 
 const args = parseArgs(process.argv.slice(2));
 const repoRoot = path.resolve(import.meta.dirname, "..");
@@ -520,7 +501,7 @@ function launcherRuntimeConfigCheckFor(server) {
       message: "Launcher workspace hint did not resolve to an existing project directory."
     };
   }
-  if (samePath(resolved, repoRoot)) {
+  if (samePath(resolved, repoRoot) && hint.source !== "argv") {
     return {
       ok: false,
       code: "ppirtv_launcher_install_root_selected",
@@ -537,7 +518,9 @@ function launcherRuntimeConfigCheckFor(server) {
     launcher_hint: hint,
     launcher_workspace: resolved,
     expected_ppirtv_home: path.join(resolved, ".ppirtv"),
-    message: "Launcher workspace hint resolves to a consumer project; PPIRTV_HOME will be set by the launcher."
+    message: samePath(resolved, repoRoot)
+      ? "Launcher argv explicitly selects the dex-PPIRTV owner workspace; PPIRTV_HOME will be set by the launcher."
+      : "Launcher workspace hint resolves to a consumer project; PPIRTV_HOME will be set by the launcher."
   };
 }
 

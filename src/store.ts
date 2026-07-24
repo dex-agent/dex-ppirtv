@@ -20,6 +20,15 @@ export type RuntimeLayoutStatus = {
   status: "ready" | "missing";
 };
 
+export type ReadOnlyCollection<T> = {
+  items: T[];
+  unreadable_count: number;
+};
+
+export type PpirtvStoreOptions = {
+  fixtureOnlyNoncanonicalRoot?: boolean;
+};
+
 export class PpirtvStore {
   readonly root: string;
   readonly runtimePaths: PpirtvRuntimePaths;
@@ -33,8 +42,9 @@ export class PpirtvStore {
   readonly specsDir: string;
   readonly tasksDir: string;
   readonly ledgerPath: string;
+  readonly fixtureOnlyNoncanonicalRoot: boolean;
 
-  constructor(root?: string) {
+  constructor(root?: string, options: PpirtvStoreOptions = {}) {
     this.runtimePaths = root ? runtimePathsFromHome(projectRootForExplicitStoreRoot(root), root) : resolveRuntimePaths();
     this.root = this.runtimePaths.ppirtvHome;
     this.flowsDir = this.runtimePaths.dirs.flows;
@@ -47,6 +57,10 @@ export class PpirtvStore {
     this.specsDir = this.runtimePaths.dirs.specs;
     this.tasksDir = this.runtimePaths.dirs.tasks;
     this.ledgerPath = this.runtimePaths.ledgerPath;
+    this.fixtureOnlyNoncanonicalRoot =
+      Boolean(root)
+      && path.basename(this.root).toLowerCase() !== ".ppirtv"
+      && options.fixtureOnlyNoncanonicalRoot === true;
   }
 
   async init(): Promise<void> {
@@ -111,10 +125,27 @@ export class PpirtvStore {
 
   async listFlows(): Promise<Flow[]> {
     await this.init();
+    return (await this.listFlowsReadOnly()).items;
+  }
+
+  async listFlowsReadOnly(): Promise<ReadOnlyCollection<Flow>> {
+    if (!(await this.pathExists(this.flowsDir))) {
+      return { items: [], unreadable_count: 0 };
+    }
     const files = (await readdir(this.flowsDir)).filter((file) => file.endsWith(".json")).sort();
-    const flows = await Promise.all(files.map((file) => readJson<Flow>(path.join(this.flowsDir, file))));
-    const normalized = flows.map(normalizeFlow);
-    return normalized.sort((a, b) => a.flow_id.localeCompare(b.flow_id));
+    const settled = await Promise.all(files.map(async (file) => {
+      try {
+        const flow = normalizeFlow(await readJson<Flow>(path.join(this.flowsDir, file)));
+        return path.parse(file).name === flow.flow_id ? flow : null;
+      } catch {
+        return null;
+      }
+    }));
+    const items = settled.filter((flow): flow is Flow => flow !== null);
+    return {
+      items: items.sort((a, b) => compareOrdinal(a.flow_id, b.flow_id)),
+      unreadable_count: settled.length - items.length
+    };
   }
 
   async saveMeeting(meeting: Meeting): Promise<void> {
@@ -131,12 +162,29 @@ export class PpirtvStore {
 
   async listMeetings(flowId?: string): Promise<Meeting[]> {
     await this.init();
+    return (await this.listMeetingsReadOnly(flowId)).items;
+  }
+
+  async listMeetingsReadOnly(flowId?: string): Promise<ReadOnlyCollection<Meeting>> {
+    if (!(await this.pathExists(this.meetingsDir))) {
+      return { items: [], unreadable_count: 0 };
+    }
     const files = (await readdir(this.meetingsDir)).filter((file) => file.endsWith(".json")).sort();
-    const meetings = await Promise.all(files.map((file) => readJson<Meeting>(path.join(this.meetingsDir, file))));
-    return meetings
-      .map(normalizeMeeting)
+    const settled = await Promise.all(files.map(async (file) => {
+      try {
+        const meeting = normalizeMeeting(await readJson<Meeting>(path.join(this.meetingsDir, file)));
+        return path.parse(file).name === meeting.meeting_id ? meeting : null;
+      } catch {
+        return null;
+      }
+    }));
+    const meetings = settled.filter((meeting): meeting is Meeting => meeting !== null);
+    return {
+      items: meetings
       .filter((meeting) => !flowId || meeting.flow_id === flowId)
-      .sort((a, b) => a.meeting_id.localeCompare(b.meeting_id));
+      .sort((a, b) => compareOrdinal(a.meeting_id, b.meeting_id)),
+      unreadable_count: settled.length - meetings.length
+    };
   }
 
   async withFlowLock<T>(flowId: string, operation: () => Promise<T>): Promise<T> {
@@ -199,21 +247,32 @@ export class PpirtvStore {
 
   async readLedger(flowId?: string): Promise<LedgerEvent[]> {
     await this.init();
+    return (await this.readLedgerReadOnly(flowId)).items;
+  }
+
+  async readLedgerReadOnly(flowId?: string): Promise<ReadOnlyCollection<LedgerEvent>> {
+    if (!(await this.pathExists(this.ledgerPath))) {
+      return { items: [], unreadable_count: 0 };
+    }
     const text = await readFile(this.ledgerPath, "utf8");
     // #2 (security/estabilidade): tolerar linhas corrompidas sem derrubar
     // o sistema. Linhas invalidas sao filtradas (nao crasham o readLedger).
-    return text
-      .split(/\r?\n/)
-      .filter(Boolean)
-      .flatMap((line) => {
-        try {
-          return [JSON.parse(line) as LedgerEvent];
-        } catch {
-          return [];
-        }
-      })
+    const lines = text.split(/\r?\n/).filter(Boolean);
+    let unreadableCount = 0;
+    const events = lines.flatMap((line) => {
+      try {
+        return [JSON.parse(line) as LedgerEvent];
+      } catch {
+        unreadableCount += 1;
+        return [];
+      }
+    });
+    return {
+      items: events
       .filter((event) => !flowId || event.flow_id === flowId)
-      .sort((a, b) => (a.timestamp ?? "").localeCompare(b.timestamp ?? "") || (a.event_id ?? "").localeCompare(b.event_id ?? ""));
+      .sort((a, b) => compareOrdinal(a.timestamp ?? "", b.timestamp ?? "") || compareOrdinal(a.event_id ?? "", b.event_id ?? "")),
+      unreadable_count: unreadableCount
+    };
   }
 
   async pathExists(target: string): Promise<boolean> {
@@ -359,6 +418,10 @@ function normalizeFlow(flow: Flow): Flow {
     active_credits: verdict.active_credits ?? []
   }));
   return flow;
+}
+
+function compareOrdinal(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 type MeetingLockRecord = { owner_token: string; pid: number; created_at: string };
