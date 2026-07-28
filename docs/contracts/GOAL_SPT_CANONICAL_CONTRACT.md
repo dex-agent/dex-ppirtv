@@ -616,7 +616,9 @@ por efeito colateral. Candidate util sem rota valida bloqueia o veredito.
 - `auto_classify=false` com `write_policy=auto_write` e invalido.
 - Graphify e Bibliotecario nao promovem memoria canonica.
 - Escrita L1/L2/L3 exige candidato classificado como writable e nao bloqueado.
-- Nada entra em L2 sem gatilho L1; nada entra em L3 sem ancora L2.
+- Toda memoria ativa usa um gatilho L1 e exatamente um destino: L2 para
+  memoria leve ou operacional OU L3 para conhecimento profundo; L3 direto
+  exige `owner_skill`, permanece recuperavel por L1 e nao cria L2 artificial.
 - Se memoria for exigida e nada for escrito/classificado, expor
   `memory_required_but_empty=true`.
 

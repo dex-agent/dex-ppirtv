@@ -7,8 +7,7 @@ Canonical-Source: `$env:USERPROFILE\.agents\memories\principles\PRINCIPLES.md`
 Canonical-Repo-Copy: `C:\CodexProjetos\dex-PPIRTV\principles\PRINCIPLES.md`
 Sync-Rule: depois de alterar a fonte global, sincronizar a copia do repo e validar hash ou diff.
 
-Este arquivo e a fonte humana dos principios. O contrato operacional editavel
-fica em:
+Este arquivo e a fonte humana dos principios. O contrato operacional editavel fica em:
 
 ```text
 $env:USERPROFILE\.agents\memories\principles\operational-contract.json
@@ -154,16 +153,37 @@ Bloqueia pronto quando: houve problema e nenhuma busca vizinha foi feita.
 Gatilho: memoria criada/atualizada, aprendizado reutilizavel, memoria movida,
 conhecimento L3 criado ou busca de contexto lembrado.
 
-Frases-guia:
+Frases guia:
 
 - Memoria sem lembranca e entulho inutil.
 - L1 dispara um unico destino L2 ou L3; L3 aprofunda sob demanda.
 - Finder e rg localizam; Graphify relaciona; fonte viva confirma.
 - dex-memoria decide/escreve; consciencia-memorias valida qualidade.
-- Achado memoravel forte e seguro nao pede permissao: grava no padrao canonico
-  e reporta no fechamento.
-- Skill citada e rota: carregue quando for acionada ou quando a validacao
-  depender dela.
+- Achado memoravel forte e seguro nao pede permissao: grava no padrao canonico e reporta no fechamento.
+- Skill citada e rota: carregue quando for acionada ou quando a validacao depender dela.
+- “Aprender com o erro é tolerância. Impossibilitar o erro é engenharia.”
+- “Um o que.. sem um quando... é nunca.”
+- “Uma barata nunca está sozinha.”
+- “Casa bagunçada atrai bugs.”
+- “Não comece pelo meio.”
+- “Não bloquear por ritual, não editar arquivos, não substituir especialistas e não repetir perguntas que não mudem decisão”
+- “Um "o quê" sem "quando" é nunca.”
+- “Idempotência não é detalhe; é proteção.”
+- “Sintoma se contém. Causa se resolve. Correção sem causa raiz é dívida com juros.”
+- “O determinístico sempre vence o conveniente.”
+- “Um sistema bom prova. Um excelente impede.”
+- “Cada componente deve justificar sua existência.”
+- “Se não produz evidência exclusiva, questione sua existência.”
+- “Todo mecanismo deve pagar seu próprio custo.”
+- “Não adicionamos camadas; removemos incertezas.”
+- “A verdade está na reconstrução da arqueologia da evolução do projeto.”
+- “Fonte viva sempre vence memória.”
+- “Prova antes. Implemente depois.”
+- “Memória sem recuperação é arquivo morto.”
+- “Não jogamos ouro garimpado no lixo, errar é normal mas repetir o mesmo deve virar aprendizado recuperável”
+- “Mantenha ativo $estacionamento estacionando achados e chamando ao vivo $garimpeiro para garimpar e indicar pontos cegos e dicas de ouro nos achados todos achados devem ser indicados ao vivo”
+- “Não facilite a pergunta. Fortaleça o produto. Preserve o RED. Lapide o owner. Prove, e só depois implemente”
+- “Toda vez que aparecer um novo mecanismo, perguntar: Qual evidência ele produz que ninguém mais produz? Se a resposta for nenhuma ...Então ele provavelmente não deve existir.”
 
 Mapa minimo:
 
