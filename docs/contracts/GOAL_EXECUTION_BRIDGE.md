@@ -140,6 +140,14 @@ O retorno `ppirtv.trace.receipt.v1`:
 - usa `file`, `json_pointer` e `ndjson_record` conforme a fonte real;
 - classifica bindings como `explicit`, `legacy_derived`, `unresolved` ou
   `unbound`;
+- expõe `flow_role` declarado (`execution`, `reconciliation` ou `recovery`) e
+  usa `unknown` quando ausente ou historicamente invalido, sem inferencia;
+- separa identidade de integridade por `binding_integrity`, com status,
+  `reason_code` e comparacoes allowlisted de `goal_id` e fingerprint;
+- preserva `goal_id` no drift de fingerprint quando a identidade registrada e
+  o SPT atual continuam verificaveis, sem promover `unresolved` a coerente;
+- diferencia SPT valido sem binding, path inexistente, workspace divergente e
+  varredura indeterminada por flow ilegivel;
 - inclui apenas metadados allowlisted, nunca payload de artefato;
 - declara `consistency=non_transactional_read` e `mutated=false`;
 - nao cria indice, cache, projecao ou storage.

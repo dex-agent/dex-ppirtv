@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { realpathSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
-import type { Flow, LedgerEvent, Meeting } from "./domain.js";
+import { GOAL_FLOW_ROLES, type Flow, type GoalFlowRole, type LedgerEvent, type Meeting } from "./domain.js";
 import { sameRuntimePath } from "./config.js";
 import { fingerprintSptV2Contract, parseSptV2Document } from "./spt-contract.js";
 import type { PpirtvStore } from "./store.js";
@@ -22,6 +22,34 @@ export type PpirtvTraceSelectorKey = (typeof PPIRTV_TRACE_SELECTOR_KEYS)[number]
 export type PpirtvTraceSelector = Partial<Record<PpirtvTraceSelectorKey, string>>;
 export type PpirtvTraceClassification = "explicit" | "legacy_derived" | "unresolved" | "unbound";
 export type PpirtvTraceSourceKind = "file" | "json_pointer" | "ndjson_record";
+export type PpirtvTraceFlowRole = GoalFlowRole | "unknown";
+
+export type PpirtvTraceBindingComparison = {
+  field: "goal_id" | "spt_contract_fingerprint";
+  registered: string | null;
+  current: string | null;
+  match: boolean;
+};
+
+export type PpirtvTraceBindingReasonCode =
+  | "goal_binding_absent"
+  | "workspace_drift"
+  | "spt_path_missing"
+  | "spt_path_outside_plan_tasks"
+  | "spt_contract_invalid"
+  | "spt_contract_unreadable"
+  | "spt_contract_fingerprint_missing"
+  | "spt_contract_fingerprint_drift"
+  | "goal_id_invalid"
+  | "goal_id_drift"
+  | "spt_document_sha256_invalid"
+  | "legacy_binding_without_explicit_identity";
+
+export type PpirtvTraceBindingIntegrity = {
+  status: "coherent" | "drifted" | "legacy" | "unverifiable" | "not_applicable";
+  reason_code: PpirtvTraceBindingReasonCode | null;
+  fields_compared: PpirtvTraceBindingComparison[];
+};
 
 export type PpirtvTraceLocator = {
   artifact_type: "spt" | "flow" | "evidence" | "meeting" | "verdict" | "event";
@@ -36,6 +64,8 @@ export type PpirtvTraceMatch = {
   goal_id: string | null;
   flow_id: string;
   classification: PpirtvTraceClassification;
+  flow_role: PpirtvTraceFlowRole;
+  binding_integrity: PpirtvTraceBindingIntegrity;
   locators: PpirtvTraceLocator[];
 };
 
@@ -54,6 +84,8 @@ type ClassifiedFlow = {
   goalId: string | null;
   classification: PpirtvTraceClassification;
   sptPath: string | null;
+  flowRole: PpirtvTraceFlowRole;
+  bindingIntegrity: PpirtvTraceBindingIntegrity;
 };
 
 export async function tracePpirtvArtifact(
@@ -112,6 +144,8 @@ export async function tracePpirtvArtifact(
       goal_id: candidate.goalId,
       flow_id: candidate.flow.flow_id,
       classification: candidate.classification,
+      flow_role: candidate.flowRole,
+      binding_integrity: candidate.bindingIntegrity,
       locators: sortLocators(locators)
     });
   }
@@ -121,34 +155,72 @@ export async function tracePpirtvArtifact(
     || compareOrdinal(left.goal_id ?? "", right.goal_id ?? "")
     || compareOrdinal(left.classification, right.classification)
   );
+  if (selectorType === "spt_path") {
+    await addSptSelectorDiagnostics(
+      store,
+      projectRoot,
+      selectorValue,
+      matches,
+      flowRead.unreadable_count,
+      warnings
+    );
+  }
   return baseReceipt(selectorType, sanitizedSelectorValue(selectorType, selectorValue, projectRoot), matches, [...new Set(warnings)].sort());
 }
 
 async function classifyFlow(store: PpirtvStore, flow: Flow, projectRoot: string): Promise<ClassifiedFlow> {
   const binding = flow.goal_binding;
+  const flowRole = traceFlowRole(binding?.flow_role);
   if (!binding) {
-    return { flow, goalId: null, classification: "unbound", sptPath: null };
+    return {
+      flow,
+      goalId: null,
+      classification: "unbound",
+      sptPath: null,
+      flowRole,
+      bindingIntegrity: integrity("not_applicable", "goal_binding_absent")
+    };
   }
+  const registeredGoalId = stableRegisteredGoalId(binding.goal_id);
   if (!sameRuntimePath(binding.envelope.workspace, projectRoot)) {
-    return { flow, goalId: null, classification: "unresolved", sptPath: null };
+    return unresolved(flow, null, null, flowRole, "workspace_drift");
   }
   const sptPath = binding.envelope.spt_path ? path.resolve(binding.envelope.spt_path) : null;
-  if (!sptPath || !insidePlanTasks(projectRoot, sptPath) || !(await store.pathExists(sptPath))) {
-    return { flow, goalId: null, classification: "unresolved", sptPath };
+  if (!sptPath) {
+    return unresolved(flow, null, null, flowRole, "spt_path_missing");
   }
-  let parsedGoalId: string | null = null;
+  if (!insidePlanTasks(projectRoot, sptPath)) {
+    return unresolved(flow, null, sptPath, flowRole, "spt_path_outside_plan_tasks");
+  }
+  if (!(await store.pathExists(sptPath))) {
+    return unresolved(flow, null, sptPath, flowRole, "spt_path_missing");
+  }
+  let parsedGoalId: string;
+  let currentFingerprint: string;
   try {
     const parsed = parseSptV2Document(await readFile(sptPath, "utf8"));
-    if (
-      !parsed.contract
-      || !binding.spt_contract_fingerprint
-      || fingerprintSptV2Contract(parsed.contract) !== binding.spt_contract_fingerprint
-    ) {
-      return { flow, goalId: null, classification: "unresolved", sptPath };
+    if (!parsed.contract) {
+      return unresolved(flow, null, sptPath, flowRole, "spt_contract_invalid");
     }
+    currentFingerprint = fingerprintSptV2Contract(parsed.contract);
     parsedGoalId = parsed.contract.goal.id;
   } catch {
-    return { flow, goalId: null, classification: "unresolved", sptPath };
+    return unresolved(flow, null, sptPath, flowRole, "spt_contract_unreadable");
+  }
+  if (!binding.spt_contract_fingerprint) {
+    return unresolved(flow, null, sptPath, flowRole, "spt_contract_fingerprint_missing", [
+      comparison("goal_id", registeredGoalId, parsedGoalId)
+    ]);
+  }
+  if (currentFingerprint !== binding.spt_contract_fingerprint) {
+    return unresolved(flow, registeredGoalId, sptPath, flowRole, "spt_contract_fingerprint_drift", [
+      comparison(
+        "spt_contract_fingerprint",
+        binding.spt_contract_fingerprint,
+        currentFingerprint
+      ),
+      comparison("goal_id", registeredGoalId, parsedGoalId)
+    ], "drifted");
   }
   const explicitGoalId = binding.goal_id?.trim();
   const hasExplicitGoalId = binding.goal_id !== undefined;
@@ -164,17 +236,118 @@ async function classifyFlow(store: PpirtvStore, flow: Flow, projectRoot: string)
         flow,
         goalId: explicitGoalId,
         classification: "explicit",
-        sptPath
+        sptPath,
+        flowRole,
+        bindingIntegrity: integrity("coherent", null, [
+          comparison("spt_contract_fingerprint", binding.spt_contract_fingerprint, currentFingerprint),
+          comparison("goal_id", explicitGoalId, parsedGoalId)
+        ])
       };
     }
-    return { flow, goalId: null, classification: "unresolved", sptPath };
+    const reasonCode = !explicitGoalId || !isStableGoalId(explicitGoalId)
+      ? "goal_id_invalid"
+      : explicitGoalId !== parsedGoalId
+        ? "goal_id_drift"
+        : "spt_document_sha256_invalid";
+    return unresolved(flow, null, sptPath, flowRole, reasonCode, [
+      comparison("spt_contract_fingerprint", binding.spt_contract_fingerprint, currentFingerprint),
+      comparison("goal_id", registeredGoalId, parsedGoalId)
+    ]);
   }
   return {
     flow,
     goalId: parsedGoalId,
     classification: "legacy_derived",
-    sptPath
+    sptPath,
+    flowRole,
+    bindingIntegrity: integrity("legacy", "legacy_binding_without_explicit_identity", [
+      comparison("spt_contract_fingerprint", binding.spt_contract_fingerprint, currentFingerprint),
+      comparison("goal_id", null, parsedGoalId)
+    ])
   };
+}
+
+function unresolved(
+  flow: Flow,
+  goalId: string | null,
+  sptPath: string | null,
+  flowRole: PpirtvTraceFlowRole,
+  reasonCode: PpirtvTraceBindingReasonCode,
+  fieldsCompared: PpirtvTraceBindingComparison[] = [],
+  status: PpirtvTraceBindingIntegrity["status"] = "unverifiable"
+): ClassifiedFlow {
+  return {
+    flow,
+    goalId,
+    classification: "unresolved",
+    sptPath,
+    flowRole,
+    bindingIntegrity: integrity(status, reasonCode, fieldsCompared)
+  };
+}
+
+function stableRegisteredGoalId(value: string | undefined): string | null {
+  const normalized = value?.trim() ?? "";
+  return isStableGoalId(normalized) ? normalized : null;
+}
+
+function traceFlowRole(value: unknown): PpirtvTraceFlowRole {
+  return typeof value === "string" && GOAL_FLOW_ROLES.includes(value as GoalFlowRole)
+    ? value as GoalFlowRole
+    : "unknown";
+}
+
+function comparison(
+  field: PpirtvTraceBindingComparison["field"],
+  registered: string | null,
+  current: string | null
+): PpirtvTraceBindingComparison {
+  return { field, registered, current, match: registered === current };
+}
+
+function integrity(
+  status: PpirtvTraceBindingIntegrity["status"],
+  reasonCode: PpirtvTraceBindingReasonCode | null,
+  fieldsCompared: PpirtvTraceBindingComparison[] = []
+): PpirtvTraceBindingIntegrity {
+  return { status, reason_code: reasonCode, fields_compared: fieldsCompared };
+}
+
+async function addSptSelectorDiagnostics(
+  store: PpirtvStore,
+  projectRoot: string,
+  selectorValue: string,
+  matches: PpirtvTraceMatch[],
+  unreadableFlowCount: number,
+  warnings: string[]
+): Promise<void> {
+  const sptPath = path.resolve(selectorValue);
+  if (!insidePlanTasks(projectRoot, sptPath)) {
+    return;
+  }
+  if (!(await store.pathExists(sptPath))) {
+    warnings.push("spt_path_missing");
+    return;
+  }
+  if (matches.length > 0) {
+    return;
+  }
+  if (unreadableFlowCount > 0) {
+    warnings.push("spt_binding_indeterminate_due_to_unreadable_flows");
+    return;
+  }
+  try {
+    const parsed = parseSptV2Document(await readFile(sptPath, "utf8"));
+    if (parsed.contract) {
+      if (sameRuntimePath(parsed.contract.workspace, projectRoot)) {
+        warnings.push("spt_valid_without_goal_binding");
+      } else {
+        warnings.push("spt_workspace_mismatch_without_goal_binding");
+      }
+    }
+  } catch {
+    // A read failure is not equivalent to a valid unbound SPT.
+  }
 }
 
 function matchesSelector(

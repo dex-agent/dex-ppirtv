@@ -5,6 +5,7 @@ import path from "node:path";
 import { PROMPT_NAMES, RESOURCE_URIS, TOOL_NAMES, gatesTemplate, mcpReference, meetingsTemplate, promptText, resourceText } from "./catalogs.js";
 import {
   COMPACT_PHASES,
+  GOAL_FLOW_ROLES,
   GOAL_VERDICT_POLICIES,
   MEETING_KINDS,
   MEETING_TYPES,
@@ -77,7 +78,8 @@ function registerTools(
     requested_verdict_policy: z.enum(GOAL_VERDICT_POLICIES).default("evidence_required"),
     source: z.string().min(1),
     risk_level: z.enum(["high", "medium", "low", "mechanical"]).optional(),
-    mode: z.enum(["full", "compact", "lean"]).optional()
+    mode: z.enum(["full", "compact", "lean"]).optional(),
+    flow_role: z.enum(GOAL_FLOW_ROLES).optional()
   };
 
   server.registerTool(

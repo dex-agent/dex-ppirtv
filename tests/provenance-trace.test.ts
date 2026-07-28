@@ -167,6 +167,12 @@ describe("PPIRTV provenance trace", () => {
     expect(receipts[1]?.matches[0]?.goal_id).toBe("goal-legacy");
     expect(receipts[2]?.matches[0]?.goal_id).toBeNull();
     expect(receipts[3]?.matches[0]?.goal_id).toBeNull();
+    expect(receipts.map((receipt) => receipt.matches[0]?.binding_integrity)).toEqual([
+      expect.objectContaining({ status: "coherent", reason_code: null }),
+      expect.objectContaining({ status: "legacy", reason_code: "legacy_binding_without_explicit_identity" }),
+      expect.objectContaining({ status: "unverifiable", reason_code: "spt_path_outside_plan_tasks" }),
+      expect.objectContaining({ status: "not_applicable", reason_code: "goal_binding_absent" })
+    ]);
     expect(after).toEqual(before);
   });
 
@@ -180,6 +186,10 @@ describe("PPIRTV provenance trace", () => {
 
     expect(receipt.matches[0]?.classification).toBe("unresolved");
     expect(receipt.matches[0]?.goal_id).toBeNull();
+    expect(receipt.matches[0]?.binding_integrity).toMatchObject({
+      status: "unverifiable",
+      reason_code: "workspace_drift"
+    });
   });
 
   it("classifies contradictory explicit goal or document sha fields as unresolved, never legacy", async () => {
@@ -193,12 +203,287 @@ describe("PPIRTV provenance trace", () => {
     shaMismatchFlow.goal_binding!.spt_document_sha256_at_start = "not-a-sha";
     await store.saveFlow(shaMismatchFlow);
 
+    const invalidGoal = await createExplicitFixture("goal-invalid-id", "dex-code:invalid-id", "PRIVATE_INVALID_ID");
+    const invalidGoalFlow = await store.loadFlow(invalidGoal.flow.flow_id);
+    invalidGoalFlow.goal_binding!.goal_id = "INVALID ID";
+    await store.saveFlow(invalidGoalFlow);
+
     const receipts = await Promise.all([
       tracePpirtvArtifact(store, { flow_id: goalMismatchFlow.flow_id }),
-      tracePpirtvArtifact(store, { flow_id: shaMismatchFlow.flow_id })
+      tracePpirtvArtifact(store, { flow_id: shaMismatchFlow.flow_id }),
+      tracePpirtvArtifact(store, { flow_id: invalidGoalFlow.flow_id })
     ]);
 
-    expect(receipts.map((receipt) => receipt.matches[0]?.classification)).toEqual(["unresolved", "unresolved"]);
+    expect(receipts.map((receipt) => receipt.matches[0]?.classification)).toEqual([
+      "unresolved",
+      "unresolved",
+      "unresolved"
+    ]);
+    expect(receipts.map((receipt) => receipt.matches[0]?.goal_id)).toEqual([null, null, null]);
+    expect(receipts.map((receipt) => receipt.matches[0]?.binding_integrity.reason_code)).toEqual([
+      "goal_id_drift",
+      "spt_document_sha256_invalid",
+      "goal_id_invalid"
+    ]);
+  });
+
+  it("maps missing, invalid, unreadable and fingerprint-less SPT bindings to exact reason codes", async () => {
+    const missing = await createExplicitFixture("goal-spt-missing", "dex-code:spt-missing", "PRIVATE_SPT_MISSING");
+    await rm(missing.sptPath);
+
+    const invalid = await createExplicitFixture("goal-spt-invalid", "dex-code:spt-invalid", "PRIVATE_SPT_INVALID");
+    await writeFile(invalid.sptPath, "not an SPT", "utf8");
+
+    const unreadable = await createExplicitFixture("goal-spt-unreadable", "dex-code:spt-unreadable", "PRIVATE_SPT_UNREADABLE");
+    await rm(unreadable.sptPath);
+    await mkdir(unreadable.sptPath);
+
+    const missingFingerprint = await createExplicitFixture(
+      "goal-fingerprint-missing",
+      "dex-code:fingerprint-missing",
+      "PRIVATE_FINGERPRINT_MISSING"
+    );
+    const missingFingerprintFlow = await store.loadFlow(missingFingerprint.flow.flow_id);
+    delete missingFingerprintFlow.goal_binding!.spt_contract_fingerprint;
+    await store.saveFlow(missingFingerprintFlow);
+
+    const receipts = await Promise.all([
+      tracePpirtvArtifact(store, { flow_id: missing.flow.flow_id }),
+      tracePpirtvArtifact(store, { flow_id: invalid.flow.flow_id }),
+      tracePpirtvArtifact(store, { flow_id: unreadable.flow.flow_id }),
+      tracePpirtvArtifact(store, { flow_id: missingFingerprintFlow.flow_id })
+    ]);
+
+    expect(receipts.map((receipt) => receipt.matches[0]?.binding_integrity)).toEqual([
+      expect.objectContaining({ status: "unverifiable", reason_code: "spt_path_missing" }),
+      expect.objectContaining({ status: "unverifiable", reason_code: "spt_contract_invalid" }),
+      expect.objectContaining({ status: "unverifiable", reason_code: "spt_contract_unreadable" }),
+      expect.objectContaining({ status: "unverifiable", reason_code: "spt_contract_fingerprint_missing" })
+    ]);
+  });
+
+  it("preserves the registered goal identity and explains fingerprint drift in a valid SPT", async () => {
+    const fixture = await createExplicitFixture(
+      "goal-fingerprint-drift",
+      "dex-code:fingerprint-drift",
+      "PRIVATE_FINGERPRINT_DRIFT",
+      "execution"
+    );
+    const registeredFingerprint = fixture.flow.goal_binding!.spt_contract_fingerprint!;
+    const originalDocument = await readFile(fixture.sptPath, "utf8");
+    await writeFile(
+      fixture.sptPath,
+      originalDocument.replace("origin: teste", "origin: teste editado"),
+      "utf8"
+    );
+    const currentDocument = await readFile(fixture.sptPath, "utf8");
+    const currentContract = parseSptV2Document(currentDocument).contract!;
+    const currentFingerprint = fingerprintSptV2Contract(currentContract);
+    const driftedFlow = await store.loadFlow(fixture.flow.flow_id);
+    driftedFlow.goal_binding!.spt_document_sha256_at_start = "not-a-sha";
+    await store.saveFlow(driftedFlow);
+
+    const byFlow = await tracePpirtvArtifact(store, { flow_id: fixture.flow.flow_id });
+    const byRegisteredGoal = await tracePpirtvArtifact(store, { goal_id: fixture.goalId });
+
+    expect(currentFingerprint).not.toBe(registeredFingerprint);
+    expect(byFlow.matches[0]).toMatchObject({
+      goal_id: fixture.goalId,
+      classification: "unresolved",
+      flow_role: "execution",
+      binding_integrity: {
+        status: "drifted",
+        reason_code: "spt_contract_fingerprint_drift",
+        fields_compared: expect.arrayContaining([
+          {
+            field: "spt_contract_fingerprint",
+            registered: registeredFingerprint,
+            current: currentFingerprint,
+            match: false
+          },
+          {
+            field: "goal_id",
+            registered: fixture.goalId,
+            current: fixture.goalId,
+            match: true
+          }
+        ])
+      }
+    });
+    expect(byRegisteredGoal.matches.map((match) => match.flow_id)).toContain(fixture.flow.flow_id);
+  });
+
+  it("distinguishes a valid SPT without goal_start from a missing SPT path", async () => {
+    const validUnboundSpt = await writeSpt("goal-valid-without-binding");
+    const missingSpt = path.join(workspace, ".agents", "PLAN-TASKS", "goal-missing.md");
+    const before = await runtimeHashes(store);
+
+    const validReceipt = await tracePpirtvArtifact(store, { spt_path: validUnboundSpt });
+    const missingReceipt = await tracePpirtvArtifact(store, { spt_path: missingSpt });
+    const after = await runtimeHashes(store);
+
+    expect(validReceipt.matches).toEqual([]);
+    expect(validReceipt.warnings).toContain("spt_valid_without_goal_binding");
+    expect(validReceipt.warnings).not.toContain("spt_path_missing");
+    expect(missingReceipt.matches).toEqual([]);
+    expect(missingReceipt.warnings).toContain("spt_path_missing");
+    expect(missingReceipt.warnings).not.toContain("spt_valid_without_goal_binding");
+    expect(after).toEqual(before);
+  });
+
+  it("does not claim a valid SPT is unbound when flow discovery is incomplete", async () => {
+    const validSpt = await writeSpt("goal-binding-indeterminate");
+    await writeFile(path.join(store.flowsDir, "flow_unreadable.json"), "{not-json", "utf8");
+
+    const receipt = await tracePpirtvArtifact(store, { spt_path: validSpt });
+
+    expect(receipt.matches).toEqual([]);
+    expect(receipt.warnings).toContain("unreadable_flow_files:1");
+    expect(receipt.warnings).toContain("spt_binding_indeterminate_due_to_unreadable_flows");
+    expect(receipt.warnings).not.toContain("spt_valid_without_goal_binding");
+  });
+
+  it("does not call an SPT valid when its contract workspace differs from the active workspace", async () => {
+    const mismatchedSpt = await writeSpt("goal-workspace-mismatch-without-binding");
+    const document = await readFile(mismatchedSpt, "utf8");
+    await writeFile(
+      mismatchedSpt,
+      document.replace(
+        `workspace: ${JSON.stringify(workspace)}`,
+        `workspace: ${JSON.stringify(path.join(tempRoot, "other-workspace"))}`
+      ),
+      "utf8"
+    );
+
+    const receipt = await tracePpirtvArtifact(store, { spt_path: mismatchedSpt });
+
+    expect(receipt.matches).toEqual([]);
+    expect(receipt.warnings).toContain("spt_workspace_mismatch_without_goal_binding");
+    expect(receipt.warnings).not.toContain("spt_valid_without_goal_binding");
+  });
+
+  it("does not drift when only the Markdown body changes", async () => {
+    const fixture = await createExplicitFixture(
+      "goal-body-edit",
+      "dex-code:body-edit",
+      "PRIVATE_BODY_EDIT"
+    );
+    const originalDocument = await readFile(fixture.sptPath, "utf8");
+    await writeFile(
+      fixture.sptPath,
+      `${originalDocument}\n## Rastreabilidade\nTexto humano acrescentado depois do front matter.\n`,
+      "utf8"
+    );
+    const before = await runtimeHashes(store);
+
+    const receipt = await tracePpirtvArtifact(store, { flow_id: fixture.flow.flow_id });
+    const after = await runtimeHashes(store);
+
+    expect(receipt.matches[0]).toMatchObject({
+      goal_id: fixture.goalId,
+      classification: "explicit",
+      binding_integrity: {
+        status: "coherent",
+        reason_code: null
+      }
+    });
+    expect(after).toEqual(before);
+  });
+
+  it("reports declared execution, reconciliation and recovery roles while legacy history remains unknown", async () => {
+    const execution = await createExplicitFixture(
+      "goal-role-execution",
+      "dex-code:role-execution",
+      "PRIVATE_ROLE_EXECUTION",
+      "execution"
+    );
+    const reconciliation = await createExplicitFixture(
+      "goal-role-reconciliation",
+      "dex-code:role-reconciliation",
+      "PRIVATE_ROLE_RECONCILIATION",
+      "reconciliation"
+    );
+    const recovery = await createExplicitFixture(
+      "goal-role-recovery",
+      "dex-code:role-recovery",
+      "PRIVATE_ROLE_RECOVERY",
+      "recovery"
+    );
+    const omitted = await createExplicitFixture(
+      "goal-role-omitted",
+      "dex-code:role-omitted",
+      "PRIVATE_ROLE_OMITTED"
+    );
+    const legacy = await createLegacyFixture("goal-role-legacy");
+
+    const receipts = await Promise.all([
+      tracePpirtvArtifact(store, { flow_id: execution.flow.flow_id }),
+      tracePpirtvArtifact(store, { flow_id: reconciliation.flow.flow_id }),
+      tracePpirtvArtifact(store, { flow_id: recovery.flow.flow_id }),
+      tracePpirtvArtifact(store, { flow_id: omitted.flow.flow_id }),
+      tracePpirtvArtifact(store, { flow_id: legacy.flow_id })
+    ]);
+
+    expect(receipts.map((receipt) => receipt.matches[0]?.flow_role)).toEqual([
+      "execution",
+      "reconciliation",
+      "recovery",
+      "unknown",
+      "unknown"
+    ]);
+    const storedReconciliation = await store.loadFlow(reconciliation.flow.flow_id);
+    expect(storedReconciliation.goal_binding?.flow_role).toBe("reconciliation");
+    expect(storedReconciliation.goal_binding?.envelope).not.toHaveProperty("flow_role");
+  });
+
+  it("fails closed to unknown for a malformed historical flow role", async () => {
+    const legacy = await createLegacyFixture("goal-role-malformed");
+    const stored = await store.loadFlow(legacy.flow_id);
+    (stored.goal_binding as unknown as { flow_role: string }).flow_role = "retrospective";
+    await store.saveFlow(stored);
+
+    const receipt = await tracePpirtvArtifact(store, { flow_id: legacy.flow_id });
+
+    expect(receipt.matches[0]?.flow_role).toBe("unknown");
+  });
+
+  it("rejects retry when an explicit flow role changes", async () => {
+    const fixture = await createExplicitFixture(
+      "goal-role-retry",
+      "dex-code:role-retry",
+      "PRIVATE_ROLE_RETRY",
+      "reconciliation"
+    );
+
+    await expect(engine.startGoal({
+      workspace,
+      spt_path: fixture.sptPath,
+      objective: `Trace ${fixture.goalId}`,
+      idempotency_key: fixture.idempotencyKey,
+      evidence_required: true,
+      required_evidence: ["trace"],
+      requested_verdict_policy: "evidence_required",
+      source: "test",
+      mode: "full",
+      flow_role: "recovery"
+    } as Parameters<FlowEngine["startGoal"]>[0])).rejects.toThrow(/GOAL_BINDING_MISMATCH.*flow_role/i);
+  });
+
+  it("rejects an invalid direct-engine flow role instead of silently defaulting to execution", async () => {
+    const sptPath = await writeSpt("goal-role-invalid");
+
+    await expect(engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Trace goal-role-invalid",
+      idempotency_key: "dex-code:role-invalid",
+      evidence_required: false,
+      required_evidence: [],
+      requested_verdict_policy: "draft",
+      source: "test",
+      mode: "full",
+      flow_role: "retrospective"
+    } as unknown as Parameters<FlowEngine["startGoal"]>[0])).rejects.toThrow(/flow_role/i);
   });
 
   it("does not trust an evidence file whose flow id disagrees with the selected flow", async () => {
@@ -274,7 +559,12 @@ describe("PPIRTV provenance trace", () => {
   });
 });
 
-async function createExplicitFixture(goalId: string, idempotencyKey: string, privateSentinel: string) {
+async function createExplicitFixture(
+  goalId: string,
+  idempotencyKey: string,
+  privateSentinel: string,
+  flowRole?: "execution" | "reconciliation" | "recovery"
+) {
   const sptPath = await writeSpt(goalId);
   const started = await engine.startGoal({
     workspace,
@@ -285,8 +575,9 @@ async function createExplicitFixture(goalId: string, idempotencyKey: string, pri
     required_evidence: ["trace"],
     requested_verdict_policy: "evidence_required",
     source: "test",
-    mode: "full"
-  });
+    mode: "full",
+    ...(flowRole ? { flow_role: flowRole } : {})
+  } as Parameters<FlowEngine["startGoal"]>[0]);
   const flow = await store.loadFlow(started.flow_id as string);
   const evidence: Evidence = {
     evidence_id: `evd_${goalId.replace(/-/g, "_")}`,

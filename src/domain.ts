@@ -33,6 +33,8 @@ export type VerdictStatus = (typeof VERDICTS)[number];
 
 export const GOAL_VERDICT_POLICIES = ["evidence_required", "allow_ressalvas", "draft"] as const;
 export type GoalVerdictPolicy = (typeof GOAL_VERDICT_POLICIES)[number];
+export const GOAL_FLOW_ROLES = ["execution", "reconciliation", "recovery"] as const;
+export type GoalFlowRole = (typeof GOAL_FLOW_ROLES)[number];
 
 export type RiskLevel = "high" | "medium" | "low" | "mechanical";
 
@@ -48,10 +50,14 @@ export type GoalEnvelope = {
   source: string;
   risk_level?: RiskLevel;
   mode?: GoalModeInput;
+  flow_role?: GoalFlowRole;
 };
 
+export type GoalBindingEnvelope = Omit<GoalEnvelope, "flow_role">;
+
 export type GoalBinding = {
-  envelope: GoalEnvelope;
+  envelope: GoalBindingEnvelope;
+  flow_role?: GoalFlowRole;
   goal_id?: string;
   spt_contract_fingerprint?: string;
   spt_document_sha256_at_start?: string;

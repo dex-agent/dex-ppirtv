@@ -41,6 +41,9 @@ describe("PPIRTV MCP stdio server", () => {
     expect(flowCreateTool?.description).toContain("spt_validate then goal_start");
     expect(flowCreateProperties?.detail?.enum).toEqual(["lean", "full"]);
     expect(flowCreateProperties?.mode).toBeUndefined();
+    const goalStartTool = tools.tools.find((tool) => tool.name === "goal_start");
+    const goalStartProperties = (goalStartTool?.inputSchema as { properties?: Record<string, Record<string, unknown>> }).properties;
+    expect(goalStartProperties?.flow_role?.enum).toEqual(["execution", "reconciliation", "recovery"]);
     const memoryMiningTool = tools.tools.find((tool) => tool.name === "mm_memory_mining");
     const memoryMiningProperties = (memoryMiningTool?.inputSchema as { properties?: Record<string, Record<string, unknown>> }).properties;
     expect(memoryMiningTool?.description).toContain("ordinary call needs only flow_id");
@@ -78,7 +81,8 @@ describe("PPIRTV MCP stdio server", () => {
         required_evidence: ["trace"],
         requested_verdict_policy: "evidence_required",
         source: "test",
-        mode: "full"
+        mode: "full",
+        flow_role: "reconciliation"
       }
     }));
     const evidence = resultOf(await client!.callTool({
@@ -104,6 +108,7 @@ describe("PPIRTV MCP stdio server", () => {
       mutated: false
     });
     expect((traced.matches as Array<Record<string, unknown>>)).toHaveLength(1);
+    expect((traced.matches as Array<Record<string, unknown>>)[0]?.flow_role).toBe("reconciliation");
     expect(JSON.stringify(traced)).not.toContain("PRIVATE_MCP_TRACE_SENTINEL_4927");
   });
 

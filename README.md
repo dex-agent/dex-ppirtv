@@ -457,13 +457,19 @@ writing state.
 runtime `project_root` before creating a flow. On the first valid binding it
 preserves `goal_id`, the semantic front-matter fingerprint and
 `spt_document_sha256_at_start`; the byte-exact document hash is provenance,
-not a retry gate.
+not a retry gate. Callers may declare `flow_role` as `execution`,
+`reconciliation` or `recovery`; omission remains `unknown` and is never
+inferred from timestamps, source text or later evidence.
 
 `ppirtv_trace` is the read-only reverse lookup for exact `flow_id`, `goal_id`,
 `idempotency_key`, `evidence_id`, `meeting_id`, `verdict_id`, `event_id` or
 `spt_path`. It returns deterministic metadata-only locators over the existing
 files, JSON pointers and NDJSON records. It creates no index or storage and
-never returns artifact payloads.
+never returns artifact payloads. Every match includes additive `flow_role` and
+`binding_integrity` metadata. Fingerprint drift remains `unresolved` while
+preserving a stable registered `goal_id`; `spt_path` warnings distinguish a
+valid unbound SPT, a missing path, a workspace mismatch and incomplete flow
+discovery.
 
 `ppirtv_checkout` is the direct closing/accountability tool. It returns the
 same canonical checkout embedded in `goal_status.ppirtv_checkout`, but promotes

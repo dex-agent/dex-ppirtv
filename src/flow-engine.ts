@@ -4,6 +4,7 @@ import path from "node:path";
 import {
   PHASES,
   COMPACT_PHASES,
+  GOAL_FLOW_ROLES,
   type AnyPhase,
   type Cooperator,
   type Evidence,
@@ -12,6 +13,7 @@ import {
   type GateRecord,
   type GoalBinding,
   type GoalEnvelope,
+  type GoalFlowRole,
   type HygieneFinding,
   type Meeting,
   type MemoryCandidate,
@@ -515,9 +517,16 @@ export class FlowEngine {
     const previousMode = flow.mode;
     const previousPhase = flow.phase;
     const incomingMode = envelope.mode ?? (reused ? flow.mode ?? "compact" : "compact");
-    const boundEnvelope = previousBinding?.envelope ?? { ...envelope, flow_id: flow.flow_id, mode: incomingMode };
+    const flowRole = previousBinding?.flow_role ?? envelope.flow_role;
+    const { flow_role: _inputFlowRole, ...envelopeWithoutFlowRole } = envelope;
+    const boundEnvelope = previousBinding?.envelope ?? {
+      ...envelopeWithoutFlowRole,
+      flow_id: flow.flow_id,
+      mode: incomingMode
+    };
     flow.goal_binding = {
       envelope: boundEnvelope,
+      flow_role: previousBinding ? previousBinding.flow_role : flowRole,
       goal_id: previousBinding ? previousBinding.goal_id : validation.goal_id ?? undefined,
       spt_contract_fingerprint: previousBinding?.spt_contract_fingerprint ?? validation.contract_fingerprint ?? undefined,
       spt_document_sha256_at_start:
@@ -4013,7 +4022,8 @@ function normalizeGoalEnvelope(input: GoalEnvelope): CanonicalGoalEnvelope {
     // invalidos em vez de passar cru para o store (Zod do MCP protege, mas
     // chamadas diretas ao engine precisam do mesmo guard).
     mode: canonicalPhaseMode(input.mode),
-    risk_level: input.risk_level && ["high", "medium", "low", "mechanical"].includes(input.risk_level) ? input.risk_level : undefined
+    risk_level: input.risk_level && ["high", "medium", "low", "mechanical"].includes(input.risk_level) ? input.risk_level : undefined,
+    flow_role: canonicalGoalFlowRole(input.flow_role)
   };
 }
 
@@ -4022,6 +4032,16 @@ function canonicalPhaseMode(mode: GoalEnvelope["mode"]): "full" | "compact" | un
     return "compact";
   }
   return mode === "full" || mode === "compact" ? mode : undefined;
+}
+
+function canonicalGoalFlowRole(role: GoalEnvelope["flow_role"]): GoalFlowRole | undefined {
+  if (role === undefined) {
+    return undefined;
+  }
+  if (GOAL_FLOW_ROLES.includes(role)) {
+    return role;
+  }
+  throw new Error(`flow_role must be one of: ${GOAL_FLOW_ROLES.join(", ")}`);
 }
 
 function mutationStatusDetail(_flow: Flow, requested?: "lean" | "compact" | "full"): "lean" | "compact" | "full" {
@@ -4069,6 +4089,9 @@ function assertCompatibleGoalBinding(
   if (envelope.risk_level !== undefined && existing.risk_level !== envelope.risk_level) {
     mismatches.push("risk_level");
   }
+  if (envelope.flow_role !== undefined && binding.flow_role !== envelope.flow_role) {
+    mismatches.push("flow_role");
+  }
   if (!binding.spt_contract_fingerprint || !contractFingerprint) {
     mismatches.push("spt_contract_fingerprint");
   } else if (binding.spt_contract_fingerprint !== contractFingerprint) {
@@ -4094,6 +4117,7 @@ function goalLedgerData(binding: GoalBinding, flow?: Flow): Record<string, unkno
     required_evidence: binding.envelope.required_evidence,
     requested_verdict_policy: binding.envelope.requested_verdict_policy,
     source: binding.envelope.source,
+    flow_role: binding.flow_role,
     goal_id: binding.goal_id,
     spt_contract_fingerprint: binding.spt_contract_fingerprint,
     spt_document_sha256_at_start: binding.spt_document_sha256_at_start,

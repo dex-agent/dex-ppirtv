@@ -289,6 +289,13 @@ Regras:
 - `requested_verdict_policy=evidence_required` faz `goal_verdict` recusar
   `pronto` e `pronto_com_ressalvas` sem `evidence_ids` existentes.
 - `source` identifica a origem, por exemplo `dex-code`.
+- `flow_role` e opcional para compatibilidade e aceita somente `execution`,
+  `reconciliation` ou `recovery`. O valor e uma declaracao do chamador, fica
+  persistido uma unica vez em `goal_binding.flow_role` e participa do gate de
+  retry. Ausencia, valor historico invalido ou binding antigo aparece como
+  `unknown`; o runtime nunca infere `execution` por data, source ou texto.
+  Retry que omite o campo preserva o papel existente; retry que fornece papel
+  divergente falha com `GOAL_BINDING_MISMATCH` antes de mutacao.
 
 ## Campos de ledger
 
@@ -303,6 +310,7 @@ Ao iniciar um GOAL com `goal_start`, o flow e o ledger precisam preservar:
 - `required_evidence`
 - `requested_verdict_policy`
 - `source`
+- `flow_role`, somente quando declarado
 - `goal_id`
 - `spt_contract_fingerprint`
 - `spt_document_sha256_at_start`
@@ -327,6 +335,46 @@ reais com localizadores `file`, `json_pointer` ou `ndjson_record`. Payloads de
 evidence, meeting, verdict e ledger nao fazem parte do receipt. Historico sem
 os novos campos e classificado como `legacy_derived`, `unresolved` ou `unbound`
 sem reescrita; bindings novos e completos usam `explicit`.
+
+Cada match do receipt v1 preserva `goal_id`, `flow_id`, `classification` e
+`locators` e acrescenta metadados aditivos:
+
+- `flow_role`: `execution`, `reconciliation`, `recovery` ou `unknown`;
+- `binding_integrity.status`: `coherent`, `drifted`, `legacy`,
+  `unverifiable` ou `not_applicable`;
+- `binding_integrity.reason_code`: causa allowlisted ou `null`;
+- `binding_integrity.fields_compared`: somente `goal_id` e hashes de
+  `spt_contract_fingerprint`, com valores `registered`, `current` e `match`.
+
+Objetos do receipt v1 sao abertos a campos aditivos; consumidores devem ignorar
+campos desconhecidos. Remocao, renomeacao ou mudanca incompativel dos campos
+existentes exige nova versao do receipt.
+
+O `reason_code` usa a primeira falha estrutural encontrada nesta precedencia:
+`goal_binding_absent`, `workspace_drift`, `spt_path_missing`,
+`spt_path_outside_plan_tasks`, `spt_contract_invalid`,
+`spt_contract_unreadable`, `spt_contract_fingerprint_missing`,
+`spt_contract_fingerprint_drift`, `goal_id_invalid`, `goal_id_drift`,
+`spt_document_sha256_invalid` ou
+`legacy_binding_without_explicit_identity`. Binding coerente usa `null`.
+
+`unresolved` continua fail-closed e nao vira binding coerente. Somente no caso
+`spt_contract_fingerprint_drift`, quando o `goal_id` registrado e estavel e o
+SPT atual continua parseavel, o receipt preserva a identidade declarada e
+mostra a comparacao; por isso o seletor exato `goal_id` tambem pode localizar
+esse match unresolved. Workspace divergente, path ausente/externo, SPT
+invalido, `goal_id` conflitante ou SHA inicial invalido continuam com
+`goal_id=null`.
+
+Para seletor `spt_path` sem match:
+
+- path inexistente em `PLAN-TASKS` emite `spt_path_missing`;
+- SPT schema-valido, no workspace ativo e com varredura completa dos flows
+  emite `spt_valid_without_goal_binding`;
+- flow ilegivel torna a ausencia indeterminada e emite
+  `spt_binding_indeterminate_due_to_unreadable_flows`;
+- contrato cujo workspace diverge emite
+  `spt_workspace_mismatch_without_goal_binding`.
 
 Eventos de memoria operacional tambem podem aparecer no ledger quando houver
 avanco de fase:
