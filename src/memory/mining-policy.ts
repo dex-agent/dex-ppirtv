@@ -35,55 +35,106 @@ export function resolveDexMemoriaHome(): string {
 }
 
 export function collectMemoryNuggets(flow: Flow, meetings: Meeting[]): MemoryNugget[] {
-  const nuggets: MemoryNugget[] = [];
-  const add = (items: string[], source: "gold_mining" | "parking_lot", evidenceScore?: number) => {
-    for (const item of items) {
+  type CollectedNugget = MemoryNugget & { dedupeKey: string };
+  const nuggets: CollectedNugget[] = [];
+  const add = (
+    items: Array<{
+      item: string;
+      dedupeKey?: string;
+      provenance?: NonNullable<MemoryNugget["provenance"]>;
+    }>,
+    source: "gold_mining" | "parking_lot",
+    evidenceScore?: number
+  ) => {
+    for (const entry of items) {
+      const item = entry.item;
       if (!item.trim() || /^evidence_required:/i.test(item.trim())) {
         continue;
       }
-      nuggets.push({ item, source, evidenceScore: evidenceScore ?? (source === "gold_mining" ? 1 : 0) });
+      nuggets.push({
+        item,
+        source,
+        evidenceScore: evidenceScore ?? (source === "gold_mining" ? 1 : 0),
+        ...(entry.provenance?.length ? { provenance: entry.provenance } : {}),
+        dedupeKey: entry.dedupeKey ?? `${source}:${normalizeTextKey(item)}`
+      });
     }
   };
-  add(flow.gold_mining, "gold_mining");
-  add(flow.parking_lot, "parking_lot");
+  const plain = (items: string[]) => items.map((item) => ({ item }));
+  add(plain(flow.gold_mining), "gold_mining");
+  add(plain(flow.parking_lot), "parking_lot");
   for (const link of flow.goal_learning_links ?? []) {
     if (link.garimpo_vinculado.pepita) {
-      add([link.garimpo_vinculado.pepita], "gold_mining");
+      add([{ item: link.garimpo_vinculado.pepita }], "gold_mining");
     } else {
-      add([link.parking_item], "parking_lot");
+      add([{ item: link.parking_item }], "parking_lot");
     }
   }
   for (const meeting of meetings) {
-    add(meeting.gold_mining, "gold_mining");
-    add(meeting.parking_lot, "parking_lot");
-    add(meeting.decisions.map((item) => `Decisao de reuniao: ${item}`), "parking_lot", 1);
-    add(meeting.findings.map((item) => `Achado de reuniao: ${item}`), "parking_lot", 1);
+    add(plain(meeting.gold_mining), "gold_mining");
+    add(plain(meeting.parking_lot), "parking_lot");
+    add(meeting.decisions.map((item) => ({
+      item: `Decisao de reuniao: ${item}`,
+      dedupeKey: `meeting-decision:${normalizeTextKey(item)}`,
+      provenance: [{ kind: "meeting.decision" as const, meeting_id: meeting.meeting_id }]
+    })), "parking_lot", 1);
+    add(meeting.findings.map((item) => ({
+      item: `Achado de reuniao: ${item}`,
+      dedupeKey: `meeting-learning:${normalizeTextKey(item)}`,
+      provenance: [{ kind: "meeting.finding" as const, meeting_id: meeting.meeting_id }]
+    })), "parking_lot", 1);
     add(
       meeting.turns
-        .flatMap((turn) => [turn.finding, turn.note])
-        .filter((item): item is string => Boolean(item?.trim()))
-        .map((item) => `Turno de reuniao: ${item}`),
+        .flatMap((turn, turnIndex) => [
+          ...(turn.finding?.trim() ? [{
+            item: `Turno de reuniao: ${turn.finding}`,
+            dedupeKey: `meeting-learning:${normalizeTextKey(turn.finding)}`,
+            provenance: [{ kind: "meeting.turn.finding" as const, meeting_id: meeting.meeting_id, turn_index: turnIndex }]
+          }] : []),
+          ...(turn.note?.trim() ? [{
+            item: `Turno de reuniao: ${turn.note}`,
+            dedupeKey: `meeting-learning:${normalizeTextKey(turn.note)}`,
+            provenance: [{ kind: "meeting.turn.note" as const, meeting_id: meeting.meeting_id, turn_index: turnIndex }]
+          }] : [])
+        ]),
       "parking_lot",
       1
     );
   }
   for (const evidence of flow.evidence) {
-    add(evidence.gold_mining, "gold_mining");
-    add(evidence.parking_lot, "parking_lot");
+    add(plain(evidence.gold_mining), "gold_mining");
+    add(plain(evidence.parking_lot), "parking_lot");
   }
   for (const verdict of flow.verdicts) {
-    add(verdict.gold_mining, "gold_mining");
-    add(verdict.parking_lot, "parking_lot");
-    add((verdict.review_findings ?? []).map((item) => `Achado de review: ${item}`), "gold_mining", 2);
-    add(verdict.rationale ? [`Racional de veredito: ${verdict.rationale}`] : [], "parking_lot", 1);
-    add(verdict.residual_risks.map((item) => `Risco residual: ${item}`), "parking_lot", 1);
+    add(plain(verdict.gold_mining), "gold_mining");
+    add(plain(verdict.parking_lot), "parking_lot");
+    add((verdict.review_findings ?? []).map((item) => ({ item: `Achado de review: ${item}` })), "gold_mining", 2);
+    add(verdict.rationale ? [{ item: `Racional de veredito: ${verdict.rationale}` }] : [], "parking_lot", 1);
+    add(verdict.residual_risks.map((item) => ({ item: `Risco residual: ${item}` })), "parking_lot", 1);
   }
-  const seen = new Set<string>();
-  return nuggets.filter((nugget) => {
-    const key = `${nugget.source}:${normalizeTextKey(nugget.item)}`;
-    if (seen.has(key)) {
-      return false;
+  const deduped = new Map<string, CollectedNugget>();
+  for (const nugget of nuggets) {
+    const existing = deduped.get(nugget.dedupeKey);
+    if (existing) {
+      existing.provenance = uniqueMemoryProvenance([
+        ...(existing.provenance ?? []),
+        ...(nugget.provenance ?? [])
+      ]);
+      existing.evidenceScore = Math.max(existing.evidenceScore, nugget.evidenceScore);
+      continue;
     }
+    deduped.set(nugget.dedupeKey, nugget);
+  }
+  return Array.from(deduped.values(), ({ dedupeKey: _dedupeKey, ...nugget }) => nugget);
+}
+
+function uniqueMemoryProvenance(
+  provenance: NonNullable<MemoryNugget["provenance"]>
+): NonNullable<MemoryNugget["provenance"]> {
+  const seen = new Set<string>();
+  return provenance.filter((item) => {
+    const key = `${item.kind}:${item.meeting_id}:${item.turn_index ?? ""}`;
+    if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });

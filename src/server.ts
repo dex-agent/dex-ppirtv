@@ -563,7 +563,7 @@ function registerTools(
   server.registerTool(
     "mm_memory_candidate_resolve",
     {
-      description: "Resolve strong GOAL memory candidates with a traceable destination before retrying goal_verdict.",
+      description: "Resolve strong GOAL memory candidates with a traceable destination before retrying goal_verdict. target_scope selects only the memory destination inside the runtime-bound workspace; it never selects or changes the workspace. Promoting an unresolved V2 candidate requires explicit target_scope, density and tags; deep also requires owner_skill. A classified V2 candidate reuses its complete destination and metadata, and conflicting overrides fail before mutation.",
       inputSchema: {
         flow_id: z.string().min(1),
         candidate_ids: z.array(z.string().min(1)).min(1),
@@ -571,7 +571,10 @@ function registerTools(
         rationale: z.string().min(1),
         when: z.string().optional(),
         target_scope: z.enum(MEMORY_CANDIDATE_PROMOTE_SCOPES).optional(),
-        theme: z.string().optional()
+        theme: z.string().optional(),
+        density: z.enum(["light", "deep"]).optional(),
+        owner_skill: z.string().trim().min(1).optional(),
+        tags: z.array(z.string().regex(/^#[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)+$/)).min(1).optional()
       }
     },
     async (args) => toolResponse(() => engine.resolveMemoryCandidates(args))

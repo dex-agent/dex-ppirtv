@@ -387,8 +387,23 @@ Payload:
 
 Acoes aceitas:
 
-- `promote`: promove para memoria curada na proxima mineracao; aceita
-  `target_scope` como `global`, `tema` ou `projeto`.
+- `promote`: persiste a resolucao e a aplica na remineracao integrada da
+  propria operacao; mineracoes posteriores e reloads reaplicam a mesma decisao.
+  Aceita `target_scope` como `global`, `tema` ou `projeto`. Esse campo escolhe
+  somente o destino da memoria dentro do workspace ja vinculado pelo runtime;
+  nunca seleciona, altera ou substitui o workspace. A traducao explicita e:
+  `projeto -> project -> <workspace validado>/.agents`,
+  `global -> global -> <DEX_MEMORIA_HOME>/global` e
+  `tema -> theme -> <DEX_MEMORIA_HOME>/temas/<theme>`. Divergencia entre
+  workspace do store, writer ou envelope falha antes do writer. Quando o
+  candidato V2 ja
+  possui classificacao completa, a resolucao reutiliza destinos, tema, `tags`,
+  `density` e `owner_skill` persistidos; override divergente falha antes de
+  persistir. Quando o candidato esta
+  `classification_reason=destinations_required`, a chamada precisa fornecer
+  explicitamente `target_scope`, `density` (`light` ou `deep`) e `tags`;
+  `density=deep` exige tambem `owner_skill`. A tool nao adivinha esses
+  metadados e rejeita a combinacao incompleta antes de persistir.
 - `park`: estaciona com `when` obrigatorio.
 - `discard`: descarta com justificativa.
 - `accept_ledger_only`: aceita que continue no ledger, sem bloquear, com regra

@@ -64,4 +64,9 @@ export type MemoryNugget = {
   item: string;
   source: "gold_mining" | "parking_lot";
   evidenceScore: number;
+  provenance?: Array<{
+    kind: "meeting.decision" | "meeting.finding" | "meeting.turn.finding" | "meeting.turn.note";
+    meeting_id: string;
+    turn_index?: number;
+  }>;
 };

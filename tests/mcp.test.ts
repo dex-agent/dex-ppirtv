@@ -56,6 +56,14 @@ describe("PPIRTV MCP stdio server", () => {
     expect(memoryMiningProperties?.v2_density?.enum).toEqual(["light", "deep"]);
     expect(memoryMiningProperties?.v2_owner_skill?.type).toBe("string");
     expect(memoryMiningProperties?.v2_tags).toMatchObject({ type: "array", minItems: 1 });
+    const candidateResolveTool = tools.tools.find((tool) => tool.name === "mm_memory_candidate_resolve");
+    const candidateResolveProperties = (candidateResolveTool?.inputSchema as { properties?: Record<string, Record<string, unknown>> }).properties;
+    expect(candidateResolveTool?.description).toContain("unresolved V2 candidate requires explicit");
+    expect(candidateResolveTool?.description).toContain("never selects or changes the workspace");
+    expect(candidateResolveTool?.description).toContain("conflicting overrides fail before mutation");
+    expect(candidateResolveProperties?.density?.enum).toEqual(["light", "deep"]);
+    expect(candidateResolveProperties?.owner_skill?.type).toBe("string");
+    expect(candidateResolveProperties?.tags).toMatchObject({ type: "array", minItems: 1 });
     expect(resources.resources.map((resource) => resource.uri)).toEqual([
       "ppirtv://flows",
       "ppirtv://templates/gates",
@@ -69,6 +77,29 @@ describe("PPIRTV MCP stdio server", () => {
       "ppirtv://flow/{flow_id}/meetings"
     ]);
     expect(prompts.prompts.map((prompt) => prompt.name)).toEqual([...REQUIRED_PROMPTS]);
+  });
+
+  it("mm_memory_candidate_resolve rejects invalid promotion metadata over MCP stdio", async () => {
+    await connectClient();
+
+    const rejected = await client!.callTool({
+      name: "mm_memory_candidate_resolve",
+      arguments: {
+        flow_id: "flow_synthetic",
+        candidate_ids: ["candidate_synthetic"],
+        action: "promote",
+        target_scope: "projeto",
+        density: "light",
+        tags: ["invalid-flat-tag"],
+        rationale: "Input sintético deve falhar no schema público."
+      }
+    });
+
+    expect((rejected as { isError?: boolean }).isError).toBe(true);
+    const errorText = ((rejected as { content?: Array<{ text?: string }> }).content?.[0]?.text) ?? "";
+    expect(errorText).toContain("Input validation error");
+    expect(errorText).toContain("\"tags\"");
+    expect(errorText).not.toContain("invalid-flat-tag");
   });
 
   it("traces an evidence id through the real MCP stdio tool without returning payload content", async () => {
@@ -1402,6 +1433,99 @@ describe("PPIRTV MCP stdio server", () => {
         expect(path.relative(path.join(mcpWorkspace, ".agents"), file)).not.toMatch(/^\.\.(?:[\\/]|$)/);
         await expect(access(file)).resolves.toBeUndefined();
       }
+    },
+    30_000
+  );
+
+  it.runIf(Boolean(process.env.PPIRTV_TEST_DEX_MEMORIA_CANONICAL_ROOT && process.env.PPIRTV_TEST_DEX_MEMORIA_V2_ENTRYPOINT))(
+    "mm_memory_candidate_resolve promotes an ordinary unresolved V2 candidate to COMMITTED over MCP stdio",
+    async () => {
+      const workspace = path.join(tempRoot, "mcp-workspace");
+      await connectClient({
+        PPIRTV_MEMORY_WRITER_PROFILE: "v2",
+        PPIRTV_WORKSPACE: workspace,
+        PPIRTV_DEX_MEMORIA_CANONICAL_ROOT: process.env.PPIRTV_TEST_DEX_MEMORIA_CANONICAL_ROOT!,
+        PPIRTV_DEX_MEMORIA_V2_ENTRYPOINT: process.env.PPIRTV_TEST_DEX_MEMORIA_V2_ENTRYPOINT!
+      });
+      const sptPath = await writeFakeSpt(mcpWorkspace, "Promover candidato V2 cotidiano pelo contrato MCP público");
+      const started = resultOf(await client!.callTool({
+        name: "goal_start",
+        arguments: {
+          workspace: mcpWorkspace,
+          spt_path: sptPath,
+          objective: "Promover candidato V2 cotidiano pelo contrato MCP público",
+          idempotency_key: "ppirtv:mcp-v2-public-resolve-001",
+          evidence_required: true,
+          required_evidence: ["mcp-public-resolve"],
+          requested_verdict_policy: "evidence_required",
+          source: "mcp-public-resolve-test"
+        }
+      }));
+      const flowId = started.flow_id as string;
+      const opened = resultOf(await client!.callTool({
+        name: "goal_meeting_open",
+        arguments: { flow_id: flowId, type: "divergent", question: "Qual aprendizado precisa de destino explícito?" }
+      }));
+      await client!.callTool({
+        name: "goal_meeting_close",
+        arguments: {
+          flow_id: flowId,
+          meeting_id: opened.meeting_id,
+          participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+          decision: "Conhecimento operacional que ainda precisa de destino humano.",
+          satisfies_blockers: ["required_cooperation"]
+        }
+      });
+
+      const mined = resultOf(await client!.callTool({
+        name: "mm_memory_mining",
+        arguments: { flow_id: flowId }
+      }));
+      const candidate = (mined.candidates as Array<Record<string, unknown>>)
+        .find((item) => item.classification_status === "unresolved")!;
+      const resolutionArguments = {
+        flow_id: flowId,
+        candidate_ids: [candidate.candidate_id],
+        action: "promote",
+        target_scope: "projeto",
+        density: "light",
+        tags: ["#ppirtv/mcp-public-resolve"],
+        rationale: "Aprendizado aprovado para a memória local de teste."
+      };
+      const promoted = resultOf(await client!.callTool({
+        name: "mm_memory_candidate_resolve",
+        arguments: resolutionArguments
+      }));
+      const repeated = resultOf(await client!.callTool({
+        name: "mm_memory_candidate_resolve",
+        arguments: resolutionArguments
+      }));
+
+      expect(promoted).toMatchObject({
+        application_status: "applied",
+        memory_mining: {
+          blocked_verdict: false,
+          written_count: 1,
+          v2_receipts: [expect.objectContaining({ status: "COMMITTED" })]
+        }
+      });
+      const promotedWritten = promoted.memory_mining.written as Array<{ candidate_id: string; files: string[] }>;
+      expect(promotedWritten).toHaveLength(1);
+      for (const file of promotedWritten[0]!.files) {
+        expect(path.relative(path.join(mcpWorkspace, ".agents"), file)).not.toMatch(/^\.\.(?:[\\/]|$)/);
+        await expect(access(file)).resolves.toBeUndefined();
+      }
+      expect(repeated).toMatchObject({
+        application_status: "applied",
+        memory_mining: {
+          candidate_resolutions: [expect.objectContaining({ candidate_id: candidate.candidate_id })],
+          v2_receipts: [{
+            route_receipts: {
+              project: expect.objectContaining({ deduplicated: true })
+            }
+          }]
+        }
+      });
     },
     30_000
   );

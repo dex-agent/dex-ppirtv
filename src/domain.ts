@@ -162,6 +162,15 @@ export type MemoryCandidateResolution = {
   candidate_title?: string;
   candidate_scope?: MemoryCandidateScope;
   candidate_score?: number;
+  candidate_tags?: string[];
+  candidate_density?: "light" | "deep";
+  candidate_destinations?: Array<
+    { scope: "project" }
+    | { scope: "global" }
+    | { scope: "theme"; theme: string }
+  >;
+  candidate_theme?: string;
+  candidate_owner_skill?: string;
   traceable: boolean;
   created_at: string;
   source: "mm_memory_candidate_resolve";

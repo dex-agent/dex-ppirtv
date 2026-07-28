@@ -17,6 +17,417 @@ afterEach(async () => {
 });
 
 describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
+  it("deduplicates the same meeting learning across findings and turns while preserving provenance", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-meeting-semantic-dedupe-"));
+    const engine = new FlowEngine(configuredStore(), undefined, {
+      memory_writer: configuredWriter({ execute: vi.fn() })
+    });
+    const flow = await engine.createFlow({ goal: "Deduplicar aprendizado material da reunião" });
+    const meeting = await engine.openMeeting({
+      flow_id: flow.flow_id,
+      type: "divergent",
+      question: "Qual aprendizado precisa sobreviver?"
+    });
+    await engine.addMeetingTurn({
+      meeting_id: meeting.meeting_id,
+      speaker: "revisor-codigo",
+      finding: "Fixtures sintéticas e receipts somente não provam a jornada real."
+    });
+
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "classify_only",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "light",
+      v2_tags: TEST_TAGS
+    }) as any;
+
+    expect(mined.candidates).toHaveLength(1);
+    expect(mined.candidates[0]).toMatchObject({
+      item: "Achado de reuniao: Fixtures sintéticas e receipts somente não provam a jornada real.",
+      provenance: expect.arrayContaining([
+        expect.objectContaining({ kind: "meeting.finding", meeting_id: meeting.meeting_id }),
+        expect.objectContaining({ kind: "meeting.turn.finding", meeting_id: meeting.meeting_id })
+      ])
+    });
+  });
+
+  it("keeps materially different meeting learnings separate", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-meeting-no-over-dedupe-"));
+    const engine = new FlowEngine(configuredStore(), undefined, {
+      memory_writer: configuredWriter({ execute: vi.fn() })
+    });
+    const flow = await engine.createFlow({ goal: "Preservar diferenças materiais entre aprendizados" });
+    const meeting = await engine.openMeeting({
+      flow_id: flow.flow_id,
+      type: "divergent",
+      question: "Qual diferença muda a decisão?"
+    });
+    await engine.addMeetingTurn({
+      meeting_id: meeting.meeting_id,
+      speaker: "revisor-codigo",
+      finding: "Fixtures sintéticas não provam a jornada real."
+    });
+    await engine.addMeetingTurn({
+      meeting_id: meeting.meeting_id,
+      speaker: "questionador",
+      finding: "Fixtures sintéticas provam a jornada real."
+    });
+
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "classify_only",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "light",
+      v2_tags: TEST_TAGS
+    }) as any;
+
+    expect(mined.candidates).toHaveLength(2);
+    expect(mined.candidates.map((candidate: any) => candidate.item)).toEqual(expect.arrayContaining([
+      "Achado de reuniao: Fixtures sintéticas não provam a jornada real.",
+      "Achado de reuniao: Fixtures sintéticas provam a jornada real."
+    ]));
+  });
+
+  it("promotes ordinary unresolved candidates through the public contract without hiding L3 metadata", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-public-promote-"));
+    const executedOperationIds = new Set<string>();
+    const executor = {
+      execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => {
+        const deduplicated = executedOperationIds.has(input.operation_request.operation_id);
+        executedOperationIds.add(input.operation_request.operation_id);
+        return committedReceipt(input.operation_request, input.candidate, deduplicated);
+      })
+    };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const flow = await engine.createFlow({ goal: "Promover candidato cotidiano sem metadado oculto" });
+    flow.gold_mining = [
+      "Memória local deste projeto: validar receipts antes de declarar pronto.",
+      "Conhecimento operacional que ainda precisa de destino humano."
+    ];
+    await store.saveFlow(flow);
+
+    const initial = await engine.mineMemory({ flow_id: flow.flow_id, write_policy: "auto_write" }) as any;
+    const unresolved = initial.candidates.find((candidate: any) => candidate.classification_reason === "destinations_required");
+
+    expect(initial).toMatchObject({
+      written_count: 1,
+      memory_written: true,
+      memory_validated: false,
+      blocked_verdict: true,
+      unclassified: 1,
+      strong_unwritten_count: 1,
+      blocked_count: 1
+    });
+
+    const beforeInvalidPromotion = await store.loadFlow(flow.flow_id);
+    await expect(engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [unresolved.candidate_id],
+      action: "promote",
+      density: "light",
+      tags: TEST_TAGS,
+      rationale: "Destino ausente não pode ser adivinhado."
+    } as any)).rejects.toThrow("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED");
+    await expect(engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [unresolved.candidate_id],
+      action: "promote",
+      target_scope: "projeto",
+      rationale: "Aprendizado operacional aprovado para a memória local."
+    })).rejects.toThrow("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED");
+    expect((await store.loadFlow(flow.flow_id)).memory_candidate_resolutions)
+      .toEqual(beforeInvalidPromotion.memory_candidate_resolutions);
+
+    const lightResolutionInput = {
+      flow_id: flow.flow_id,
+      candidate_ids: [unresolved.candidate_id],
+      action: "promote",
+      target_scope: "projeto",
+      density: "light",
+      tags: TEST_TAGS,
+      rationale: "Aprendizado operacional aprovado para a memória local."
+    } as const;
+    const promoted = await engine.resolveMemoryCandidates(lightResolutionInput as any) as any;
+
+    expect(promoted).toMatchObject({
+      application_status: "applied",
+      memory_mining: {
+        written_count: 2,
+        memory_written: true,
+        memory_validated: true,
+        strong_unwritten_count: 0,
+        blocked_verdict: false
+      }
+    });
+    expect(executor.execute).toHaveBeenCalledWith(expect.objectContaining({
+      candidate: expect.objectContaining({
+        target_layer: "L2",
+        tags: TEST_TAGS
+      })
+    }));
+    const reloadedEngine = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const replayed = await reloadedEngine.resolveMemoryCandidates(lightResolutionInput as any) as any;
+    const afterReplay = await store.loadFlow(flow.flow_id);
+    expect(replayed.memory_mining.v2_receipts).toHaveLength(2);
+    expect(replayed.memory_mining.v2_failures).toEqual([]);
+    expect(replayed.memory_mining.v2_validation_receipts).toHaveLength(2);
+    expect(replayed.memory_mining.written).toHaveLength(2);
+    expect(replayed.memory_mining).toMatchObject({
+      written_count: 2,
+      memory_validated: true,
+      blocked_verdict: false
+    });
+    expect(afterReplay.memory_candidate_resolutions).toHaveLength(1);
+    expect(replayed.memory_mining.v2_receipts).toEqual([
+      expect.objectContaining({ route_receipts: { project: expect.objectContaining({ deduplicated: true }) } }),
+      expect.objectContaining({ route_receipts: { project: expect.objectContaining({ deduplicated: true }) } })
+    ]);
+
+    const deepFlow = await engine.createFlow({ goal: "Promover conhecimento profundo com owner explícito" });
+    deepFlow.gold_mining = ["Conhecimento profundo que precisa de owner e rota governada."];
+    await store.saveFlow(deepFlow);
+    const deepInitial = await engine.mineMemory({ flow_id: deepFlow.flow_id, write_policy: "auto_write" }) as any;
+    const deepCandidateId = deepInitial.candidates[0].candidate_id as string;
+
+    const deepBefore = await store.loadFlow(deepFlow.flow_id);
+    await expect(engine.resolveMemoryCandidates({
+      flow_id: deepFlow.flow_id,
+      candidate_ids: [deepCandidateId],
+      action: "promote",
+      target_scope: "projeto",
+      density: "deep",
+      tags: TEST_TAGS,
+      rationale: "Conhecimento profundo aprovado sem owner."
+    } as any)).rejects.toThrow("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED");
+    expect((await store.loadFlow(deepFlow.flow_id)).memory_candidate_resolutions)
+      .toEqual(deepBefore.memory_candidate_resolutions);
+
+    const explicitDeepFlow = await engine.createFlow({ goal: "Promover L3 por contrato público explícito" });
+    explicitDeepFlow.gold_mining = ["Conhecimento profundo explícito que precisa de owner e rota governada."];
+    await store.saveFlow(explicitDeepFlow);
+    const explicitDeepInitial = await engine.mineMemory({ flow_id: explicitDeepFlow.flow_id, write_policy: "auto_write" }) as any;
+    const explicitDeepCandidateId = explicitDeepInitial.candidates[0].candidate_id as string;
+
+    const explicitDeep = await engine.resolveMemoryCandidates({
+      flow_id: explicitDeepFlow.flow_id,
+      candidate_ids: [explicitDeepCandidateId],
+      action: "promote",
+      target_scope: "projeto",
+      density: "deep",
+      owner_skill: "dex-memoria",
+      tags: TEST_TAGS,
+      rationale: "Conhecimento profundo com owner e tags explícitos."
+    } as any) as any;
+
+    expect(explicitDeep).toMatchObject({
+      application_status: "applied",
+      memory_mining: {
+        candidate_resolutions: [expect.objectContaining({
+          candidate_density: "deep",
+          candidate_owner_skill: "dex-memoria",
+          candidate_tags: TEST_TAGS
+        })]
+      }
+    });
+    expect(executor.execute).toHaveBeenCalledWith(expect.objectContaining({
+      candidate: expect.objectContaining({
+        target_layer: "L3",
+        owner_skill: "dex-memoria",
+        tags: TEST_TAGS
+      })
+    }));
+  });
+
+  it("rejects explicit metadata that conflicts with an already classified V2 candidate before mutation", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-classified-metadata-conflict-"));
+    const executor = {
+      execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) =>
+        committedReceipt(input.operation_request, input.candidate)
+      )
+    };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, {
+      memory_writer: configuredWriter(executor, {
+        default_classification: {
+          status: "resolved",
+          density: "deep",
+          owner_skill: "dex-memoria",
+          tags: TEST_TAGS,
+          requested_destinations: [{ scope: "project" }]
+        }
+      })
+    });
+    const flow = await engine.createFlow({ goal: "Impedir reclassificação silenciosa de candidato V2" });
+    flow.gold_mining = ["Conhecimento profundo já classificado e governado."];
+    await store.saveFlow(flow);
+    const mined = await engine.mineMemory({ flow_id: flow.flow_id, write_policy: "classify_only" }) as any;
+    const before = await store.loadFlow(flow.flow_id);
+
+    await expect(engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [mined.candidates[0].candidate_id],
+      action: "promote",
+      target_scope: "projeto",
+      density: "light",
+      tags: ["#dex-memoria/outro-destino"],
+      rationale: "Tentativa conflitante não pode substituir a classificação."
+    } as any)).rejects.toThrow("MEMORY_CANDIDATE_PROMOTION_METADATA_CONFLICT");
+
+    expect(await store.loadFlow(flow.flow_id)).toEqual(before);
+    await expect(engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [mined.candidates[0].candidate_id],
+      action: "promote",
+      target_scope: "global",
+      rationale: "Destino conflitante também não pode substituir a classificação."
+    })).rejects.toThrow("MEMORY_CANDIDATE_PROMOTION_DESTINATION_CONFLICT");
+    expect(await store.loadFlow(flow.flow_id)).toEqual(before);
+    expect(executor.execute).not.toHaveBeenCalled();
+  });
+
+  it("reuses the complete classified V2 destination set when promotion omits overrides", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-classified-destinations-"));
+    const executor = {
+      execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) =>
+        committedReceipt(input.operation_request, input.candidate)
+      )
+    };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, {
+      memory_writer: configuredWriter(executor, {
+        default_classification: {
+          status: "resolved",
+          density: "deep",
+          owner_skill: "dex-memoria",
+          tags: TEST_TAGS,
+          requested_destinations: [{ scope: "project" }, { scope: "global" }]
+        }
+      })
+    });
+    const flow = await engine.createFlow({ goal: "Preservar classificação dual já decidida" });
+    flow.gold_mining = ["Conhecimento profundo já classificado para projeto e global."];
+    await store.saveFlow(flow);
+    const mined = await engine.mineMemory({ flow_id: flow.flow_id, write_policy: "classify_only" }) as any;
+    const candidateId = mined.candidates[0].candidate_id as string;
+
+    await engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [candidateId],
+      action: "promote",
+      rationale: "A promoção deve respeitar a classificação dual persistida."
+    });
+    const replayed = await engine.mineMemory({ flow_id: flow.flow_id, write_policy: "auto_write" }) as any;
+
+    expect(replayed).toMatchObject({
+      blocked_verdict: false,
+      candidate_resolutions: [expect.objectContaining({
+        candidate_id: candidateId,
+        candidate_destinations: [{ scope: "project" }, { scope: "global" }]
+      })]
+    });
+    expect(executor.execute).toHaveBeenCalledWith({
+      operation_request: expect.objectContaining({ scope: "dual" }),
+      candidate: expect.objectContaining({
+        target_layer: "L3",
+        owner_skill: "dex-memoria",
+        tags: TEST_TAGS
+      })
+    });
+    const resolutionHistory = (await store.loadFlow(flow.flow_id)).history
+      .filter((event) => event.type === "memory_candidates_resolved");
+    expect(resolutionHistory).toEqual([
+      expect.objectContaining({
+        data: expect.objectContaining({
+          target_scope: null,
+          candidate_destinations: [{
+            candidate_id: candidateId,
+            destinations: [{ scope: "project" }, { scope: "global" }]
+          }]
+        })
+      })
+    ]);
+  });
+
+  it("treats an equal explicit classified destination and its omitted override as one logical resolution", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-classified-destination-idempotency-"));
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, {
+      memory_writer: configuredWriter({ execute: vi.fn() }, {
+        default_classification: {
+          status: "resolved",
+          density: "light",
+          tags: TEST_TAGS,
+          requested_destinations: [{ scope: "project" }]
+        }
+      })
+    });
+    const flow = await engine.createFlow({ goal: "Normalizar destino classificado semanticamente igual" });
+    flow.gold_mining = ["Regra de projeto classificada antes da resolução."];
+    await store.saveFlow(flow);
+    const mined = await engine.mineMemory({ flow_id: flow.flow_id, write_policy: "classify_only" }) as any;
+    const candidateId = mined.candidates[0].candidate_id as string;
+    const rationale = "A mesma decisão efetiva não pode duplicar resolução.";
+
+    await engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [candidateId],
+      action: "promote",
+      target_scope: "projeto",
+      rationale
+    });
+    await engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [candidateId],
+      action: "promote",
+      rationale
+    });
+
+    const persisted = await store.loadFlow(flow.flow_id);
+    expect(persisted.memory_candidate_resolutions).toHaveLength(1);
+    expect(persisted.history.filter((event) => event.type === "memory_candidates_resolved")).toHaveLength(1);
+    expect((await store.readLedger(flow.flow_id)).filter((event) => event.type === "memory_candidates_resolved")).toHaveLength(1);
+  });
+
+  it("fails closed after reload when a persisted V2 promotion has no effective destination", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-missing-persisted-destination-"));
+    const executor = { execute: vi.fn() };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, {
+      memory_writer: configuredWriter(executor, {
+        default_classification: {
+          status: "resolved",
+          density: "light",
+          tags: TEST_TAGS,
+          requested_destinations: [{ scope: "project" }]
+        }
+      })
+    });
+    const flow = await engine.createFlow({ goal: "Falhar fechado sem destino V2 persistido" });
+    flow.gold_mining = ["Regra classificada cujo destino persistido será corrompido na fixture."];
+    await store.saveFlow(flow);
+    const mined = await engine.mineMemory({ flow_id: flow.flow_id, write_policy: "classify_only" }) as any;
+    await engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [mined.candidates[0].candidate_id],
+      action: "promote",
+      rationale: "Persistir a decisão antes da corrupção sintética."
+    });
+    const corrupted = await store.loadFlow(flow.flow_id);
+    delete (corrupted.memory_candidate_resolutions![0] as any).candidate_destinations;
+    delete (corrupted.memory_candidate_resolutions![0] as any).target_scope;
+    await store.saveFlow(corrupted);
+
+    await expect(new FlowEngine(store, undefined, {
+      memory_writer: configuredWriter(executor)
+    }).mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "auto_write"
+    })).rejects.toThrow("persisted V2 promotion destinations are incomplete");
+    expect(executor.execute).not.toHaveBeenCalled();
+  });
+
   it("preserves the legacy V1 global classification while V2 uses contextual scope intent", () => {
     const candidate = classifyMemoryCandidate({
       id: "legacy-global-no-shrink",
@@ -356,11 +767,7 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
     await engine.store.saveFlow(flow);
     const mined = await engine.mineMemory({
       flow_id: flow.flow_id,
-      write_policy: "classify_only",
-      v2_destinations: [{ scope: "project" }],
-      v2_density: "deep",
-      v2_owner_skill: "dex-memoria",
-      v2_tags: TEST_TAGS
+      write_policy: "classify_only"
     }) as any;
     const candidateId = mined.candidates[0].candidate_id as string;
 
@@ -370,6 +777,9 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       action: "promote",
       target_scope: targetScope,
       ...(theme ? { theme } : {}),
+      density: "deep",
+      owner_skill: "dex-memoria",
+      tags: TEST_TAGS,
       rationale: `Promocao segura para ${targetScope}.`
     } as const;
     const registered = await engine.resolveMemoryCandidates(resolutionInput) as any;
@@ -544,7 +954,6 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       flow_id: flow.flow_id,
       candidate_ids: [candidateId],
       action: "promote",
-      target_scope: "global",
       rationale: "Promoção válida cuja execução seguinte falhará."
     }) as any;
     expect(failed).toMatchObject({
@@ -656,7 +1065,6 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       flow_id: flow.flow_id,
       candidate_ids: [candidateId],
       action: "promote",
-      target_scope: "global",
       rationale: "A decisão e o receipt COMMITTED devem permanecer recuperáveis."
     } as const;
     const originalAppendLedger = store.appendLedger.bind(store);
@@ -720,7 +1128,7 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
         blocked_verdict: false,
         v2_receipts: [{
           route_receipts: {
-            global: expect.objectContaining({ deduplicated: true })
+            project: expect.objectContaining({ deduplicated: true })
           }
         }]
       }
@@ -769,7 +1177,6 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       flow_id: flow.flow_id,
       candidate_ids: [candidateId],
       action: "promote",
-      target_scope: "global",
       rationale: "O evento gravado deve vencer o erro ambíguo."
     }) as any;
     const minedResolutionEvents = (await store.readLedger(flow.flow_id)).filter((event) =>
@@ -815,7 +1222,6 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       flow_id: flow.flow_id,
       candidate_ids: [candidateId],
       action: "promote",
-      target_scope: "global",
       rationale: "Falha de leitura não autoriza rollback pós-COMMITTED."
     } as const;
     const originalReadLedger = store.readLedger.bind(store);
@@ -882,7 +1288,6 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       flow_id: flow.flow_id,
       candidate_ids: [candidateId],
       action: "promote",
-      target_scope: "global",
       rationale: "Falha pós-COMMITTED deve produzir recuperação bloqueada."
     } as const;
     const originalSaveFlow = store.saveFlow.bind(store);
@@ -955,7 +1360,6 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       flow_id: flow.flow_id,
       candidate_ids: [candidateId],
       action: "promote",
-      target_scope: "global",
       rationale: "Persistência indisponível deve falhar explicitamente sem rollback."
     } as const;
     const originalSaveFlow = store.saveFlow.bind(store);
@@ -1015,7 +1419,6 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       flow_id: flow.flow_id,
       candidate_ids: [candidateId],
       action: "promote",
-      target_scope: "global",
       rationale: "Confirmação incompleta do flow não pode receber applied."
     } as const;
     const originalSaveFlow = store.saveFlow.bind(store);
@@ -1218,7 +1621,6 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       flow_id: flow.flow_id,
       candidate_ids: [candidateId],
       action: "promote",
-      target_scope: "global",
       rationale: "O efeito externo inválido precisa continuar recuperável."
     }) as any;
 
@@ -1236,7 +1638,7 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
     expect((await store.readLedger(flow.flow_id)).filter((event) => event.type === "memory_candidates_resolved")).toHaveLength(1);
   });
 
-  it("gives materially different same-millisecond promotions distinct ids and applies the latest destination", async () => {
+  it("gives materially different same-millisecond promotions distinct ids without overriding the classified destination", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-28T15:00:00.000Z"));
     try {
@@ -1267,17 +1669,22 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
         flow_id: flow.flow_id,
         candidate_ids: [candidateId],
         action: "promote",
-        target_scope: "global",
         rationale: "Segunda decisão material."
       }) as any;
       const persisted = await store.loadFlow(flow.flow_id);
       const replayed = await engine.mineMemory({ flow_id: flow.flow_id, write_policy: "auto_write" }) as any;
 
       expect(new Set(persisted.memory_candidate_resolutions!.map((item) => item.resolution_id))).toHaveLength(2);
-      expect(second.resolved).toEqual([expect.objectContaining({ target_scope: "global" })]);
-      expect(replayed.candidate_resolutions).toEqual([expect.objectContaining({ target_scope: "global" })]);
+      expect(second.resolved).toEqual([expect.objectContaining({
+        candidate_destinations: [{ scope: "project" }],
+        rationale: "Segunda decisão material."
+      })]);
+      expect(replayed.candidate_resolutions).toEqual([expect.objectContaining({
+        candidate_destinations: [{ scope: "project" }],
+        rationale: "Segunda decisão material."
+      })]);
       expect(executor.execute).toHaveBeenCalledWith({
-        operation_request: expect.objectContaining({ scope: "global" }),
+        operation_request: expect.objectContaining({ scope: "project" }),
         candidate: expect.any(Object)
       });
     } finally {
@@ -1496,7 +1903,7 @@ async function committedReceipt(
   const receipt: DexMemoriaV2CanonicalReceipt = {
     contract: "dex.memory.operation.receipt.v2", implementation_version: "v2", requested_scope: request.scope,
     operation_id: request.operation_id, status: "COMMITTED", recovery_mode: null, routes,
-    route_receipts: Object.fromEntries(routes.map((route, index) => [route.scope, { ...route, status: "COMMITTED", receipt_path: `${route.resolved_root}/receipt.json`, validation_receipt_path: `${route.resolved_root}/validation.json`, validation_receipt_hash: `validation_hash_${route.scope}`, validation_contract: "dex.memory.capability.unit-receipt.v2", validation_ok: true, candidate_id: "a".repeat(64), content_hash: "b".repeat(64), route_identity: String(index + 1).repeat(64).slice(0, 64), deduplicated, write_set_hash: `write_set_hash_${route.scope}` }]))
+    route_receipts: Object.fromEntries(routes.map((route, index) => [route.scope, { ...route, status: "COMMITTED", receipt_path: `${route.resolved_root}/receipt-${request.operation_id}.json`, validation_receipt_path: `${route.resolved_root}/validation-${request.operation_id}.json`, validation_receipt_hash: `validation_hash_${route.scope}`, validation_contract: "dex.memory.capability.unit-receipt.v2", validation_ok: true, candidate_id: "a".repeat(64), content_hash: "b".repeat(64), route_identity: String(index + 1).repeat(64).slice(0, 64), deduplicated, write_set_hash: `write_set_hash_${route.scope}` }]))
   };
   for (const route of routes) {
     const routeReceipt = receipt.route_receipts[route.scope]!;

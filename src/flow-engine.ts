@@ -85,6 +85,7 @@ import { fingerprintSptV2Contract, parseSptV2Document, sha256SptDocument } from 
 
 const DEFAULT_SCOPE: Scope = { in: [], out: [] };
 const MEMORY_MINING_BLOCKED_VERDICT_REASON = "memory_mining_blocked_verdict";
+const MEMORY_V2_TAG_PATTERN = /^#[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)+$/;
 const USER_PROFILE_POINTER = "$env:USERPROFILE";
 export const RECALL_ERROR_MAX_REFERENCES = 12;
 export const RECALL_ERROR_MAX_REFERENCE_LENGTH = 160;
@@ -129,6 +130,9 @@ type ResolveMemoryCandidatesInput = {
   when?: string;
   target_scope?: MemoryCandidatePromoteScope;
   theme?: string;
+  density?: "light" | "deep";
+  owner_skill?: string;
+  tags?: string[];
 };
 
 type RecallConsumptionInput = {
@@ -261,6 +265,7 @@ type MemoryMiningV2Summary = MemoryMiningSummary & {
 type V2MemoryCandidateResolution = MemoryCandidateResolution & {
   candidate_tags?: string[];
   candidate_density?: "light" | "deep";
+  candidate_destinations?: DexMemoriaV2Destination[];
   candidate_theme?: string;
   candidate_owner_skill?: string;
 };
@@ -1500,7 +1505,12 @@ export class FlowEngine {
 
   private async mineMemoryV2(input: {
     flow: Flow;
-    nuggets: Array<{ item: string; source: "gold_mining" | "parking_lot"; evidenceScore: number }>;
+    nuggets: Array<{
+      item: string;
+      source: "gold_mining" | "parking_lot";
+      evidenceScore: number;
+      provenance?: Array<Record<string, unknown>>;
+    }>;
     writePolicy: MemoryWritePolicy;
     autoClassify: boolean;
     workspace: string;
@@ -1519,6 +1529,7 @@ export class FlowEngine {
     const v2Failures: Array<Record<string, unknown>> = [];
     let v2Status: MemoryMiningV2Summary["v2_status"] = input.writePolicy === "auto_write" ? "complete" : "classify_only";
     let unclassifiedCount = 0;
+    let strongUnclassifiedCount = 0;
     const resolutionMap = latestTraceableCandidateResolutionMap(input.flow);
     const resolvedCandidateIds: string[] = [];
     const candidateResolutions: MemoryCandidateResolution[] = [];
@@ -1551,6 +1562,7 @@ export class FlowEngine {
           slug: memoryV2Slug(nugget.item, candidateId),
           item: nugget.item,
           source: nugget.source,
+          ...(nugget.provenance?.length ? { provenance: nugget.provenance } : {}),
           classification_status: "resolved",
           destinations: [],
           route: null,
@@ -1567,6 +1579,7 @@ export class FlowEngine {
           ?? classifyDexMemoriaV2MiningCandidate(classifierInput);
       if (directive.status === "unresolved") {
         unclassifiedCount += 1;
+        if (nugget.evidenceScore >= 1) strongUnclassifiedCount += 1;
         candidates.push({
           candidate_id: candidateId,
           operation_id: `mmv2_pending_${candidateId}`,
@@ -1574,6 +1587,7 @@ export class FlowEngine {
           slug: memoryV2Slug(nugget.item, candidateId),
           item: nugget.item,
           source: nugget.source,
+          ...(nugget.provenance?.length ? { provenance: nugget.provenance } : {}),
           classification_status: "unresolved",
           classification_reason: directive.reason,
           destinations: [],
@@ -1602,6 +1616,7 @@ export class FlowEngine {
         slug,
         item: nugget.item,
         source: nugget.source,
+        ...(nugget.provenance?.length ? { provenance: nugget.provenance } : {}),
         destinations: classification.destinations,
         route: classification.route,
         tags: classification.tags,
@@ -1644,6 +1659,9 @@ export class FlowEngine {
       || v2Status === "classification_required"
       || v2Status === "partial_pending"
       || v2Status === "resume_pending_sibling";
+    const strongUnwrittenCount = strongUnclassifiedCount + pendingPromotions.length;
+    const blockedCandidateCount = unclassifiedCount + pendingPromotions.length
+      + (v2Status === "partial_pending" || v2Status === "resume_pending_sibling" ? 1 : 0);
     const committedRouteCount = validationReceipts.length;
     const written = Array.from(writtenByCandidate, ([candidate_id, files]) => ({ candidate_id, files: Array.from(files) }));
     const reconciliationId = memoryV2ReconciliationId({
@@ -1661,14 +1679,14 @@ export class FlowEngine {
       blocked_verdict: blockedVerdict,
       candidates_count: candidates.length,
       written_count: written.length,
-      blocked_count: blockedVerdict ? 1 : 0,
+      blocked_count: blockedCandidateCount,
       ledger_only_count: ledgerOnly.length,
       discarded_count: discarded.length,
       estacionamento_count: estacionamento.length,
       resolved_candidate_ids: resolvedCandidateIds,
       resolved_strong_unwritten_count: resolvedCandidateIds.length,
       candidate_resolutions: candidateResolutions,
-      strong_unwritten_count: pendingPromotions.length,
+      strong_unwritten_count: strongUnwrittenCount,
       memory_required_but_empty: false,
       memory_written: committedRouteCount > 0,
       memory_validated: committedRouteCount > 0
@@ -1833,7 +1851,7 @@ export class FlowEngine {
       resolved_candidate_ids: resolvedCandidateIds,
       resolved_strong_unwritten_count: resolvedCandidateIds.length,
       candidate_resolutions: candidateResolutions,
-      strong_unwritten_count: pendingPromotions.length,
+      strong_unwritten_count: strongUnwrittenCount,
       v2_receipts: receipts,
       v2_validation_receipts: validationReceipts,
       v2_pending_destinations: pendingDestinations,
@@ -1843,6 +1861,7 @@ export class FlowEngine {
       memory_consolidated: summary.memory_consolidated,
       memory_review_status: summary.memory_review_status,
       blocked_verdict: summary.blocked_verdict,
+      blocked_count: summary.blocked_count,
       memory_required_but_empty: false,
       written_count: written.length,
       unclassified: unclassifiedCount
@@ -1871,8 +1890,25 @@ export class FlowEngine {
     if (input.theme) {
       assertNoSecretLikeText(input.theme, "theme");
     }
+    if (input.owner_skill) {
+      assertNoSecretLikeText(input.owner_skill, "owner_skill");
+    }
+    for (const tag of input.tags ?? []) {
+      requireText(tag, "tags");
+      if (!MEMORY_V2_TAG_PATTERN.test(tag)) {
+        throw new Error(`MEMORY_CANDIDATE_PROMOTION_TAG_INVALID: ${tag}`);
+      }
+    }
     if (input.action === "park") {
       requireText(input.when, "when");
+    }
+    const hasPromotionOnlyInput = input.target_scope !== undefined
+      || input.theme !== undefined
+      || input.density !== undefined
+      || input.owner_skill !== undefined
+      || input.tags !== undefined;
+    if (input.action !== "promote" && hasPromotionOnlyInput) {
+      throw new Error("MEMORY_CANDIDATE_PROMOTION_FIELDS_NOT_ALLOWED: promotion fields require action=promote");
     }
     if (input.action === "promote") {
       const scope = input.target_scope ?? "projeto";
@@ -1881,6 +1917,11 @@ export class FlowEngine {
       }
       if (scope === "tema") {
         requireText(input.theme, "theme");
+      } else if (input.theme !== undefined) {
+        throw new Error("MEMORY_CANDIDATE_PROMOTION_THEME_NOT_ALLOWED: theme requires target_scope=tema");
+      }
+      if (input.density === "light" && input.owner_skill !== undefined) {
+        throw new Error("MEMORY_CANDIDATE_PROMOTION_OWNER_NOT_ALLOWED: owner_skill requires density=deep");
       }
     }
 
@@ -1900,18 +1941,57 @@ export class FlowEngine {
     const existingResolutions = flow.memory_candidate_resolutions ?? [];
     const resolutions: V2MemoryCandidateResolution[] = candidateIds.map((candidateId) => {
       const candidate = candidateLookup.get(candidateId) ?? {};
+      if (input.action === "promote"
+        && !hasV2CandidateIdentity(candidate)
+        && (input.density !== undefined || input.owner_skill !== undefined || input.tags !== undefined)) {
+        throw new Error("MEMORY_CANDIDATE_PROMOTION_FIELDS_NOT_ALLOWED: V2 promotion metadata cannot be applied to a legacy candidate");
+      }
+      if (input.action === "promote"
+        && hasV2CandidateIdentity(candidate)
+        && candidate.classification_status === "unresolved"
+        && input.target_scope === undefined) {
+        throw new Error("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED: unresolved V2 promotion requires explicit target_scope, tags, density and owner_skill for L3");
+      }
       const promotionMetadata = input.action === "promote" && hasV2CandidateIdentity(candidate)
-        ? requireV2PromotionMetadata(candidate)
+        ? requireV2PromotionMetadata(candidate, {
+            density: input.density,
+            owner_skill: input.owner_skill,
+            tags: input.tags
+          })
+        : undefined;
+      const classifiedV2Candidate = input.action === "promote"
+        && hasV2CandidateIdentity(candidate)
+        && candidate.classification_status !== "unresolved";
+      const promotionDestinations = promotionMetadata
+        ? classifiedV2Candidate
+          ? requireV2CandidateDestinations(candidate)
+          : [promotionDestination(input.target_scope!, input.theme)]
+        : undefined;
+      if (classifiedV2Candidate && input.target_scope !== undefined) {
+        const requestedDestination = promotionDestination(input.target_scope, input.theme);
+        if (promotionDestinations!.length !== 1
+          || JSON.stringify(promotionDestinations![0]) !== JSON.stringify(requestedDestination)) {
+          throw new Error("MEMORY_CANDIDATE_PROMOTION_DESTINATION_CONFLICT: explicit destination differs from the classified V2 candidate");
+        }
+      }
+      const effectivePromotionScope = input.action === "promote"
+        ? promotionDestinations
+          ? promotionScopeForDestinations(promotionDestinations)
+          : input.target_scope ?? "projeto"
+        : undefined;
+      const effectivePromotionTheme = input.action === "promote"
+        ? promotionThemeForDestinations(promotionDestinations) ?? input.theme?.trim()
         : undefined;
       const resolutionFingerprint = createHash("sha256").update(JSON.stringify({
         candidate_id: candidateId,
         action: input.action,
         rationale: input.rationale.trim(),
         when: input.when?.trim() ?? null,
-        target_scope: input.action === "promote" ? input.target_scope ?? "projeto" : null,
-        theme: input.theme?.trim() ?? null,
-        candidate_tags: promotionMetadata?.tags ?? null,
+        target_scope: effectivePromotionScope ?? null,
+        theme: effectivePromotionTheme ?? null,
+        candidate_tags: promotionMetadata ? [...promotionMetadata.tags].sort() : null,
         candidate_density: promotionMetadata?.density ?? null,
+        candidate_destinations: promotionDestinations ?? null,
         candidate_theme: promotionMetadata?.theme ?? null,
         candidate_owner_skill: promotionMetadata?.owner_skill ?? null
       }), "utf8").digest("hex").slice(0, 24);
@@ -1921,14 +2001,15 @@ export class FlowEngine {
         action: input.action,
         rationale: input.rationale.trim(),
         ...(input.when ? { when: input.when.trim() } : {}),
-        ...(input.action === "promote" ? { target_scope: input.target_scope ?? "projeto" } : {}),
-        ...(input.theme ? { theme: input.theme.trim() } : {}),
+        ...(effectivePromotionScope ? { target_scope: effectivePromotionScope } : {}),
+        ...(effectivePromotionTheme ? { theme: effectivePromotionTheme } : {}),
         candidate_title: typeof candidate.title === "string" ? candidate.title : undefined,
         candidate_scope: isMemoryCandidateScope(candidate.scope) ? candidate.scope : undefined,
         candidate_score: candidateScoreTotal(candidate),
         ...(promotionMetadata ? {
-          candidate_tags: promotionMetadata.tags,
+          candidate_tags: [...promotionMetadata.tags].sort(),
           candidate_density: promotionMetadata.density,
+          candidate_destinations: promotionDestinations,
           ...(promotionMetadata.theme ? { candidate_theme: promotionMetadata.theme } : {}),
           ...(promotionMetadata.owner_skill ? { candidate_owner_skill: promotionMetadata.owner_skill } : {})
         } : {}),
@@ -1946,6 +2027,9 @@ export class FlowEngine {
     let memoryMining: Record<string, unknown>;
     try {
       if (newResolutions.length > 0) {
+        const effectiveTargetScopes = unique(resolutions
+          .map((resolution) => resolution.target_scope)
+          .filter((scope): scope is MemoryCandidatePromoteScope => scope !== undefined));
         flow.memory_candidate_resolutions = [...existingResolutions, ...newResolutions];
         flow.history.push({
           at: now,
@@ -1955,7 +2039,16 @@ export class FlowEngine {
             action: input.action,
             rationale: input.rationale.trim(),
             when: input.when?.trim() ?? null,
-            target_scope: input.action === "promote" ? input.target_scope ?? "projeto" : null
+            target_scope: input.action === "promote" && effectiveTargetScopes.length === 1
+              ? effectiveTargetScopes[0]
+              : null,
+            candidate_destinations: input.action === "promote"
+              ? resolutions.map((resolution) => ({
+                  candidate_id: resolution.candidate_id,
+                  destinations: (resolution as V2MemoryCandidateResolution).candidate_destinations
+                    ?? [promotionDestination(resolution.target_scope ?? "projeto", resolution.theme)]
+                }))
+              : []
           }
         });
         flow.updated_at = now;
@@ -6890,6 +6983,7 @@ function candidateResolutionLedgerData(resolution: MemoryCandidateResolution): R
     theme: resolution.theme,
     candidate_tags: v2Resolution.candidate_tags,
     candidate_density: v2Resolution.candidate_density,
+    candidate_destinations: v2Resolution.candidate_destinations,
     candidate_theme: v2Resolution.candidate_theme,
     candidate_owner_skill: v2Resolution.candidate_owner_skill,
     traceable: resolution.traceable,
@@ -6944,22 +7038,32 @@ function hasV2CandidateIdentity(candidate: Record<string, unknown>): boolean {
   return typeof candidate.candidate_id === "string" && candidate.candidate_id.trim().length > 0;
 }
 
-function requireV2PromotionMetadata(candidate: Record<string, unknown>): {
+function requireV2PromotionMetadata(
+  candidate: Record<string, unknown>,
+  explicit: {
+    tags?: string[];
+    density?: "light" | "deep";
+    owner_skill?: string;
+  } = {}
+): {
   tags: string[];
   density: "light" | "deep";
   theme?: string;
   owner_skill?: string;
 } {
-  const tags = Array.isArray(candidate.tags)
+  const hasExplicitMetadata = explicit.tags !== undefined
+    || explicit.density !== undefined
+    || explicit.owner_skill !== undefined;
+  const persistedTags = Array.isArray(candidate.tags)
     ? candidate.tags.filter((tag): tag is string => typeof tag === "string" && tag.trim().length > 0)
     : [];
   const route = candidate.route && typeof candidate.route === "object"
     ? candidate.route as Record<string, unknown>
     : undefined;
-  const density = candidate.density === "deep" || route?.target === "L3" ? "deep"
+  const persistedDensity = candidate.density === "deep" || route?.target === "L3" ? "deep"
     : candidate.density === "light" || route?.target === "L2" ? "light"
       : undefined;
-  const ownerSkill = typeof candidate.owner_skill === "string" && candidate.owner_skill.trim()
+  const persistedOwnerSkill = typeof candidate.owner_skill === "string" && candidate.owner_skill.trim()
     ? candidate.owner_skill.trim()
     : typeof route?.owner_skill === "string" && route.owner_skill.trim()
       ? route.owner_skill.trim()
@@ -6968,18 +7072,78 @@ function requireV2PromotionMetadata(candidate: Record<string, unknown>): {
   const themeDestination = destinations.find((destination) =>
     destination && typeof destination === "object" && (destination as Record<string, unknown>).scope === "theme"
   ) as Record<string, unknown> | undefined;
-  const theme = typeof themeDestination?.theme === "string" && themeDestination.theme.trim()
+  const persistedTheme = typeof themeDestination?.theme === "string" && themeDestination.theme.trim()
     ? themeDestination.theme.trim()
     : undefined;
-  if (tags.length === 0 || !density || (density === "deep" && !ownerSkill)) {
+  const persistedComplete = persistedTags.length > 0
+    && persistedDensity !== undefined
+    && (persistedDensity !== "deep" || Boolean(persistedOwnerSkill));
+
+  if (hasExplicitMetadata && candidate.classification_status !== "unresolved") {
+    if (!persistedComplete) {
+      throw new Error("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED: classified V2 candidate metadata is incomplete");
+    }
+    const explicitTags = explicit.tags === undefined
+      ? undefined
+      : unique(explicit.tags.map((tag) => tag.trim()).filter(Boolean));
+    const tagsConflict = explicitTags !== undefined
+      && JSON.stringify([...explicitTags].sort()) !== JSON.stringify([...persistedTags].sort());
+    const densityConflict = explicit.density !== undefined && explicit.density !== persistedDensity;
+    const ownerConflict = explicit.owner_skill !== undefined
+      && explicit.owner_skill.trim() !== (persistedOwnerSkill ?? "");
+    if (tagsConflict || densityConflict || ownerConflict) {
+      throw new Error("MEMORY_CANDIDATE_PROMOTION_METADATA_CONFLICT: explicit metadata differs from the classified V2 candidate");
+    }
+    return {
+      tags: persistedTags,
+      density: persistedDensity!,
+      ...(persistedTheme ? { theme: persistedTheme } : {}),
+      ...(persistedOwnerSkill ? { owner_skill: persistedOwnerSkill } : {})
+    };
+  }
+  if (hasExplicitMetadata) {
+    const tags = unique((explicit.tags ?? []).map((tag) => tag.trim()).filter(Boolean));
+    const ownerSkill = explicit.owner_skill?.trim();
+    if (tags.length === 0 || !explicit.density || (explicit.density === "deep" && !ownerSkill)) {
+      throw new Error("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED: unresolved V2 promotion requires explicit tags, density and owner_skill for L3");
+    }
+    if (tags.some((tag) => !MEMORY_V2_TAG_PATTERN.test(tag))) {
+      throw new Error("MEMORY_CANDIDATE_PROMOTION_TAG_INVALID: promotion tags must use governed nested kebab-case");
+    }
+    return {
+      tags,
+      density: explicit.density,
+      ...(ownerSkill ? { owner_skill: ownerSkill } : {})
+    };
+  }
+  if (!persistedComplete) {
     throw new Error("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED: V2 promotion requires tags, density and owner_skill for L3");
   }
   return {
-    tags,
-    density,
-    ...(theme ? { theme } : {}),
-    ...(ownerSkill ? { owner_skill: ownerSkill } : {})
+    tags: persistedTags,
+    density: persistedDensity!,
+    ...(persistedTheme ? { theme: persistedTheme } : {}),
+    ...(persistedOwnerSkill ? { owner_skill: persistedOwnerSkill } : {})
   };
+}
+
+function requireV2CandidateDestinations(candidate: Record<string, unknown>): DexMemoriaV2Destination[] {
+  if (!Array.isArray(candidate.destinations) || candidate.destinations.length === 0) {
+    throw new Error("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED: classified V2 candidate destinations are incomplete");
+  }
+  return candidate.destinations.map((destination) => {
+    if (!destination || typeof destination !== "object" || Array.isArray(destination)) {
+      throw new Error("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED: classified V2 candidate destination is invalid");
+    }
+    const record = destination as Record<string, unknown>;
+    if (record.scope === "project" || record.scope === "global") {
+      return { scope: record.scope };
+    }
+    if (record.scope === "theme" && typeof record.theme === "string" && record.theme.trim()) {
+      return { scope: "theme", theme: record.theme.trim() };
+    }
+    throw new Error("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED: classified V2 candidate destination is invalid");
+  });
 }
 
 function v2PromotionClassification(resolution: MemoryCandidateResolution): DexMemoriaV2MiningClassification {
@@ -6989,19 +7153,26 @@ function v2PromotionClassification(resolution: MemoryCandidateResolution): DexMe
   if (tags.length === 0 || !density || (density === "deep" && !v2Resolution.candidate_owner_skill?.trim())) {
     throw new Error("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED: persisted V2 promotion metadata is incomplete");
   }
-  const destination = promotionDestination(resolution.target_scope ?? "projeto", resolution.theme);
+  const destinations = v2Resolution.candidate_destinations?.length
+    ? v2Resolution.candidate_destinations
+    : resolution.target_scope
+      ? [promotionDestination(resolution.target_scope, resolution.theme)]
+      : undefined;
+  if (!destinations?.length) {
+    throw new Error("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED: persisted V2 promotion destinations are incomplete");
+  }
   return density === "deep"
     ? {
         status: "resolved",
         density,
-        requested_destinations: [destination],
+        requested_destinations: destinations as [DexMemoriaV2Destination, ...DexMemoriaV2Destination[]],
         tags: tags as [string, ...string[]],
         owner_skill: v2Resolution.candidate_owner_skill!.trim()
       }
     : {
         status: "resolved",
         density,
-        requested_destinations: [destination],
+        requested_destinations: destinations as [DexMemoriaV2Destination, ...DexMemoriaV2Destination[]],
         tags: tags as [string, ...string[]]
       };
 }
@@ -7015,6 +7186,20 @@ function promotionDestination(scope: MemoryCandidatePromoteScope, theme?: string
   return { scope: "project" };
 }
 
+function promotionScopeForDestinations(
+  destinations: DexMemoriaV2Destination[]
+): MemoryCandidatePromoteScope | undefined {
+  if (destinations.length !== 1) return undefined;
+  if (destinations[0].scope === "global") return "global";
+  if (destinations[0].scope === "theme") return "tema";
+  return "projeto";
+}
+
+function promotionThemeForDestinations(destinations?: DexMemoriaV2Destination[]): string | undefined {
+  if (destinations?.length !== 1 || destinations[0].scope !== "theme") return undefined;
+  return destinations[0].theme;
+}
+
 function sameCandidateResolution(existing: MemoryCandidateResolution, proposed: V2MemoryCandidateResolution): boolean {
   const current = existing as V2MemoryCandidateResolution;
   return existing.candidate_id === proposed.candidate_id
@@ -7023,8 +7208,9 @@ function sameCandidateResolution(existing: MemoryCandidateResolution, proposed: 
     && (existing.when ?? "") === (proposed.when ?? "")
     && (existing.target_scope ?? "") === (proposed.target_scope ?? "")
     && (existing.theme ?? "") === (proposed.theme ?? "")
-    && JSON.stringify(current.candidate_tags ?? []) === JSON.stringify(proposed.candidate_tags ?? [])
+    && JSON.stringify([...(current.candidate_tags ?? [])].sort()) === JSON.stringify([...(proposed.candidate_tags ?? [])].sort())
     && (current.candidate_density ?? "") === (proposed.candidate_density ?? "")
+    && JSON.stringify(current.candidate_destinations ?? []) === JSON.stringify(proposed.candidate_destinations ?? [])
     && (current.candidate_owner_skill ?? "") === (proposed.candidate_owner_skill ?? "");
 }
 
