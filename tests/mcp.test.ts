@@ -44,6 +44,10 @@ describe("PPIRTV MCP stdio server", () => {
     const goalStartTool = tools.tools.find((tool) => tool.name === "goal_start");
     const goalStartProperties = (goalStartTool?.inputSchema as { properties?: Record<string, Record<string, unknown>> }).properties;
     expect(goalStartProperties?.flow_role?.enum).toEqual(["execution", "reconciliation", "recovery"]);
+    const traceTool = tools.tools.find((tool) => tool.name === "ppirtv_trace");
+    expect(traceTool?.description).toContain("origin, history, evolution, provenance, decisions, evidence, or reconstruction");
+    expect(traceTool?.description).toContain("read-only");
+    expect(traceTool?.description).toContain("without");
     const memoryMiningTool = tools.tools.find((tool) => tool.name === "mm_memory_mining");
     const memoryMiningProperties = (memoryMiningTool?.inputSchema as { properties?: Record<string, Record<string, unknown>> }).properties;
     expect(memoryMiningTool?.description).toContain("ordinary call needs only flow_id");

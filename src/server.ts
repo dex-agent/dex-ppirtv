@@ -124,7 +124,7 @@ function registerTools(
     "ppirtv_trace",
     {
       description:
-        "Reconstruct read-only provenance from exactly one exact PPIRTV selector without creating an index or returning artifact payloads.",
+        "Locate origin, history, evolution, provenance, decisions, evidence, or reconstruction clues from exactly one exact PPIRTV selector; this is read-only and works without creating an index or returning artifact payloads.",
       inputSchema: Object.fromEntries(
         PPIRTV_TRACE_SELECTOR_KEYS.map((key) => [key, z.string().min(1).optional()])
       )
