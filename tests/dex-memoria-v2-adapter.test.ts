@@ -198,7 +198,7 @@ describe("Dex Memoria V2 adapter", () => {
     await rm(fixtureRoot, { recursive: true, force: true });
   });
 
-  it("rejects cross-scope credit when canonical route identities are reused", async () => {
+  it("blocks cross-scope credit while preserving the post-write receipt for recovery", async () => {
     const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-adapter-cross-scope-"));
     const executor = {
       execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => {
@@ -208,7 +208,7 @@ describe("Dex Memoria V2 adapter", () => {
         return receipt;
       })
     };
-    await expect(executeDexMemoriaV2Adapter({
+    const result = await executeDexMemoriaV2Adapter({
       operation_id: "op_cross_credit",
       slug: "regra-dual",
       workspace_root: path.join(fixtureRoot, "workspace"),
@@ -217,7 +217,13 @@ describe("Dex Memoria V2 adapter", () => {
         item: "Regra dual.", density: "light", tags: TEST_TAGS, requested_destinations: [{ scope: "project" }, { scope: "global" }]
       }),
       executor
-    })).rejects.toThrow("DEX_MEMORIA_V2_RECEIPTS_NOT_INDEPENDENT");
+    });
+    expect(result).toMatchObject({
+      status: "partial_pending",
+      validation_receipts: [],
+      receipts: [expect.objectContaining({ operation_id: "op_cross_credit" })],
+      failure: { message: "DEX_MEMORIA_V2_RECEIPTS_NOT_INDEPENDENT" }
+    });
     await rm(fixtureRoot, { recursive: true, force: true });
   });
 

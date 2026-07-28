@@ -246,11 +246,25 @@ export type FlowEngineOptions = {
 
 type MemoryMiningV2Summary = MemoryMiningSummary & {
   memory_profile: "v2";
+  estacionamento_count: number;
   v2_status: "complete" | "classify_only" | "classification_required" | "partial_pending" | "resume_pending_sibling";
+  v2_ledger_status?: "pending" | "confirmed";
+  v2_reconciliation_id?: string;
   v2_receipts: DexMemoriaV2CanonicalReceipt[];
   v2_validation_receipts: DexMemoriaV2ValidationReceiptRef[];
   v2_pending_destinations: Array<Record<string, unknown>>;
   v2_failures: Array<Record<string, unknown>>;
+};
+
+type V2MemoryCandidateResolution = MemoryCandidateResolution & {
+  candidate_tags?: string[];
+  candidate_density?: "light" | "deep";
+  candidate_theme?: string;
+  candidate_owner_skill?: string;
+};
+
+type V2CommittedBoundaryError = Error & {
+  v2_committed_effect: true;
 };
 
 export class FlowEngine {
@@ -1181,6 +1195,18 @@ export class FlowEngine {
     v2_tags?: string[];
   }): Promise<Record<string, unknown>> {
     requireText(input.flow_id, "flow_id");
+    return await this.store.withFlowLock(input.flow_id, () => this.mineMemoryUnlocked(input));
+  }
+
+  private async mineMemoryUnlocked(input: {
+    flow_id: string;
+    auto_classify?: boolean;
+    write_policy?: MemoryWritePolicy;
+    v2_destinations?: DexMemoriaV2Destination[];
+    v2_density?: "light" | "deep";
+    v2_owner_skill?: string;
+    v2_tags?: string[];
+  }): Promise<Record<string, unknown>> {
     const flow = await this.store.loadFlow(input.flow_id);
     const writePolicy = input.write_policy ?? "auto_write";
     if (writePolicy !== "auto_write" && writePolicy !== "classify_only") {
@@ -1484,10 +1510,18 @@ export class FlowEngine {
     const v2Failures: Array<Record<string, unknown>> = [];
     let v2Status: MemoryMiningV2Summary["v2_status"] = input.writePolicy === "auto_write" ? "complete" : "classify_only";
     let unclassifiedCount = 0;
+    const resolutionMap = latestTraceableCandidateResolutionMap(input.flow);
+    const resolvedCandidateIds: string[] = [];
+    const candidateResolutions: MemoryCandidateResolution[] = [];
+    const ledgerOnly: string[] = [];
+    const estacionamento: string[] = [];
+    const discarded: string[] = [];
+    const pendingPromotions: string[] = [];
 
     for (const [index, nugget] of input.nuggets.entries()) {
       assertNoSecretLikeText(nugget.item, `memory_v2_candidate_${index + 1}`);
       const candidateId = memoryV2CandidateId(nugget.item);
+      const resolution = resolutionMap.get(candidateId);
       const classifierInput = {
         flow_id: input.flow.flow_id,
         candidate_id: candidateId,
@@ -1495,10 +1529,33 @@ export class FlowEngine {
         source: nugget.source,
         evidence_score: nugget.evidenceScore
       };
-      const directive = input.requestClassification
-        ?? input.writer.classify?.(classifierInput)
-        ?? input.writer.default_classification
-        ?? classifyDexMemoriaV2MiningCandidate(classifierInput);
+      if (resolution && resolution.action !== "promote") {
+        resolvedCandidateIds.push(candidateId);
+        candidateResolutions.push(resolution);
+        if (resolution.action === "accept_ledger_only") ledgerOnly.push(candidateId);
+        if (resolution.action === "park") estacionamento.push(candidateId);
+        if (resolution.action === "discard") discarded.push(candidateId);
+        candidates.push({
+          candidate_id: candidateId,
+          operation_id: `mmv2_resolved_${candidateId}`,
+          flow_id: input.flow.flow_id,
+          slug: memoryV2Slug(nugget.item, candidateId),
+          item: nugget.item,
+          source: nugget.source,
+          classification_status: "resolved",
+          destinations: [],
+          route: null,
+          resolution: candidateResolutionLedgerData(resolution),
+          effective_action: resolution.action
+        });
+        continue;
+      }
+      const directive = resolution?.action === "promote"
+        ? v2PromotionClassification(resolution)
+        : input.requestClassification
+          ?? input.writer.classify?.(classifierInput)
+          ?? input.writer.default_classification
+          ?? classifyDexMemoriaV2MiningCandidate(classifierInput);
       if (directive.status === "unresolved") {
         unclassifiedCount += 1;
         candidates.push({
@@ -1525,6 +1582,10 @@ export class FlowEngine {
       });
       const operationId = memoryV2OperationId(nugget.item, classification);
       const slug = memoryV2Slug(nugget.item, candidateId);
+      if (resolution) {
+        resolvedCandidateIds.push(candidateId);
+        candidateResolutions.push(resolution);
+      }
       candidates.push({
         candidate_id: candidateId,
         operation_id: operationId,
@@ -1533,9 +1594,14 @@ export class FlowEngine {
         item: nugget.item,
         source: nugget.source,
         destinations: classification.destinations,
-        route: classification.route
+        route: classification.route,
+        tags: classification.tags,
+        density: classification.route.target === "L3" ? "deep" : "light",
+        ...(classification.route.target === "L3" ? { owner_skill: classification.route.owner_skill } : {}),
+        ...(resolution ? { resolution: candidateResolutionLedgerData(resolution), effective_action: resolution.action } : {})
       });
       if (input.writePolicy !== "auto_write") {
+        if (resolution?.action === "promote") pendingPromotions.push(candidateId);
         continue;
       }
       const adapterResult = await executeDexMemoriaV2Adapter({
@@ -1564,9 +1630,21 @@ export class FlowEngine {
       }
     }
 
-    const blockedVerdict = v2Status === "classification_required" || v2Status === "partial_pending" || v2Status === "resume_pending_sibling";
+    const blockedVerdict = unclassifiedCount > 0
+      || pendingPromotions.length > 0
+      || v2Status === "classification_required"
+      || v2Status === "partial_pending"
+      || v2Status === "resume_pending_sibling";
     const committedRouteCount = validationReceipts.length;
     const written = Array.from(writtenByCandidate, ([candidate_id, files]) => ({ candidate_id, files: Array.from(files) }));
+    const reconciliationId = memoryV2ReconciliationId({
+      flowId: input.flow.flow_id,
+      writePolicy: input.writePolicy,
+      candidates,
+      receipts,
+      candidateResolutions
+    });
+    const hasCommittedEffect = v2ReceiptsProveCommittedEffect(receipts);
     const summary: MemoryMiningV2Summary = {
       required: candidates.length > 0 || memoryRequiredByFlow(input.flow),
       last_run_at: now,
@@ -1575,8 +1653,13 @@ export class FlowEngine {
       candidates_count: candidates.length,
       written_count: written.length,
       blocked_count: blockedVerdict ? 1 : 0,
-      ledger_only_count: 0,
-      discarded_count: 0,
+      ledger_only_count: ledgerOnly.length,
+      discarded_count: discarded.length,
+      estacionamento_count: estacionamento.length,
+      resolved_candidate_ids: resolvedCandidateIds,
+      resolved_strong_unwritten_count: resolvedCandidateIds.length,
+      candidate_resolutions: candidateResolutions,
+      strong_unwritten_count: pendingPromotions.length,
       memory_required_but_empty: false,
       memory_written: committedRouteCount > 0,
       memory_validated: committedRouteCount > 0
@@ -1585,49 +1668,163 @@ export class FlowEngine {
       memory_review_status: "not_required",
       candidates,
       written,
+      ledger_only: ledgerOnly,
+      estacionamento,
+      discarded,
+      write_decisions: candidates.map((candidate) => ({
+        candidate_id: memoryCandidateIdentity(candidate),
+        action: candidate.effective_action ? `resolved_${candidate.effective_action}` : writtenByCandidate.has(memoryCandidateIdentity(candidate)) ? "written" : "classified",
+        editable: !candidate.effective_action && !writtenByCandidate.has(memoryCandidateIdentity(candidate))
+      })),
       memory_profile: "v2",
       v2_status: v2Status,
+      v2_ledger_status: hasCommittedEffect ? "pending" : "confirmed",
+      v2_reconciliation_id: reconciliationId,
       v2_receipts: receipts,
       v2_validation_receipts: validationReceipts,
       v2_pending_destinations: pendingDestinations,
       v2_failures: v2Failures
     };
+    const finalBlockedVerdict = summary.blocked_verdict;
+    const finalBlockedCount = summary.blocked_count;
+    const finalMemoryValidated = summary.memory_validated;
+    if (hasCommittedEffect) {
+      summary.blocked_verdict = true;
+      summary.blocked_count = Math.max(1, summary.blocked_count);
+      summary.memory_validated = false;
+    }
     input.flow.memory_mining = summary;
-    input.flow.history.push({
-      at: now,
-      type: "memory_mined",
-      data: {
-        write_policy: input.writePolicy,
-        memory_profile: "v2",
-        v2_status: v2Status,
-        candidates_count: candidates.length,
-        receipts_count: receipts.length,
-        blocked_verdict: blockedVerdict
-      }
-    });
+    const existingHistoryEvent = input.flow.history.find((event) =>
+      event.type === "memory_mined" && event.data.v2_reconciliation_id === reconciliationId
+    );
+    const historyData = {
+      write_policy: input.writePolicy,
+      memory_profile: "v2",
+      v2_status: summary.v2_status,
+      v2_ledger_status: summary.v2_ledger_status,
+      v2_reconciliation_id: reconciliationId,
+      candidates_count: candidates.length,
+      receipts_count: receipts.length,
+      blocked_verdict: summary.blocked_verdict
+    };
+    if (existingHistoryEvent) {
+      existingHistoryEvent.at = now;
+      existingHistoryEvent.data = historyData;
+    } else {
+      input.flow.history.push({ at: now, type: "memory_mined", data: historyData });
+    }
     input.flow.updated_at = now;
-    await this.store.saveFlow(input.flow);
-    await this.ledger(input.flow.flow_id, "memory_mined", {
+    let initialPersistenceError: unknown;
+    if (hasCommittedEffect) {
+      const persisted = await this.saveV2CommittedFlowState(input.flow);
+      if (!persisted.saved) {
+        throw v2CommittedBoundaryError(persisted.error);
+      }
+      initialPersistenceError = persisted.error;
+    } else {
+      await this.store.saveFlow(input.flow);
+    }
+    const ledgerData = {
       write_policy: input.writePolicy,
       memory_profile: "v2",
       v2_status: v2Status,
+      v2_reconciliation_id: reconciliationId,
       candidates,
       written,
+      ledger_only: ledgerOnly,
+      estacionamento,
+      discarded,
+      resolved_candidate_ids: resolvedCandidateIds,
+      candidate_resolutions: candidateResolutions,
       v2_receipts: receipts,
       v2_validation_receipts: validationReceipts,
       v2_pending_destinations: pendingDestinations,
       v2_failures: v2Failures,
       blocked_verdict: blockedVerdict
-    }, "dex-code");
+    };
+    const ledgerResult = initialPersistenceError
+      ? { confirmed: false, error: initialPersistenceError }
+      : await this.ensureV2MemoryMinedLedger(input.flow.flow_id, reconciliationId, ledgerData);
+    if (!ledgerResult.confirmed) {
+      if (!hasCommittedEffect) throw ledgerResult.error;
+      summary.v2_status = "partial_pending";
+      summary.v2_ledger_status = "pending";
+      summary.blocked_verdict = true;
+      summary.blocked_count = Math.max(1, summary.blocked_count);
+      summary.memory_validated = false;
+      summary.v2_failures.push({
+        stage: "memory_mined_ledger",
+        message: errorMessage(ledgerResult.error),
+        reconciliation_id: reconciliationId
+      });
+      const pendingHistoryEvent = input.flow.history.find((event) =>
+        event.type === "memory_mined" && event.data.v2_reconciliation_id === reconciliationId
+      );
+      if (pendingHistoryEvent) {
+        pendingHistoryEvent.data.v2_status = summary.v2_status;
+        pendingHistoryEvent.data.v2_ledger_status = summary.v2_ledger_status;
+        pendingHistoryEvent.data.blocked_verdict = true;
+      }
+      input.flow.updated_at = nowIso();
+      try {
+        await this.store.saveFlow(input.flow);
+      } catch {
+        // O estado pending com receipts ja foi persistido antes da tentativa de
+        // ledger. Falhar ao enriquecer o diagnostico nao autoriza rollback.
+      }
+    } else if (hasCommittedEffect) {
+      summary.v2_ledger_status = "confirmed";
+      summary.blocked_verdict = finalBlockedVerdict;
+      summary.blocked_count = finalBlockedCount;
+      summary.memory_validated = finalMemoryValidated;
+      const confirmedHistoryEvent = input.flow.history.find((event) =>
+        event.type === "memory_mined" && event.data.v2_reconciliation_id === reconciliationId
+      );
+      if (confirmedHistoryEvent) {
+        confirmedHistoryEvent.data.v2_ledger_status = "confirmed";
+        confirmedHistoryEvent.data.blocked_verdict = finalBlockedVerdict;
+      }
+      input.flow.updated_at = nowIso();
+      const confirmedPersistence = await this.saveV2CommittedFlowState(input.flow);
+      if (!confirmedPersistence.saved) {
+        summary.v2_status = "partial_pending";
+        summary.v2_ledger_status = "pending";
+        summary.blocked_verdict = true;
+        summary.blocked_count = Math.max(1, summary.blocked_count);
+        summary.memory_validated = false;
+        summary.v2_failures.push({
+          stage: "memory_mined_flow_confirmation",
+          message: errorMessage(confirmedPersistence.error),
+          reconciliation_id: reconciliationId
+        });
+        if (confirmedHistoryEvent) {
+          confirmedHistoryEvent.data.v2_status = summary.v2_status;
+          confirmedHistoryEvent.data.v2_ledger_status = "pending";
+          confirmedHistoryEvent.data.blocked_verdict = true;
+        }
+      }
+    }
 
     return {
       flow_id: input.flow.flow_id,
       auto_classify: input.autoClassify,
       write_policy: input.writePolicy,
       memory_profile: "v2",
-      v2_status: v2Status,
+      v2_status: summary.v2_status,
+      v2_ledger_status: summary.v2_ledger_status,
+      v2_reconciliation_id: reconciliationId,
       candidates,
       written,
+      ledger_only: ledgerOnly,
+      estacionamento,
+      discarded,
+      ledger_only_count: ledgerOnly.length,
+      estacionamento_count: estacionamento.length,
+      discarded_count: discarded.length,
+      resolved_candidate_ids: resolvedCandidateIds,
+      resolved_strong_unwritten_count: resolvedCandidateIds.length,
+      candidate_resolutions: candidateResolutions,
+      strong_unwritten_count: pendingPromotions.length,
       v2_receipts: receipts,
       v2_validation_receipts: validationReceipts,
       v2_pending_destinations: pendingDestinations,
@@ -1636,7 +1833,7 @@ export class FlowEngine {
       memory_validated: summary.memory_validated,
       memory_consolidated: summary.memory_consolidated,
       memory_review_status: summary.memory_review_status,
-      blocked_verdict: blockedVerdict,
+      blocked_verdict: summary.blocked_verdict,
       memory_required_but_empty: false,
       written_count: written.length,
       unclassified: unclassifiedCount
@@ -1645,6 +1842,10 @@ export class FlowEngine {
 
   async resolveMemoryCandidates(input: ResolveMemoryCandidatesInput): Promise<Record<string, unknown>> {
     requireText(input.flow_id, "flow_id");
+    return await this.store.withFlowLock(input.flow_id, () => this.resolveMemoryCandidatesUnlocked(input));
+  }
+
+  private async resolveMemoryCandidatesUnlocked(input: ResolveMemoryCandidatesInput): Promise<Record<string, unknown>> {
     const candidateIds = unique((input.candidate_ids ?? []).map((candidateId) => candidateId.trim()).filter(Boolean));
     if (candidateIds.length === 0) {
       throw new Error("candidate_ids must contain at least one memory candidate id");
@@ -1675,21 +1876,38 @@ export class FlowEngine {
     }
 
     const flow = await this.store.loadFlow(input.flow_id);
+    const originalFlow = structuredClone(flow);
     const currentCandidates = Array.isArray(flow.memory_mining?.candidates) ? flow.memory_mining.candidates : [];
     if (currentCandidates.length === 0) {
       throw new Error("MEMORY_CANDIDATES_NOT_MINED: execute mm_memory_mining antes de resolver memory_candidates");
     }
-    const candidateLookup = new Map(currentCandidates.map((candidate) => [String(candidate.id), candidate]));
+    const candidateLookup = memoryCandidateLookup(currentCandidates);
     const missing = candidateIds.filter((candidateId) => !candidateLookup.has(candidateId));
     if (missing.length > 0) {
       throw new Error(`Unknown memory candidate ids: ${missing.join(", ")}`);
     }
 
     const now = nowIso();
-    const resolutions: MemoryCandidateResolution[] = candidateIds.map((candidateId) => {
+    const existingResolutions = flow.memory_candidate_resolutions ?? [];
+    const resolutions: V2MemoryCandidateResolution[] = candidateIds.map((candidateId) => {
       const candidate = candidateLookup.get(candidateId) ?? {};
-      return {
-        resolution_id: `mcr_${now.replace(/[-:.TZ]/g, "")}_${candidateId}`,
+      const promotionMetadata = input.action === "promote" && hasV2CandidateIdentity(candidate)
+        ? requireV2PromotionMetadata(candidate)
+        : undefined;
+      const resolutionFingerprint = createHash("sha256").update(JSON.stringify({
+        candidate_id: candidateId,
+        action: input.action,
+        rationale: input.rationale.trim(),
+        when: input.when?.trim() ?? null,
+        target_scope: input.action === "promote" ? input.target_scope ?? "projeto" : null,
+        theme: input.theme?.trim() ?? null,
+        candidate_tags: promotionMetadata?.tags ?? null,
+        candidate_density: promotionMetadata?.density ?? null,
+        candidate_theme: promotionMetadata?.theme ?? null,
+        candidate_owner_skill: promotionMetadata?.owner_skill ?? null
+      }), "utf8").digest("hex").slice(0, 24);
+      const proposed: V2MemoryCandidateResolution = {
+        resolution_id: `mcr_${now.replace(/[-:.TZ]/g, "")}_${resolutionFingerprint}`,
         candidate_id: candidateId,
         action: input.action,
         rationale: input.rationale.trim(),
@@ -1699,36 +1917,143 @@ export class FlowEngine {
         candidate_title: typeof candidate.title === "string" ? candidate.title : undefined,
         candidate_scope: isMemoryCandidateScope(candidate.scope) ? candidate.scope : undefined,
         candidate_score: candidateScoreTotal(candidate),
+        ...(promotionMetadata ? {
+          candidate_tags: promotionMetadata.tags,
+          candidate_density: promotionMetadata.density,
+          ...(promotionMetadata.theme ? { candidate_theme: promotionMetadata.theme } : {}),
+          ...(promotionMetadata.owner_skill ? { candidate_owner_skill: promotionMetadata.owner_skill } : {})
+        } : {}),
         traceable: true,
         created_at: now,
         source: "mm_memory_candidate_resolve"
       };
+      return existingResolutions.find((resolution) => sameCandidateResolution(resolution, proposed)) as V2MemoryCandidateResolution | undefined
+        ?? proposed;
     });
 
-    flow.memory_candidate_resolutions = [...(flow.memory_candidate_resolutions ?? []), ...resolutions];
-    flow.history.push({
-      at: now,
-      type: "memory_candidates_resolved",
-      data: {
-        candidate_ids: candidateIds,
-        action: input.action,
-        rationale: input.rationale.trim(),
-        when: input.when?.trim() ?? null,
-        target_scope: input.action === "promote" ? input.target_scope ?? "projeto" : null
-      }
-    });
-    flow.updated_at = now;
+    const existingResolutionIds = new Set(existingResolutions.map((resolution) => resolution.resolution_id));
+    const newResolutions = resolutions.filter((resolution) => !existingResolutionIds.has(resolution.resolution_id));
     const previousWritePolicy = flow.memory_mining?.write_policy === "classify_only" ? "classify_only" : "auto_write";
-    await this.store.saveFlow(flow);
-    await this.ledger(flow.flow_id, "memory_candidates_resolved", { resolutions }, "dex-code");
+    let memoryMining: Record<string, unknown>;
+    try {
+      if (newResolutions.length > 0) {
+        flow.memory_candidate_resolutions = [...existingResolutions, ...newResolutions];
+        flow.history.push({
+          at: now,
+          type: "memory_candidates_resolved",
+          data: {
+            candidate_ids: candidateIds,
+            action: input.action,
+            rationale: input.rationale.trim(),
+            when: input.when?.trim() ?? null,
+            target_scope: input.action === "promote" ? input.target_scope ?? "projeto" : null
+          }
+        });
+        flow.updated_at = now;
+        await this.store.saveFlow(flow);
+      }
+      memoryMining = await this.mineMemoryUnlocked({ flow_id: flow.flow_id, auto_classify: true, write_policy: previousWritePolicy });
+    } catch (error) {
+      if (newResolutions.length > 0 && !isV2CommittedBoundaryError(error)) {
+        await this.store.saveFlow(originalFlow);
+      }
+      throw error;
+    }
+    await this.ensureMemoryCandidateResolutionLedger(flow.flow_id, resolutions);
 
-    const memoryMining = await this.mineMemory({ flow_id: flow.flow_id, auto_classify: true, write_policy: previousWritePolicy });
+    const writtenIds = new Set(
+      (Array.isArray(memoryMining.written) ? memoryMining.written : [])
+        .map((item) => item && typeof item === "object" && typeof (item as Record<string, unknown>).candidate_id === "string"
+          ? (item as Record<string, unknown>).candidate_id as string
+          : "")
+        .filter(Boolean)
+    );
+    const v2LedgerPending = memoryMining.v2_ledger_status === "pending";
+    const pendingResolutions = resolutions.filter((resolution) =>
+      v2LedgerPending || (resolution.action === "promote" && !writtenIds.has(resolution.candidate_id))
+    );
+    const pendingResolutionIds = new Set(pendingResolutions.map((resolution) => resolution.resolution_id));
+    const appliedResolutions = resolutions.filter((resolution) => !pendingResolutionIds.has(resolution.resolution_id));
     return {
       flow_id: flow.flow_id,
       resolved: resolutions,
+      application_status: pendingResolutions.length > 0 ? "pending" : "applied",
+      applied_resolutions: appliedResolutions,
+      pending_resolutions: pendingResolutions,
       memory_mining: memoryMining,
       status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })
     };
+  }
+
+  private async ensureMemoryCandidateResolutionLedger(
+    flowId: string,
+    resolutions: V2MemoryCandidateResolution[]
+  ): Promise<void> {
+    const missingResolutions = async (): Promise<V2MemoryCandidateResolution[]> => {
+      const ledgerEvents = await this.store.readLedger(flowId);
+      const recordedResolutionIds = new Set(
+        ledgerEvents
+          .filter((event) => event.type === "memory_candidates_resolved")
+          .flatMap((event) => Array.isArray(event.data.resolutions) ? event.data.resolutions : [])
+          .map((resolution) =>
+            resolution && typeof resolution === "object" && typeof (resolution as Record<string, unknown>).resolution_id === "string"
+              ? (resolution as Record<string, unknown>).resolution_id as string
+              : ""
+          )
+          .filter(Boolean)
+      );
+      return resolutions.filter((resolution) => !recordedResolutionIds.has(resolution.resolution_id));
+    };
+
+    const missing = await missingResolutions();
+    if (missing.length === 0) return;
+    try {
+      await this.ledger(flowId, "memory_candidates_resolved", { resolutions: missing }, "dex-code");
+    } catch (error) {
+      if ((await missingResolutions()).length > 0) throw error;
+    }
+  }
+
+  private async ensureV2MemoryMinedLedger(
+    flowId: string,
+    reconciliationId: string,
+    data: Record<string, unknown>
+  ): Promise<{ confirmed: boolean; error?: unknown }> {
+    const ledgerContainsAttempt = async (): Promise<boolean> =>
+      (await this.store.readLedger(flowId)).some((event) =>
+        event.type === "memory_mined" && event.data.v2_reconciliation_id === reconciliationId
+      );
+
+    try {
+      if (await ledgerContainsAttempt()) return { confirmed: true };
+    } catch (error) {
+      return { confirmed: false, error };
+    }
+    try {
+      await this.ledger(flowId, "memory_mined", data, "dex-code");
+      return { confirmed: true };
+    } catch (error) {
+      try {
+        if (await ledgerContainsAttempt()) return { confirmed: true };
+        return { confirmed: false, error };
+      } catch (readError) {
+        return { confirmed: false, error: readError };
+      }
+    }
+  }
+
+  private async saveV2CommittedFlowState(flow: Flow): Promise<{ saved: boolean; error?: unknown }> {
+    try {
+      await this.store.saveFlow(flow);
+      return { saved: true };
+    } catch (error) {
+      try {
+        await this.store.saveFlow(flow);
+        return { saved: true, error };
+      } catch (retryError) {
+        return { saved: false, error: retryError };
+      }
+    }
   }
 
   async goalRegress(input: {
@@ -6428,6 +6753,56 @@ function memoryV2OperationId(item: string, classification: ReturnType<typeof cla
   return `mmv2_${createHash("sha256").update(JSON.stringify(materialUnit), "utf8").digest("hex")}`;
 }
 
+function v2ReceiptsProveCommittedEffect(receipts: DexMemoriaV2CanonicalReceipt[]): boolean {
+  return receipts.some((receipt) =>
+    receipt.status === "COMMITTED"
+    || Object.values(receipt.route_receipts ?? {}).some((routeReceipt) => routeReceipt?.status === "COMMITTED")
+  );
+}
+
+function v2CommittedBoundaryError(error: unknown): V2CommittedBoundaryError {
+  return Object.assign(
+    new Error(`PPIRTV_V2_COMMITTED_STATE_PERSISTENCE_FAILED: ${errorMessage(error)}`),
+    { v2_committed_effect: true as const }
+  );
+}
+
+function isV2CommittedBoundaryError(error: unknown): error is V2CommittedBoundaryError {
+  return error instanceof Error
+    && (error as Partial<V2CommittedBoundaryError>).v2_committed_effect === true;
+}
+
+function memoryV2ReconciliationId(input: {
+  flowId: string;
+  writePolicy: MemoryWritePolicy;
+  candidates: Array<Record<string, unknown>>;
+  receipts: DexMemoriaV2CanonicalReceipt[];
+  candidateResolutions: MemoryCandidateResolution[];
+}): string {
+  const operationIds = unique([
+    ...input.candidates
+      .map((candidate) => typeof candidate.operation_id === "string" ? candidate.operation_id : "")
+      .filter(Boolean),
+    ...input.receipts.map((receipt) => receipt.operation_id)
+  ]).sort();
+  const receiptIds = unique(input.receipts.flatMap((receipt) =>
+    Object.values(receipt.route_receipts ?? {})
+      .map((routeReceipt) => routeReceipt?.receipt_id ?? "")
+      .filter(Boolean)
+  )).sort();
+  const resolutionIds = unique(input.candidateResolutions.map((resolution) => resolution.resolution_id)).sort();
+  const candidateIds = unique(input.candidates.map((candidate) => memoryCandidateIdentity(candidate))).sort();
+  const materialAttempt = {
+    flow_id: input.flowId,
+    write_policy: input.writePolicy,
+    operation_ids: operationIds,
+    receipt_ids: receiptIds,
+    resolution_ids: resolutionIds,
+    candidate_ids: candidateIds
+  };
+  return `mmv2_ledger_${createHash("sha256").update(JSON.stringify(materialAttempt), "utf8").digest("hex")}`;
+}
+
 function requireConfiguredV2Root(value: string | undefined, field: "MEMORY_HOME" | "WORKSPACE"): string {
   if (!value?.trim()) throw new Error(`PPIRTV_DEX_MEMORIA_V2_${field}_REQUIRED`);
   if (!path.isAbsolute(value)) throw new Error(`PPIRTV_DEX_MEMORIA_V2_${field}_MUST_BE_ABSOLUTE`);
@@ -6480,6 +6855,7 @@ function memoryCandidateLedgerDataWithResolution(candidate: MemoryCandidate, res
 }
 
 function candidateResolutionLedgerData(resolution: MemoryCandidateResolution): Record<string, unknown> {
+  const v2Resolution = resolution as V2MemoryCandidateResolution;
   return {
     resolution_id: resolution.resolution_id,
     candidate_id: resolution.candidate_id,
@@ -6488,6 +6864,10 @@ function candidateResolutionLedgerData(resolution: MemoryCandidateResolution): R
     when: resolution.when,
     target_scope: resolution.target_scope,
     theme: resolution.theme,
+    candidate_tags: v2Resolution.candidate_tags,
+    candidate_density: v2Resolution.candidate_density,
+    candidate_theme: v2Resolution.candidate_theme,
+    candidate_owner_skill: v2Resolution.candidate_owner_skill,
     traceable: resolution.traceable,
     created_at: resolution.created_at,
     source: resolution.source
@@ -6509,6 +6889,119 @@ function candidateScoreTotal(candidate: Record<string, unknown>): number | undef
   }
   const total = (score as Record<string, unknown>).total;
   return typeof total === "number" ? total : undefined;
+}
+
+function memoryCandidateIdentity(candidate: Record<string, unknown>): string {
+  const legacyIdentity = typeof candidate.id === "string" ? candidate.id : undefined;
+  const v2Identity = typeof candidate.candidate_id === "string" ? candidate.candidate_id : undefined;
+  if (legacyIdentity !== undefined && v2Identity !== undefined && legacyIdentity !== v2Identity) {
+    throw new Error(`MEMORY_CANDIDATE_IDENTITY_CONFLICT: id=${legacyIdentity}; candidate_id=${v2Identity}`);
+  }
+  const identity = (v2Identity ?? legacyIdentity ?? "").trim();
+  if (!identity) {
+    throw new Error("MEMORY_CANDIDATE_IDENTITY_REQUIRED: candidate must contain id or candidate_id");
+  }
+  return identity;
+}
+
+function memoryCandidateLookup(candidates: Array<Record<string, unknown>>): Map<string, Record<string, unknown>> {
+  const lookup = new Map<string, Record<string, unknown>>();
+  for (const candidate of candidates) {
+    const identity = memoryCandidateIdentity(candidate);
+    if (lookup.has(identity)) {
+      throw new Error(`MEMORY_CANDIDATE_IDENTITY_DUPLICATE: ${identity}`);
+    }
+    lookup.set(identity, candidate);
+  }
+  return lookup;
+}
+
+function hasV2CandidateIdentity(candidate: Record<string, unknown>): boolean {
+  return typeof candidate.candidate_id === "string" && candidate.candidate_id.trim().length > 0;
+}
+
+function requireV2PromotionMetadata(candidate: Record<string, unknown>): {
+  tags: string[];
+  density: "light" | "deep";
+  theme?: string;
+  owner_skill?: string;
+} {
+  const tags = Array.isArray(candidate.tags)
+    ? candidate.tags.filter((tag): tag is string => typeof tag === "string" && tag.trim().length > 0)
+    : [];
+  const route = candidate.route && typeof candidate.route === "object"
+    ? candidate.route as Record<string, unknown>
+    : undefined;
+  const density = candidate.density === "deep" || route?.target === "L3" ? "deep"
+    : candidate.density === "light" || route?.target === "L2" ? "light"
+      : undefined;
+  const ownerSkill = typeof candidate.owner_skill === "string" && candidate.owner_skill.trim()
+    ? candidate.owner_skill.trim()
+    : typeof route?.owner_skill === "string" && route.owner_skill.trim()
+      ? route.owner_skill.trim()
+      : undefined;
+  const destinations = Array.isArray(candidate.destinations) ? candidate.destinations : [];
+  const themeDestination = destinations.find((destination) =>
+    destination && typeof destination === "object" && (destination as Record<string, unknown>).scope === "theme"
+  ) as Record<string, unknown> | undefined;
+  const theme = typeof themeDestination?.theme === "string" && themeDestination.theme.trim()
+    ? themeDestination.theme.trim()
+    : undefined;
+  if (tags.length === 0 || !density || (density === "deep" && !ownerSkill)) {
+    throw new Error("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED: V2 promotion requires tags, density and owner_skill for L3");
+  }
+  return {
+    tags,
+    density,
+    ...(theme ? { theme } : {}),
+    ...(ownerSkill ? { owner_skill: ownerSkill } : {})
+  };
+}
+
+function v2PromotionClassification(resolution: MemoryCandidateResolution): DexMemoriaV2MiningClassification {
+  const v2Resolution = resolution as V2MemoryCandidateResolution;
+  const tags = v2Resolution.candidate_tags?.filter((tag) => typeof tag === "string" && tag.trim().length > 0) ?? [];
+  const density = v2Resolution.candidate_density;
+  if (tags.length === 0 || !density || (density === "deep" && !v2Resolution.candidate_owner_skill?.trim())) {
+    throw new Error("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED: persisted V2 promotion metadata is incomplete");
+  }
+  const destination = promotionDestination(resolution.target_scope ?? "projeto", resolution.theme);
+  return density === "deep"
+    ? {
+        status: "resolved",
+        density,
+        requested_destinations: [destination],
+        tags: tags as [string, ...string[]],
+        owner_skill: v2Resolution.candidate_owner_skill!.trim()
+      }
+    : {
+        status: "resolved",
+        density,
+        requested_destinations: [destination],
+        tags: tags as [string, ...string[]]
+      };
+}
+
+function promotionDestination(scope: MemoryCandidatePromoteScope, theme?: string): DexMemoriaV2Destination {
+  if (scope === "global") return { scope: "global" };
+  if (scope === "tema") {
+    requireText(theme, "theme");
+    return { scope: "theme", theme: theme!.trim() };
+  }
+  return { scope: "project" };
+}
+
+function sameCandidateResolution(existing: MemoryCandidateResolution, proposed: V2MemoryCandidateResolution): boolean {
+  const current = existing as V2MemoryCandidateResolution;
+  return existing.candidate_id === proposed.candidate_id
+    && existing.action === proposed.action
+    && existing.rationale === proposed.rationale
+    && (existing.when ?? "") === (proposed.when ?? "")
+    && (existing.target_scope ?? "") === (proposed.target_scope ?? "")
+    && (existing.theme ?? "") === (proposed.theme ?? "")
+    && JSON.stringify(current.candidate_tags ?? []) === JSON.stringify(proposed.candidate_tags ?? [])
+    && (current.candidate_density ?? "") === (proposed.candidate_density ?? "")
+    && (current.candidate_owner_skill ?? "") === (proposed.candidate_owner_skill ?? "");
 }
 
 function memoryWriteDecision(

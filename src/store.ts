@@ -193,9 +193,12 @@ export class PpirtvStore {
     const lockPath = `${this.flowPath(flowId)}.meeting.lock`;
     const ownerToken = randomUUID();
     const lockRecord = { owner_token: ownerToken, pid: process.pid, created_at: new Date().toISOString() };
-    const deadline = Date.now() + 2_000;
+    const deadline = Date.now() + 35_000;
     let acquiredIdentity = "";
     while (true) {
+      if (Date.now() >= deadline) {
+        throw new Error(`MEETING_LOCK_TIMEOUT: ${flowId}`);
+      }
       try {
         await writeFile(lockPath, `${JSON.stringify(lockRecord)}\n`, { flag: "wx" });
         acquiredIdentity = fileIdentity(await lstat(lockPath, { bigint: true }));
@@ -204,7 +207,15 @@ export class PpirtvStore {
         if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
           throw error;
         }
-        const existing = await readStableFlowLock(lockPath, flowId);
+        let existing: Awaited<ReturnType<typeof readStableFlowLock>>;
+        try {
+          existing = await this.readFlowLock(lockPath, flowId);
+        } catch (readError) {
+          if ((readError as NodeJS.ErrnoException).code === "ENOENT") {
+            continue;
+          }
+          throw readError;
+        }
         if (existing.record.pid === process.pid) {
           if (Date.now() >= deadline) {
             throw new Error(`MEETING_LOCK_TIMEOUT: ${flowId}`);
@@ -215,22 +226,47 @@ export class PpirtvStore {
         if (processAlive(existing.record.pid)) {
           throw new Error(`MEETING_LOCKED: ${flowId}; owner=${existing.record.owner_token}; pid=${existing.record.pid}`);
         }
-        if (fileIdentity(await lstat(lockPath, { bigint: true })) !== existing.identity) {
+        let staleIdentity: string;
+        try {
+          staleIdentity = fileIdentity(await lstat(lockPath, { bigint: true }));
+        } catch (identityError) {
+          if ((identityError as NodeJS.ErrnoException).code === "ENOENT") {
+            continue;
+          }
+          throw identityError;
+        }
+        if (staleIdentity !== existing.identity) {
           throw new Error(`MEETING_STALE_LOCK_IDENTITY_CHANGED: ${flowId}`);
         }
-        await unlink(lockPath);
+        try {
+          await unlink(lockPath);
+        } catch (unlinkError) {
+          if ((unlinkError as NodeJS.ErrnoException).code !== "ENOENT") {
+            throw unlinkError;
+          }
+        }
       }
     }
     try {
       return await operation();
     } finally {
-      if (await this.pathExists(lockPath)) {
-        const current = await readStableFlowLock(lockPath, flowId);
-        if (current.record.owner_token === ownerToken && current.identity === acquiredIdentity) {
-          await unlink(lockPath);
+      try {
+        if (await this.pathExists(lockPath)) {
+          const current = await this.readFlowLock(lockPath, flowId);
+          if (current.record.owner_token === ownerToken && current.identity === acquiredIdentity) {
+            await unlink(lockPath);
+          }
+        }
+      } catch (cleanupError) {
+        if ((cleanupError as NodeJS.ErrnoException).code !== "ENOENT") {
+          throw cleanupError;
         }
       }
     }
+  }
+
+  protected async readFlowLock(lockPath: string, flowId: string): Promise<Awaited<ReturnType<typeof readStableFlowLock>>> {
+    return readStableFlowLock(lockPath, flowId);
   }
 
   async saveEvidence(evidence: Evidence): Promise<void> {

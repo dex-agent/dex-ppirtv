@@ -234,7 +234,6 @@ export async function executeDexMemoriaV2Adapter(input: {
       pending_destinations: pendingDestinations(receipt)
     };
   } catch (error) {
-    if (!isReceiptEvidenceError(error)) throw error;
     return {
       status: "partial_pending",
       operation_id: request.operation_id,
@@ -516,10 +515,6 @@ async function validateIndependentValidationReceipt(
     throw new Error("DEX_MEMORIA_V2_VALIDATION_WRITE_SET_MISMATCH");
   }
   return [l1.absolutePath, destination.absolutePath];
-}
-
-function isReceiptEvidenceError(error: unknown): boolean {
-  return error instanceof Error && /(?:VALIDATION|WRITER|RECEIPT_EVIDENCE|REPARSE_BOUNDARY)/.test(error.message);
 }
 
 function validationReceiptRefs(receipt: DexMemoriaV2CanonicalReceipt, validatedFilesByScope: Map<string, string[]>): DexMemoriaV2ValidationReceiptRef[] {

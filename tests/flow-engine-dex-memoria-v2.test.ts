@@ -90,6 +90,7 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
     expect(mined).toMatchObject({
       v2_status: "classify_only",
       memory_written: false,
+      blocked_verdict: true,
       unclassified: 1,
       candidates: [{ classification_status: "unresolved", classification_reason: "destinations_required", destinations: [] }]
     });
@@ -284,6 +285,1105 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
     });
   });
 
+  it.each([
+    ["accept_ledger_only", "ledger_only", "ledger_only_count"],
+    ["park", "estacionamento", "estacionamento_count"],
+    ["discard", "discarded", "discarded_count"]
+  ] as const)("applies %s semantically after reload", async (action, resultField, countField) => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-candidate-resolve-"));
+    const executor = { execute: vi.fn() };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const flow = await engine.createFlow({ goal: `Resolver candidato V2 com ${action}` });
+    flow.gold_mining = [`Regra local para acao ${action}.`];
+    await engine.store.saveFlow(flow);
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "classify_only",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "light",
+      v2_tags: TEST_TAGS
+    }) as any;
+    const candidateId = mined.candidates[0].candidate_id as string;
+    const resolutionInput = {
+      flow_id: flow.flow_id,
+      candidate_ids: [candidateId],
+      action,
+      rationale: `Decisao rastreavel para ${action}.`,
+      ...(action === "park" ? { when: "Quando o owner revisar este aprendizado." } : {})
+    };
+
+    const first = await engine.resolveMemoryCandidates(resolutionInput) as any;
+    const repeated = await engine.resolveMemoryCandidates(resolutionInput) as any;
+    const reloaded = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const replayed = await reloaded.mineMemory({ flow_id: flow.flow_id, write_policy: "auto_write" }) as any;
+    const persisted = await store.loadFlow(flow.flow_id);
+    const resolutionLedgerEvents = (await store.readLedger(flow.flow_id))
+      .filter((event) => event.type === "memory_candidates_resolved");
+
+    expect(first.resolved).toEqual([expect.objectContaining({ candidate_id: candidateId, action, traceable: true })]);
+    expect(repeated.resolved).toEqual(first.resolved);
+    expect(persisted.memory_candidate_resolutions).toHaveLength(1);
+    expect(resolutionLedgerEvents).toHaveLength(1);
+    expect(resolutionLedgerEvents[0].data.resolutions).toEqual([
+      expect.objectContaining({ candidate_id: candidateId, action })
+    ]);
+    expect(replayed).toMatchObject({
+      resolved_candidate_ids: [candidateId],
+      candidate_resolutions: [expect.objectContaining({ candidate_id: candidateId, action })],
+      [resultField]: [candidateId],
+      [countField]: 1,
+      blocked_verdict: false
+    });
+    expect(executor.execute).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["projeto", undefined, "project"],
+    ["global", undefined, "global"],
+    ["tema", "engenharia", "theme"]
+  ] as const)("promotes %s through the explicit V2 destination translation", async (targetScope, theme, expectedScope) => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-promote-"));
+    let executionCount = 0;
+    const executor = { execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => {
+      executionCount += 1;
+      return committedReceipt(input.operation_request, input.candidate, executionCount > 1);
+    }) };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const flow = await engine.createFlow({ goal: `Promover candidato V2 para ${targetScope}` });
+    flow.gold_mining = [`Conhecimento profundo seguro para ${targetScope}.`];
+    await engine.store.saveFlow(flow);
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "classify_only",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "deep",
+      v2_owner_skill: "dex-memoria",
+      v2_tags: TEST_TAGS
+    }) as any;
+    const candidateId = mined.candidates[0].candidate_id as string;
+
+    const resolutionInput = {
+      flow_id: flow.flow_id,
+      candidate_ids: [candidateId],
+      action: "promote",
+      target_scope: targetScope,
+      ...(theme ? { theme } : {}),
+      rationale: `Promocao segura para ${targetScope}.`
+    } as const;
+    const registered = await engine.resolveMemoryCandidates(resolutionInput) as any;
+    expect(registered).toMatchObject({
+      application_status: "pending",
+      applied_resolutions: [],
+      pending_resolutions: [expect.objectContaining({ candidate_id: candidateId })],
+      memory_mining: {
+        written_count: 0,
+        memory_validated: false,
+        strong_unwritten_count: 1,
+        blocked_verdict: true
+      }
+    });
+    const reloaded = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const replayed = await reloaded.mineMemory({ flow_id: flow.flow_id, write_policy: "auto_write" }) as any;
+    const removedDestination = replayed.written[0].files.at(-1) as string;
+    await rm(removedDestination);
+    const repeated = await reloaded.resolveMemoryCandidates(resolutionInput) as any;
+    const persisted = await store.loadFlow(flow.flow_id);
+
+    expect(executor.execute).toHaveBeenCalledTimes(2);
+    expect(executor.execute).toHaveBeenCalledWith({
+      operation_request: expect.objectContaining({
+        scope: expectedScope,
+        ...(theme ? { theme } : {})
+      }),
+      candidate: expect.objectContaining({
+        target_layer: "L3",
+        owner_skill: "dex-memoria",
+        tags: TEST_TAGS
+      })
+    });
+    expect(replayed).toMatchObject({
+      resolved_candidate_ids: [candidateId],
+      candidate_resolutions: [expect.objectContaining({
+        candidate_id: candidateId,
+        action: "promote",
+        target_scope: targetScope,
+        candidate_tags: TEST_TAGS,
+        candidate_density: "deep",
+        candidate_owner_skill: "dex-memoria"
+      })],
+      written_count: 1,
+      blocked_verdict: false
+    });
+    expect(repeated).toMatchObject({
+      application_status: "applied",
+      applied_resolutions: [expect.objectContaining({ candidate_id: candidateId })],
+      pending_resolutions: [],
+      memory_mining: {
+        written_count: 1,
+        memory_validated: true,
+        blocked_verdict: false,
+        v2_receipts: [{
+          route_receipts: {
+            [expectedScope]: expect.objectContaining({ deduplicated: true })
+          }
+        }]
+      }
+    });
+    await expect(access(removedDestination)).resolves.toBeUndefined();
+    expect(persisted.memory_candidate_resolutions).toHaveLength(1);
+  });
+
+  it("validates every effective identity before mutation and accepts a coherent hybrid", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-candidate-identity-"));
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter({ execute: vi.fn() }) });
+    const flow = await engine.createFlow({ goal: "Validar coleção de identidades antes de resolver" });
+    flow.gold_mining = ["Regra local para identidade invalida."];
+    await engine.store.saveFlow(flow);
+    await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "classify_only",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "light",
+      v2_tags: TEST_TAGS
+    });
+    const persisted = await engine.store.loadFlow(flow.flow_id);
+    persisted.memory_mining!.candidates = [{ id: "mc_hybrid", candidate_id: "mc_hybrid" }];
+    await engine.store.saveFlow(persisted);
+
+    await expect(engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: ["mc_hybrid"],
+      action: "discard",
+      rationale: "Identidade hibrida coerente continua valida."
+    })).resolves.toMatchObject({ resolved: [{ candidate_id: "mc_hybrid" }] });
+
+    const invalidCollections = [
+      [{ candidate_id: "" }, { candidate_id: "mc_valid" }],
+      [{ id: "mc_legacy", candidate_id: "mc_v2" }, { candidate_id: "mc_valid" }],
+      [{ id: "mc_same", candidate_id: " mc_same " }, { candidate_id: "mc_valid" }],
+      [{ id: "mc_duplicate" }, { candidate_id: "mc_duplicate" }]
+    ];
+    const expectedErrors = [
+      "MEMORY_CANDIDATE_IDENTITY_REQUIRED",
+      "MEMORY_CANDIDATE_IDENTITY_CONFLICT",
+      "MEMORY_CANDIDATE_IDENTITY_CONFLICT",
+      "MEMORY_CANDIDATE_IDENTITY_DUPLICATE"
+    ];
+    for (const [index, candidates] of invalidCollections.entries()) {
+      const before = await store.loadFlow(flow.flow_id);
+      const priorResolutionCount = before.memory_candidate_resolutions?.length ?? 0;
+      before.memory_mining!.candidates = candidates;
+      await store.saveFlow(before);
+      await expect(engine.resolveMemoryCandidates({
+        flow_id: flow.flow_id,
+        candidate_ids: ["mc_valid"],
+        action: "discard",
+        rationale: "Colecao invalida deve falhar fechada."
+      })).rejects.toThrow(expectedErrors[index]);
+      const after = await store.loadFlow(flow.flow_id);
+      expect(after.memory_candidate_resolutions).toHaveLength(priorResolutionCount);
+    }
+
+    const validAgain = await store.loadFlow(flow.flow_id);
+    validAgain.memory_mining!.candidates = [{ candidate_id: "mc_valid" }];
+    await store.saveFlow(validAgain);
+    await expect(engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: ["mc_unknown"],
+      action: "discard",
+      rationale: "ID desconhecido deve continuar rejeitado."
+    })).rejects.toThrow("Unknown memory candidate ids: mc_unknown");
+  });
+
+  it("rejects an unsafe V2 promotion before persisting and reports integrated writer failure without false success", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-promote-failure-"));
+    const executor = {
+      execute: vi.fn()
+        .mockImplementationOnce(async (input: DexMemoriaV2ExecutionInput) => committedReceipt(input.operation_request, input.candidate))
+        .mockRejectedValue(new Error("synthetic writer failure"))
+    };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const flow = await engine.createFlow({ goal: "Falhar promoção V2 de forma segura" });
+    flow.gold_mining = ["Conhecimento profundo que exige metadados completos."];
+    await engine.store.saveFlow(flow);
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "classify_only",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "deep",
+      v2_owner_skill: "dex-memoria",
+      v2_tags: TEST_TAGS
+    }) as any;
+    const candidateId = mined.candidates[0].candidate_id as string;
+    const unsafe = await store.loadFlow(flow.flow_id);
+    delete (unsafe.memory_mining!.candidates[0] as any).tags;
+    await store.saveFlow(unsafe);
+
+    await expect(engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [candidateId],
+      action: "promote",
+      target_scope: "global",
+      rationale: "Sem tags a promoção deve falhar antes de persistir."
+    })).rejects.toThrow("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED");
+    expect((await store.loadFlow(flow.flow_id)).memory_candidate_resolutions ?? []).toHaveLength(0);
+
+    await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "auto_write",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "deep",
+      v2_owner_skill: "dex-memoria",
+      v2_tags: TEST_TAGS
+    });
+    const failed = await engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [candidateId],
+      action: "promote",
+      target_scope: "global",
+      rationale: "Promoção válida cuja execução seguinte falhará."
+    }) as any;
+    expect(failed).toMatchObject({
+      application_status: "pending",
+      applied_resolutions: [],
+      pending_resolutions: [expect.objectContaining({ candidate_id: candidateId })],
+      memory_mining: {
+        written_count: 0,
+        memory_written: false,
+        memory_validated: false,
+        blocked_verdict: true,
+        v2_status: "partial_pending",
+        v2_failures: [expect.objectContaining({ message: "synthetic writer failure" })]
+      }
+    });
+  });
+
+  it("restores the flow without an orphan resolution ledger event when remine throws", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-resolution-rollback-"));
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter({ execute: vi.fn() }) });
+    const flow = await engine.createFlow({ goal: "Restaurar resolução quando remine falhar" });
+    flow.gold_mining = ["Regra local cuja resolução precisa ser atômica."];
+    await store.saveFlow(flow);
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "classify_only",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "light",
+      v2_tags: TEST_TAGS
+    }) as any;
+    const before = await store.loadFlow(flow.flow_id);
+    const ledgerBefore = await store.readLedger(flow.flow_id);
+    vi.spyOn(engine as any, "mineMemoryUnlocked").mockRejectedValueOnce(new Error("synthetic remine failure"));
+
+    await expect(engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [mined.candidates[0].candidate_id],
+      action: "discard",
+      rationale: "Falha de persistência deve restaurar o snapshot."
+    })).rejects.toThrow("synthetic remine failure");
+
+    const after = await store.loadFlow(flow.flow_id);
+    const ledgerAfter = await store.readLedger(flow.flow_id);
+    expect(after.memory_candidate_resolutions).toEqual(before.memory_candidate_resolutions);
+    expect(after.history).toEqual(before.history);
+    expect(after.memory_mining).toEqual(before.memory_mining);
+    expect(ledgerAfter).toEqual(ledgerBefore);
+  });
+
+  it("reconciles an append-then-throw resolution ledger boundary without duplicating the event", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-resolution-ledger-recovery-"));
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter({ execute: vi.fn() }) });
+    const flow = await engine.createFlow({ goal: "Recuperar fronteira ambigua do ledger" });
+    flow.gold_mining = ["Regra local cuja decisão precisa de ledger exato uma vez."];
+    await store.saveFlow(flow);
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "classify_only",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "light",
+      v2_tags: TEST_TAGS
+    }) as any;
+    const originalAppendLedger = store.appendLedger.bind(store);
+    let injected = false;
+    store.appendLedger = async (event) => {
+      await originalAppendLedger(event);
+      if (!injected && event.type === "memory_candidates_resolved") {
+        injected = true;
+        throw new Error("synthetic append-then-throw");
+      }
+    };
+
+    await expect(engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [mined.candidates[0].candidate_id],
+      action: "accept_ledger_only",
+      rationale: "A reconciliação deve reconhecer o append concluído."
+    })).resolves.toMatchObject({ application_status: "applied" });
+
+    const events = (await store.readLedger(flow.flow_id)).filter((event) => event.type === "memory_candidates_resolved");
+    expect(events).toHaveLength(1);
+  });
+
+  it("preserves a COMMITTED writer result when memory_mined fails before append and completes exactly once after reload", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-mined-ledger-retry-"));
+    let executionCount = 0;
+    const executor = { execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => {
+      executionCount += 1;
+      if (executionCount === 1) throw new Error("synthetic pre-commit writer failure");
+      return committedReceipt(input.operation_request, input.candidate, executionCount > 2);
+    }) };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const flow = await engine.createFlow({ goal: "Recuperar commit do writer antes do ledger" });
+    flow.gold_mining = ["Conhecimento profundo cuja promoção precisa sobreviver à falha do ledger."];
+    await store.saveFlow(flow);
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "auto_write",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "deep",
+      v2_owner_skill: "dex-memoria",
+      v2_tags: TEST_TAGS
+    }) as any;
+    const candidateId = mined.candidates[0].candidate_id as string;
+    const resolutionInput = {
+      flow_id: flow.flow_id,
+      candidate_ids: [candidateId],
+      action: "promote",
+      target_scope: "global",
+      rationale: "A decisão e o receipt COMMITTED devem permanecer recuperáveis."
+    } as const;
+    const originalAppendLedger = store.appendLedger.bind(store);
+    const originalSaveFlow = store.saveFlow.bind(store);
+    let injected = false;
+    let pendingSaveInjected = false;
+    store.appendLedger = async (event) => {
+      if (!injected && event.type === "memory_mined") {
+        injected = true;
+        throw new Error("synthetic memory_mined pre-append failure");
+      }
+      await originalAppendLedger(event);
+    };
+    store.saveFlow = async (candidateFlow) => {
+      const mining = candidateFlow.memory_mining as any;
+      if (!pendingSaveInjected && mining?.v2_status === "partial_pending" && mining?.v2_ledger_status === "pending") {
+        pendingSaveInjected = true;
+        throw new Error("synthetic pending recovery save failure");
+      }
+      await originalSaveFlow(candidateFlow);
+    };
+
+    const pending = await engine.resolveMemoryCandidates(resolutionInput) as any;
+    const persistedPending = await store.loadFlow(flow.flow_id);
+
+    expect(pending).toMatchObject({
+      application_status: "pending",
+      applied_resolutions: [],
+      pending_resolutions: [expect.objectContaining({ candidate_id: candidateId })],
+      memory_mining: {
+        v2_ledger_status: "pending",
+        blocked_verdict: true,
+        v2_receipts: [expect.objectContaining({ status: "COMMITTED" })]
+      }
+    });
+    expect(persistedPending.memory_candidate_resolutions).toHaveLength(1);
+    expect(persistedPending.memory_mining).toMatchObject({
+      v2_ledger_status: "pending",
+      blocked_verdict: true,
+      v2_receipts: [expect.objectContaining({ status: "COMMITTED" })]
+    });
+    const reconciliationId = pending.memory_mining.v2_reconciliation_id as string;
+
+    store.appendLedger = originalAppendLedger;
+    store.saveFlow = originalSaveFlow;
+    const reloaded = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const retried = await reloaded.resolveMemoryCandidates(resolutionInput) as any;
+    const persistedRetried = await store.loadFlow(flow.flow_id);
+    const minedResolutionEvents = (await store.readLedger(flow.flow_id)).filter((event) =>
+      event.type === "memory_mined"
+      && Array.isArray(event.data.candidate_resolutions)
+      && event.data.candidate_resolutions.length > 0
+    );
+
+    expect(retried).toMatchObject({
+      application_status: "applied",
+      pending_resolutions: [],
+      memory_mining: {
+        v2_ledger_status: "confirmed",
+        v2_reconciliation_id: reconciliationId,
+        blocked_verdict: false,
+        v2_receipts: [{
+          route_receipts: {
+            global: expect.objectContaining({ deduplicated: true })
+          }
+        }]
+      }
+    });
+    expect(executor.execute).toHaveBeenCalledTimes(3);
+    expect(minedResolutionEvents).toHaveLength(1);
+    expect(persistedRetried.memory_candidate_resolutions).toHaveLength(1);
+    expect(persistedRetried.history.filter((event) =>
+      event.type === "memory_mined" && event.data.v2_reconciliation_id === reconciliationId
+    )).toHaveLength(1);
+  });
+
+  it("recognizes memory_mined append-then-throw by reconciliation identity without duplicating the logical event", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-mined-ledger-ambiguous-"));
+    let executionCount = 0;
+    const executor = { execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => {
+      executionCount += 1;
+      if (executionCount === 1) throw new Error("synthetic pre-commit writer failure");
+      return committedReceipt(input.operation_request, input.candidate);
+    }) };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const flow = await engine.createFlow({ goal: "Reconciliar append ambíguo de memory_mined" });
+    flow.gold_mining = ["Conhecimento profundo com ledger de mineração exato uma vez."];
+    await store.saveFlow(flow);
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "auto_write",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "deep",
+      v2_owner_skill: "dex-memoria",
+      v2_tags: TEST_TAGS
+    }) as any;
+    const candidateId = mined.candidates[0].candidate_id as string;
+    const originalAppendLedger = store.appendLedger.bind(store);
+    let injected = false;
+    store.appendLedger = async (event) => {
+      await originalAppendLedger(event);
+      if (!injected && event.type === "memory_mined" && Array.isArray(event.data.candidate_resolutions) && event.data.candidate_resolutions.length > 0) {
+        injected = true;
+        throw new Error("synthetic memory_mined append-then-throw");
+      }
+    };
+
+    const resolved = await engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [candidateId],
+      action: "promote",
+      target_scope: "global",
+      rationale: "O evento gravado deve vencer o erro ambíguo."
+    }) as any;
+    const minedResolutionEvents = (await store.readLedger(flow.flow_id)).filter((event) =>
+      event.type === "memory_mined"
+      && Array.isArray(event.data.candidate_resolutions)
+      && event.data.candidate_resolutions.length > 0
+    );
+
+    expect(resolved).toMatchObject({
+      application_status: "applied",
+      memory_mining: {
+        v2_ledger_status: "confirmed",
+        blocked_verdict: false
+      }
+    });
+    expect(minedResolutionEvents).toHaveLength(1);
+    expect(minedResolutionEvents[0].data.v2_reconciliation_id).toEqual(expect.any(String));
+  });
+
+  it("keeps COMMITTED receipts recoverable when the pre-append ledger read fails", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-mined-ledger-read-failure-"));
+    let executionCount = 0;
+    const executor = { execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => {
+      executionCount += 1;
+      if (executionCount === 1) throw new Error("synthetic pre-commit writer failure");
+      return committedReceipt(input.operation_request, input.candidate, executionCount > 2);
+    }) };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const flow = await engine.createFlow({ goal: "Preservar commit quando leitura do ledger falhar" });
+    flow.gold_mining = ["Conhecimento profundo que não pode ser apagado por falha de leitura do ledger."];
+    await store.saveFlow(flow);
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "auto_write",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "deep",
+      v2_owner_skill: "dex-memoria",
+      v2_tags: TEST_TAGS
+    }) as any;
+    const candidateId = mined.candidates[0].candidate_id as string;
+    const resolutionInput = {
+      flow_id: flow.flow_id,
+      candidate_ids: [candidateId],
+      action: "promote",
+      target_scope: "global",
+      rationale: "Falha de leitura não autoriza rollback pós-COMMITTED."
+    } as const;
+    const originalReadLedger = store.readLedger.bind(store);
+    let injected = false;
+    store.readLedger = async (flowId) => {
+      if (!injected) {
+        injected = true;
+        throw new Error("synthetic memory_mined ledger read failure");
+      }
+      return originalReadLedger(flowId);
+    };
+
+    const pending = await engine.resolveMemoryCandidates(resolutionInput) as any;
+    const persisted = await store.loadFlow(flow.flow_id);
+
+    expect(pending).toMatchObject({
+      application_status: "pending",
+      applied_resolutions: [],
+      memory_mining: {
+        v2_ledger_status: "pending",
+        blocked_verdict: true,
+        v2_receipts: [expect.objectContaining({ status: "COMMITTED" })],
+        v2_failures: [expect.objectContaining({ message: "synthetic memory_mined ledger read failure" })]
+      }
+    });
+    expect(persisted.memory_candidate_resolutions).toHaveLength(1);
+    expect(persisted.memory_mining).toMatchObject({
+      v2_ledger_status: "pending",
+      blocked_verdict: true,
+      v2_receipts: [expect.objectContaining({ status: "COMMITTED" })]
+    });
+
+    store.readLedger = originalReadLedger;
+    const reloaded = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    await expect(reloaded.resolveMemoryCandidates(resolutionInput)).resolves.toMatchObject({
+      application_status: "applied",
+      memory_mining: { v2_ledger_status: "confirmed", blocked_verdict: false }
+    });
+  });
+
+  it("persists a blocked COMMITTED recovery state when saveFlow fails after the writer returns", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-mined-flow-save-failure-"));
+    let executionCount = 0;
+    const executor = { execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => {
+      executionCount += 1;
+      if (executionCount === 1) throw new Error("synthetic pre-commit writer failure");
+      return committedReceipt(input.operation_request, input.candidate, executionCount > 2);
+    }) };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const flow = await engine.createFlow({ goal: "Preservar commit quando saveFlow falhar" });
+    flow.gold_mining = ["Conhecimento profundo cujo receipt precisa sobreviver a uma falha de saveFlow."];
+    await store.saveFlow(flow);
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "auto_write",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "deep",
+      v2_owner_skill: "dex-memoria",
+      v2_tags: TEST_TAGS
+    }) as any;
+    const candidateId = mined.candidates[0].candidate_id as string;
+    const resolutionInput = {
+      flow_id: flow.flow_id,
+      candidate_ids: [candidateId],
+      action: "promote",
+      target_scope: "global",
+      rationale: "Falha pós-COMMITTED deve produzir recuperação bloqueada."
+    } as const;
+    const originalSaveFlow = store.saveFlow.bind(store);
+    let injected = false;
+    store.saveFlow = async (candidateFlow) => {
+      const v2Receipts = (candidateFlow.memory_mining as any)?.v2_receipts;
+      if (!injected && Array.isArray(v2Receipts) && v2Receipts.some((receipt) => receipt.status === "COMMITTED")) {
+        injected = true;
+        throw new Error("synthetic post-COMMITTED saveFlow failure");
+      }
+      await originalSaveFlow(candidateFlow);
+    };
+
+    const pending = await engine.resolveMemoryCandidates(resolutionInput) as any;
+    const persisted = await store.loadFlow(flow.flow_id);
+
+    expect(pending).toMatchObject({
+      application_status: "pending",
+      applied_resolutions: [],
+      memory_mining: {
+        v2_ledger_status: "pending",
+        blocked_verdict: true,
+        v2_receipts: [expect.objectContaining({ status: "COMMITTED" })],
+        v2_failures: [expect.objectContaining({ message: "synthetic post-COMMITTED saveFlow failure" })]
+      }
+    });
+    expect(persisted.memory_candidate_resolutions).toHaveLength(1);
+    expect(persisted.memory_mining).toMatchObject({
+      v2_ledger_status: "pending",
+      blocked_verdict: true,
+      v2_receipts: [expect.objectContaining({ status: "COMMITTED" })]
+    });
+    expect((await store.readLedger(flow.flow_id)).filter((event) =>
+      event.type === "memory_mined"
+      && Array.isArray(event.data.candidate_resolutions)
+      && event.data.candidate_resolutions.length > 0
+    )).toHaveLength(0);
+
+    store.saveFlow = originalSaveFlow;
+    const reloaded = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    await expect(reloaded.resolveMemoryCandidates(resolutionInput)).resolves.toMatchObject({
+      application_status: "applied",
+      memory_mining: { v2_ledger_status: "confirmed", blocked_verdict: false }
+    });
+  });
+
+  it("marks persistent post-COMMITTED save failure and never rolls the resolution back or returns applied", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-persistent-flow-save-failure-"));
+    let executionCount = 0;
+    const executor = { execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => {
+      executionCount += 1;
+      if (executionCount === 1) throw new Error("synthetic pre-commit writer failure");
+      return committedReceipt(input.operation_request, input.candidate, executionCount > 2);
+    }) };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const flow = await engine.createFlow({ goal: "Impedir rollback após falha persistente de saveFlow" });
+    flow.gold_mining = ["Conhecimento profundo cujo commit externo não pode ser desfeito localmente."];
+    await store.saveFlow(flow);
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "auto_write",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "deep",
+      v2_owner_skill: "dex-memoria",
+      v2_tags: TEST_TAGS
+    }) as any;
+    const candidateId = mined.candidates[0].candidate_id as string;
+    const resolutionInput = {
+      flow_id: flow.flow_id,
+      candidate_ids: [candidateId],
+      action: "promote",
+      target_scope: "global",
+      rationale: "Persistência indisponível deve falhar explicitamente sem rollback."
+    } as const;
+    const originalSaveFlow = store.saveFlow.bind(store);
+    store.saveFlow = async (candidateFlow) => {
+      const receipts = (candidateFlow.memory_mining as any)?.v2_receipts;
+      if (Array.isArray(receipts) && receipts.some((receipt) => receipt.status === "COMMITTED")) {
+        throw new Error("synthetic persistent post-COMMITTED save failure");
+      }
+      await originalSaveFlow(candidateFlow);
+    };
+
+    await expect(engine.resolveMemoryCandidates(resolutionInput))
+      .rejects.toThrow("PPIRTV_V2_COMMITTED_STATE_PERSISTENCE_FAILED");
+
+    const persisted = await store.loadFlow(flow.flow_id);
+    expect(persisted.memory_candidate_resolutions).toEqual([
+      expect.objectContaining({ candidate_id: candidateId, action: "promote" })
+    ]);
+    expect(persisted.history.filter((event) => event.type === "memory_candidates_resolved")).toHaveLength(1);
+    expect((await store.readLedger(flow.flow_id)).filter((event) =>
+      event.type === "memory_mined"
+      && Array.isArray(event.data.candidate_resolutions)
+      && event.data.candidate_resolutions.length > 0
+    )).toHaveLength(0);
+
+    store.saveFlow = originalSaveFlow;
+    const reloaded = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    await expect(reloaded.resolveMemoryCandidates(resolutionInput)).resolves.toMatchObject({
+      application_status: "applied",
+      memory_mining: { v2_ledger_status: "confirmed", blocked_verdict: false }
+    });
+  });
+
+  it("keeps the persisted pending state when confirmed flow persistence fails after ledger append", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-confirmed-flow-save-failure-"));
+    let executionCount = 0;
+    const executor = { execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => {
+      executionCount += 1;
+      if (executionCount === 1) throw new Error("synthetic pre-commit writer failure");
+      return committedReceipt(input.operation_request, input.candidate, executionCount > 2);
+    }) };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const flow = await engine.createFlow({ goal: "Manter pending quando confirmação do flow falhar" });
+    flow.gold_mining = ["Conhecimento profundo confirmado no ledger, mas ainda pendente no flow."];
+    await store.saveFlow(flow);
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "auto_write",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "deep",
+      v2_owner_skill: "dex-memoria",
+      v2_tags: TEST_TAGS
+    }) as any;
+    const candidateId = mined.candidates[0].candidate_id as string;
+    const resolutionInput = {
+      flow_id: flow.flow_id,
+      candidate_ids: [candidateId],
+      action: "promote",
+      target_scope: "global",
+      rationale: "Confirmação incompleta do flow não pode receber applied."
+    } as const;
+    const originalSaveFlow = store.saveFlow.bind(store);
+    store.saveFlow = async (candidateFlow) => {
+      if ((candidateFlow.memory_mining as any)?.v2_ledger_status === "confirmed"
+        && ((candidateFlow.memory_mining as any)?.v2_receipts ?? []).some((receipt: any) => receipt.status === "COMMITTED")) {
+        throw new Error("synthetic confirmed flow persistence failure");
+      }
+      await originalSaveFlow(candidateFlow);
+    };
+
+    const pending = await engine.resolveMemoryCandidates(resolutionInput) as any;
+    const persistedPending = await store.loadFlow(flow.flow_id);
+    const reconciliationId = pending.memory_mining.v2_reconciliation_id as string;
+
+    expect(pending).toMatchObject({
+      application_status: "pending",
+      applied_resolutions: [],
+      memory_mining: {
+        v2_status: "partial_pending",
+        v2_ledger_status: "pending",
+        blocked_verdict: true,
+        v2_failures: [expect.objectContaining({ message: "synthetic confirmed flow persistence failure" })]
+      }
+    });
+    expect(persistedPending.memory_candidate_resolutions).toHaveLength(1);
+    expect(persistedPending.memory_mining).toMatchObject({
+      v2_ledger_status: "pending",
+      blocked_verdict: true,
+      v2_receipts: [expect.objectContaining({ status: "COMMITTED" })]
+    });
+    expect((await store.readLedger(flow.flow_id)).filter((event) =>
+      event.type === "memory_mined" && event.data.v2_reconciliation_id === reconciliationId
+    )).toHaveLength(1);
+
+    store.saveFlow = originalSaveFlow;
+    const reloaded = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    await expect(reloaded.resolveMemoryCandidates(resolutionInput)).resolves.toMatchObject({
+      application_status: "applied",
+      memory_mining: {
+        v2_reconciliation_id: reconciliationId,
+        v2_ledger_status: "confirmed",
+        blocked_verdict: false
+      }
+    });
+    expect((await store.readLedger(flow.flow_id)).filter((event) =>
+      event.type === "memory_mined" && event.data.v2_reconciliation_id === reconciliationId
+    )).toHaveLength(1);
+  });
+
+  it("waits through a 30 second same-process flow lock and times out explicitly after 35 seconds", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-flow-lock-budget-"));
+    const store = configuredStore();
+    const flow = await new FlowEngine(store).createFlow({ goal: "Validar orçamento do flow lock" });
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-07-28T12:00:00.000Z"));
+    try {
+      let firstEntered!: () => void;
+      let releaseFirst!: () => void;
+      const entered = new Promise<void>((resolve) => { firstEntered = resolve; });
+      const first = store.withFlowLock(flow.flow_id, async () => {
+        firstEntered();
+        await new Promise<void>((resolve) => { releaseFirst = resolve; });
+        return "first";
+      });
+      await entered;
+      const second = store.withFlowLock(flow.flow_id, async () => "second");
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      vi.setSystemTime(new Date("2026-07-28T12:00:30.000Z"));
+      releaseFirst();
+      await expect(first).resolves.toBe("first");
+      await expect(second).resolves.toBe("second");
+
+      let blockerEntered!: () => void;
+      let releaseBlocker!: () => void;
+      const blockerReady = new Promise<void>((resolve) => { blockerEntered = resolve; });
+      const blocker = store.withFlowLock(flow.flow_id, async () => {
+        blockerEntered();
+        await new Promise<void>((resolve) => { releaseBlocker = resolve; });
+      });
+      await blockerReady;
+      const timedOut = store.withFlowLock(flow.flow_id, async () => "unsafe");
+      const timeoutAssertion = expect(timedOut).rejects.toThrow(`MEETING_LOCK_TIMEOUT: ${flow.flow_id}`);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      vi.setSystemTime(new Date("2026-07-28T12:01:05.001Z"));
+      await timeoutAssertion;
+      releaseBlocker();
+      await blocker;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("bounds repeated EEXIST-to-ENOENT lock churn by the same 35 second deadline", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-flow-lock-enoent-churn-"));
+    const storeRoot = path.join(tempRoot, "workspace", ".ppirtv");
+    const holderStore = new PpirtvStore(storeRoot);
+    const flow = await new FlowEngine(holderStore).createFlow({ goal: "Limitar churn transitório do flow lock" });
+    let releaseHolder!: () => void;
+    let holderEntered!: () => void;
+    const entered = new Promise<void>((resolve) => { holderEntered = resolve; });
+    const holder = holderStore.withFlowLock(flow.flow_id, async () => {
+      holderEntered();
+      await new Promise<void>((resolve) => { releaseHolder = resolve; });
+    });
+    await entered;
+
+    class EnoentChurnStore extends PpirtvStore {
+      attempts = 0;
+
+      protected override async readFlowLock(lockPath: string, flowId: string) {
+        this.attempts += 1;
+        vi.setSystemTime(new Date(Date.now() + 10_000));
+        if (this.attempts === 4) {
+          releaseHolder();
+          await holder;
+        }
+        if (this.attempts <= 4) {
+          throw Object.assign(new Error(`synthetic ENOENT churn: ${lockPath}; ${flowId}`), { code: "ENOENT" });
+        }
+        return super.readFlowLock(lockPath, flowId);
+      }
+    }
+
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-07-28T12:00:00.000Z"));
+    try {
+      const contender = new EnoentChurnStore(storeRoot);
+      await expect(contender.withFlowLock(flow.flow_id, async () => "unsafe"))
+        .rejects.toThrow(`MEETING_LOCK_TIMEOUT: ${flow.flow_id}`);
+      expect(contender.attempts).toBe(4);
+    } finally {
+      releaseHolder();
+      await holder;
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    [
+      "candidate identity",
+      "DEX_MEMORIA_V2_CORE_CANDIDATE_ID_MISMATCH",
+      (receipt: DexMemoriaV2CanonicalReceipt, input: DexMemoriaV2ExecutionInput) => {
+        receipt.route_receipts[input.operation_request.scope === "global" ? "global" : "project"]!.candidate_id = "c".repeat(64);
+      }
+    ],
+    [
+      "receipt contract",
+      "DEX_MEMORIA_V2_RECEIPT_CONTRACT_INVALID",
+      (receipt: DexMemoriaV2CanonicalReceipt) => {
+        (receipt as any).contract = "dex.memory.operation.receipt.invalid";
+      }
+    ],
+    [
+      "operation identity",
+      "DEX_MEMORIA_V2_RECEIPT_OPERATION_MISMATCH",
+      (receipt: DexMemoriaV2CanonicalReceipt) => {
+        receipt.operation_id = `${receipt.operation_id}_mismatch`;
+      }
+    ],
+    [
+      "missing routes",
+      null,
+      (receipt: DexMemoriaV2CanonicalReceipt) => {
+        delete (receipt as any).routes;
+      }
+    ],
+    [
+      "missing route receipts",
+      null,
+      (receipt: DexMemoriaV2CanonicalReceipt) => {
+        delete (receipt as any).route_receipts;
+      }
+    ]
+  ] as const)("keeps a post-write %s failure pending and traceable instead of rolling back the decision", async (_case, expectedError, corruptReceipt) => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-structural-receipt-"));
+    const executor = { execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => {
+      const receipt = await committedReceipt(input.operation_request, input.candidate);
+      corruptReceipt(receipt, input);
+      return receipt;
+    }) };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, {
+      memory_writer: configuredWriter(executor, {
+        default_classification: {
+          status: "resolved",
+          density: "light",
+          tags: TEST_TAGS,
+          requested_destinations: [{ scope: "project" }]
+        }
+      })
+    });
+    const flow = await engine.createFlow({ goal: "Preservar decisão após receipt estrutural inválido" });
+    flow.gold_mining = ["Regra local gravada antes da validação estrutural falhar."];
+    await store.saveFlow(flow);
+    const mined = await engine.mineMemory({ flow_id: flow.flow_id, write_policy: "auto_write" }) as any;
+    const candidateId = mined.candidates[0].candidate_id as string;
+
+    const resolved = await engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [candidateId],
+      action: "promote",
+      target_scope: "global",
+      rationale: "O efeito externo inválido precisa continuar recuperável."
+    }) as any;
+
+    expect(resolved).toMatchObject({
+      application_status: "pending",
+      pending_resolutions: [expect.objectContaining({ candidate_id: candidateId })],
+      memory_mining: {
+        blocked_verdict: true,
+        v2_status: "partial_pending",
+        v2_receipts: [expect.objectContaining({ status: "COMMITTED" })],
+        v2_failures: [expect.objectContaining({ message: expectedError ?? expect.any(String) })]
+      }
+    });
+    expect((await store.loadFlow(flow.flow_id)).memory_candidate_resolutions).toHaveLength(1);
+    expect((await store.readLedger(flow.flow_id)).filter((event) => event.type === "memory_candidates_resolved")).toHaveLength(1);
+  });
+
+  it("gives materially different same-millisecond promotions distinct ids and applies the latest destination", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-28T15:00:00.000Z"));
+    try {
+      tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-resolution-id-"));
+      const executor = { execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => committedReceipt(input.operation_request, input.candidate)) };
+      const store = configuredStore();
+      const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+      const flow = await engine.createFlow({ goal: "Distinguir promoções no mesmo milissegundo" });
+      flow.gold_mining = ["Conhecimento profundo com duas decisões materiais sucessivas."];
+      await store.saveFlow(flow);
+      const mined = await engine.mineMemory({
+        flow_id: flow.flow_id,
+        write_policy: "classify_only",
+        v2_destinations: [{ scope: "project" }],
+        v2_density: "deep",
+        v2_owner_skill: "dex-memoria",
+        v2_tags: TEST_TAGS
+      }) as any;
+      const candidateId = mined.candidates[0].candidate_id as string;
+      await engine.resolveMemoryCandidates({
+        flow_id: flow.flow_id,
+        candidate_ids: [candidateId],
+        action: "promote",
+        target_scope: "projeto",
+        rationale: "Primeira decisão material."
+      });
+      const second = await engine.resolveMemoryCandidates({
+        flow_id: flow.flow_id,
+        candidate_ids: [candidateId],
+        action: "promote",
+        target_scope: "global",
+        rationale: "Segunda decisão material."
+      }) as any;
+      const persisted = await store.loadFlow(flow.flow_id);
+      const replayed = await engine.mineMemory({ flow_id: flow.flow_id, write_policy: "auto_write" }) as any;
+
+      expect(new Set(persisted.memory_candidate_resolutions!.map((item) => item.resolution_id))).toHaveLength(2);
+      expect(second.resolved).toEqual([expect.objectContaining({ target_scope: "global" })]);
+      expect(replayed.candidate_resolutions).toEqual([expect.objectContaining({ target_scope: "global" })]);
+      expect(executor.execute).toHaveBeenCalledWith({
+        operation_request: expect.objectContaining({ scope: "global" }),
+        candidate: expect.any(Object)
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("serializes concurrent resolutions without losing either decision", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-resolution-lock-"));
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter({ execute: vi.fn() }) });
+    const flow = await engine.createFlow({ goal: "Preservar resoluções concorrentes" });
+    flow.gold_mining = ["Primeira regra local concorrente.", "Segunda regra local concorrente."];
+    await store.saveFlow(flow);
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "classify_only",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "light",
+      v2_tags: TEST_TAGS
+    }) as any;
+    const [firstId, secondId] = mined.candidates.map((candidate: any) => candidate.candidate_id);
+
+    await Promise.all([
+      engine.resolveMemoryCandidates({
+        flow_id: flow.flow_id,
+        candidate_ids: [firstId],
+        action: "discard",
+        rationale: "Primeira decisão concorrente."
+      }),
+      engine.resolveMemoryCandidates({
+        flow_id: flow.flow_id,
+        candidate_ids: [secondId],
+        action: "accept_ledger_only",
+        rationale: "Segunda decisão concorrente."
+      })
+    ]);
+
+    const persisted = await store.loadFlow(flow.flow_id);
+    expect(persisted.memory_candidate_resolutions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ candidate_id: firstId, action: "discard" }),
+      expect.objectContaining({ candidate_id: secondId, action: "accept_ledger_only" })
+    ]));
+    expect(persisted.memory_candidate_resolutions).toHaveLength(2);
+  });
+
+  it("serializes public mining with resolution so a stale mining snapshot cannot erase the decision", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-mine-resolution-lock-"));
+    let releaseWriter!: () => void;
+    const writerStarted = new Promise<void>((resolve) => {
+      releaseWriter = resolve;
+    });
+    let confirmWriterStarted!: () => void;
+    const writerEntered = new Promise<void>((resolve) => {
+      confirmWriterStarted = resolve;
+    });
+    const executor = {
+      execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => {
+        confirmWriterStarted();
+        await writerStarted;
+        return committedReceipt(input.operation_request, input.candidate);
+      })
+    };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const flow = await engine.createFlow({ goal: "Preservar decisão contra mineração concorrente" });
+    flow.gold_mining = ["Regra local disputada por mineração e resolução."];
+    await store.saveFlow(flow);
+    const classified = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "classify_only",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "light",
+      v2_tags: TEST_TAGS
+    }) as any;
+    const candidateId = classified.candidates[0].candidate_id as string;
+
+    const mining = engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "auto_write",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "light",
+      v2_tags: TEST_TAGS
+    });
+    await writerEntered;
+    const resolution = engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [candidateId],
+      action: "discard",
+      rationale: "A decisão deve sobreviver ao snapshot concorrente."
+    });
+    releaseWriter();
+    await Promise.all([mining, resolution]);
+
+    const persisted = await store.loadFlow(flow.flow_id);
+    expect(persisted.memory_candidate_resolutions).toEqual([
+      expect.objectContaining({ candidate_id: candidateId, action: "discard" })
+    ]);
+    expect(persisted.memory_mining).toMatchObject({
+      resolved_candidate_ids: [candidateId],
+      discarded: [candidateId],
+      discarded_count: 1,
+      blocked_verdict: false
+    });
+  });
+
   it("blocks completion when the canonical writer cannot supply independent validation evidence", async () => {
     tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-validation-"));
     const executor = { execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => {
@@ -300,7 +1400,10 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
     await engine.store.saveFlow(flow);
 
     const mined = await engine.mineMemory({ flow_id: flow.flow_id, write_policy: "auto_write" });
+    const retried = await engine.mineMemory({ flow_id: flow.flow_id, write_policy: "auto_write" });
     expect(mined).toMatchObject({ v2_status: "partial_pending", blocked_verdict: true, memory_written: false, written_count: 0, memory_validated: false });
+    expect(retried).toMatchObject({ v2_status: "partial_pending", blocked_verdict: true, memory_written: false, written_count: 0, memory_validated: false });
+    expect(executor.execute).toHaveBeenCalledTimes(2);
   });
 
   it("does not credit a fully failed coordinator receipt as written memory", async () => {
@@ -383,13 +1486,17 @@ function routesFor(request: DexMemoriaV2OperationRequest) {
   }));
 }
 
-async function committedReceipt(request: DexMemoriaV2OperationRequest, candidate: DexMemoriaV2ExecutionInput["candidate"]): Promise<DexMemoriaV2CanonicalReceipt> {
+async function committedReceipt(
+  request: DexMemoriaV2OperationRequest,
+  candidate: DexMemoriaV2ExecutionInput["candidate"],
+  deduplicated = false
+): Promise<DexMemoriaV2CanonicalReceipt> {
   const routes = routesFor(request);
   const candidateId = sha256(Buffer.from(JSON.stringify(sortJsonValue(candidate)), "utf8"));
   const receipt: DexMemoriaV2CanonicalReceipt = {
     contract: "dex.memory.operation.receipt.v2", implementation_version: "v2", requested_scope: request.scope,
     operation_id: request.operation_id, status: "COMMITTED", recovery_mode: null, routes,
-    route_receipts: Object.fromEntries(routes.map((route, index) => [route.scope, { ...route, status: "COMMITTED", receipt_path: `${route.resolved_root}/receipt.json`, validation_receipt_path: `${route.resolved_root}/validation.json`, validation_receipt_hash: `validation_hash_${route.scope}`, validation_contract: "dex.memory.capability.unit-receipt.v2", validation_ok: true, candidate_id: "a".repeat(64), content_hash: "b".repeat(64), route_identity: String(index + 1).repeat(64).slice(0, 64), deduplicated: false, write_set_hash: `write_set_hash_${route.scope}` }]))
+    route_receipts: Object.fromEntries(routes.map((route, index) => [route.scope, { ...route, status: "COMMITTED", receipt_path: `${route.resolved_root}/receipt.json`, validation_receipt_path: `${route.resolved_root}/validation.json`, validation_receipt_hash: `validation_hash_${route.scope}`, validation_contract: "dex.memory.capability.unit-receipt.v2", validation_ok: true, candidate_id: "a".repeat(64), content_hash: "b".repeat(64), route_identity: String(index + 1).repeat(64).slice(0, 64), deduplicated, write_set_hash: `write_set_hash_${route.scope}` }]))
   };
   for (const route of routes) {
     const routeReceipt = receipt.route_receipts[route.scope]!;
