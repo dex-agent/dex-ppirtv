@@ -1557,6 +1557,47 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
     }
   });
 
+  it("bounds repeated lock identity churn by the same 35 second deadline", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-flow-lock-identity-churn-"));
+    const storeRoot = path.join(tempRoot, "workspace", ".ppirtv");
+    const holderStore = new PpirtvStore(storeRoot);
+    const flow = await new FlowEngine(holderStore).createFlow({ goal: "Limitar churn de identidade do flow lock" });
+    let releaseHolder!: () => void;
+    let holderEntered!: () => void;
+    const entered = new Promise<void>((resolve) => { holderEntered = resolve; });
+    const holder = holderStore.withFlowLock(flow.flow_id, async () => {
+      holderEntered();
+      await new Promise<void>((resolve) => { releaseHolder = resolve; });
+    });
+    await entered;
+
+    class IdentityChurnStore extends PpirtvStore {
+      attempts = 0;
+
+      protected override async readFlowLock(_lockPath: string, lockedFlowId: string) {
+        this.attempts += 1;
+        vi.setSystemTime(new Date(Date.now() + 10_000));
+        throw Object.assign(
+          new Error(`MEETING_LOCK_IDENTITY_CHANGED: ${lockedFlowId}`),
+          { code: "MEETING_LOCK_IDENTITY_CHANGED" }
+        );
+      }
+    }
+
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-07-28T12:00:00.000Z"));
+    try {
+      const contender = new IdentityChurnStore(storeRoot);
+      await expect(contender.withFlowLock(flow.flow_id, async () => "unsafe"))
+        .rejects.toThrow(`MEETING_LOCK_TIMEOUT: ${flow.flow_id}`);
+      expect(contender.attempts).toBe(4);
+    } finally {
+      releaseHolder();
+      await holder;
+      vi.useRealTimers();
+    }
+  });
+
   it.each([
     [
       "candidate identity",

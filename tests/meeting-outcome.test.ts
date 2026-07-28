@@ -263,6 +263,42 @@ describe("GOAL meeting outcomes", () => {
     expect(persisted.history.filter((event) => event.type === "meeting_opened")).toHaveLength(20);
   });
 
+  it("retries a transient lock identity change without losing the bounded acquisition", async () => {
+    const { flowId } = await startGoal("meeting-outcome-lock-identity-churn");
+    let releaseHolder!: () => void;
+    let holderEntered!: () => void;
+    const entered = new Promise<void>((resolve) => { holderEntered = resolve; });
+    const holder = engine.store.withFlowLock(flowId, async () => {
+      holderEntered();
+      await new Promise<void>((resolve) => { releaseHolder = resolve; });
+    });
+    await entered;
+
+    class IdentityChurnStore extends PpirtvStore {
+      readCalls = 0;
+      identityChanges = 0;
+
+      protected override async readFlowLock(lockPath: string, lockedFlowId: string) {
+        this.readCalls += 1;
+        if (this.readCalls === 1) {
+          this.identityChanges += 1;
+          releaseHolder();
+          await holder;
+          throw Object.assign(
+            new Error(`MEETING_LOCK_IDENTITY_CHANGED: ${lockedFlowId}`),
+            { code: "MEETING_LOCK_IDENTITY_CHANGED" }
+          );
+        }
+        return super.readFlowLock(lockPath, lockedFlowId);
+      }
+    }
+
+    const contender = new IdentityChurnStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true });
+    await expect(contender.withFlowLock(flowId, async () => "acquired")).resolves.toBe("acquired");
+    expect(contender.identityChanges).toBe(1);
+    expect(contender.readCalls).toBeGreaterThanOrEqual(2);
+  });
+
   it("does not let a turn race reopen or overwrite a closed meeting", async () => {
     const { flowId } = await startGoal("meeting-outcome-turn-close-race");
     const opened = await engine.goalMeetingOpen({ flow_id: flowId, kind: "decisao", question: "Turno ou close?" });

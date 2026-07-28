@@ -211,7 +211,8 @@ export class PpirtvStore {
         try {
           existing = await this.readFlowLock(lockPath, flowId);
         } catch (readError) {
-          if ((readError as NodeJS.ErrnoException).code === "ENOENT") {
+          const readErrorCode = (readError as NodeJS.ErrnoException).code;
+          if (readErrorCode === "ENOENT" || readErrorCode === "MEETING_LOCK_IDENTITY_CHANGED") {
             continue;
           }
           throw readError;
@@ -468,7 +469,10 @@ async function readStableFlowLock(lockPath: string, flowId: string): Promise<{ r
   const after = await lstat(lockPath, { bigint: true });
   const identity = fileIdentity(before);
   if (identity !== fileIdentity(after)) {
-    throw new Error(`MEETING_LOCK_IDENTITY_CHANGED: ${flowId}`);
+    throw Object.assign(
+      new Error(`MEETING_LOCK_IDENTITY_CHANGED: ${flowId}`),
+      { code: "MEETING_LOCK_IDENTITY_CHANGED" }
+    );
   }
   let value: unknown;
   try {
