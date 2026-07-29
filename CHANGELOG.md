@@ -10,6 +10,12 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Corrigido
 
+- O fechamento de SPT agora possui defesa local explícita em `AGENTS.md`: antes
+  de fornecer `memoria_viva_reconciled=true`, o executor deve aplicar
+  `memoria-viva`, chamar `napkin-projeto` e reabrir ACTIVE, HANDOFF e
+  PLAN-TASKS/ACTIVE para provar o efeito. A reconciliação pós-fechamento também
+  rotulou instruções antigas como históricas superseded, impedindo que uma nova
+  janela receba próximos passos já concluídos.
 - A validacao `full` e `compact` substitui o booleano generico `clean_house`
   pela atestacao unica `memoria_viva_reconciled`. `memoria-viva` permanece
   owner da reconciliacao de continuidade e da orquestracao de
