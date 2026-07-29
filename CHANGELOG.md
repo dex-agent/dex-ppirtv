@@ -10,6 +10,11 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Corrigido
 
+- A validacao `full` e `compact` substitui o booleano generico `clean_house`
+  pela atestacao unica `memoria_viva_reconciled`. `memoria-viva` permanece
+  owner da reconciliacao de continuidade e da orquestracao de
+  `napkin-projeto`/`dex-memoria`; `mm_pipeline_run` deixa de fabricar o
+  fechamento e agora bloqueia ate a atestacao externa.
 - As suites do seletor de memoria e da propagacao do launcher agora registram
   e removem todas as raizes temporarias criadas por teste. O cleanup tenta
   todas as raizes, falha de forma visivel quando nao conclui e execucoes
@@ -122,6 +127,12 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Documentado
 
+- A limpeza histórica das fixtures temporárias congelou 1.574 alvos em
+  manifesto e os moveu para quarentena reversível, preservando cinco entradas
+  externas. A exclusão definitiva permanece bloqueada: duas baterias focais
+  passaram 27/27 com delta zero, mas `npm run check` terminou com 487
+  aprovados, 4 ignorados e 3 falhas que passam isoladamente, indicando
+  interferência de ordem/estado ainda sem causa confirmada.
 - Novo handoff cross-repo confirmou que a separacao fase/fechamento permite
   chegar oficialmente a Validacao, mas `hygiene_scan` ainda mistura dez
   findings rich externos ao SPT e acopla `memory_required_but_empty` quando o

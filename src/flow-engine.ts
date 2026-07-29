@@ -4418,8 +4418,7 @@ export class FlowEngine {
         actor: "mm_pipeline_run",
         provided: {
           residual_risks: residualRisksForGate,
-          next_step: "continue_pipeline_or_archive",
-          clean_house: true
+          next_step: "continue_pipeline_or_archive"
         },
         evidence_ids: [evidence.evidence_id]
       });
@@ -5896,7 +5895,7 @@ function blockerFamily(blocker: string): string {
   if (blocker === "test_executed") {
     return "test_requirement";
   }
-  if (["verdict", "residual_risks", "next_step", "clean_house"].includes(blocker)) {
+  if (["verdict", "residual_risks", "next_step", "memoria_viva_reconciled"].includes(blocker)) {
     return blocker === "verdict" ? "canonical_verdict" : "validation_requirement";
   }
   if (blocker === "required_cooperation") {

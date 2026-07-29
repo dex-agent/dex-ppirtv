@@ -721,7 +721,7 @@ describe("PPIRTV MCP stdio server", () => {
           verdict: "pronto_com_ressalvas",
           residual_risks: ["veredito canonico pendente"],
           next_step: "chamar goal_verdict antes de completar",
-          clean_house: true
+          memoria_viva_reconciled: true
         }
       }
     });
@@ -2152,7 +2152,7 @@ describe("PPIRTV MCP stdio server", () => {
     });
   });
 
-  it("runs five PPIRTV flows sequentially through mm_pipeline_run over MCP", async () => {
+  it("stops mm_pipeline_run over MCP until memoria-viva is attested", async () => {
     await connectClient();
     const pipeline = Array.from({ length: 5 }, (_, index) => validPipelineItem(`MCP pipeline item ${index + 1}`));
 
@@ -2173,16 +2173,19 @@ describe("PPIRTV MCP stdio server", () => {
     expect(result.pipeline_id).toMatch(/^pipe_/);
     expect(result).toMatchObject({
       total: 5,
-      completed: 5,
-      failed: 0,
-      pending: 0,
+      completed: 0,
+      failed: 1,
+      pending: 4,
       stop_on_failure: true,
       auto_memory_mining: false
     });
     expect(flows).toHaveLength(5);
-    expect(flows.every((flow) => flow.status === "pronto" && /^flow_/.test(String(flow.flow_id)))).toBe(true);
+    expect(flows[0]).toMatchObject({ status: "bloqueado" });
+    expect(String(flows[0].blocker)).toContain("memoria_viva_reconciled");
+    expect(flows.slice(1).every((flow) => flow.status === "pending")).toBe(true);
     expect(ledgerText).toContain("pipeline_item_started");
-    expect(ledgerText).toContain("pipeline_item_completed");
+    expect(ledgerText).toContain("pipeline_item_blocked");
+    expect(ledgerText).not.toContain("pipeline_item_completed");
     expect(ledgerText).toContain("verdict_recorded");
   });
 
@@ -2222,7 +2225,8 @@ describe("PPIRTV MCP stdio server", () => {
     const ledgerText = ledger.contents[0]?.text ?? "";
     const memoryText = await readFile(path.join(tempRoot, "memories", "temas", "delphi", "MEMORIA.md"), "utf8");
 
-    expect(flow.status).toBe("pronto");
+    expect(flow).toMatchObject({ status: "bloqueado" });
+    expect(String(flow.blocker)).toContain("memoria_viva_reconciled");
     expect(ledgerText.indexOf("verdict_recorded")).toBeLessThan(ledgerText.indexOf("memory_mined"));
     expect(memoryText).toContain("Delphi DUnitX standalone");
   });

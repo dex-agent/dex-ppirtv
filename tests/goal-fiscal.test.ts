@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Flow } from "../src/domain.js";
 import { FlowEngine } from "../src/flow-engine.js";
+import { COMPACT_PROFILE, FULL_PROFILE } from "../src/phase-profile.js";
 import { PpirtvStore } from "../src/store.js";
 
 let tempRoot: string;
@@ -21,6 +22,45 @@ afterEach(async () => {
 });
 
 describe("GOAL fiscal canonical verdict boundary", () => {
+  it("uses memoria-viva as the single validation closure gate in full and compact modes", () => {
+    for (const profile of [FULL_PROFILE, COMPACT_PROFILE]) {
+      const validationKeys = profile.gateRequirements.validacao.map((requirement) => requirement.key);
+
+      expect(validationKeys).toContain("memoria_viva_reconciled");
+      expect(validationKeys).not.toContain("clean_house");
+    }
+  });
+
+  it("does not accept clean_house as a substitute for memoria-viva reconciliation", async () => {
+    const flow = await createLegacyValidationFlow("legacy-clean-house-does-not-reconcile-memory");
+
+    const gate = await engine.checkGate({
+      flow_id: flow.flow_id,
+      phase: "validacao",
+      provided: {
+        verdict: "pronto_com_ressalvas",
+        residual_risks: ["veredito canonico pendente"],
+        next_step: "chamar goal_verdict antes de completar",
+        clean_house: true
+      }
+    });
+
+    expect(gate).toMatchObject({
+      status: "blocked",
+      missing: expect.arrayContaining(["memoria_viva_reconciled"])
+    });
+
+    const status = await engine.goalStatus({ flow_id: flow.flow_id });
+    expect(status.blocker_diagnostics.blocker_families).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          blocker: "memoria_viva_reconciled",
+          family: "validation_requirement"
+        })
+      ])
+    );
+  });
+
   it("routes review_required directly instead of opening a meeting when no meeting trigger exists", async () => {
     const flow = await createOfficialFiscalFlow("official-review-without-meeting-ritual");
     await engine.updateFlowFacts(flow.flow_id, { changed_files: ["src/flow-engine.ts"] });
@@ -787,7 +827,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
       provided: {
         residual_risks: [],
         next_step: "encerrar quando o guard terminal permitir",
-        clean_house: true
+        memoria_viva_reconciled: true
       }
     });
     await engine.goalVerdict({
@@ -870,17 +910,17 @@ describe("GOAL fiscal canonical verdict boundary", () => {
 
     expect(gate).toMatchObject({
       status: "blocked",
-      missing: expect.arrayContaining(["verdict", "clean_house"])
+      missing: expect.arrayContaining(["verdict", "memoria_viva_reconciled"])
     });
     expect(status).toMatchObject({
       status: "blocked",
       phase: "validacao",
-      blockers: expect.arrayContaining(["verdict", "clean_house"]),
+      blockers: expect.arrayContaining(["verdict", "memoria_viva_reconciled"]),
       current_verdict: null,
       next_required_action: {
         type: "goal_verdict_required",
         tool: "goal_verdict",
-        other_blockers: ["clean_house"]
+        other_blockers: ["memoria_viva_reconciled"]
       }
     });
   });
@@ -940,7 +980,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
       provided: {
         residual_risks: ["sincronizacao de consumidor fica para a proxima release"],
         next_step: "sincronizar quando a proxima release for aberta",
-        clean_house: true
+        memoria_viva_reconciled: true
       }
     });
     await engine.goalVerdict({
@@ -1010,7 +1050,7 @@ function validationProvidedVerdict(): Record<string, unknown> {
     verdict: "pronto_com_ressalvas",
     residual_risks: ["veredito canonico pendente"],
     next_step: "chamar goal_verdict antes de completar",
-    clean_house: true
+    memoria_viva_reconciled: true
   };
 }
 

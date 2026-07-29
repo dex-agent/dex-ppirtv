@@ -90,7 +90,11 @@ export const FULL_PROFILE: PhaseProfile = {
       { key: "verdict", label: "veredito registrado", source: "verdict" },
       { key: "residual_risks", label: "risco residual registrado", source: "provided" },
       { key: "next_step", label: "proximo passo definido", source: "provided" },
-      { key: "clean_house", label: "casa limpa confirmada", source: "provided" },
+      {
+        key: "memoria_viva_reconciled",
+        label: "memoria-viva reconciliou continuidade e orquestrou o fechamento",
+        source: "provided",
+      },
     ],
   },
   displayMeta: {
@@ -151,7 +155,11 @@ export const COMPACT_PROFILE: PhaseProfile = {
       { key: "verdict", label: "veredito registrado", source: "verdict" },
       { key: "residual_risks", label: "risco residual registrado", source: "provided" },
       { key: "next_step", label: "proximo passo definido", source: "provided" },
-      { key: "clean_house", label: "casa limpa confirmada", source: "provided" },
+      {
+        key: "memoria_viva_reconciled",
+        label: "memoria-viva reconciliou continuidade e orquestrou o fechamento",
+        source: "provided",
+      },
     ],
   },
   displayMeta: {

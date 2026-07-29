@@ -196,6 +196,19 @@ veredito e nao adiciona campos ao front matter:
 `memoria-viva` guarda o estado recuperavel do projeto; `napkin-projeto` guarda
 como operar melhor naquele repositorio. Um nao substitui o outro.
 
+Nos perfis `full` e `compact`, a fase `validacao` exige a declaracao
+`memoria_viva_reconciled=true`. Esse e o unico gate fiscal da triade:
+`memoria-viva` e o owner que reconcilia a continuidade, avalia
+`napkin-projeto` e encaminha achados fortes para `dex-memoria`. Nao existe gate
+separado `napkin_evaluated`, pois isso duplicaria o ownership.
+
+O campo tem `source=provided`: e uma atestacao explicita do executor de que o
+contrato de `memoria-viva` foi aplicado, nao um receipt autonomo de invocacao.
+O motor nao executa skills Markdown por conta propria. Por isso
+`mm_pipeline_run` nao pode fabricar essa declaracao e deve permanecer bloqueado
+em `memoria_viva_reconciled` ate o fechamento externo. O campo legado
+`clean_house` nao satisfaz esse gate.
+
 ## Trilho Multi-Flow / Pipeline SPT
 
 Um Trilho Multi-Flow e um SPT coordenador que descreve uma fila de trabalhos

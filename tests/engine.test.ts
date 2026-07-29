@@ -389,7 +389,10 @@ describe("PPIRTV flow engine", () => {
     const beforeFinal = await engine.store.readLedger(flow.flow_id);
     const beforeRecallCount = beforeFinal.filter((event) => event.type === "memory_recalled").length;
 
-    const finalAdvance = await engine.advance({ flow_id: flow.flow_id, provided: { residual_risks: ["baixo"], next_step: "arquivar", clean_house: true } });
+    const finalAdvance = await engine.advance({
+      flow_id: flow.flow_id,
+      provided: { residual_risks: ["baixo"], next_step: "arquivar", memoria_viva_reconciled: true }
+    });
     const afterFinal = await engine.store.readLedger(flow.flow_id);
     const afterRecallCount = afterFinal.filter((event) => event.type === "memory_recalled").length;
     const finalHook = afterFinal.findLast((event) => event.type === "memory_hook_recorded");
@@ -425,7 +428,7 @@ describe("PPIRTV flow engine", () => {
     expect(ledger.filter((event) => event.type === "memory_hook_warning")).toHaveLength(2);
   });
 
-  it("runs pipeline items sequentially and marks remaining items pending after a gate failure", async () => {
+  it("stops the pipeline and leaves remaining items pending while memoria-viva is not attested", async () => {
     const result = await engine.runPipeline({
       pipeline: [
         validPipelineItem("Pipeline item 1"),
@@ -444,9 +447,9 @@ describe("PPIRTV flow engine", () => {
     const flows = result.flows as Array<Record<string, unknown>>;
     const firstLedger = await engine.store.readLedger(flows[0].flow_id as string);
 
-    expect(result).toMatchObject({ total: 3, completed: 1, failed: 1, pending: 1, auto_memory_mining: true });
-    expect(flows.map((flow) => flow.status)).toEqual(["pronto", "bloqueado", "pending"]);
-    expect(String(flows[1].blocker)).toContain("complete_gate_planejamento");
+    expect(result).toMatchObject({ total: 3, completed: 0, failed: 1, pending: 2, auto_memory_mining: true });
+    expect(flows.map((flow) => flow.status)).toEqual(["bloqueado", "pending", "pending"]);
+    expect(String(flows[0].blocker)).toContain("memoria_viva_reconciled");
     const firstEventTypes = firstLedger.map((event) => event.type);
     expect(firstEventTypes).toEqual(
       expect.arrayContaining([
@@ -455,10 +458,26 @@ describe("PPIRTV flow engine", () => {
         "evidence_attached",
         "verdict_recorded",
         "memory_mined",
-        "pipeline_item_completed"
+        "pipeline_item_blocked"
       ])
     );
+    expect(firstEventTypes).not.toContain("pipeline_item_completed");
     expect(firstEventTypes.indexOf("verdict_recorded")).toBeLessThan(firstEventTypes.indexOf("memory_mined"));
+  });
+
+  it("does not let the pipeline auto-attest memoria-viva reconciliation", async () => {
+    const result = await engine.runPipeline({
+      pipeline: [validPipelineItem("Pipeline must wait for memoria-viva")],
+      stop_on_failure: true,
+      auto_memory_mining: true
+    });
+    const flows = result.flows as Array<Record<string, unknown>>;
+    const ledger = await engine.store.readLedger(flows[0].flow_id as string);
+
+    expect(result).toMatchObject({ total: 1, completed: 0, failed: 1, pending: 0 });
+    expect(flows[0]).toMatchObject({ status: "bloqueado" });
+    expect(String(flows[0].blocker)).toContain("memoria_viva_reconciled");
+    expect(ledger.map((event) => event.type)).not.toContain("pipeline_item_completed");
   });
 
   it("generates unique pipeline ids for rapid sequential runs", async () => {
@@ -496,10 +515,11 @@ describe("PPIRTV flow engine", () => {
       const flow = (result.flows as Array<Record<string, unknown>>)[0];
       const ledger = await engine.store.readLedger(flow.flow_id as string);
       const eventTypes = ledger.map((event) => event.type);
-      const mined = flow.memory_mining as Record<string, unknown>;
+      const mined = ledger.findLast((event) => event.type === "memory_mined")?.data as Record<string, unknown>;
       const memoria = await readFile(path.join(memRoot, "temas", "delphi", "MEMORIA.md"), "utf8");
 
-      expect(flow.status).toBe("pronto");
+      expect(flow).toMatchObject({ status: "bloqueado" });
+      expect(String(flow.blocker)).toContain("memoria_viva_reconciled");
       expect(eventTypes.indexOf("verdict_recorded")).toBeLessThan(eventTypes.indexOf("memory_mined"));
       expect(mined.written).toEqual(
         expect.arrayContaining([
@@ -551,8 +571,10 @@ describe("PPIRTV flow engine", () => {
     });
     const flows = result.flows as Array<Record<string, unknown>>;
 
-    expect(result).toMatchObject({ total: 2, completed: 1, failed: 1, pending: 0, auto_memory_mining: false });
-    expect(flows.map((flow) => flow.status)).toEqual(["bloqueado", "pronto"]);
+    expect(result).toMatchObject({ total: 2, completed: 0, failed: 2, pending: 0, auto_memory_mining: false });
+    expect(flows.map((flow) => flow.status)).toEqual(["bloqueado", "bloqueado"]);
+    expect(String(flows[0].blocker)).toContain("complete_gate_planejamento");
+    expect(String(flows[1].blocker)).toContain("memoria_viva_reconciled");
   });
 
   it("requires goal_verdict to operate on a flow started by goal_start", async () => {
@@ -2365,7 +2387,7 @@ describe("PPIRTV flow engine", () => {
       provided: {
         residual_risks: ["falso complete"],
         next_step: "corrigir agora antes de concluir",
-        clean_house: true
+        memoria_viva_reconciled: true
       }
     });
     const fresh = await engine.store.loadFlow(flowId);
@@ -2435,7 +2457,7 @@ describe("PPIRTV flow engine", () => {
 
     const first = await engine.goalAdvance({
       flow_id: flowId,
-      provided: { residual_risks: [], next_step: "registrar veredito agora", clean_house: true }
+      provided: { residual_risks: [], next_step: "registrar veredito agora", memoria_viva_reconciled: true }
     });
     const reloadedEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
     await reloadedEngine.goalAdvance({ flow_id: flowId });
@@ -2530,7 +2552,7 @@ describe("PPIRTV flow engine", () => {
 
     const completed = await engine.goalAdvance({
       flow_id: flowId,
-      provided: { residual_risks: [], next_step: "encerrar agora", clean_house: true }
+      provided: { residual_risks: [], next_step: "encerrar agora", memoria_viva_reconciled: true }
     });
 
     expect(completed).toMatchObject({ advanced: true, from: "validacao", to: null, status: "complete" });
@@ -2822,7 +2844,7 @@ describe("PPIRTV flow engine", () => {
     const status = await engine.goalStatus({ flow_id: flowId, detail: "full" });
     const completion = await engine.goalAdvance({
       flow_id: flowId,
-      provided: { residual_risks: [], next_step: "encerrar agora", clean_house: true }
+      provided: { residual_risks: [], next_step: "encerrar agora", memoria_viva_reconciled: true }
     });
 
     expect(status.closure_blockers).toContain("review_required");
@@ -2983,7 +3005,7 @@ describe("PPIRTV flow engine", () => {
     const status = await reloadedEngine.goalStatus({ flow_id: flowId, detail: "full" });
     const completed = await reloadedEngine.goalAdvance({
       flow_id: flowId,
-      provided: { residual_risks: [], next_step: "encerrar agora", clean_house: true }
+      provided: { residual_risks: [], next_step: "encerrar agora", memoria_viva_reconciled: true }
     });
 
     expect(status.closure_blockers).toContain("review_required");
@@ -3036,7 +3058,7 @@ describe("PPIRTV flow engine", () => {
     const status = await engine.goalStatus({ flow_id: flowId, detail: "full" });
     const completion = await engine.goalAdvance({
       flow_id: flowId,
-      provided: { residual_risks: [], next_step: "encerrar agora", clean_house: true }
+      provided: { residual_risks: [], next_step: "encerrar agora", memoria_viva_reconciled: true }
     });
     const latestVerdict = (await engine.store.loadFlow(flowId)).verdicts.at(-1);
 
@@ -3081,11 +3103,11 @@ describe("PPIRTV flow engine", () => {
     const results = await Promise.all([
       engine.goalAdvance({
         flow_id: flowId,
-        provided: { residual_risks: [], next_step: "encerrar agora", clean_house: true }
+        provided: { residual_risks: [], next_step: "encerrar agora", memoria_viva_reconciled: true }
       }),
       engine.goalAdvance({
         flow_id: flowId,
-        provided: { residual_risks: [], next_step: "encerrar agora", clean_house: true }
+        provided: { residual_risks: [], next_step: "encerrar agora", memoria_viva_reconciled: true }
       })
     ]);
     const retried = await engine.goalAdvance({ flow_id: flowId, detail: "full" });
@@ -3111,7 +3133,7 @@ describe("PPIRTV flow engine", () => {
       faultEngine.goalAdvance({
         flow_id: flowId,
         evidence_ids: ["ev_terminal_recovery"],
-        provided: { residual_risks: [], next_step: "encerrar agora", clean_house: true }
+        provided: { residual_risks: [], next_step: "encerrar agora", memoria_viva_reconciled: true }
       })
     ).rejects.toThrow(/LEDGER_FAULT_BEFORE_APPEND/);
     const hooksAfterFailedCompletion = hookCounter.afterPhaseCalls();
@@ -3159,7 +3181,7 @@ describe("PPIRTV flow engine", () => {
       faultEngine.goalAdvance({
         flow_id: flowId,
         evidence_ids: ["ev_before_archive"],
-        provided: { residual_risks: [], next_step: "arquivar depois", clean_house: true }
+        provided: { residual_risks: [], next_step: "arquivar depois", memoria_viva_reconciled: true }
       })
     ).rejects.toThrow(/LEDGER_FAULT_BEFORE_APPEND/);
 
@@ -3189,7 +3211,7 @@ describe("PPIRTV flow engine", () => {
     await expect(
       faultEngine.goalAdvance({
         flow_id: flowId,
-        provided: { residual_risks: [], next_step: "encerrar agora", clean_house: true }
+        provided: { residual_risks: [], next_step: "encerrar agora", memoria_viva_reconciled: true }
       })
     ).rejects.toThrow(/LEDGER_FAULT_AFTER_APPEND/);
     const reloadedEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
@@ -3375,7 +3397,7 @@ describe("PPIRTV flow engine", () => {
         verdict: "pronto_com_ressalvas",
         residual_risks: ["veredito canonico pendente"],
         next_step: "chamar goal_verdict antes de completar",
-        clean_house: true
+        memoria_viva_reconciled: true
       }
     });
     const advanced = await engine.goalAdvance({ flow_id: flowId });
@@ -3431,7 +3453,7 @@ describe("PPIRTV flow engine", () => {
         verdict: "pronto_com_ressalvas",
         residual_risks: ["veredito canonico pendente"],
         next_step: "chamar goal_verdict antes de completar",
-        clean_house: true
+        memoria_viva_reconciled: true
       },
       missing: [],
       next: "advance_to_complete",
@@ -4132,7 +4154,12 @@ describe("PPIRTV flow engine", () => {
     const futureValidation = await preflightEngine.goalGatePreflight({
       flow_id: flowId,
       phase: "validacao",
-      provided: { verdict: "texto nao canonico", residual_risks: ["nenhum"], next_step: "fechar", clean_house: true }
+      provided: {
+        verdict: "texto nao canonico",
+        residual_risks: ["nenhum"],
+        next_step: "fechar",
+        memoria_viva_reconciled: true
+      }
     });
     expect(futureValidation.missing).toContain("verdict");
     expect(futureValidation.next_required_action).toEqual({
@@ -4143,7 +4170,12 @@ describe("PPIRTV flow engine", () => {
     const futurePersistlessGate = await preflightEngine.checkGate({
       flow_id: flowId,
       phase: "validacao",
-      provided: { verdict: "texto nao canonico", residual_risks: ["nenhum"], next_step: "fechar", clean_house: true },
+      provided: {
+        verdict: "texto nao canonico",
+        residual_risks: ["nenhum"],
+        next_step: "fechar",
+        memoria_viva_reconciled: true
+      },
       persist: false
     });
     expect(futurePersistlessGate.missing).toContain("verdict");
@@ -7761,7 +7793,10 @@ describe("PPIRTV flow engine", () => {
       residual_risks: [],
       next_step: "arquivar"
     });
-    const finalAdvance = await engine.advance({ flow_id: flow.flow_id, provided: { residual_risks: ["baixo"], next_step: "arquivar", clean_house: true } });
+    const finalAdvance = await engine.advance({
+      flow_id: flow.flow_id,
+      provided: { residual_risks: ["baixo"], next_step: "arquivar", memoria_viva_reconciled: true }
+    });
     const archived = await engine.archiveFlow({ flow_id: flow.flow_id, reason: "E2E completo" });
 
     expect(finalAdvance).toMatchObject({ advanced: true, from: "validacao", to: null, status: "complete" });
