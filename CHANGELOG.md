@@ -128,11 +128,11 @@ escopo, evidencias e lacunas quando existirem.
 ### Documentado
 
 - A limpeza histórica das fixtures temporárias congelou 1.574 alvos em
-  manifesto e os moveu para quarentena reversível, preservando cinco entradas
-  externas. A exclusão definitiva permanece bloqueada: duas baterias focais
-  passaram 27/27 com delta zero, mas `npm run check` terminou com 487
-  aprovados, 4 ignorados e 3 falhas que passam isoladamente, indicando
-  interferência de ordem/estado ainda sem causa confirmada.
+  manifesto, moveu-os para quarentena reversível e, após autorização e suíte
+  estável com 490 aprovados/4 ignorados, removeu a raiz exata. Cinquenta e oito
+  junctions internos foram tratados como folhas; cinco entradas externas
+  permaneceram invariantes. Uma execução anterior foi descartada como prova
+  porque a fonte viva mudou durante a suíte.
 - Novo handoff cross-repo confirmou que a separacao fase/fechamento permite
   chegar oficialmente a Validacao, mas `hygiene_scan` ainda mistura dez
   findings rich externos ao SPT e acopla `memory_required_but_empty` quando o
