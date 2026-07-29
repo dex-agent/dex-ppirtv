@@ -186,24 +186,34 @@ veredito e nao adiciona campos ao front matter:
    drift real, `.agents/ACTIVE.md`, `.agents/HANDOFF.md`,
    `.agents/PLAN-TASKS/ACTIVE.md` e os indices aplicaveis. O estado deve deixar
    objetivo/status, evidencia, bloqueio e proximo passo com `quando`.
-2. Avalie `napkin-projeto` em todo fechamento, mas escreva somente quando o
+2. Entregue `gold_mining`, `parking_lot`, pontos cegos e candidatos da
+   prestação de contas ao `garimpeiro`. Ele deve deduplicar e separar memória,
+   estacionamento ativo, napkin, evidência consumida e descarte.
+3. Entregue cada item ativo ao `estacionamento`. Persistência válida exige
+   item canônico, índice reconstruído, owner e `quando`; sem item elegível,
+   registre `nenhuma escrita necessaria`.
+4. Avalie `napkin-projeto` em todo fechamento, mas escreva somente quando o
    bloco produziu avanco substancial, mudanca operacional, gotcha, comando
    confiavel ou regra `Faca em vez disso:` com valor recorrente. Progresso
    trivial, ata e diario de sessao nao entram.
-3. Quando a fonte viva ja estiver coerente ou nao houver item elegivel para o
+5. Entregue achados memoráveis ao `dex-memoria` e valide qualquer escrita com
+   `consciencia-memorias`.
+6. Quando a fonte viva ja estiver coerente ou nao houver item elegivel para o
    napkin, registre `nenhuma escrita necessaria` em vez de fabricar conteudo.
 
 `memoria-viva` guarda o estado recuperavel do projeto; `napkin-projeto` guarda
 como operar melhor naquele repositorio. Um nao substitui o outro.
 
 Nos perfis `full` e `compact`, a fase `validacao` exige a declaracao
-`memoria_viva_reconciled=true`. Esse e o unico gate fiscal da triade:
-`memoria-viva` e o owner que reconcilia a continuidade, avalia
-`napkin-projeto` e encaminha achados fortes para `dex-memoria`. Nao existe gate
-separado `napkin_evaluated`, pois isso duplicaria o ownership.
+`memoria_viva_reconciled=true`. Esse e o unico gate fiscal da cadeia:
+`memoria-viva` e o owner que reconcilia a continuidade e despacha a prestação
+de contas para `garimpeiro`, `estacionamento`, `napkin-projeto`,
+`dex-memoria` e `consciencia-memorias`. Nao existem gates separados por skill,
+pois isso duplicaria o ownership.
 
 O campo tem `source=provided`: e uma atestacao explicita do executor de que o
-contrato de `memoria-viva` foi aplicado, nao um receipt autonomo de invocacao.
+contrato de `memoria-viva` foi aplicado e os receipts dos owners foram
+reabertos, nao um receipt autonomo de invocacao.
 O motor nao executa skills Markdown por conta propria. Por isso
 `mm_pipeline_run` nao pode fabricar essa declaracao e deve permanecer bloqueado
 em `memoria_viva_reconciled` ate o fechamento externo. O campo legado
@@ -478,8 +488,12 @@ Fluxo canonico:
 17. Conferir `ppirtv_checkout` e seus blockers antes do fechamento humano.
 18. Aplicar `memoria-viva` para reconciliar o estado de retomada com o
     veredito e o checkout finais.
-19. Avaliar `napkin-projeto` pelo gate moderado; escrever somente aprendizado
-    operacional substancial ou registrar `nenhuma escrita necessaria`.
+19. Entregar achados do checkout ao `garimpeiro`; enviar itens ativos ao
+    `estacionamento` e memoráveis ao `dex-memoria`.
+20. Avaliar `napkin-projeto` pelo gate moderado e validar memória escrita com
+    `consciencia-memorias`.
+21. Reabrir receipts ou registrar `nenhuma escrita necessaria` antes de
+    fornecer `memoria_viva_reconciled=true`.
 
 ### Contrato lean ponta a ponta
 
@@ -652,8 +666,8 @@ objetivo e contrato de evidencia antes de partir.
 `ppirtv_checkout` e obrigatorio no fim: deve preservar blockers, evidencias,
 reunioes, review, testes, garimpo, memoria e destino. Antes do fechamento
 humano total, a continuidade local deve estar reconciliada por `memoria-viva`
-e o gate moderado de `napkin-projeto` deve ter resultado explicito, inclusive
-`nenhuma escrita necessaria`. Arquivar flow bloqueado nao transforma bloqueio
+e os owners de garimpo, estacionamento, napkin e memória devem ter resultado
+explicito, inclusive `nenhuma escrita necessaria`. Arquivar flow bloqueado nao transforma bloqueio
 em sucesso; deve dizer que foi arquivado com bloqueios preservados.
 
 `required_cooperation` material deve gerar contrato acionavel:

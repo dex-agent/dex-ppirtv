@@ -10,16 +10,22 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Corrigido
 
+- O fechamento de SPT entrega a prestação de contas aos owners:
+  `garimpeiro` classifica, `estacionamento` persiste itens ativos,
+  `napkin-projeto` avalia o runbook e `dex-memoria` grava memoráveis com
+  validação de `consciencia-memorias`; exibição no checkout não conta como
+  receipt de destino.
 - O fechamento de SPT agora possui defesa local explícita em `AGENTS.md`: antes
   de fornecer `memoria_viva_reconciled=true`, o executor deve aplicar
-  `memoria-viva`, chamar `napkin-projeto` e reabrir ACTIVE, HANDOFF e
-  PLAN-TASKS/ACTIVE para provar o efeito. A reconciliação pós-fechamento também
+  `memoria-viva`, despachar para `garimpeiro`, `estacionamento`,
+  `napkin-projeto`, `dex-memoria`/`consciencia-memorias` e reabrir ACTIVE,
+  HANDOFF e PLAN-TASKS/ACTIVE para provar o efeito. A reconciliação pós-fechamento também
   rotulou instruções antigas como históricas superseded, impedindo que uma nova
   janela receba próximos passos já concluídos.
 - A validacao `full` e `compact` substitui o booleano generico `clean_house`
   pela atestacao unica `memoria_viva_reconciled`. `memoria-viva` permanece
   owner da reconciliacao de continuidade e da orquestracao de
-  `napkin-projeto`/`dex-memoria`; `mm_pipeline_run` deixa de fabricar o
+  todos os owners de fechamento; `mm_pipeline_run` deixa de fabricar o
   fechamento e agora bloqueia ate a atestacao externa.
 - As suites do seletor de memoria e da propagacao do launcher agora registram
   e removem todas as raizes temporarias criadas por teste. O cleanup tenta

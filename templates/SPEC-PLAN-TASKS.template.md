@@ -28,6 +28,7 @@ expected_evidence:
   - '<expected-evidence>'
 done_criteria:
   - '<done-criterion>'
+  - 'Checkout findings were delivered to garimpeiro and every active parking item received a canonical estacionamento receipt.'
   - 'Project living state is reconciled through memoria-viva for the next resumption.'
   - 'napkin-projeto was evaluated; write only substantial operational learning or report nenhuma escrita necessaria.'
 risks:
@@ -38,7 +39,7 @@ gates:
   - 'spt_validate must return valid=true.'
   - 'goal_start must return flow_id.'
   - 'goal_verdict positive requires traceable evidence_ids.'
-  - 'Final closure must apply memoria-viva and the moderated napkin-projeto gate.'
+  - 'Final closure must apply memoria-viva and collect owner receipts for garimpeiro, estacionamento, napkin-projeto and dex-memoria.'
 validation:
   - '<real-command-or-verification>'
 execution_prompt: |
@@ -53,5 +54,8 @@ detail are free-form and are not read by `spt_validate`.
 
 ## Fechamento e retomada
 
+- [ ] `garimpeiro` classificou e deduplicou os achados do checkout.
+- [ ] `estacionamento` persistiu itens ativos com owner e `quando` ou respondeu `nenhuma escrita necessaria`.
 - [ ] `memoria-viva` reconciliou estado, evidencia, bloqueio e proximo passo com `quando`.
 - [ ] `napkin-projeto` foi avaliado; houve escrita substancial ou `nenhuma escrita necessaria`.
+- [ ] `dex-memoria` gravou memoráveis e `consciencia-memorias` validou, ou houve `nenhuma escrita necessaria`.
