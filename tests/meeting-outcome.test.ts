@@ -5,6 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FlowEngine } from "../src/flow-engine.js";
+import { fingerprintReviewedImplementation } from "../src/review-snapshot.js";
 import { PpirtvStore } from "../src/store.js";
 
 let tempRoot: string;
@@ -46,6 +47,7 @@ describe("GOAL meeting outcomes", () => {
       flow_id: flowId,
       kind: "code_review",
       title: "Review estruturado",
+      reviewed_implementation_fingerprint: await currentImplementationFingerprint(flowId),
       content: "Diff e vizinhos revisados; nenhum blocker de review permanece.",
       satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
       observed_result: {
@@ -238,7 +240,7 @@ describe("GOAL meeting outcomes", () => {
     const { flowId } = await startGoal("meeting-outcome-open-verdict-race");
     const [opened, verdict] = await Promise.all([
       engine.goalMeetingOpen({ flow_id: flowId, kind: "decisao", question: "Nova decisao concorrente?" }),
-      engine.recordVerdict({
+      engine.goalVerdict({
         flow_id: flowId,
         status: "nao_pronto",
         rationale: "Veredito concorrente preservado.",
@@ -249,7 +251,9 @@ describe("GOAL meeting outcomes", () => {
     ]);
     const persisted = await engine.store.loadFlow(flowId);
     expect(persisted.meetings).toContain(opened.meeting_id);
-    expect(persisted.verdicts.map((item) => item.verdict_id)).toContain(verdict.verdict_id);
+    expect(persisted.verdicts.map((item) => item.verdict_id)).toContain(
+      (verdict.verdict as Record<string, unknown>).verdict_id
+    );
   });
 
   it("serializes many concurrent meeting opens on the same flow", async () => {
@@ -373,7 +377,7 @@ describe("GOAL meeting outcomes", () => {
       residual_risks: ["aberta"],
       meeting_ids: [meetingId],
       next_step: "fechar reuniao"
-    })).rejects.toThrow(/MEETING_NOT_CLOSED/i);
+    })).rejects.toThrow(/OFFICIAL_GOAL_REQUIRES_GOAL_VERDICT/i);
     await expect(engine.goalVerdict({
       flow_id: flowId,
       status: "nao_pronto",
@@ -421,7 +425,7 @@ describe("GOAL meeting outcomes", () => {
     const first = await closeDecisionMeeting(flowId, "Primeira decisao");
     const second = await closeDecisionMeeting(flowId, "Segunda decisao");
 
-    const verdict = await engine.recordVerdict({
+    const verdictReceipt = await engine.goalVerdict({
       flow_id: flowId,
       status: "nao_pronto",
       rationale: "Consumir somente a primeira reuniao.",
@@ -430,6 +434,7 @@ describe("GOAL meeting outcomes", () => {
       meeting_ids: [first],
       next_step: "continuar"
     });
+    const verdict = verdictReceipt.verdict as Record<string, unknown>;
     expect(verdict.meeting_ids).toEqual([first]);
 
     const restarted = new FlowEngine(new PpirtvStore(tempRoot));
@@ -459,7 +464,7 @@ describe("GOAL meeting outcomes", () => {
       active_credits: ["chato"],
       cooperators: [{ name: "chato", reason: "bloqueou prova circular", material: true }]
     });
-    await engine.recordVerdict({
+    await engine.goalVerdict({
       flow_id: flowId,
       status: "nao_pronto",
       rationale: "Veredito posterior sem vinculo.",
@@ -518,6 +523,7 @@ describe("GOAL meeting outcomes", () => {
       flow_id: flowId,
       kind: "code_review",
       title: "Review fora do escopo",
+      reviewed_implementation_fingerprint: await currentImplementationFingerprint(flowId),
       content: "Review real, mas referencia de escopo invalida.",
       satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
       observed_result: {
@@ -567,6 +573,8 @@ async function startGoal(idempotencyKey: string): Promise<{ flowId: string }> {
   const sptPath = path.join(workspace, ".agents", "PLAN-TASKS", "meeting-outcome.md");
   await mkdir(path.dirname(sptPath), { recursive: true });
   await writeFile(sptPath, fakeSpt(workspace, objective), "utf8");
+  await mkdir(path.join(workspace, "src"), { recursive: true });
+  await writeFile(path.join(workspace, "src", "flow-engine.ts"), "export const meetingOutcomeFixture = true;\n", "utf8");
   const started = await engine.startGoal({
     workspace,
     spt_path: sptPath,
@@ -579,6 +587,14 @@ async function startGoal(idempotencyKey: string): Promise<{ flowId: string }> {
     mode: "full"
   });
   return { flowId: started.flow_id as string };
+}
+
+async function currentImplementationFingerprint(flowId: string): Promise<string> {
+  const flow = await engine.store.loadFlow(flowId);
+  return fingerprintReviewedImplementation(
+    flow.goal_binding!.envelope.workspace,
+    flow.changed_files
+  );
 }
 
 function fakeSpt(workspace: string, objective: string): string {

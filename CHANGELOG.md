@@ -10,6 +10,10 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Corrigido
 
+- As suites do seletor de memoria e da propagacao do launcher agora registram
+  e removem todas as raizes temporarias criadas por teste. O cleanup tenta
+  todas as raizes, falha de forma visivel quando nao conclui e execucoes
+  repetidas deixam saldo zero de diretorios `ppirtv-*` em `%TEMP%`.
 - Gates de fase deixam de incorporar prematuramente blockers fiscais de
   fechamento, permitindo Pensamentos/Concepcao avancar enquanto review,
   memoria, hygiene e cooperacao continuam visiveis e bloqueiam o veredito.
@@ -22,11 +26,25 @@ escopo, evidencias e lacunas quando existirem.
 - A terminalizacao foi serializada e tornou-se idempotente; retries e chamadas
   concorrentes nao repetem hook nem evento de conclusao.
 - Metadados de review aceitos por `goal_verdict` agora persistem no veredito e
-  continuam validos para o guard terminal apos reload somente enquanto o
-  conjunto de `changed_files` permanecer identico; qualquer mutacao posterior
-  invalida review de veredito e evidencia estruturada, inclusive no ciclo
-  A-B-A. Flows pre-upgrade recuperam o snapshot somente da trilha anterior ao
-  veredito, e caminhos Windows equivalentes usam identidade canonica.
+  permanecem consultaveis, mas nao satisfazem mais `review_required` por
+  autodeclaracao. Evidencia estruturada de review e veredito agora carregam o
+  fingerprint SHA-256 reproduzivel do conteudo dos `changed_files`; status,
+  veredito e fechamento recalculam o snapshot vivo, invalidando review quando
+  os bytes mudam mesmo que os caminhos permaneçam iguais. Flows pre-upgrade sem
+  fingerprint ficam fail-closed, caminhos Windows equivalentes usam identidade
+  canonica e plataformas case-sensitive preservam diferencas de casing. A
+  atestacao agora precisa citar o fingerprint observado, rejeita arquivo
+  sensivel, externo, ausencia nao declarada ou diretorio antes de conceder
+  credito e o veredito precisa citar o `evidence_id` de review consumido.
+  Delecao legitima usa `deleted_files`, colecao vazia ganha identidade propria,
+  flows concluidos congelam sua proveniencia e recusam mutacao posterior por
+  fatos, gate persistente, resume, progresso, regresso, reuniao, evidencia,
+  veredito ou memoria; hygiene terminal e somente leitura, `goal_start`
+  idempotente nao toca o terminal e archive tem retry sem duplicacao. Delecao
+  declarada cujo path ainda exista, inclusive symlink quebrado, falha
+  explicitamente; `deleted_files: []` remove tombstone quando um arquivo e
+  restaurado em REWORK. A rota legada `verdict_record` nao opera sobre GOAL
+  oficial.
 - Tentativas de conclusao bloqueadas agora registram
   `goal_terminal_blocked` no historico e ledger, com assinatura contada pelo
   monitor de loops mesmo quando o gate local acabou de passar.
@@ -44,9 +62,43 @@ escopo, evidencias e lacunas quando existirem.
 - A leitura concorrente do flow lock passa a repetir uma troca legitima de
   identidade durante aquisicao, limitada pelo deadline existente, em vez de
   tratar churn ABA como corrupcao terminal.
+- O primeiro `goal_start` concorrente agora reivindica a
+  `idempotency_key` por hash antes de criar o flow; apenas uma chamada cria e
+  bindings duplicados preexistentes falham fechados.
+- O primeiro estado persistido por `goal_start` agora ja nasce com
+  `goal_binding`. Falhas entre save e ledger sao reconciliadas no retry por
+  eventos append-only `flow_created_recovered`, `goal_started_recovered`,
+  `flow_completed_recovered` e `flow_archived_recovered`, com `original_at`
+  derivado do estado vivo; recovery nao reexecuta hooks nem regrava flow
+  terminal. Se o append original persistiu antes de uma falha de retorno, o
+  retry preserva um evento original e nao duplica recovery.
+- O primeiro binding de um flow legado ativo continua sendo um
+  `goal_started` original, mas exige objetivo literalmente igual, recusa
+  veredito advisory preexistente e revalida o binding depois do lock para que
+  chamadas concorrentes com chaves diferentes nao criem duas autoridades.
+  Flow terminal sem binding falha explicitamente. Recovery de conclusao
+  preserva `evidence_ids`, e o archive reconcilia uma conclusao persistida
+  antes de tornar o flow irrecuperavelmente terminal.
+- Bindings duplicados para a mesma chave agora geram receipt MCP estruturado
+  `GOAL_IDEMPOTENCY_DUPLICATE_BINDINGS`, com IDs conflitantes sanitizados,
+  proxima acao por `ppirtv_trace` e zero mutacao.
 
 ### Alterado
 
+- `src/flow-engine.ts` passa a ter owner evolutivo
+  `$refactoring-fowler-rich`, com `$clean-code` como lente e pequenas extracoes
+  comportamentalmente verificadas por visita; `src/review-snapshot.ts` e o
+  primeiro modulo coeso extraido sob essa regra, seguido por
+  `src/goal-ledger-recovery.ts` para isolar reconciliacao append-only e erro de
+  binding duplicado. Lixo ou metodo legado no
+  recorte so pode ser removido depois de busca de consumidores, garimpo,
+  checkpoint temporario e comparacao antes/depois; o checkpoint e restaurado
+  no RED e removido depois do GREEN. Referencia somente em teste nao conta
+  automaticamente como uso real: a analise separa consumidor de produto,
+  infraestrutura necessaria e teste autorreferente. Codigo novo precisa
+  declarar responsabilidade, owner, modulo de destino e consumidor real antes
+  de crescer o monolito; export sustentado apenas por teste isolado e RED
+  arquitetural.
 - Receipts de status, preflight, checklist e mutacao separam
   `phase_blockers`, `closure_blockers` e `phase_advance_allowed`; a acao fiscal
   existente permanece em `next_required_action` e o avanco local aparece em

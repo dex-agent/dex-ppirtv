@@ -1,5 +1,6 @@
 import type { Evidence, Flow } from "./domain.js";
 import type { GateRequirement } from "./phase-profile.js";
+import { normalizeReviewPath } from "./review-snapshot.js";
 
 export type GateRequirementResolution = {
   key: string;
@@ -233,6 +234,12 @@ function reviewedTargetsCoverChangedFiles(flow: Flow, reviewedTargets: string[])
 }
 
 function reviewEvidenceRemainsCurrent(flow: Flow, evidence: Evidence): boolean {
+  if (flow.implementation_fingerprint || evidence.reviewed_implementation_fingerprint) {
+    return Boolean(
+      flow.implementation_fingerprint
+      && evidence.reviewed_implementation_fingerprint === flow.implementation_fingerprint
+    );
+  }
   const evidenceIndex = flow.history.findIndex(
     (event) => event.type === "evidence_attached" && event.data.evidence_id === evidence.evidence_id
   );
@@ -307,10 +314,6 @@ function reviewPathArray(value: unknown): string[] {
 
 function sameReviewPaths(left: string[], right: string[]): boolean {
   return left.length === right.length && left.every((value, index) => value === right[index]);
-}
-
-function normalizeReviewPath(value: string): string {
-  return value.trim().replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\.\/+/, "").toLowerCase();
 }
 
 function truthy(value: unknown): boolean {

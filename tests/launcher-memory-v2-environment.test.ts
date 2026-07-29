@@ -1,14 +1,20 @@
-import { mkdir, mkdtemp, realpath } from "node:fs/promises";
+import { mkdir, realpath } from "node:fs/promises";
 import { spawn } from "node:child_process";
-import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { resolveMemoryWriterConfigFromEnv, resolveLauncherWorkspace } from "../src/config.js";
 import { applyLauncherWorkspaceEnvironment } from "../src/launcher-environment.js";
+import { createTempRootRegistry } from "./temp-root-registry.js";
+
+const tempRoots = createTempRootRegistry();
+
+afterEach(async () => {
+  await tempRoots.cleanup();
+});
 
 describe("launcher V2 workspace propagation", () => {
   it("allows the install repository only when argv selects it explicitly", async () => {
-    const installRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-launcher-owner-"));
+    const installRoot = await tempRoots.create("ppirtv-launcher-owner-");
     await mkdir(path.join(installRoot, ".git"), { recursive: true });
 
     const resolution = resolveLauncherWorkspace({
@@ -29,7 +35,7 @@ describe("launcher V2 workspace propagation", () => {
   });
 
   it("propagates the resolved workspace for the V2 writer without replacing a global workspace root", async () => {
-    const projectsRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-launcher-v2-"));
+    const projectsRoot = await tempRoots.create("ppirtv-launcher-v2-");
     const workspace = path.join(projectsRoot, "consumer-a");
     await mkdir(path.join(workspace, ".agents"), { recursive: true });
     const env: NodeJS.ProcessEnv = {
@@ -51,7 +57,7 @@ describe("launcher V2 workspace propagation", () => {
   });
 
   it("fails closed when an explicit PPIRTV_WORKSPACE conflicts with --workspace", async () => {
-    const projectsRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-launcher-conflict-"));
+    const projectsRoot = await tempRoots.create("ppirtv-launcher-conflict-");
     const selected = path.join(projectsRoot, "selected");
     const configured = path.join(projectsRoot, "configured");
     await mkdir(path.join(selected, ".agents"), { recursive: true });
@@ -64,7 +70,7 @@ describe("launcher V2 workspace propagation", () => {
   });
 
   it("fails a real launcher process before server startup when argv and env workspaces diverge", async () => {
-    const projectsRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-launcher-process-conflict-"));
+    const projectsRoot = await tempRoots.create("ppirtv-launcher-process-conflict-");
     const selected = path.join(projectsRoot, "selected");
     const configured = path.join(projectsRoot, "configured");
     await mkdir(path.join(selected, ".agents"), { recursive: true });

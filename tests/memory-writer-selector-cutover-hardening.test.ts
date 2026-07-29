@@ -1,13 +1,13 @@
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   getMemoryWriterSelectorCutoverStatus,
   prepareMemoryWriterSelectorCutover,
   resumeMemoryWriterSelectorCutover,
   type MemoryWriterSelectorRestartRequest
 } from "../src/memory/memory-writer-selector-cutover.js";
+import { createTempRootRegistry } from "./temp-root-registry.js";
 
 const BEFORE_WITHOUT_PROFILE = [
   "[mcp_servers.dex_ppirtv.env]",
@@ -16,8 +16,14 @@ const BEFORE_WITHOUT_PROFILE = [
   ""
 ].join("\r\n");
 
+const tempRoots = createTempRootRegistry();
+
+afterEach(async () => {
+  await tempRoots.cleanup();
+});
+
 async function workspace() {
-  const controlRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-selector-hardening-"));
+  const controlRoot = await tempRoots.create("ppirtv-selector-hardening-");
   const configPath = path.join(controlRoot, ".codex", "config.toml");
   const journalPath = path.join(controlRoot, ".agents", "CUTOVER", "memory-writer-selector.json");
   await mkdir(path.dirname(configPath), { recursive: true });

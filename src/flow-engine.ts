@@ -42,6 +42,11 @@ import {
 } from "./domain.js";
 import { isStructuredReviewEvidence, resolveGateRequirements, reviewEvidenceDiagnostics, type GateRequirementResolution } from "./gate-resolution.js";
 import {
+  assertLegacyFlowCanReceiveFirstGoalBinding,
+  ensureLedgerTransitionRecorded,
+  GoalIdempotencyDuplicateBindingsError
+} from "./goal-ledger-recovery.js";
+import {
   assertNoSecretLikeText,
   classifyDexMemoriaV2MiningCandidate,
   classifyMemoryCandidate,
@@ -82,6 +87,7 @@ import { PpirtvStore, type RuntimeLayoutStatus } from "./store.js";
 import { profileFor, type GateRequirement } from "./phase-profile.js";
 import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured, sameRuntimePath } from "./config.js";
 import { fingerprintSptV2Contract, parseSptV2Document, sha256SptDocument } from "./spt-contract.js";
+import { fingerprintReviewedImplementation, normalizeReviewPath } from "./review-snapshot.js";
 
 const DEFAULT_SCOPE: Scope = { in: [], out: [] };
 const MEMORY_MINING_BLOCKED_VERDICT_REASON = "memory_mining_blocked_verdict";
@@ -96,6 +102,7 @@ type RecallVisualStatus = NonNullable<PresentationEnvelope["display"]["librarian
 type FiscalVerdictInput = {
   status?: VerdictStatus;
   rationale?: string;
+  evidence_ids?: string[];
   residual_risks?: string[];
   next_step?: string;
   review_artifact_path?: string;
@@ -297,8 +304,26 @@ export class FlowEngine {
     await this.store.init();
     requireText(input.goal, "goal");
     const now = nowIso();
-    const flow: Flow = {
-      flow_id: await this.store.nextId("flow"),
+    const flow = this.buildInitialFlow(input, await this.store.nextId("flow"), now);
+    await this.store.saveFlow(flow);
+    await this.ledger(flow.flow_id, "flow_created", { goal: flow.goal, phase: flow.phase });
+    return presentFlow(flow);
+  }
+
+  private buildInitialFlow(
+    input: {
+      goal: string;
+      owner?: string;
+      context?: string;
+      scope?: Partial<Scope>;
+      risks?: string[];
+      uncertainties?: string[];
+    },
+    flowId: string,
+    now: string
+  ): Flow {
+    return {
+      flow_id: flowId,
       goal: input.goal,
       owner: input.owner,
       context: input.context,
@@ -314,6 +339,7 @@ export class FlowEngine {
       done_criteria: [],
       expected_evidence: [],
       changed_files: [],
+      deleted_files: [],
       decisions: [],
       parking_lot: [],
       gold_mining: [],
@@ -328,9 +354,6 @@ export class FlowEngine {
       created_at: now,
       updated_at: now
     };
-    await this.store.saveFlow(flow);
-    await this.ledger(flow.flow_id, "flow_created", { goal: flow.goal, phase: flow.phase });
-    return presentFlow(flow);
   }
 
   async status(flowId: string): Promise<Flow & PresentationEnvelope> {
@@ -349,11 +372,33 @@ export class FlowEngine {
         | "done_criteria"
         | "expected_evidence"
         | "changed_files"
+        | "deleted_files"
+        | "decisions"
+      >
+    > & { scope?: Partial<Scope> }
+  ): Promise<Flow> {
+    return this.store.withFlowLock(flowId, () => this.updateFlowFactsUnlocked(flowId, facts));
+  }
+
+  private async updateFlowFactsUnlocked(
+    flowId: string,
+    facts: Partial<
+      Pick<
+        Flow,
+        | "context"
+        | "risks"
+        | "uncertainties"
+        | "tasks"
+        | "done_criteria"
+        | "expected_evidence"
+        | "changed_files"
+        | "deleted_files"
         | "decisions"
       >
     > & { scope?: Partial<Scope> }
   ): Promise<Flow> {
     const flow = await this.store.loadFlow(flowId);
+    assertFlowAcceptsMutation(flow);
     const now = nowIso();
     flow.context = facts.context ?? flow.context;
     flow.risks = facts.risks ?? flow.risks;
@@ -363,6 +408,12 @@ export class FlowEngine {
     flow.expected_evidence = facts.expected_evidence ?? flow.expected_evidence;
     flow.changed_files = facts.changed_files ?? flow.changed_files;
     flow.changed_files = unique([...flow.changed_files, ...stringArray((facts as Record<string, unknown>).changed_files)]);
+    if (Object.prototype.hasOwnProperty.call(facts, "deleted_files")) {
+      flow.deleted_files = unique(stringArray((facts as Record<string, unknown>).deleted_files));
+    } else {
+      flow.deleted_files = flow.deleted_files ?? [];
+    }
+    assertDeletedFilesBelongToChangedFiles(flow.changed_files, flow.deleted_files);
     flow.decisions = facts.decisions ?? flow.decisions;
     flow.scope = {
       in: facts.scope?.in ?? flow.scope.in,
@@ -466,6 +517,22 @@ export class FlowEngine {
   }
 
   async startGoal(input: GoalEnvelope): Promise<Record<string, unknown>> {
+    const idempotencyKey = normalizeGoalEnvelope(input).idempotency_key;
+    const claimId = `goal_start_${createHash("sha256").update(idempotencyKey, "utf8").digest("hex").slice(0, 24)}`;
+    const deadline = Date.now() + 35_000;
+    while (true) {
+      try {
+        return await this.store.withFlowLock(claimId, () => this.startGoalUnlocked(input));
+      } catch (error) {
+        if (!errorMessage(error).startsWith(`MEETING_LOCKED: ${claimId};`) || Date.now() >= deadline) {
+          throw error;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+    }
+  }
+
+  private async startGoalUnlocked(input: GoalEnvelope): Promise<Record<string, unknown>> {
     const envelope = normalizeGoalEnvelope(input);
     const canonicalStore = path.basename(this.store.root).toLowerCase() === ".ppirtv";
     if (!canonicalStore && !this.store.fixtureOnlyNoncanonicalRoot) {
@@ -493,19 +560,20 @@ export class FlowEngine {
     const existingByKey = await this.findGoalFlowByIdempotencyKey(envelope.idempotency_key);
     let flow: Flow;
     let reused = false;
+    let newlyCreated = false;
     if (envelope.flow_id) {
       flow = await this.store.loadFlow(envelope.flow_id);
       if (existingByKey && existingByKey.flow_id !== flow.flow_id) {
         throw new Error(`idempotency_key already belongs to ${existingByKey.flow_id}`);
       }
       assertCompatibleGoalBinding(flow.goal_binding, envelope, validation.contract_fingerprint);
-      reused = true;
+      reused = flow.goal_binding !== undefined;
     } else if (existingByKey) {
       assertCompatibleGoalBinding(existingByKey.goal_binding, envelope, validation.contract_fingerprint);
       flow = existingByKey;
       reused = true;
     } else {
-      const created = await this.createFlow({
+      flow = this.buildInitialFlow({
         goal: envelope.objective,
         owner: "dex-code",
         context: `GOAL/SPT via dex-code. Workspace: ${envelope.workspace}. SPT: ${envelope.spt_path}.`,
@@ -515,10 +583,46 @@ export class FlowEngine {
         },
         risks: ["Conclusao positiva exige evidencia rastreavel.", ...validation.risks],
         uncertainties: ["Integracao real do dex-code pode ajustar campos futuros sem quebrar este envelope."]
-      });
-      flow = await this.store.loadFlow(created.flow_id);
+      }, await this.store.nextId("flow"), now);
+      newlyCreated = true;
     }
 
+    return this.store.withFlowLock(flow.flow_id, async () => {
+    if (!newlyCreated) {
+      flow = await this.store.loadFlow(flow.flow_id);
+      reused = flow.goal_binding !== undefined;
+    }
+    if (reused) {
+      assertCompatibleGoalBinding(flow.goal_binding, envelope, validation.contract_fingerprint);
+    }
+    if (!flow.goal_binding && flowIsTerminal(flow)) {
+      throw new Error(
+        `GOAL_TERMINAL_FLOW_UNBOUND: flow ${flow.flow_id} is terminal and cannot receive its first GOAL binding`
+      );
+    }
+    assertLegacyFlowCanReceiveFirstGoalBinding(flow, envelope);
+    if (reused && flowIsTerminal(flow)) {
+      await ensureLedgerTransitionRecorded(this.store, flow, {
+        originalType: "flow_created",
+        recoveredType: "flow_created_recovered",
+        originalAt: flow.created_at,
+        data: { goal: flow.goal, phase: flow.history.find((event) => event.type === "flow_created")?.data.phase ?? flow.phase }
+      });
+      await ensureLedgerTransitionRecorded(this.store, flow, {
+        originalType: "goal_started",
+        recoveredType: "goal_started_recovered",
+        originalAt: flow.goal_binding!.started_at,
+        data: goalLedgerData(flow.goal_binding!, flow),
+        actor: "dex-code"
+      });
+      return {
+        ...(await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })),
+        started: false,
+        reused: true,
+        spt_validation: validation,
+        goal_envelope: flow.goal_binding?.envelope
+      };
+    }
     const previousBinding = flow.goal_binding;
     const previousMode = flow.mode;
     const previousPhase = flow.phase;
@@ -580,7 +684,42 @@ export class FlowEngine {
       flow.phase = previousPhase;
       throw saveError;
     }
-    await this.ledger(flow.flow_id, reused ? "goal_reused" : "goal_started", goalLedgerData(flow.goal_binding, flow), "dex-code");
+    const existingLedger = await this.store.readLedger(flow.flow_id);
+    if (newlyCreated) {
+      await this.ledger(flow.flow_id, "flow_created", {
+        goal: flow.goal,
+        phase: flow.history.find((event) => event.type === "flow_created")?.data.phase ?? flow.phase
+      });
+      await this.ledger(flow.flow_id, "goal_started", goalLedgerData(flow.goal_binding, flow), "dex-code");
+    } else if (!reused) {
+      await ensureLedgerTransitionRecorded(this.store, flow, {
+        originalType: "flow_created",
+        recoveredType: "flow_created_recovered",
+        originalAt: flow.created_at,
+        data: { goal: flow.goal, phase: flow.history.find((event) => event.type === "flow_created")?.data.phase ?? flow.phase }
+      });
+      await this.ledger(flow.flow_id, "goal_started", goalLedgerData(flow.goal_binding, flow), "dex-code");
+    } else {
+      const hasGoalStarted = existingLedger.some(
+        (event) => event.type === "goal_started" || event.type === "goal_started_recovered"
+      );
+      await ensureLedgerTransitionRecorded(this.store, flow, {
+        originalType: "flow_created",
+        recoveredType: "flow_created_recovered",
+        originalAt: flow.created_at,
+        data: { goal: flow.goal, phase: flow.history.find((event) => event.type === "flow_created")?.data.phase ?? flow.phase }
+      });
+      await ensureLedgerTransitionRecorded(this.store, flow, {
+        originalType: "goal_started",
+        recoveredType: "goal_started_recovered",
+        originalAt: flow.goal_binding.started_at,
+        data: goalLedgerData(flow.goal_binding, flow),
+        actor: "dex-code"
+      });
+      if (hasGoalStarted) {
+        await this.ledger(flow.flow_id, "goal_reused", goalLedgerData(flow.goal_binding, flow), "dex-code");
+      }
+    }
 
     return {
       ...(await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })),
@@ -589,10 +728,12 @@ export class FlowEngine {
       spt_validation: validation,
       goal_envelope: flow.goal_binding.envelope
     };
+    });
   }
 
   async goalStatus(input: { flow_id?: string; idempotency_key?: string; detail?: "lean" | "compact" | "full" }): Promise<Record<string, unknown>> {
     let flow = await this.resolveGoalFlow(input);
+    flow = await this.flowWithCurrentImplementationFingerprint(flow);
     const detail = input.detail === "lean" ? "lean" : input.detail === "compact" ? "compact" : "full";
     // DT-04 (pragmatic/chato): detail "lean" retorna apenas nucleo do status
     // (fase, status, blockers, next_step, display, aliases) sem montar
@@ -677,6 +818,7 @@ export class FlowEngine {
         gate_missing: phaseBlockers,
         goal: flow.goal,
         goal_envelope: flow.goal_binding?.envelope ?? null,
+        implementation_fingerprint: flow.implementation_fingerprint ?? null,
         // Campos acionaveis de blocker (BUG-LEAN-01+02): pequenos em bytes
         // mas essenciais para o operador saber COMO destravar o flow.
         required_cooperation: requiredCooperation,
@@ -781,6 +923,7 @@ export class FlowEngine {
       tasks: flow.tasks,
       expected_evidence: flow.expected_evidence,
       done_criteria: flow.done_criteria,
+      implementation_fingerprint: flow.implementation_fingerprint ?? null,
       evidence: flow.evidence.map((evidence) => ({
         evidence_id: evidence.evidence_id,
         kind: evidence.kind,
@@ -965,8 +1108,11 @@ export class FlowEngine {
   }
 
   async resumeGoal(input: { flow_id?: string; idempotency_key?: string; note?: string }): Promise<Record<string, unknown>> {
-    const flow = await this.resolveGoalFlow(input);
+    const resolvedFlow = await this.resolveGoalFlow(input);
+    return this.store.withFlowLock(resolvedFlow.flow_id, async () => {
+    const flow = await this.store.loadFlow(resolvedFlow.flow_id);
     assertGoalBinding(flow);
+    assertFlowAcceptsMutation(flow);
     const now = nowIso();
     if (flow.goal_binding) {
       flow.goal_binding.last_seen_at = now;
@@ -979,6 +1125,7 @@ export class FlowEngine {
       ...(await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })),
       resumed: true
     };
+    });
   }
 
   async goalGateCheck(input: {
@@ -1058,7 +1205,26 @@ export class FlowEngine {
     detail?: "lean" | "compact" | "full";
   }): Promise<Record<string, unknown>> {
     const flow = await this.resolveGoalFlow(input);
+    return this.store.withFlowLock(flow.flow_id, () => this.goalAdvanceUnlocked(input, flow.flow_id));
+  }
+
+  private async goalAdvanceUnlocked(input: {
+    flow_id?: string;
+    idempotency_key?: string;
+    provided?: Record<string, unknown>;
+    evidence_ids?: string[];
+    recall_consumption?: RecallConsumptionInput;
+    detail?: "lean" | "compact" | "full";
+  }, resolvedFlowId: string): Promise<Record<string, unknown>> {
+    const flow = await this.store.loadFlow(resolvedFlowId);
     assertGoalBinding(flow);
+    if (flowIsTerminal(flow)) {
+      return this.advanceUnlocked({
+        flow_id: flow.flow_id,
+        evidence_ids: input.evidence_ids,
+        actor: "dex-code"
+      });
+    }
     assertNoSecretLikePayload(input.provided, "provided");
     const recallConsumption = input.recall_consumption
       ? await this.confirmRecallConsumption(flow, input.recall_consumption, "dex-code")
@@ -1079,7 +1245,7 @@ export class FlowEngine {
         : input.provided;
     const gate = shouldReuseSavedGate
       ? presentGate(savedGate as GateRecord & Record<string, unknown>, flow)
-      : await this.checkGate({
+      : await this.checkGateUnlocked({
           flow_id: flow.flow_id,
           phase: flow.phase,
           provided: providedForGate,
@@ -1103,7 +1269,7 @@ export class FlowEngine {
         status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow, input.detail) })
       };
     }
-    const advanced = await this.advance({
+    const advanced = await this.advanceUnlocked({
       flow_id: flow.flow_id,
       evidence_ids: input.evidence_ids,
       actor: "dex-code"
@@ -1128,8 +1294,11 @@ export class FlowEngine {
   }
 
   async recordGoalProgress(input: WorkProgressInput): Promise<Record<string, unknown>> {
-    const flow = await this.resolveGoalFlow(input);
+    const resolvedFlow = await this.resolveGoalFlow(input);
+    return this.store.withFlowLock(resolvedFlow.flow_id, async () => {
+    const flow = await this.store.loadFlow(resolvedFlow.flow_id);
     assertGoalBinding(flow);
+    assertFlowAcceptsMutation(flow);
     assertNoSecretLikePayload(input, "goal_progress_record");
     const eventKey = progressText(input.event_key, 120, "event_key");
     const source = progressText(input.source, 80, "source");
@@ -1202,6 +1371,7 @@ export class FlowEngine {
       ...progressReceipt(flow, event, { recorded: true, reused: false, throttled: false, reason: "material_progress" }),
       status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: "lean" })
     };
+    });
   }
 
   async goalMeetingOpen(input: {
@@ -1309,6 +1479,7 @@ export class FlowEngine {
     v2_tags?: string[];
   }): Promise<Record<string, unknown>> {
     const flow = await this.store.loadFlow(input.flow_id);
+    assertFlowAcceptsMutation(flow);
     const writePolicy = input.write_policy ?? "auto_write";
     if (writePolicy !== "auto_write" && writePolicy !== "classify_only") {
       throw new Error(`Invalid write_policy: ${writePolicy}`);
@@ -2013,6 +2184,7 @@ export class FlowEngine {
     }
 
     const flow = await this.store.loadFlow(input.flow_id);
+    assertFlowAcceptsMutation(flow);
     const originalFlow = structuredClone(flow);
     const currentCandidates = Array.isArray(flow.memory_mining?.candidates) ? flow.memory_mining.candidates : [];
     if (currentCandidates.length === 0) {
@@ -2278,7 +2450,7 @@ export class FlowEngine {
       assertMeetingClosed(meeting);
     }
     const to = input.to ?? fiscalBackTo(flow);
-    const returned = await this.returnTo({
+    const returned = await this.returnToUnlocked({
       flow_id: flow.flow_id,
       to,
       reason: input.reason,
@@ -2329,6 +2501,7 @@ export class FlowEngine {
     observed_result?: Record<string, unknown>;
     scope_classification?: "target" | "declared_dependency" | "outside";
     scope_reference?: string;
+    reviewed_implementation_fingerprint?: string;
     detail?: "lean" | "compact" | "full";
   }): Promise<Record<string, unknown>> {
     requireText(input.flow_id, "flow_id");
@@ -2355,6 +2528,7 @@ export class FlowEngine {
       observed_result: input.observed_result,
       scope_classification: input.scope_classification,
       scope_reference: input.scope_reference,
+      reviewed_implementation_fingerprint: input.reviewed_implementation_fingerprint,
       gold_mining: input.satisfies?.map((item) => `evidence_required:${item}`) ?? []
     });
     const reviewDiagnostics = reviewEvidenceRequested(input) ? reviewEvidenceDiagnostics(flow, evidence) : null;
@@ -2431,6 +2605,7 @@ export class FlowEngine {
   }): Promise<Record<string, unknown>> {
     let flow = await this.store.loadFlow(input.flow_id);
     assertGoalBinding(flow);
+    assertFlowAcceptsMutation(flow);
     if (typeof input.regress_count === "number" && input.regress_count > countRegressions(flow)) {
       const now = nowIso();
       flow.history.push({
@@ -2461,7 +2636,7 @@ export class FlowEngine {
       throw new Error("goal_verdict requires traceable evidence_ids for positive conclusions");
     }
     const positiveVerdict = input.status === "pronto" || input.status === "pronto_com_ressalvas";
-    const fiscalFlow = await this.store.loadFlow(input.flow_id);
+    const fiscalFlow = await this.flowWithCurrentImplementationFingerprint(await this.store.loadFlow(input.flow_id));
     const memoryMining: Record<string, unknown> | null = positiveVerdict && hasMemoryMiningRun(fiscalFlow) ? (fiscalFlow.memory_mining ?? null) : null;
     if (positiveVerdict && memoryMining?.blocked_verdict === true) {
       await this.persistMemoryMiningVerdictBlock(fiscalFlow, memoryMining, input);
@@ -2510,7 +2685,7 @@ export class FlowEngine {
       gold_mining: verdictLearning.gold_mining,
       meeting_ids: meetingIds,
       next_step: input.next_step
-    });
+    }, { allowOfficialGoal: true });
     const statusSnapshot = await this.goalStatus({ flow_id: input.flow_id, detail: mutationStatusDetail(flow) });
     const closureBlockers = stringArray(statusSnapshot.closure_blockers);
     const terminalAdvanceAllowed =
@@ -2598,13 +2773,25 @@ export class FlowEngine {
     provided?: Record<string, unknown>;
     persist?: boolean;
   }): Promise<GateRecord & PresentationEnvelope> {
+    if (input.persist === false) {
+      return this.checkGateUnlocked(input);
+    }
+    return this.store.withFlowLock(input.flow_id, () => this.checkGateUnlocked(input));
+  }
+
+  private async checkGateUnlocked(input: {
+    flow_id: string;
+    phase?: AnyPhase;
+    provided?: Record<string, unknown>;
+    persist?: boolean;
+  }): Promise<GateRecord & PresentationEnvelope> {
     const flow = await this.store.loadFlow(input.flow_id);
+    if (input.persist ?? true) {
+      assertFlowAcceptsMutation(flow);
+    }
     const phase = input.phase ?? flow.phase;
     assertPhase(phase);
     const provided = input.provided ?? {};
-    const changedFiles = phase === "implementacao"
-      ? unique([...flow.changed_files, ...stringArray(provided.changed_files)])
-      : flow.changed_files;
     // BUG 3 (pragmatic DRY): requisitos source=provided (ex.: implementation_done)
     // precisam persistir entre chamadas de goal_gate_check. O registro anterior
     // da fase ja esta em flow.gates[phase].provided; fazemos merge aditivo para
@@ -2613,10 +2800,25 @@ export class FlowEngine {
     // fluxo vivo e nao sao afetados por este merge.
     const persistedProvided = (flow.gates[phase]?.provided ?? {}) as Record<string, unknown>;
     const effectiveProvided: Record<string, unknown> = { ...persistedProvided, ...provided };
+    const changedFiles = phase === "implementacao"
+      ? unique([...flow.changed_files, ...stringArray(effectiveProvided.changed_files)])
+      : flow.changed_files;
+    const deletedFiles = phase === "implementacao"
+      ? Object.prototype.hasOwnProperty.call(provided, "deleted_files")
+        ? unique(stringArray(provided.deleted_files))
+        : (flow.deleted_files ?? [])
+      : (flow.deleted_files ?? []);
+    assertDeletedFilesBelongToChangedFiles(changedFiles, deletedFiles);
     // Patch C (modo compact wire-up): usar profileFor(flow.mode) para decidir
     // gates e transicoes. Default cai em FULL_PROFILE quando flow.mode e'
     // undefined ou desconhecido.
-    const flowForResolution = changedFiles === flow.changed_files ? flow : { ...flow, changed_files: changedFiles };
+    let flowForResolution =
+      changedFiles === flow.changed_files && deletedFiles === flow.deleted_files
+        ? flow
+        : { ...flow, changed_files: changedFiles, deleted_files: deletedFiles };
+    if (phase === "implementacao") {
+      flowForResolution = await this.flowWithCurrentImplementationFingerprint(flowForResolution);
+    }
     const profile = profileFor(flow.mode);
     const snapshot = this.resolveGateSnapshot(flowForResolution, phase, effectiveProvided);
     const missing = snapshot.missing;
@@ -2626,12 +2828,15 @@ export class FlowEngine {
       status,
       checked_at: nowIso(),
       provided: effectiveProvided,
+      implementation_fingerprint: flowForResolution.implementation_fingerprint,
       missing,
       next: status === "passed" ? `advance_to_${profile.nextPhase[phase] ?? "complete"}` : `complete_gate_${phase}`,
       back_to: status === "passed" ? null : (profile.defaultBackTo[phase] as Phase | null)
     };
     if (input.persist ?? true) {
       flow.changed_files = changedFiles;
+      flow.deleted_files = deletedFiles;
+      flow.implementation_fingerprint = flowForResolution.implementation_fingerprint;
       flow.gates[phase] = record;
       flow.status = status === "blocked" ? "blocked" : flow.status === "blocked" ? "active" : flow.status;
       flow.updated_at = record.checked_at;
@@ -2645,6 +2850,22 @@ export class FlowEngine {
       presented.loop_monitor = loopMonitor;
     }
     return presented;
+  }
+
+  private async flowWithCurrentImplementationFingerprint(flow: Flow): Promise<Flow> {
+    const workspace = flow.goal_binding?.envelope.workspace;
+    if (!workspace || flow.status === "complete" || flow.status === "archived") {
+      return flow;
+    }
+    const implementationFingerprint = await fingerprintReviewedImplementation(
+      workspace,
+      flow.changed_files,
+      process.platform,
+      { allowedMissingFiles: flow.deleted_files ?? [] }
+    );
+    return implementationFingerprint === flow.implementation_fingerprint
+      ? flow
+      : { ...flow, implementation_fingerprint: implementationFingerprint };
   }
 
   private resolveGateSnapshot(
@@ -2727,7 +2948,15 @@ export class FlowEngine {
     if (flow.status === "archived") {
       throw new Error(`Flow ${flow.flow_id} is archived`);
     }
-    if (flow.history.some((event) => event.type === "flow_completed")) {
+    const completedEvent = [...flow.history].reverse().find((event) => event.type === "flow_completed");
+    if (completedEvent) {
+      await ensureLedgerTransitionRecorded(this.store, flow, {
+        originalType: "flow_completed",
+        recoveredType: "flow_completed_recovered",
+        originalAt: completedEvent.at,
+        data: completedEvent.data,
+        actor: input.actor
+      });
       return presentGate({
         advanced: false,
         reused: true,
@@ -2750,7 +2979,7 @@ export class FlowEngine {
         : input.provided;
     const effectiveGate = shouldReuseSavedGate
       ? savedGate
-      : await this.checkGate({ flow_id: flow.flow_id, phase: flow.phase, provided: providedForGate });
+      : await this.checkGateUnlocked({ flow_id: flow.flow_id, phase: flow.phase, provided: providedForGate });
     if (effectiveGate.status === "blocked") {
       const presented = presentGate({
         advanced: false,
@@ -2768,7 +2997,7 @@ export class FlowEngine {
       }
       return presented;
     }
-    const fresh = await this.store.loadFlow(flow.flow_id);
+    const fresh = await this.flowWithCurrentImplementationFingerprint(await this.store.loadFlow(flow.flow_id));
     const from = fresh.phase;
     // Patch B (modo compact wire-up): proxima fase segundo o perfil do flow.
     const to = profileFor(fresh.mode).nextPhase[from] as AnyPhase | null;
@@ -2812,7 +3041,11 @@ export class FlowEngine {
       await this.runAfterPhaseHook(fresh, from, input.actor);
       fresh.status = "complete";
       fresh.updated_at = now;
-      fresh.history.push({ at: now, type: "flow_completed", data: { from } });
+      fresh.history.push({
+        at: now,
+        type: "flow_completed",
+        data: { from, evidence_ids: input.evidence_ids ?? [] }
+      });
       await this.store.saveFlow(fresh);
       await this.ledger(fresh.flow_id, "flow_completed", { from, evidence_ids: input.evidence_ids ?? [] }, input.actor);
       return presentGate({ advanced: true, phase: from, from, to: null, status: "complete", next: "complete", back_to: null }, fresh);
@@ -3038,9 +3271,14 @@ export class FlowEngine {
   }
 
   async returnTo(input: { flow_id: string; to: AnyPhase; reason: string; evidence_ids?: string[]; actor?: string }): Promise<Flow & PresentationEnvelope> {
+    return this.store.withFlowLock(input.flow_id, () => this.returnToUnlocked(input));
+  }
+
+  private async returnToUnlocked(input: { flow_id: string; to: AnyPhase; reason: string; evidence_ids?: string[]; actor?: string }): Promise<Flow & PresentationEnvelope> {
     assertPhase(input.to);
     requireText(input.reason, "reason");
     const flow = await this.store.loadFlow(input.flow_id);
+    assertFlowAcceptsMutation(flow);
     const from = flow.phase;
     const now = nowIso();
     flow.phase = input.to;
@@ -3101,6 +3339,7 @@ export class FlowEngine {
       evidence_ids?: string[];
   }): Promise<Meeting & PresentationEnvelope> {
     const flow = await this.store.loadFlow(input.flow_id);
+    assertFlowAcceptsMutation(flow);
     const now = nowIso();
     const fiscal = evaluateFiscalPolicy(flow);
     const persistedFiscal = latestFiscalBlock(flow);
@@ -3190,6 +3429,8 @@ export class FlowEngine {
     evidence_ids?: string[];
   }): Promise<Meeting & PresentationEnvelope> {
     const meeting = await this.store.loadMeeting(input.meeting_id);
+    const flow = await this.store.loadFlow(meeting.flow_id);
+    assertFlowAcceptsMutation(flow);
     if (meeting.status === "closed") {
       throw new Error(`meeting_id ${input.meeting_id} is already closed`);
     }
@@ -3207,7 +3448,6 @@ export class FlowEngine {
     meeting.findings = unique([...meeting.findings, ...stringArray(input.finding), ...stringArray(input.note)]);
     meeting.evidence_ids = unique([...meeting.evidence_ids, ...(input.evidence_ids ?? [])]);
     await this.store.saveMeeting(meeting);
-    const flow = await this.store.loadFlow(meeting.flow_id);
     flow.updated_at = now;
     flow.history.push({
       at: now,
@@ -3233,6 +3473,8 @@ export class FlowEngine {
 
   private async recordMeetingUnlocked(input: Partial<Meeting> & { meeting_id: string }): Promise<Meeting & PresentationEnvelope> {
     const meeting = await this.store.loadMeeting(input.meeting_id);
+    const flow = await this.store.loadFlow(meeting.flow_id);
+    assertFlowAcceptsMutation(flow);
     if (meeting.status === "closed") {
       throw new Error(`MEETING_ALREADY_CLOSED: ${meeting.meeting_id}`);
     }
@@ -3260,7 +3502,6 @@ export class FlowEngine {
     meeting.cooperators = input.cooperators ?? meeting.cooperators;
     meeting.active_credits = input.active_credits ?? meeting.active_credits;
     await this.store.saveMeeting(meeting);
-    const flow = await this.store.loadFlow(meeting.flow_id);
     flow.decisions = unique([...flow.decisions, ...meeting.decisions]);
     flow.risks = unique([...flow.risks, ...meeting.risks]);
     const meetingPromotedGold = linkParkingToGold(flow, meeting.parking_lot, "meeting_record", meeting.meeting_id, now);
@@ -3306,6 +3547,7 @@ export class FlowEngine {
     requireText(input.decision, "decision");
     const meeting = await this.store.loadMeeting(input.meeting_id);
     const flow = await this.store.loadFlow(meeting.flow_id);
+    assertFlowAcceptsMutation(flow);
     if (meeting.status === "closed") {
       if (meeting.decision !== input.decision) {
         throw new Error(`MEETING_ALREADY_CLOSED: ${meeting.meeting_id}`);
@@ -3389,13 +3631,54 @@ export class FlowEngine {
     observed_result?: Record<string, unknown>;
     scope_classification?: "target" | "declared_dependency" | "outside";
     scope_reference?: string;
+    reviewed_implementation_fingerprint?: string;
+    parking_lot?: string[];
+    gold_mining?: string[];
+    cooperators?: Flow["cooperators"];
+    active_credits?: string[];
+  }): Promise<Evidence & PresentationEnvelope> {
+    return this.store.withFlowLock(input.flow_id, () => this.attachEvidenceUnlocked(input));
+  }
+
+  private async attachEvidenceUnlocked(input: {
+    flow_id: string;
+    kind: string;
+    title: string;
+    uri?: string;
+    content?: string;
+    note?: string;
+    satisfies?: string[];
+    observed_result?: Record<string, unknown>;
+    scope_classification?: "target" | "declared_dependency" | "outside";
+    scope_reference?: string;
+    reviewed_implementation_fingerprint?: string;
     parking_lot?: string[];
     gold_mining?: string[];
     cooperators?: Flow["cooperators"];
     active_credits?: string[];
   }): Promise<Evidence & PresentationEnvelope> {
     requireText(input.title, "title");
-    const flow = await this.store.loadFlow(input.flow_id);
+    const flow = await this.flowWithCurrentImplementationFingerprint(await this.store.loadFlow(input.flow_id));
+    assertFlowAcceptsMutation(flow);
+    const reviewAttestation = structuredReviewAttestationRequested(input);
+    if (reviewAttestation && flow.goal_binding?.envelope.workspace) {
+      const strictFingerprint = await fingerprintReviewedImplementation(
+        flow.goal_binding.envelope.workspace,
+        flow.changed_files,
+        process.platform,
+        {
+          requireReviewableFiles: true,
+          allowedMissingFiles: flow.deleted_files ?? []
+        }
+      );
+      if (!input.reviewed_implementation_fingerprint) {
+        throw new Error("REVIEW_SNAPSHOT_FINGERPRINT_REQUIRED: obtain implementation_fingerprint after implementation and attest that exact snapshot");
+      }
+      if (input.reviewed_implementation_fingerprint !== strictFingerprint) {
+        throw new Error("REVIEW_SNAPSHOT_FINGERPRINT_MISMATCH: reviewed snapshot differs from the current implementation");
+      }
+      flow.implementation_fingerprint = strictFingerprint;
+    }
     const now = nowIso();
     const evidence: Evidence = {
       evidence_id: await this.store.nextId("evd"),
@@ -3409,6 +3692,10 @@ export class FlowEngine {
       observed_result: input.observed_result,
       scope_classification: input.scope_classification,
       scope_reference: input.scope_reference,
+      reviewed_implementation_fingerprint:
+        reviewAttestation
+          ? input.reviewed_implementation_fingerprint
+          : undefined,
       parking_lot: input.parking_lot ?? [],
       gold_mining: input.gold_mining ?? [],
       cooperators: input.cooperators ?? [],
@@ -3639,8 +3926,12 @@ export class FlowEngine {
     active_credits?: string[];
     meeting_ids?: string[];
     next_step: string;
-  }): Promise<Verdict & PresentationEnvelope> {
-    const flow = await this.store.loadFlow(input.flow_id);
+  }, options: { allowOfficialGoal?: boolean } = {}): Promise<Verdict & PresentationEnvelope> {
+    const flow = await this.flowWithCurrentImplementationFingerprint(await this.store.loadFlow(input.flow_id));
+    assertFlowAcceptsMutation(flow);
+    if (flow.goal_binding && options.allowOfficialGoal !== true) {
+      throw new Error("OFFICIAL_GOAL_REQUIRES_GOAL_VERDICT: verdict_record is legacy/advisory; use goal_verdict");
+    }
     const meetingIds = unique(input.meeting_ids ?? []);
     for (const meetingId of meetingIds) {
       const meeting = await this.store.loadMeeting(meetingId);
@@ -3650,6 +3941,8 @@ export class FlowEngine {
       assertMeetingClosed(meeting);
     }
     const evidenceIds = input.evidence_ids ?? [];
+    const citedEvidence = flow.evidence.filter((evidence) => evidenceIds.includes(evidence.evidence_id));
+    const citedCurrentReview = citedEvidence.find((evidence) => isStructuredReviewEvidence(flow, evidence));
     let status = input.status;
     const residualRisks = input.residual_risks ?? [];
     if (status === "pronto" && evidenceIds.length === 0) {
@@ -3666,8 +3959,12 @@ export class FlowEngine {
       review_artifact_path: input.review_artifact_path,
       review_findings: input.review_findings ?? [],
       reviewed_changed_files:
-        truthy(input.review_artifact_path) || stringArray(input.review_findings).length > 0
+        citedCurrentReview
           ? canonicalChangedFiles(flow.changed_files)
+          : undefined,
+      reviewed_implementation_fingerprint:
+        citedCurrentReview
+          ? citedCurrentReview.reviewed_implementation_fingerprint
           : undefined,
       parking_lot: input.parking_lot ?? [],
       gold_mining: input.gold_mining ?? [],
@@ -3783,23 +4080,28 @@ export class FlowEngine {
     const sortedFindings = findings.sort((a, b) => a.id.localeCompare(b.id));
     const blockingFindings = sortedFindings.filter(isMaterialHygieneFinding);
     if (flowId) {
-      const flow = await this.store.loadFlow(flowId);
-      const now = nowIso();
-      flow.history.push({
-        at: now,
-        type: "hygiene_scanned",
-        data: {
+      await this.store.withFlowLock(flowId, async () => {
+        const flow = await this.store.loadFlow(flowId);
+        if (flowIsTerminal(flow)) {
+          return;
+        }
+        const now = nowIso();
+        flow.history.push({
+          at: now,
+          type: "hygiene_scanned",
+          data: {
+            findings_count: sortedFindings.length,
+            blocking_findings_count: blockingFindings.length,
+            blocking_findings: blockingFindings.map((finding) => finding.id)
+          }
+        });
+        flow.updated_at = now;
+        await this.store.saveFlow(flow);
+        await this.ledger(flow.flow_id, "hygiene_scanned", {
           findings_count: sortedFindings.length,
           blocking_findings_count: blockingFindings.length,
           blocking_findings: blockingFindings.map((finding) => finding.id)
-        }
-      });
-      flow.updated_at = now;
-      await this.store.saveFlow(flow);
-      await this.ledger(flow.flow_id, "hygiene_scanned", {
-        findings_count: sortedFindings.length,
-        blocking_findings_count: blockingFindings.length,
-        blocking_findings: blockingFindings.map((finding) => finding.id)
+        });
       });
     }
 
@@ -3901,7 +4203,45 @@ export class FlowEngine {
   }
 
   async archiveFlow(input: { flow_id: string; reason?: string }): Promise<Flow & PresentationEnvelope> {
+    return this.store.withFlowLock(input.flow_id, () => this.archiveFlowUnlocked(input));
+  }
+
+  private async archiveFlowUnlocked(input: { flow_id: string; reason?: string }): Promise<Flow & PresentationEnvelope> {
     const flow = await this.store.loadFlow(input.flow_id);
+    const completedEvent = [...flow.history].reverse().find((event) => event.type === "flow_completed");
+    if (completedEvent) {
+      await ensureLedgerTransitionRecorded(this.store, flow, {
+        originalType: "flow_completed",
+        recoveredType: "flow_completed_recovered",
+        originalAt: completedEvent.at,
+        data: completedEvent.data
+      });
+    }
+    if (flow.status === "archived") {
+      const archivedEvent = [...flow.history].reverse().find((event) => event.type === "flow_archived");
+      if (archivedEvent) {
+        await ensureLedgerTransitionRecorded(this.store, flow, {
+          originalType: "flow_archived",
+          recoveredType: "flow_archived_recovered",
+          originalAt: archivedEvent.at,
+          data: archivedEvent.data
+        });
+      }
+      const archivedBlockedFlow = archivedEvent?.data.archived_blocked_flow === true;
+      const preservedBlockers = stringArray(archivedEvent?.data.preserved_blockers);
+      const presented = presentFlow(flow);
+      if (!archivedBlockedFlow) {
+        return presented;
+      }
+      return {
+        ...withDirectAction(
+          presented,
+          blockedArchiveDirectAction(preservedBlockers.length > 0 ? preservedBlockers : ["flow_blocked_before_archive"])
+        ),
+        archived_blocked_flow: true,
+        preserved_blockers: preservedBlockers
+      } as Flow & PresentationEnvelope;
+    }
     const wasBlocked = flow.status === "blocked";
     const preservedBlockers = reconciledBlockers(flow, [
       ...latestFiscalBlock(flow).blocking_reasons,
@@ -3939,7 +4279,11 @@ export class FlowEngine {
 
   private async findGoalFlowByIdempotencyKey(idempotencyKey: string): Promise<Flow | undefined> {
     const flows = await this.store.listFlows();
-    return flows.find((flow) => flow.goal_binding?.envelope.idempotency_key === idempotencyKey);
+    const matches = flows.filter((flow) => flow.goal_binding?.envelope.idempotency_key === idempotencyKey);
+    if (matches.length > 1) {
+      throw new GoalIdempotencyDuplicateBindingsError(matches.map((flow) => flow.flow_id));
+    }
+    return matches[0];
   }
 
   private async resolveGoalFlow(input: { flow_id?: string; idempotency_key?: string }): Promise<Flow> {
@@ -4481,6 +4825,16 @@ function assertGoalBinding(flow: Flow): void {
   }
 }
 
+function assertFlowAcceptsMutation(flow: Flow): void {
+  if (flowIsTerminal(flow)) {
+    throw new Error(`FLOW_IMMUTABLE_AFTER_COMPLETION: ${flow.flow_id} is ${flow.status}`);
+  }
+}
+
+function flowIsTerminal(flow: Flow): boolean {
+  return flow.status === "archived" || flow.history.some((event) => event.type === "flow_completed");
+}
+
 function nextGoalStep(flow: Flow, gate: GateRecord): string {
   if (flow.status === "archived") {
     return "flow_archived";
@@ -4954,16 +5308,24 @@ function codeReviewRequired(flow: Flow, input: FiscalVerdictInput): boolean {
 }
 
 function hasReviewEvidence(flow: Flow, input: FiscalVerdictInput): boolean {
+  const citedEvidenceIds = input.evidence_ids ? new Set(input.evidence_ids) : null;
+  if (citedEvidenceIds) {
+    return flow.evidence.some((evidence) =>
+      citedEvidenceIds.has(evidence.evidence_id)
+      && isStructuredReviewEvidence(flow, evidence)
+    );
+  }
   return (
-    truthy(input.review_artifact_path) ||
-    stringArray(input.review_findings).length > 0 ||
     flow.verdicts.some((verdict) =>
-      (
-        truthy(verdict.review_artifact_path) ||
-        verdict.review_findings.length > 0
-      ) &&
-      changedFilesMatchReview(flow.changed_files, reviewedChangedFilesForVerdict(flow, verdict)) &&
-      reviewRemainsCurrent(flow, verdict)
+      verdict.reviewed_implementation_fingerprint
+        ? verdict.reviewed_implementation_fingerprint === flow.implementation_fingerprint
+        : !flow.implementation_fingerprint &&
+          (
+            truthy(verdict.review_artifact_path) ||
+            verdict.review_findings.length > 0
+          ) &&
+          changedFilesMatchReview(flow.changed_files, reviewedChangedFilesForVerdict(flow, verdict)) &&
+          reviewRemainsCurrent(flow, verdict)
     ) ||
     flow.evidence.some((evidence) => isStructuredReviewEvidence(flow, evidence))
   );
@@ -4971,6 +5333,17 @@ function hasReviewEvidence(flow: Flow, input: FiscalVerdictInput): boolean {
 
 function canonicalChangedFiles(changedFiles: string[]): string[] {
   return unique(changedFiles.map(normalizeReviewPath).filter(Boolean)).sort();
+}
+
+function assertDeletedFilesBelongToChangedFiles(changedFiles: string[], deletedFiles: string[]): void {
+  const changed = new Set(changedFiles.map(normalizeReviewPath).filter(Boolean));
+  const unknown = deletedFiles
+    .map(normalizeReviewPath)
+    .filter(Boolean)
+    .filter((file) => !changed.has(file));
+  if (unknown.length > 0) {
+    throw new Error(`DELETED_FILES_NOT_CHANGED: ${unique(unknown).join(", ")}`);
+  }
 }
 
 function changedFilesMatchReview(changedFiles: string[], reviewedChangedFiles: string[] | undefined): boolean {
@@ -5006,6 +5379,12 @@ function changedFilesSnapshotAt(flow: Flow, historyIndex: number): string[] {
 }
 
 function reviewRemainsCurrent(flow: Flow, verdict: Verdict): boolean {
+  if (flow.implementation_fingerprint || verdict.reviewed_implementation_fingerprint) {
+    return Boolean(
+      flow.implementation_fingerprint
+      && verdict.reviewed_implementation_fingerprint === flow.implementation_fingerprint
+    );
+  }
   const verdictIndex = verdictHistoryIndex(flow, verdict);
   const reviewedChangedFiles = reviewedChangedFilesForVerdict(flow, verdict);
   if (verdictIndex < 0 || !reviewedChangedFiles) {
@@ -5060,10 +5439,6 @@ function changedFilesAfterEvent(
     ...current,
     ...stringArray((provided as Record<string, unknown>).changed_files)
   ]);
-}
-
-function normalizeReviewPath(value: string): string {
-  return value.trim().replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\.\/+/, "").toLowerCase();
 }
 
 function hasMaterialMeeting(flow: Flow): boolean {
@@ -7077,6 +7452,13 @@ function reviewEvidenceRequested(input: { kind?: string; satisfies?: string[] })
   }
   const reviewClaims = new Set(["diff_reviewed", "barata_scan", "regression_risks", "review_required"]);
   return (input.satisfies ?? []).some((claim) => reviewClaims.has(claim));
+}
+
+function structuredReviewAttestationRequested(input: { kind?: string; satisfies?: string[] }): boolean {
+  return /^(?:code_)?review$/i.test(input.kind ?? "")
+    && (input.satisfies ?? []).some((claim) =>
+      ["diff_reviewed", "barata_scan", "regression_risks"].includes(claim)
+    );
 }
 
 function evidenceQualityReasons(status: EvidenceQuality["status"], hasTrace: boolean, missingFields: string[]): string[] {

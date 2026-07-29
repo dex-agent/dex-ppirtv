@@ -1,7 +1,6 @@
-import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { runMemoryWriterSelectorCutoverCli } from "../src/memory-writer-selector-cutover-cli.js";
 import {
   prepareMemoryWriterSelectorCutover,
@@ -9,10 +8,17 @@ import {
   rollbackMemoryWriterSelectorCutover,
   type MemoryWriterSelectorRestartReceipt
 } from "../src/memory/memory-writer-selector-cutover.js";
+import { createTempRootRegistry } from "./temp-root-registry.js";
+
+const tempRoots = createTempRootRegistry();
+
+afterEach(async () => {
+  await tempRoots.cleanup();
+});
 
 describe("memory writer selector causal activation probe", () => {
   it("starts a new MCP launcher and derives a challenge-bound receipt from observed runtime", async () => {
-    const controlRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-selector-probe-"));
+    const controlRoot = await tempRoots.create("ppirtv-selector-probe-");
     const configPath = path.join(controlRoot, ".codex", "config.toml");
     const journalPath = path.join(controlRoot, ".agents", "CUTOVER", "memory-writer-selector.json");
     const canonicalRoot = path.join(controlRoot, "dex-memoria");
@@ -171,7 +177,7 @@ describe("memory writer selector causal activation probe", () => {
 type CanonicalState = "valid" | "missing-root" | "entrypoint-directory" | "outside-entrypoint" | "symlink-root" | "invalid-capability";
 
 async function cutoverFixture(options: { enabled?: boolean; includeAlias?: boolean; explicitLegacy?: boolean; canonicalState?: CanonicalState }) {
-  const controlRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-selector-probe-boundary-"));
+  const controlRoot = await tempRoots.create("ppirtv-selector-probe-boundary-");
   const configPath = path.join(controlRoot, ".codex", "config.toml");
   const journalPath = path.join(controlRoot, ".agents", "CUTOVER", "memory-writer-selector.json");
   const canonicalRoot = path.join(controlRoot, "dex-memoria");

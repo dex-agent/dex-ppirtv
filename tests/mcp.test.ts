@@ -49,6 +49,14 @@ describe("PPIRTV MCP stdio server", () => {
     expect(goalVerdictTool?.description).toContain("goal_advance");
     expect(goalVerdictTool?.description).toContain("phase_advance_allowed");
     expect(goalVerdictTool?.description).toContain("closure_blockers");
+    expect(goalVerdictTool?.description).toContain("metadata only");
+    expect(goalVerdictTool?.description).toContain("implementation fingerprint");
+    const evidenceAddTool = tools.tools.find((tool) => tool.name === "evidence_add");
+    const evidenceAddProperties = (evidenceAddTool?.inputSchema as { properties?: Record<string, Record<string, unknown>> }).properties;
+    expect(evidenceAddTool?.description).toContain("code_review attestation");
+    expect(evidenceAddTool?.description).toContain("exact implementation_fingerprint");
+    expect(evidenceAddTool?.description).toContain("verdict text alone never satisfies review_required");
+    expect(evidenceAddProperties?.reviewed_implementation_fingerprint?.pattern).toBe("^sha256:[a-f0-9]{64}$");
     const traceTool = tools.tools.find((tool) => tool.name === "ppirtv_trace");
     expect(traceTool?.description).toContain("origin, history, evolution, provenance, decisions, evidence, or reconstruction");
     expect(traceTool?.description).toContain("read-only");
@@ -401,6 +409,102 @@ describe("PPIRTV MCP stdio server", () => {
     });
   });
 
+  it("returns an actionable duplicate bindings receipt without mutating flows or ledger", async () => {
+    await connectClient();
+    const workspace = mcpWorkspace;
+    const sptPath = await writeFakeSpt(workspace);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Auditar ponte GOAL/SPT por MCP",
+      idempotency_key: "dex-code:mcp-duplicate-bindings",
+      evidence_required: true,
+      required_evidence: ["vitest"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "full"
+    };
+    const validation = resultOf(await client!.callTool({ name: "spt_validate", arguments: envelope }));
+    const created = await Promise.all([
+      client!.callTool({ name: "flow_create", arguments: { goal: envelope.objective } }),
+      client!.callTool({ name: "flow_create", arguments: { goal: envelope.objective } })
+    ]);
+    const flowIds = created.map((response) => resultOf(response).flow_id as string).sort();
+    const flowPaths = flowIds.map((flowId) => path.join(workspace, ".ppirtv", "flows", `${flowId}.json`));
+    for (const [index, flowPath] of flowPaths.entries()) {
+      const flow = JSON.parse(await readFile(flowPath, "utf8")) as Record<string, any>;
+      flow.goal_binding = {
+        envelope: { ...envelope, flow_id: flowIds[index] },
+        goal_id: validation.goal_id,
+        spt_contract_fingerprint: validation.contract_fingerprint,
+        spt_document_sha256_at_start: validation.document_sha256,
+        started_at: flow.created_at,
+        last_seen_at: flow.created_at
+      };
+      await writeFile(flowPath, `${JSON.stringify(flow, null, 2)}\n`, "utf8");
+    }
+    const beforeFlows = await Promise.all(flowPaths.map((flowPath) => readFile(flowPath, "utf8")));
+    const ledgerPath = path.join(workspace, ".ppirtv", "ledger.ndjson");
+    const beforeLedger = await readFile(ledgerPath, "utf8");
+
+    const rejected = await client!.callTool({ name: "goal_start", arguments: envelope });
+    const error = resultOf(rejected).error as Record<string, any>;
+
+    expect((rejected as { isError?: boolean }).isError).toBe(true);
+    expect(error).toMatchObject({
+      code: "GOAL_IDEMPOTENCY_DUPLICATE_BINDINGS",
+      recoverable: false,
+      conflicting_flow_ids: flowIds,
+      next_required_action: {
+        type: "inspect_goal_bindings",
+        tool: "ppirtv_trace",
+        reason: "multiple_flows_share_idempotency_key"
+      }
+    });
+    expect(await Promise.all(flowPaths.map((flowPath) => readFile(flowPath, "utf8")))).toEqual(beforeFlows);
+    expect(await readFile(ledgerPath, "utf8")).toBe(beforeLedger);
+  });
+
+  it("publishes explicit goal_started recovery metadata through the real MCP ledger resource", async () => {
+    await connectClient();
+    const workspace = mcpWorkspace;
+    const sptPath = await writeFakeSpt(workspace);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Auditar ponte GOAL/SPT por MCP",
+      idempotency_key: "dex-code:mcp-goal-start-recovery-resource",
+      evidence_required: true,
+      required_evidence: ["vitest"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "full"
+    };
+    const started = resultOf(await client!.callTool({ name: "goal_start", arguments: envelope }));
+    const flowId = started.flow_id as string;
+    const ledgerPath = path.join(workspace, ".ppirtv", "ledger.ndjson");
+    const originalLines = (await readFile(ledgerPath, "utf8")).split(/\r?\n/).filter(Boolean);
+    const withoutGoalStarted = originalLines.filter((line) => {
+      const event = JSON.parse(line) as { flow_id?: string; type?: string };
+      return event.flow_id !== flowId || event.type !== "goal_started";
+    });
+    await writeFile(ledgerPath, `${withoutGoalStarted.join("\n")}\n`, "utf8");
+
+    const retried = resultOf(await client!.callTool({ name: "goal_start", arguments: envelope }));
+    const resource = await client!.readResource({ uri: `ppirtv://flow/${flowId}/ledger` });
+    const events = JSON.parse(resource.contents[0]?.text ?? "[]") as Array<Record<string, any>>;
+    const recovered = events.find((event) => event.type === "goal_started_recovered");
+
+    expect(retried).toMatchObject({ flow_id: flowId, started: false, reused: true });
+    expect(events.filter((event) => event.type === "goal_started")).toHaveLength(0);
+    expect(events.filter((event) => event.type === "goal_started_recovered")).toHaveLength(1);
+    expect(recovered?.data).toMatchObject({
+      original_event_type: "goal_started",
+      original_at: expect.any(String),
+      recovery_reason: "state_persisted_ledger_missing"
+    });
+  });
+
   it("returns a recoverable MCP error when an idempotent retry changes the SPT front matter", async () => {
     await connectClient();
     const workspace = mcpWorkspace;
@@ -570,11 +674,18 @@ describe("PPIRTV MCP stdio server", () => {
     });
     await client!.callTool({ name: "goal_advance", arguments: { flow_id: flowId } });
     await client!.callTool({ name: "goal_advance", arguments: { flow_id: flowId } });
+    await mkdir(path.join(workspace, "src"), { recursive: true });
+    await writeFile(path.join(workspace, "src", "flow-engine.ts"), "export const mcpReviewFixture = true;\n", "utf8");
     await client!.callTool({
       name: "goal_advance",
       arguments: { flow_id: flowId, provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] } }
     });
-    await client!.callTool({
+    const implementationStatus = resultOf(await client!.callTool({
+      name: "goal_status",
+      arguments: { flow_id: flowId, detail: "full" }
+    }));
+    expect(implementationStatus.implementation_fingerprint).toMatch(/^sha256:[a-f0-9]{64}$/);
+    const reviewEvidence = await client!.callTool({
       name: "evidence_add",
       arguments: {
         flow_id: flowId,
@@ -584,9 +695,11 @@ describe("PPIRTV MCP stdio server", () => {
         satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
         observed_result: { diff_reviewed: true, reviewed_targets: ["src/flow-engine.ts"], barata_scan: true, searched_patterns: ["verdict MCP neighbors"], findings: [], regression_risks: ["falso pronto MCP"] },
         scope_classification: "target",
-        scope_reference: "src/flow-engine.ts"
+        scope_reference: "src/flow-engine.ts",
+        reviewed_implementation_fingerprint: implementationStatus.implementation_fingerprint
       }
     });
+    expect(resultOf(reviewEvidence).evidence_id).toMatch(/^evd_/);
     await client!.callTool({
       name: "goal_advance",
       arguments: {
@@ -652,13 +765,29 @@ describe("PPIRTV MCP stdio server", () => {
     expect(ledgerText).not.toContain("verdict_recorded");
     expect(ledgerText).not.toContain("flow_completed");
 
+    const legacyVerdict = await client!.callTool({
+      name: "verdict_record",
+      arguments: {
+        flow_id: flowId,
+        status: "pronto",
+        rationale: "Rota legada nao pode contornar fiscal oficial.",
+        evidence_ids: [resultOf(evidence).evidence_id, resultOf(reviewEvidence).evidence_id],
+        next_step: "usar goal_verdict"
+      }
+    });
+    expect(resultOf(legacyVerdict)).toMatchObject({
+      error: {
+        message: expect.stringContaining("OFFICIAL_GOAL_REQUIRES_GOAL_VERDICT")
+      }
+    });
+
     const positiveVerdict = await client!.callTool({
       name: "goal_verdict",
       arguments: {
         flow_id: flowId,
         status: "pronto",
         rationale: "Veredito canonico registrado com evidencia e review.",
-        evidence_ids: [resultOf(evidence).evidence_id],
+        evidence_ids: [resultOf(evidence).evidence_id, resultOf(reviewEvidence).evidence_id],
         meeting_id: resultOf(meeting).meeting_id,
         review_artifact_path: ".agents/REPORTS/review-mcp.md",
         review_findings: ["src/flow-engine.ts revisado"],

@@ -166,7 +166,7 @@ Frases guia:
 - “Uma barata nunca está sozinha.”
 - “Casa bagunçada atrai bugs.”
 - “Não comece pelo meio.”
-- “Não bloquear por ritual, não editar arquivos, não substituir especialistas e não repetir perguntas que não mudem decisão”
+- “Não bloqueie por ritual. Lente crítica não mete a mão no alvo; owner autorizado edita depois de plano e RED. Cooperação não rouba o volante do especialista.”
 - “Um "o quê" sem "quando" é nunca.”
 - “Idempotência não é detalhe; é proteção.”
 - “Sintoma se contém. Causa se resolve. Correção sem causa raiz é dívida com juros.”

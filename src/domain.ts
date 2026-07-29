@@ -301,6 +301,7 @@ export type GateRecord = {
   status: GateStatus;
   checked_at: string;
   provided: Record<string, unknown>;
+  implementation_fingerprint?: string;
   missing: string[];
   next: string;
   back_to: AnyPhase | null;
@@ -399,6 +400,7 @@ export type Evidence = {
   observed_result?: Record<string, unknown>;
   scope_classification?: "target" | "declared_dependency" | "outside";
   scope_reference?: string;
+  reviewed_implementation_fingerprint?: string;
   parking_lot: string[];
   gold_mining: string[];
   cooperators: Cooperator[];
@@ -468,6 +470,7 @@ export type Verdict = {
   review_artifact_path?: string;
   review_findings: string[];
   reviewed_changed_files?: string[];
+  reviewed_implementation_fingerprint?: string;
   parking_lot: string[];
   gold_mining: string[];
   cooperators: Cooperator[];
@@ -493,6 +496,8 @@ export type Flow = {
   done_criteria: string[];
   expected_evidence: string[];
   changed_files: string[];
+  deleted_files?: string[];
+  implementation_fingerprint?: string;
   decisions: string[];
   parking_lot: string[];
   gold_mining: string[];

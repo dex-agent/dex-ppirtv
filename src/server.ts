@@ -15,7 +15,13 @@ import {
   PHASES,
   VERDICTS
 } from "./domain.js";
-import { boundedRecallErrorReferences, FlowEngine, RecallConsumptionReferenceError, WorkProgressContractError } from "./flow-engine.js";
+import {
+  boundedRecallErrorReferences,
+  FlowEngine,
+  RecallConsumptionReferenceError,
+  WorkProgressContractError
+} from "./flow-engine.js";
+import { GoalIdempotencyDuplicateBindingsError } from "./goal-ledger-recovery.js";
 import { scrubSecretLikeText } from "./security/secret-redaction.js";
 import { PpirtvStore } from "./store.js";
 import { resolveMemoryWriterConfigFromEnv } from "./config.js";
@@ -300,7 +306,7 @@ function registerTools(
   server.registerTool(
     "verdict_record",
     {
-      description: "Record a final verdict. A pronto verdict without evidence is downgraded; meeting_ids preserve exact downstream meeting-result traceability.",
+      description: "Record a legacy/advisory flow verdict. Official GOAL/SPT flows reject this route and require goal_verdict so fiscal evidence and review attribution cannot be bypassed.",
       inputSchema: {
         flow_id: z.string().min(1),
         status: z.enum(VERDICTS),
@@ -431,7 +437,7 @@ function registerTools(
   server.registerTool(
     "goal_advance",
     {
-      description: "Advance an official GOAL flow only after a real persisted gate passes. Status receipt defaults to lean; recall_consumption can explicitly confirm cited recall references.",
+      description: "Advance an official GOAL flow only after a real persisted gate passes. During implementation, declare intentional removals in both provided.changed_files and provided.deleted_files; an absent changed file without deleted_files fails closed. Status receipt defaults to lean; recall_consumption can explicitly confirm cited recall references.",
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
@@ -596,7 +602,7 @@ function registerTools(
   server.registerTool(
     "evidence_add",
     {
-      description: "Add traceable evidence without recording secret-like payloads. Status receipt defaults to lean; use detail:'full' only for a complete diagnostic.",
+      description: "Add traceable evidence without recording secret-like payloads. A structured code_review attestation must cite the exact implementation_fingerprint observed by the reviewer; the server rejects stale snapshots and verdict text alone never satisfies review_required. Status receipt defaults to lean; use detail:'full' only for a complete diagnostic.",
       inputSchema: {
         flow_id: z.string().min(1),
         kind: z.string().default("goal_evidence"),
@@ -608,6 +614,7 @@ function registerTools(
         observed_result: z.record(z.unknown()).optional(),
         scope_classification: z.enum(["target", "declared_dependency", "outside"]).optional(),
         scope_reference: z.string().optional(),
+        reviewed_implementation_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional(),
         detail: z.enum(["lean", "compact", "full"]).optional()
       }
     },
@@ -617,7 +624,7 @@ function registerTools(
   server.registerTool(
     "goal_verdict",
     {
-      description: "Record a GOAL/SPT verdict. Positive conclusions require traceable evidence_ids. A positive verdict does not complete an official GOAL: inspect phase_advance_allowed and closure_blockers, then call goal_advance for the guarded terminal transition.",
+      description: "Record a GOAL/SPT verdict. Positive conclusions require traceable evidence_ids. review_artifact_path and review_findings are metadata only; review_required needs structured code_review evidence bound to the current implementation fingerprint. A positive verdict does not complete an official GOAL: inspect phase_advance_allowed and closure_blockers, then call goal_advance for the guarded terminal transition.",
       inputSchema: {
         flow_id: z.string().min(1),
         status: z.enum(VERDICTS),
@@ -849,6 +856,19 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
             },
             rule: "preserve total and send current greater than or equal to the latest persisted progress"
           }
+    };
+  }
+  if (error instanceof GoalIdempotencyDuplicateBindingsError) {
+    return {
+      ...base,
+      code: error.code,
+      recoverable: false,
+      details: {
+        ...base.details,
+        conflicting_flow_ids: error.conflicting_flow_ids
+      },
+      conflicting_flow_ids: error.conflicting_flow_ids,
+      next_required_action: error.next_required_action
     };
   }
   if (/^Invalid SPT for goal_start:/i.test(message)) {

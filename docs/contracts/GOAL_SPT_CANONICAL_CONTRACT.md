@@ -283,6 +283,27 @@ Regras:
   matter e o SHA-256 dos bytes exatos do documento iniciado. O fingerprint
   continua sendo o gate semantico de retry; o SHA documental e recibo imutavel
   de proveniencia e nao bloqueia alteracoes apenas no corpo Markdown humano.
+  O primeiro estado persistido do flow oficial ja deve conter `goal_binding`;
+  nao existe save oficial intermediario sem binding. Se o estado persistir e o
+  append do ledger falhar, retry reutiliza o mesmo flow e acrescenta, sob lock,
+  somente o evento de recuperacao ausente:
+  `flow_created_recovered`, `goal_started_recovered`,
+  `flow_completed_recovered` ou `flow_archived_recovered`. O evento carrega
+  `original_event_type`, `original_at` e
+  `recovery_reason=state_persisted_ledger_missing`; o timestamp do ledger
+  continua sendo o instante da recuperacao. `original_at` vem de
+  `flow.created_at`, `goal_binding.started_at`,
+  `history.flow_completed.at` ou `history.flow_archived.at`, respectivamente.
+  Se o append original persistiu e apenas o transporte/retorno falhou, retry
+  preserva um original e nao cria recovery.
+  Um `flow_id` legado ativo ainda sem `goal_binding` recebe seu primeiro
+  binding como inicio original: `started=true`, `reused=false` e
+  `goal_started`, nunca `goal_started_recovered`. Flow legado terminal sem
+  binding falha antes de mutacao com `GOAL_TERMINAL_FLOW_UNBOUND`.
+  `history.flow_completed.data` preserva `evidence_ids` para que o recovery
+  reconstrua o mesmo payload material. Antes de arquivar um flow concluido, o
+  runtime reconcilia eventual `flow_completed` ausente no ledger; archive nao
+  pode tornar uma transicao anterior irrecuperavel.
 - `evidence_required=true` exige evidencia rastreavel antes de conclusao
   positiva.
 - `required_evidence` lista evidencias esperadas para o veredito.
@@ -545,19 +566,55 @@ Gate de fase e gate de fechamento sao contratos distintos:
   `goal_terminal_blocked` com assinatura dos blockers no historico e ledger,
   alimentando o monitor de repeticao sem tratar gate local passado como
   progresso terminal;
-- metadados de review aceitos por `goal_verdict` permanecem no veredito
-  vinculados ao conjunto exato de `changed_files` revisado. Qualquer mudanca
-  posterior registrada em `changed_files` invalida a prova persistida, mesmo
-  que o conjunto volte depois ao valor anterior. Vereditos pre-upgrade sem
-  snapshot explicito podem reconstruir o conjunto revisado apenas do historico
-  anterior ao proprio `verdict_recorded`; ausencia de trilha continua
-  fail-closed. Caminhos de review sao comparados com separadores e casing
-  normalizados. Evidencia estruturada de review somente permanece valida
-  quando `reviewed_targets` cobre todos os `changed_files` correntes e nao
-  houve mutacao posterior. Reenvio identico de `changed_files` pelo gate de
-  implementacao preserva a prova; nova declaracao por `updateFlowFacts`
-  inaugura outra geracao e exige novo review, mesmo quando os nomes dos
-  arquivos permanecem iguais.
+- `review_artifact_path` e `review_findings` aceitos por `goal_verdict` sao
+  metadados rastreaveis, nao autoridade fiscal. A atestacao estruturada de
+  review deve citar o `implementation_fingerprint` exato observado depois da
+  Implementacao; o servidor rejeita snapshot ausente ou divergente. O
+  fingerprint prova identidade de conteudo, nao identidade ou independencia
+  do revisor;
+- o snapshot v2 ordena caminhos, aplica casing case-insensitive somente no
+  Windows e inclui hash dos bytes de cada arquivo regular. Symlink interno
+  somente e aceito quando resolve para arquivo dentro do workspace. Caminho
+  externo, sensivel, ausencia nao declarada ou diretorio falha antes de
+  conceder atestacao. Delecao legitima deve aparecer simultaneamente em
+  `changed_files` e `deleted_files`; somente essa ausencia explicita recebe o
+  estado hashavel `deleted`. Se o caminho declarado como removido ainda existir,
+  inclusive como symlink quebrado, o snapshot rejeita a contradicao. Durante
+  REWORK, `deleted_files` explicitamente fornecido representa o estado atual e
+  substitui a lista anterior; `[]` remove tombstones depois de restauracao
+  real. `.env` e variantes operacionais, `.npmrc`, `.netrc`, `.pypirc`,
+  qualquer `.git/config`,
+  `config.toml` e arquivos explicitos de credencial, segredo, token, cookie ou
+  Authorization nao podem ser lidos pelo snapshot. Diretorio semantico de
+  codigo como `src/tokens/`, template `.env.example` e `config.toml` de produto
+  fora da raiz/`.codex` nao sao secretos apenas pelo nome;
+- retry com os mesmos caminhos e bytes preserva o fingerprint. Alteracao de
+  bytes, troca de caminhos ou esvaziamento de `changed_files` produz outra
+  identidade e invalida review anterior. Vereditos e evidencias pre-upgrade
+  sem fingerprint permanecem fail-closed em GOAL oficial;
+- um veredito somente recebe credito de review quando seus proprios
+  `evidence_ids` citam uma atestacao estruturada corrente que cobre todos os
+  `changed_files`. `verdict_record` e rota legada/advisory e rejeita flow com
+  `goal_binding`; GOAL oficial usa exclusivamente `goal_verdict`. Depois de
+  conclusao terminal registrada por `flow_completed` ou estado `archived`, o
+  fingerprint fica congelado. Fatos, gates persistentes, resume, progresso,
+  regresso, reunioes, evidencia, veredito, mineracao e resolucao de memoria nao
+  podem reescrever flow, meeting, ledger ou writer. A unica excecao de ledger e
+  o append idempotente de um evento `*_recovered` quando o estado original ja
+  prova a transicao e o evento original esta ausente; recovery nunca regrava o
+  flow nem repete hooks. `goal_start` idempotente reutiliza o terminal sem tocar
+  seu estado; hygiene permanece diagnostico somente leitura. `flow_archive` e a unica transicao administrativa permitida
+  de `complete` para `archived` e retry em `archived` e idempotente. Preflight
+  e status permanecem somente leitura, preservando a proveniencia historica;
+  mudanca posterior do workspace pertence a outro ciclo.
+- o primeiro `goal_start` reivindica um lock deterministico derivado do hash da
+  `idempotency_key` antes de buscar ou criar o flow. Chamadas concorrentes com a
+  mesma chave produzem um unico `goal_started`; as demais reutilizam o mesmo
+  flow. Mais de um binding persistido para a mesma chave falha fechado com
+  `GOAL_IDEMPOTENCY_DUPLICATE_BINDINGS`, antes de save ou append. O receipt MCP
+  inclui `code`, `conflicting_flow_ids` sanitizados e
+  `next_required_action` para inspecao por `ppirtv_trace`; o runtime nao escolhe
+  nem reconcilia um vencedor automaticamente.
 
 Se `blockers` existir, `display.direct_action` deve apontar o bloqueio real,
 por exemplo `Bloqueado: required_cooperation, review_required`; nao pode

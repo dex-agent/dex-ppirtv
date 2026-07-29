@@ -10,7 +10,8 @@ import { AUTO_WRITE_REVIEW_MARKER, AUTO_WRITE_REVIEW_TAGS, memoryAnchor } from "
 import { loadOperationalContractSync } from "../src/principles.js";
 import { PpirtvStore } from "../src/store.js";
 import { exportRedactedDiagnosticBundle } from "../src/diagnostic-bundle.js";
-import type { Flow } from "../src/domain.js";
+import type { Flow, LedgerEvent } from "../src/domain.js";
+import { fingerprintReviewedImplementation } from "../src/review-snapshot.js";
 
 let tempRoot: string;
 let engine: FlowEngine;
@@ -865,6 +866,366 @@ describe("PPIRTV flow engine", () => {
     expect(goalStarted?.data.tasks).toEqual(expect.arrayContaining(["Rodar teste local."]));
     expect(goalStarted?.data.expected_evidence).toEqual(expect.arrayContaining(["npm run check."]));
     expect(goalStarted?.data.done_criteria).toEqual(expect.arrayContaining(["npm run check."]));
+  });
+
+  it("claims the idempotency key before concurrent first goal_start calls create a flow", async () => {
+    const workspace = path.join(tempRoot, "goal-start-concurrent-claim");
+    const sptPath = await writeFakeSpt(workspace);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Executar ponte GOAL/SPT",
+      idempotency_key: "dex-code:test-goal-start-concurrent-claim",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required" as const,
+      source: "dex-code" as const,
+      mode: "full" as const
+    };
+
+    const results = await Promise.all(Array.from({ length: 5 }, () => engine.startGoal(envelope)));
+    const flowIds = new Set(results.map((result) => result.flow_id as string));
+    const matchingFlows = (await engine.store.listFlows()).filter(
+      (flow) => flow.goal_binding?.envelope.idempotency_key === envelope.idempotency_key
+    );
+
+    expect(flowIds.size).toBe(1);
+    expect(results.filter((result) => result.started === true)).toHaveLength(1);
+    expect(results.filter((result) => result.reused === true)).toHaveLength(4);
+    expect(matchingFlows).toHaveLength(1);
+    const ledger = await engine.store.readLedger(matchingFlows[0].flow_id);
+    expect(ledger.filter((event) => event.type === "goal_started")).toHaveLength(1);
+    expect(ledger.filter((event) => event.type === "goal_reused")).toHaveLength(4);
+  });
+
+  it("goal start recovery keeps one bound flow and records explicit recovery events when state persisted before ledger", async () => {
+    const workspace = path.join(tempRoot, "goal-start-recovery-before-ledger");
+    const sptPath = await writeFakeSpt(workspace);
+    const faultStore = new LedgerFaultStore(tempRoot, "flow_created", "before");
+    const faultEngine = new FlowEngine(faultStore);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Executar ponte GOAL/SPT",
+      idempotency_key: "dex-code:test-goal-start-recovery-before-ledger",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required" as const,
+      source: "dex-code",
+      mode: "full" as const
+    };
+
+    await expect(faultEngine.startGoal(envelope)).rejects.toThrow(/LEDGER_FAULT_BEFORE_APPEND/);
+    const reloadedEngineA = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
+    const reloadedEngineB = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
+    const retries = await Promise.all([
+      reloadedEngineA.startGoal(envelope),
+      reloadedEngineB.startGoal(envelope)
+    ]);
+    const retried = retries[0];
+    const flows = await faultStore.listFlows();
+
+    expect(flows).toHaveLength(1);
+    expect(flows[0].goal_binding?.envelope.idempotency_key).toBe(envelope.idempotency_key);
+    expect(retried).toMatchObject({ flow_id: flows[0].flow_id, reused: true });
+    const ledger = await faultStore.readLedger(flows[0].flow_id);
+    expect(ledger.filter((event) => event.type === "flow_created")).toHaveLength(0);
+    expect(ledger.filter((event) => event.type === "goal_started")).toHaveLength(0);
+    expect(ledger.filter((event) => event.type === "flow_created_recovered")).toHaveLength(1);
+    expect(ledger.filter((event) => event.type === "goal_started_recovered")).toHaveLength(1);
+    expect(ledger.find((event) => event.type === "flow_created_recovered")?.data).toMatchObject({
+      original_event_type: "flow_created",
+      original_at: flows[0].created_at,
+      recovery_reason: "state_persisted_ledger_missing"
+    });
+    expect(ledger.find((event) => event.type === "goal_started_recovered")?.data).toMatchObject({
+      original_event_type: "goal_started",
+      original_at: flows[0].goal_binding?.started_at,
+      recovery_reason: "state_persisted_ledger_missing"
+    });
+  });
+
+  it("goal start recovery does not append a recovery event when the original append persisted before transport failure", async () => {
+    const workspace = path.join(tempRoot, "goal-start-recovery-after-ledger");
+    const sptPath = await writeFakeSpt(workspace);
+    const faultStore = new LedgerFaultStore(tempRoot, "goal_started", "after");
+    const faultEngine = new FlowEngine(faultStore);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Executar ponte GOAL/SPT",
+      idempotency_key: "dex-code:test-goal-start-recovery-after-ledger",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required" as const,
+      source: "dex-code",
+      mode: "full" as const
+    };
+
+    await expect(faultEngine.startGoal(envelope)).rejects.toThrow(/LEDGER_FAULT_AFTER_APPEND/);
+    const reloadedEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
+    const retried = await reloadedEngine.startGoal(envelope);
+    const flows = await faultStore.listFlows();
+    const ledger = await faultStore.readLedger(retried.flow_id as string);
+
+    expect(flows).toHaveLength(1);
+    expect(ledger.filter((event) => event.type === "goal_started")).toHaveLength(1);
+    expect(ledger.filter((event) => event.type === "goal_started_recovered")).toHaveLength(0);
+  });
+
+  it("goal start recovery preserves flow_created and recovers only goal_started when the second append is missing", async () => {
+    const workspace = path.join(tempRoot, "goal-start-recovery-second-append");
+    const sptPath = await writeFakeSpt(workspace);
+    const faultStore = new LedgerFaultStore(tempRoot, "goal_started", "before");
+    const faultEngine = new FlowEngine(faultStore);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Executar ponte GOAL/SPT",
+      idempotency_key: "dex-code:test-goal-start-recovery-second-append",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required" as const,
+      source: "dex-code",
+      mode: "full" as const
+    };
+
+    await expect(faultEngine.startGoal(envelope)).rejects.toThrow(/LEDGER_FAULT_BEFORE_APPEND/);
+    const reloadedEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
+    const retried = await reloadedEngine.startGoal(envelope);
+    const ledger = await reloadedEngine.store.readLedger(retried.flow_id as string);
+
+    expect(ledger.filter((event) => event.type === "flow_created")).toHaveLength(1);
+    expect(ledger.filter((event) => event.type === "flow_created_recovered")).toHaveLength(0);
+    expect(ledger.filter((event) => event.type === "goal_started")).toHaveLength(0);
+    expect(ledger.filter((event) => event.type === "goal_started_recovered")).toHaveLength(1);
+  });
+
+  it("goal start recovery persists the official binding in the first saved state before retry", async () => {
+    const workspace = path.join(tempRoot, "goal-start-first-save-bound");
+    const sptPath = await writeFakeSpt(workspace);
+    const faultStore = new FirstOfficialSaveThenThrowStore(tempRoot);
+    const faultEngine = new FlowEngine(faultStore);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Executar ponte GOAL/SPT",
+      idempotency_key: "dex-code:test-goal-start-first-save-bound",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required" as const,
+      source: "dex-code",
+      mode: "full" as const
+    };
+
+    await expect(faultEngine.startGoal(envelope)).rejects.toThrow(/FIRST_OFFICIAL_SAVE_THEN_THROW/);
+    const persistedAfterFailure = await faultStore.listFlows();
+    expect(persistedAfterFailure).toHaveLength(1);
+    expect(persistedAfterFailure[0].goal_binding?.envelope.idempotency_key).toBe(envelope.idempotency_key);
+
+    const reloadedEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
+    const retried = await reloadedEngine.startGoal(envelope);
+    expect(retried).toMatchObject({ flow_id: persistedAfterFailure[0].flow_id, reused: true });
+    expect(await reloadedEngine.store.listFlows()).toHaveLength(1);
+  });
+
+  it("binds an existing active legacy flow with an original goal_started event instead of fabricating recovery", async () => {
+    const workspace = path.join(tempRoot, "goal-start-existing-active-unbound");
+    const sptPath = await writeFakeSpt(workspace);
+    const legacyFlow = await engine.createFlow({ goal: "Executar ponte GOAL/SPT" });
+    const started = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective: "Executar ponte GOAL/SPT",
+      flow_id: legacyFlow.flow_id,
+      idempotency_key: "dex-code:test-goal-start-existing-active-unbound",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "full"
+    });
+    const persisted = await engine.store.loadFlow(legacyFlow.flow_id);
+    const ledger = await engine.store.readLedger(legacyFlow.flow_id);
+
+    expect(started).toMatchObject({ flow_id: legacyFlow.flow_id, started: true, reused: false });
+    expect(persisted.goal_binding?.envelope.idempotency_key).toBe(
+      "dex-code:test-goal-start-existing-active-unbound"
+    );
+    expect(persisted.history.filter((event) => event.type === "goal_started")).toHaveLength(1);
+    expect(persisted.history.filter((event) => event.type === "goal_reused")).toHaveLength(0);
+    expect(ledger.filter((event) => event.type === "goal_started")).toHaveLength(1);
+    expect(ledger.filter((event) => event.type === "goal_started_recovered")).toHaveLength(0);
+  });
+
+  it("rejects first GOAL binding when a legacy flow has a different objective without mutation", async () => {
+    const workspace = path.join(tempRoot, "goal-start-existing-objective-mismatch");
+    const sptPath = await writeFakeSpt(workspace);
+    const legacyFlow = await engine.createFlow({ goal: "Objetivo advisory diferente" });
+    const flowBytesBefore = await readFile(engine.store.flowPath(legacyFlow.flow_id), "utf8");
+    const ledgerBefore = await readFile(engine.store.ledgerPath, "utf8");
+
+    await expect(
+      engine.startGoal({
+        workspace,
+        spt_path: sptPath,
+        objective: "Executar ponte GOAL/SPT",
+        flow_id: legacyFlow.flow_id,
+        idempotency_key: "dex-code:test-goal-start-existing-objective-mismatch",
+        evidence_required: true,
+        required_evidence: ["npm run check"],
+        requested_verdict_policy: "evidence_required",
+        source: "dex-code",
+        mode: "full"
+      })
+    ).rejects.toThrow(/GOAL_LEGACY_FLOW_OBJECTIVE_MISMATCH/);
+
+    expect(await readFile(engine.store.flowPath(legacyFlow.flow_id), "utf8")).toBe(flowBytesBefore);
+    expect(await readFile(engine.store.ledgerPath, "utf8")).toBe(ledgerBefore);
+  });
+
+  it("rejects first GOAL binding when a legacy flow already has advisory verdict authority", async () => {
+    const workspace = path.join(tempRoot, "goal-start-existing-advisory-verdict");
+    const sptPath = await writeFakeSpt(workspace);
+    const legacyFlow = await engine.createFlow({ goal: "Executar ponte GOAL/SPT" });
+    const evidence = await engine.attachEvidence({
+      flow_id: legacyFlow.flow_id,
+      kind: "test_log",
+      title: "legacy advisory evidence",
+      content: "pass"
+    });
+    await engine.recordVerdict({
+      flow_id: legacyFlow.flow_id,
+      status: "pronto",
+      rationale: "Veredito advisory anterior ao GOAL oficial",
+      evidence_ids: [evidence.evidence_id],
+      residual_risks: [],
+      next_step: "bind official goal"
+    });
+    const flowBytesBefore = await readFile(engine.store.flowPath(legacyFlow.flow_id), "utf8");
+    const ledgerBefore = await readFile(engine.store.ledgerPath, "utf8");
+
+    await expect(
+      engine.startGoal({
+        workspace,
+        spt_path: sptPath,
+        objective: "Executar ponte GOAL/SPT",
+        flow_id: legacyFlow.flow_id,
+        idempotency_key: "dex-code:test-goal-start-existing-advisory-verdict",
+        evidence_required: true,
+        required_evidence: ["npm run check"],
+        requested_verdict_policy: "evidence_required",
+        source: "dex-code",
+        mode: "full"
+      })
+    ).rejects.toThrow(/GOAL_LEGACY_FLOW_VERDICTS_PRESENT/);
+
+    expect(await readFile(engine.store.flowPath(legacyFlow.flow_id), "utf8")).toBe(flowBytesBefore);
+    expect(await readFile(engine.store.ledgerPath, "utf8")).toBe(ledgerBefore);
+  });
+
+  it("serializes concurrent first GOAL bindings with different idempotency keys on one legacy flow", async () => {
+    const workspace = path.join(tempRoot, "goal-start-existing-concurrent-bindings");
+    const sptPath = await writeFakeSpt(workspace);
+    const legacyFlow = await engine.createFlow({ goal: "Executar ponte GOAL/SPT" });
+    const baseEnvelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Executar ponte GOAL/SPT",
+      flow_id: legacyFlow.flow_id,
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required" as const,
+      source: "dex-code",
+      mode: "full" as const
+    };
+
+    const results = await Promise.allSettled([
+      engine.startGoal({ ...baseEnvelope, idempotency_key: "dex-code:test-concurrent-binding-a" }),
+      engine.startGoal({ ...baseEnvelope, idempotency_key: "dex-code:test-concurrent-binding-b" })
+    ]);
+    const persisted = await engine.store.loadFlow(legacyFlow.flow_id);
+    const ledger = await engine.store.readLedger(legacyFlow.flow_id);
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+    expect(persisted.goal_binding?.envelope.idempotency_key).toMatch(
+      /^dex-code:test-concurrent-binding-[ab]$/
+    );
+    expect(persisted.history.filter((event) => event.type === "goal_started")).toHaveLength(1);
+    expect(ledger.filter((event) => event.type === "goal_started")).toHaveLength(1);
+  });
+
+  it("rejects first GOAL binding of an already terminal legacy flow without mutation or TypeError", async () => {
+    const workspace = path.join(tempRoot, "goal-start-existing-terminal-unbound");
+    const sptPath = await writeFakeSpt(workspace);
+    const legacyFlow = await engine.createFlow({ goal: "Fluxo legado terminal sem GOAL oficial" });
+    await engine.archiveFlow({ flow_id: legacyFlow.flow_id, reason: "terminal before official binding" });
+    const flowBytesBefore = await readFile(engine.store.flowPath(legacyFlow.flow_id), "utf8");
+    const ledgerBefore = await readFile(engine.store.ledgerPath, "utf8");
+
+    await expect(
+      engine.startGoal({
+        workspace,
+        spt_path: sptPath,
+        objective: "Executar ponte GOAL/SPT",
+        flow_id: legacyFlow.flow_id,
+        idempotency_key: "dex-code:test-goal-start-existing-terminal-unbound",
+        evidence_required: true,
+        required_evidence: ["npm run check"],
+        requested_verdict_policy: "evidence_required",
+        source: "dex-code",
+        mode: "full"
+      })
+    ).rejects.toThrow(/GOAL_TERMINAL_FLOW_UNBOUND/);
+
+    expect(await readFile(engine.store.flowPath(legacyFlow.flow_id), "utf8")).toBe(flowBytesBefore);
+    expect(await readFile(engine.store.ledgerPath, "utf8")).toBe(ledgerBefore);
+  });
+
+  it("duplicate bindings fail closed with a structured actionable error and zero mutation", async () => {
+    const workspace = path.join(tempRoot, "goal-start-duplicate-bindings");
+    const sptPath = await writeFakeSpt(workspace);
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Executar ponte GOAL/SPT",
+      idempotency_key: "dex-code:test-goal-start-duplicate-bindings",
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required" as const,
+      source: "dex-code",
+      mode: "full" as const
+    };
+    const validation = await engine.validateSpt({ workspace, spt_path: sptPath, objective: envelope.objective });
+    const first = await engine.createFlow({ goal: envelope.objective });
+    const second = await engine.createFlow({ goal: envelope.objective });
+    for (const flowId of [first.flow_id, second.flow_id]) {
+      const flow = await engine.store.loadFlow(flowId);
+      flow.goal_binding = {
+        envelope: { ...envelope, flow_id: flowId },
+        goal_id: validation.goal_id ?? undefined,
+        spt_contract_fingerprint: validation.contract_fingerprint ?? undefined,
+        spt_document_sha256_at_start: validation.document_sha256 ?? undefined,
+        started_at: flow.created_at,
+        last_seen_at: flow.created_at
+      };
+      await engine.store.saveFlow(flow);
+    }
+    const flowIds = [first.flow_id, second.flow_id].sort();
+    const beforeFlows = await Promise.all(flowIds.map((flowId) => readFile(engine.store.flowPath(flowId), "utf8")));
+    const beforeLedger = await readFile(engine.store.ledgerPath, "utf8");
+
+    await expect(engine.startGoal(envelope)).rejects.toMatchObject({
+      code: "GOAL_IDEMPOTENCY_DUPLICATE_BINDINGS",
+      conflicting_flow_ids: flowIds,
+      next_required_action: {
+        type: "inspect_goal_bindings",
+        tool: "ppirtv_trace"
+      }
+    });
+    expect(await Promise.all(flowIds.map((flowId) => readFile(engine.store.flowPath(flowId), "utf8")))).toEqual(beforeFlows);
+    expect(await readFile(engine.store.ledgerPath, "utf8")).toBe(beforeLedger);
   });
 
   it("rejects goal_start when the envelope objective diverges from the SPT v2 contract", async () => {
@@ -2104,31 +2465,56 @@ describe("PPIRTV flow engine", () => {
   });
 
   it("persists verdict review metadata so a positive official GOAL can complete", async () => {
-    const { flowId, evidenceId } = await startGoalWithEvidence(
-      "dex-code:test-terminal-review-from-verdict",
-      "Corrigir codigo com review fornecido no veredito"
-    );
+    const idempotencyKey = "dex-code:test-terminal-review-from-verdict";
+    const objective = "Corrigir codigo com review fornecido no veredito";
+    const { flowId, evidenceId, workspace, sptPath } = await startGoalWithEvidence(idempotencyKey, objective);
+    const terminalMeeting = await engine.goalMeetingOpen({
+      flow_id: flowId,
+      question: "Qual decisao deve ficar congelada no terminal?"
+    });
+    await engine.goalMeetingClose({
+      flow_id: flowId,
+      meeting_id: terminalMeeting.meeting_id as string,
+      decision: "Congelar a proveniencia ao concluir",
+      participants_present: [],
+      findings: ["rotas tardias nao podem reescrever o ciclo"]
+    });
     await engine.goalAdvance({ flow_id: flowId });
     await engine.goalAdvance({ flow_id: flowId });
     await engine.goalAdvance({
       flow_id: flowId,
       provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] }
     });
-    await engine.goalAdvance({
+    const review = await engine.addGoalEvidence({
       flow_id: flowId,
-      provided: {
+      kind: "code_review",
+      title: "Review estruturado do contrato terminal",
+      reviewed_implementation_fingerprint: await currentImplementationFingerprint(flowId),
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      observed_result: {
         diff_reviewed: true,
+        reviewed_targets: ["src/flow-engine.ts"],
         barata_scan: true,
-        regression_risks: ["review precisa sobreviver ao reload"],
-        review_findings: ["review material fornecido pelo contrato publico"]
-      }
+        searched_patterns: ["review terminal"],
+        findings: [],
+        regression_risks: ["review precisa sobreviver ao reload"]
+      },
+      scope_classification: "target",
+      scope_reference: "src/flow-engine.ts"
     });
+    const reloadedEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
+    const reloadedStatus = await reloadedEngine.goalStatus({ flow_id: flowId, detail: "full" });
+    expect(reloadedStatus.closure_blockers).not.toContain("review_required");
+    expect((await reloadedEngine.store.loadFlow(flowId)).implementation_fingerprint).toBe(
+      await currentImplementationFingerprint(flowId)
+    );
+    await engine.goalAdvance({ flow_id: flowId });
     await engine.goalAdvance({ flow_id: flowId, provided: { test_executed: true } });
     await engine.goalVerdict({
       flow_id: flowId,
       status: "pronto",
       rationale: "Codigo revisado e validado.",
-      evidence_ids: [evidenceId],
+      evidence_ids: [evidenceId, review.evidence_id],
       review_artifact_path: ".agents/REPORTS/review-terminal.md",
       review_findings: ["review material fornecido pelo contrato publico"],
       next_step: "encerrar agora"
@@ -2149,13 +2535,402 @@ describe("PPIRTV flow engine", () => {
 
     expect(completed).toMatchObject({ advanced: true, from: "validacao", to: null, status: "complete" });
     expect((await engine.goalStatus({ flow_id: flowId, detail: "full" })).phase_advance_allowed).toBe(false);
-    expect((await engine.store.loadFlow(flowId)).verdicts.at(-1)).toMatchObject({
+    const completedFlow = await engine.store.loadFlow(flowId);
+    expect(completedFlow.verdicts.at(-1)).toMatchObject({
       review_artifact_path: ".agents/REPORTS/review-terminal.md",
-      review_findings: ["review material fornecido pelo contrato publico"]
+      review_findings: ["review material fornecido pelo contrato publico"],
+      reviewed_implementation_fingerprint: completedFlow.implementation_fingerprint
     });
+    expect(completedFlow.implementation_fingerprint).toMatch(/^sha256:[a-f0-9]{64}$/);
+    await writeFile(path.join(workspace, "src", "flow-engine.ts"), "export const afterCompletion = true;\n", "utf8");
+    const historicalStatus = await engine.goalStatus({ flow_id: flowId, detail: "full" });
+    expect(historicalStatus).toMatchObject({ status: "complete", closure_blockers: [] });
+    expect((await engine.store.loadFlow(flowId)).implementation_fingerprint).toBe(completedFlow.implementation_fingerprint);
+    await expect(
+      engine.updateFlowFacts(flowId, { changed_files: ["src/new-after-completion.ts"] })
+    ).rejects.toThrow("FLOW_IMMUTABLE_AFTER_COMPLETION");
+    const ledgerBeforeRejectedMutations = await engine.store.readLedger(flowId);
+    await expect(
+      engine.goalGateCheck({
+        flow_id: flowId,
+        phase: "implementacao",
+        persist: true,
+        provided: { implementation_done: true, changed_files: ["src/new-after-completion.ts"] }
+      })
+    ).rejects.toThrow("FLOW_IMMUTABLE_AFTER_COMPLETION");
+    await expect(
+      engine.addGoalEvidence({
+        flow_id: flowId,
+        kind: "note",
+        title: "Tentativa posterior",
+        content: "nao deve entrar"
+      })
+    ).rejects.toThrow("FLOW_IMMUTABLE_AFTER_COMPLETION");
+    await expect(
+      engine.goalRegress({
+        flow_id: flowId,
+        to: "revisao",
+        reason: "nao pode reabrir ciclo concluido"
+      })
+    ).rejects.toThrow("FLOW_IMMUTABLE_AFTER_COMPLETION");
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "nao_pronto",
+        rationale: "nao pode reescrever veredito terminal",
+        evidence_ids: [evidenceId, review.evidence_id],
+        next_step: "abrir outro ciclo"
+      })
+    ).rejects.toThrow("FLOW_IMMUTABLE_AFTER_COMPLETION");
+    await expect(
+      engine.resumeGoal({ flow_id: flowId, note: "nao pode tocar ciclo terminal" })
+    ).rejects.toThrow("FLOW_IMMUTABLE_AFTER_COMPLETION");
+    await expect(
+      engine.recordGoalProgress({
+        flow_id: flowId,
+        event_key: "post-terminal-progress",
+        source: "test",
+        operation: "late-work",
+        stage: "done",
+        current: 1,
+        total: 1,
+        status: "completed"
+      })
+    ).rejects.toThrow("FLOW_IMMUTABLE_AFTER_COMPLETION");
+    await expect(
+      engine.goalMeetingOpen({ flow_id: flowId, question: "reabrir decisao concluida?" })
+    ).rejects.toThrow("FLOW_IMMUTABLE_AFTER_COMPLETION");
+    await expect(
+      engine.addMeetingTurn({ meeting_id: terminalMeeting.meeting_id as string, note: "turno tardio" })
+    ).rejects.toThrow("FLOW_IMMUTABLE_AFTER_COMPLETION");
+    await expect(
+      engine.recordMeeting({ meeting_id: terminalMeeting.meeting_id as string, decision: "reescrever decisao" })
+    ).rejects.toThrow("FLOW_IMMUTABLE_AFTER_COMPLETION");
+    await expect(
+      engine.closeMeeting({ meeting_id: terminalMeeting.meeting_id as string, decision: "reescrever decisao" })
+    ).rejects.toThrow("FLOW_IMMUTABLE_AFTER_COMPLETION");
+    await expect(
+      engine.mineMemory({ flow_id: flowId, write_policy: "classify_only" })
+    ).rejects.toThrow("FLOW_IMMUTABLE_AFTER_COMPLETION");
+    await expect(
+      engine.resolveMemoryCandidates({
+        flow_id: flowId,
+        candidate_ids: ["candidate-after-terminal"],
+        action: "discard",
+        rationale: "nao pode alterar memoria terminal"
+      })
+    ).rejects.toThrow("FLOW_IMMUTABLE_AFTER_COMPLETION");
+    await engine.hygieneScan(flowId);
+    const reusedTerminal = await engine.startGoal({
+      workspace,
+      spt_path: sptPath,
+      objective,
+      idempotency_key: idempotencyKey,
+      evidence_required: true,
+      required_evidence: ["npm run check"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "full"
+    });
+    expect(reusedTerminal).toMatchObject({ reused: true, started: false, status: "complete" });
+    const flowAfterRejectedMutations = await engine.store.loadFlow(flowId);
+    expect(flowAfterRejectedMutations).toMatchObject({
+      status: "complete",
+      changed_files: completedFlow.changed_files,
+      evidence: completedFlow.evidence,
+      verdicts: completedFlow.verdicts,
+      implementation_fingerprint: completedFlow.implementation_fingerprint
+    });
+    expect(await engine.store.readLedger(flowId)).toEqual(ledgerBeforeRejectedMutations);
+    const archived = await engine.archiveFlow({ flow_id: flowId, reason: "encerramento administrativo" });
+    const ledgerAfterArchive = await engine.store.readLedger(flowId);
+    const archiveRetry = await engine.archiveFlow({ flow_id: flowId, reason: "retry identico" });
+    expect(archiveRetry.archived_at).toBe(archived.archived_at);
+    expect(await engine.store.readLedger(flowId)).toEqual(ledgerAfterArchive);
+    await expect(
+      engine.addMeetingTurn({ meeting_id: terminalMeeting.meeting_id as string, note: "turno depois do archive" })
+    ).rejects.toThrow("FLOW_IMMUTABLE_AFTER_COMPLETION");
   });
 
-  it("reconstructs a pre-upgrade review snapshot without accepting later changed files", async () => {
+  it("does not let verdict text self-declare the required code review", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-terminal-review-text-is-metadata",
+      "Impedir texto livre de autodeclarar review"
+    );
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] }
+    });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: {
+        diff_reviewed: true,
+        barata_scan: true,
+        regression_risks: ["texto livre nao prova revisao"],
+        review_findings: ["eu mesmo declaro que revisei"]
+      }
+    });
+    await engine.goalAdvance({ flow_id: flowId, provided: { test_executed: true } });
+
+    await expect(engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto",
+      rationale: "Metadados textuais foram fornecidos sem evidencia estruturada.",
+      evidence_ids: [evidenceId],
+      review_artifact_path: ".agents/REPORTS/autodeclarado.md",
+      review_findings: ["eu mesmo declaro que revisei"],
+      next_step: "encerrar agora"
+    })).rejects.toThrow(/review_required/);
+  });
+
+  it("rejects review evidence when the reviewer cites a snapshot older than the current bytes", async () => {
+    const { flowId, workspace } = await startGoalWithEvidence(
+      "dex-code:test-review-observed-fingerprint-mismatch",
+      "Vincular a atestacao ao snapshot realmente observado"
+    );
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] }
+    });
+    const observedFingerprint = await currentImplementationFingerprint(flowId);
+    await writeFile(path.join(workspace, "src", "flow-engine.ts"), "export const changedAfterReview = true;\n", "utf8");
+
+    await expect(engine.addGoalEvidence({
+      flow_id: flowId,
+      kind: "code_review",
+      title: "Atestacao de snapshot anterior",
+      reviewed_implementation_fingerprint: observedFingerprint,
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      observed_result: {
+        diff_reviewed: true,
+        reviewed_targets: ["src/flow-engine.ts"],
+        barata_scan: true,
+        searched_patterns: ["snapshot anterior"],
+        findings: [],
+        regression_risks: []
+      },
+      scope_classification: "target",
+      scope_reference: "src/flow-engine.ts"
+    })).rejects.toThrow("REVIEW_SNAPSHOT_FINGERPRINT_MISMATCH");
+  });
+
+  it("attests an explicit deletion but rejects an undeclared missing changed file", async () => {
+    const { flowId, workspace } = await startGoalWithEvidence(
+      "dex-code:test-review-explicit-deletion",
+      "Distinguir delecao intencional de arquivo ausente por engano"
+    );
+    const deletedPath = path.join(workspace, "src", "flow-engine.ts");
+    await rm(deletedPath);
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: {
+        implementation_done: true,
+        changed_files: ["src/flow-engine.ts"],
+        deleted_files: ["src/flow-engine.ts"]
+      }
+    });
+    await engine.addGoalEvidence({
+      flow_id: flowId,
+      kind: "code_review",
+      title: "Review da delecao explicita",
+      reviewed_implementation_fingerprint: await currentImplementationFingerprint(flowId),
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      observed_result: {
+        diff_reviewed: true,
+        reviewed_targets: ["src/flow-engine.ts"],
+        barata_scan: true,
+        searched_patterns: ["consumidores do arquivo removido"],
+        findings: [],
+        regression_risks: ["import residual"]
+      },
+      scope_classification: "target",
+      scope_reference: "src/flow-engine.ts"
+    });
+    expect((await engine.goalStatus({ flow_id: flowId, detail: "full" })).closure_blockers).not.toContain("review_required");
+
+    await writeFile(deletedPath, "export const restored = true;\n", "utf8");
+    await engine.goalGateCheck({
+      flow_id: flowId,
+      phase: "implementacao",
+      persist: true,
+      provided: {
+        implementation_done: true,
+        changed_files: ["src/flow-engine.ts"],
+        deleted_files: []
+      }
+    });
+    const restoredFlow = await engine.store.loadFlow(flowId);
+    expect(restoredFlow.deleted_files).toEqual([]);
+    expect(restoredFlow.implementation_fingerprint).toBe(
+      await fingerprintReviewedImplementation(workspace, ["src/flow-engine.ts"], process.platform)
+    );
+
+    await expect(
+      engine.updateFlowFacts(flowId, { deleted_files: ["src/not-in-changed-files.ts"] })
+    ).rejects.toThrow("DELETED_FILES_NOT_CHANGED");
+  });
+
+  it("invalidates a structured review when the same changed file gets new content", async () => {
+    const { flowId, evidenceId, workspace } = await startGoalWithEvidence(
+      "dex-code:test-terminal-review-stale-same-path-content",
+      "Invalidar review depois de reimplementacao no mesmo caminho"
+    );
+    const changedFile = path.join(workspace, "src", "flow-engine.ts");
+    await mkdir(path.dirname(changedFile), { recursive: true });
+    await writeFile(changedFile, "export const revision = 1;\n", "utf8");
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] }
+    });
+    const review = await engine.addGoalEvidence({
+      flow_id: flowId,
+      kind: "code_review",
+      title: "Review estruturado da revisao 1",
+      reviewed_implementation_fingerprint: await currentImplementationFingerprint(flowId),
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      observed_result: {
+        diff_reviewed: true,
+        reviewed_targets: ["src/flow-engine.ts"],
+        barata_scan: true,
+        searched_patterns: ["revision"],
+        findings: [],
+        regression_risks: []
+      },
+      scope_classification: "target",
+      scope_reference: "src/flow-engine.ts"
+    });
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({ flow_id: flowId, provided: { test_executed: true } });
+    await engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto",
+      rationale: "Revisao 1 comprovada.",
+      evidence_ids: [evidenceId, review.evidence_id],
+      next_step: "encerrar agora"
+    });
+
+    await writeFile(changedFile, "export const revision = 2;\n", "utf8");
+
+    const status = await engine.goalStatus({ flow_id: flowId, detail: "full" });
+    const completion = await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { residual_risks: [], next_step: "encerrar agora", clean_house: true }
+    });
+
+    expect(status.closure_blockers).toContain("review_required");
+    expect(completion).toMatchObject({ advanced: false, status: "blocked" });
+    expect(completion.missing).toContain("review_required");
+  });
+
+  it("invalidates review when changed_files becomes empty instead of preserving the old fingerprint", async () => {
+    const { flowId } = await startGoalWithEvidence(
+      "dex-code:test-review-invalidated-empty-changed-files",
+      "Esvaziar changed_files nao preserva review antigo"
+    );
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] }
+    });
+    const review = await engine.addGoalEvidence({
+      flow_id: flowId,
+      kind: "code_review",
+      title: "Review antes de esvaziar changed_files",
+      reviewed_implementation_fingerprint: await currentImplementationFingerprint(flowId),
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      observed_result: {
+        diff_reviewed: true,
+        reviewed_targets: ["src/flow-engine.ts"],
+        barata_scan: true,
+        searched_patterns: ["changed_files vazio"],
+        findings: [],
+        regression_risks: []
+      },
+      scope_classification: "target",
+      scope_reference: "src/flow-engine.ts"
+    });
+    const reviewedFingerprint = await currentImplementationFingerprint(flowId);
+
+    await engine.updateFlowFacts(flowId, { changed_files: [] });
+    const status = await engine.goalStatus({ flow_id: flowId, detail: "full" });
+
+    expect(status.implementation_fingerprint).not.toBe(reviewedFingerprint);
+    expect(status.closure_blockers).toContain("review_required");
+  });
+
+  it("requires the positive verdict to cite the review evidence that grants fingerprint credit", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-verdict-cites-review-evidence",
+      "Vincular veredito ao evidence_id de review"
+    );
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] }
+    });
+    const review = await engine.addGoalEvidence({
+      flow_id: flowId,
+      kind: "code_review",
+      title: "Review corrente nao citado",
+      reviewed_implementation_fingerprint: await currentImplementationFingerprint(flowId),
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      observed_result: {
+        diff_reviewed: true,
+        reviewed_targets: ["src/flow-engine.ts"],
+        barata_scan: true,
+        searched_patterns: ["evidence_ids"],
+        findings: [],
+        regression_risks: []
+      },
+      scope_classification: "target",
+      scope_reference: "src/flow-engine.ts"
+    });
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({ flow_id: flowId, provided: { test_executed: true } });
+
+    await expect(engine.recordVerdict({
+      flow_id: flowId,
+      status: "pronto",
+      rationale: "Rota legada nao pode contornar o fiscal do GOAL.",
+      evidence_ids: [evidenceId, review.evidence_id],
+      next_step: "usar goal_verdict"
+    })).rejects.toThrow("OFFICIAL_GOAL_REQUIRES_GOAL_VERDICT");
+
+    await expect(engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto",
+      rationale: "Review existe no flow, mas nao foi citado.",
+      evidence_ids: [evidenceId],
+      next_step: "citar review"
+    })).rejects.toThrow(/review_required/);
+
+    await engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto",
+      rationale: "Primeiro veredito cita a review corrente.",
+      evidence_ids: [evidenceId, review.evidence_id],
+      next_step: "tentar novo veredito"
+    });
+    await expect(engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto",
+      rationale: "Segundo veredito tenta herdar review anterior.",
+      evidence_ids: [evidenceId],
+      next_step: "deve continuar bloqueado"
+    })).rejects.toThrow(/review_required/);
+  });
+
+  it("keeps a pre-upgrade review without a fingerprint fail-closed", async () => {
     const { flowId, evidenceId } = await startGoalWithEvidence(
       "dex-code:test-terminal-review-pre-upgrade",
       "Preservar review legitimo criado antes do snapshot versionado"
@@ -2166,21 +2941,30 @@ describe("PPIRTV flow engine", () => {
       flow_id: flowId,
       provided: { implementation_done: true, changed_files: ["src\\flow-engine.ts"] }
     });
-    await engine.goalAdvance({
+    const review = await engine.addGoalEvidence({
       flow_id: flowId,
-      provided: {
+      kind: "code_review",
+      title: "Review estruturado anterior ao upgrade",
+      reviewed_implementation_fingerprint: await currentImplementationFingerprint(flowId),
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      observed_result: {
         diff_reviewed: true,
+        reviewed_targets: ["src/flow-engine.ts"],
         barata_scan: true,
-        regression_risks: ["compatibilidade de upgrade"],
-        review_findings: ["SRC/flow-engine.ts foi revisado"]
-      }
+        searched_patterns: ["compatibilidade de upgrade"],
+        findings: [],
+        regression_risks: ["compatibilidade de upgrade"]
+      },
+      scope_classification: "target",
+      scope_reference: "src/flow-engine.ts"
     });
+    await engine.goalAdvance({ flow_id: flowId });
     await engine.goalAdvance({ flow_id: flowId, provided: { test_executed: true } });
     await engine.goalVerdict({
       flow_id: flowId,
       status: "pronto",
       rationale: "Review anterior ao campo de snapshot.",
-      evidence_ids: [evidenceId],
+      evidence_ids: [evidenceId, review.evidence_id],
       review_artifact_path: ".agents/REPORTS/review-pre-upgrade.md",
       review_findings: ["SRC/flow-engine.ts foi revisado"],
       next_step: "encerrar agora"
@@ -2188,8 +2972,11 @@ describe("PPIRTV flow engine", () => {
 
     const legacyFlow = await engine.store.loadFlow(flowId);
     delete legacyFlow.verdicts.at(-1)?.reviewed_changed_files;
+    delete legacyFlow.verdicts.at(-1)?.reviewed_implementation_fingerprint;
+    delete legacyFlow.evidence.find((item) => item.evidence_id === review.evidence_id)?.reviewed_implementation_fingerprint;
     const legacyHistoryVerdict = legacyFlow.history.findLast((event) => event.type === "verdict_recorded");
     delete legacyHistoryVerdict?.data.reviewed_changed_files;
+    delete legacyHistoryVerdict?.data.reviewed_implementation_fingerprint;
     await engine.store.saveFlow(legacyFlow);
 
     const reloadedEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
@@ -2199,8 +2986,8 @@ describe("PPIRTV flow engine", () => {
       provided: { residual_risks: [], next_step: "encerrar agora", clean_house: true }
     });
 
-    expect(status.closure_blockers).not.toContain("review_required");
-    expect(completed).toMatchObject({ advanced: true, status: "complete" });
+    expect(status.closure_blockers).toContain("review_required");
+    expect(completed).toMatchObject({ advanced: false, status: "blocked" });
   });
 
   it("invalidates persisted review evidence when changed files change after the verdict", async () => {
@@ -2214,21 +3001,30 @@ describe("PPIRTV flow engine", () => {
       flow_id: flowId,
       provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] }
     });
-    await engine.goalAdvance({
+    const review = await engine.addGoalEvidence({
       flow_id: flowId,
-      provided: {
+      kind: "code_review",
+      title: "Review estruturado original",
+      reviewed_implementation_fingerprint: await currentImplementationFingerprint(flowId),
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      observed_result: {
         diff_reviewed: true,
+        reviewed_targets: ["src/flow-engine.ts"],
         barata_scan: true,
-        regression_risks: ["review stale"],
-        review_findings: ["src/flow-engine.ts foi revisado"]
-      }
+        searched_patterns: ["review stale"],
+        findings: [],
+        regression_risks: ["review stale"]
+      },
+      scope_classification: "target",
+      scope_reference: "src/flow-engine.ts"
     });
+    await engine.goalAdvance({ flow_id: flowId });
     await engine.goalAdvance({ flow_id: flowId, provided: { test_executed: true } });
     await engine.goalVerdict({
       flow_id: flowId,
       status: "pronto",
       rationale: "Alteracao original revisada.",
-      evidence_ids: [evidenceId],
+      evidence_ids: [evidenceId, review.evidence_id],
       review_artifact_path: ".agents/REPORTS/review-original.md",
       review_findings: ["src/flow-engine.ts foi revisado"],
       next_step: "encerrar agora"
@@ -2236,7 +3032,6 @@ describe("PPIRTV flow engine", () => {
 
     await engine.updateFlowFacts(flowId, { changed_files: ["SRC\\flow-engine.ts"] });
     await engine.updateFlowFacts(flowId, { changed_files: ["src/server.ts"] });
-    await engine.updateFlowFacts(flowId, { changed_files: ["SRC\\flow-engine.ts"] });
 
     const status = await engine.goalStatus({ flow_id: flowId, detail: "full" });
     const completion = await engine.goalAdvance({
@@ -2300,6 +3095,156 @@ describe("PPIRTV flow engine", () => {
     expect(results.some((result) => result.reused === true)).toBe(true);
     expect(retried).toMatchObject({ advanced: false, reused: true, status: "complete" });
     expect(ledger.filter((event) => event.type === "flow_completed")).toHaveLength(1);
+  });
+
+  it("flow completed recovery appends one explicit recovery without rerunning terminal hooks or rewriting state", async () => {
+    const faultStore = new LedgerFaultStore(tempRoot, "flow_completed", "before");
+    const hookCounter = countingMemoryHooks();
+    const faultEngine = new FlowEngine(faultStore, hookCounter.runner);
+    const flowId = await prepareCompletableMechanicalGoal(
+      faultEngine,
+      "dex-code:test-flow-completed-recovery-before-ledger",
+      "Recuperar ledger de conclusao sem repetir terminal"
+    );
+
+    await expect(
+      faultEngine.goalAdvance({
+        flow_id: flowId,
+        evidence_ids: ["ev_terminal_recovery"],
+        provided: { residual_risks: [], next_step: "encerrar agora", clean_house: true }
+      })
+    ).rejects.toThrow(/LEDGER_FAULT_BEFORE_APPEND/);
+    const hooksAfterFailedCompletion = hookCounter.afterPhaseCalls();
+    const persistedBeforeRetry = await readFile(faultStore.flowPath(flowId), "utf8");
+    const reloadedEngineA = new FlowEngine(
+      new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }),
+      hookCounter.runner
+    );
+    const reloadedEngineB = new FlowEngine(
+      new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }),
+      hookCounter.runner
+    );
+    const retries = await Promise.all([
+      reloadedEngineA.goalAdvance({ flow_id: flowId, detail: "full" }),
+      reloadedEngineB.goalAdvance({ flow_id: flowId, detail: "full" })
+    ]);
+    const retried = retries[0];
+    const persistedAfterRetry = await readFile(faultStore.flowPath(flowId), "utf8");
+    const ledger = await faultStore.readLedger(flowId);
+    const completedHistory = (await faultStore.loadFlow(flowId)).history.find((event) => event.type === "flow_completed");
+
+    expect(retried).toMatchObject({ advanced: false, reused: true, status: "complete" });
+    expect(hookCounter.afterPhaseCalls()).toBe(hooksAfterFailedCompletion);
+    expect(persistedAfterRetry).toBe(persistedBeforeRetry);
+    expect(ledger.filter((event) => event.type === "flow_completed")).toHaveLength(0);
+    expect(ledger.filter((event) => event.type === "flow_completed_recovered")).toHaveLength(1);
+    expect(ledger.find((event) => event.type === "flow_completed_recovered")?.data).toMatchObject({
+      original_event_type: "flow_completed",
+      original_at: completedHistory?.at,
+      recovery_reason: "state_persisted_ledger_missing",
+      evidence_ids: ["ev_terminal_recovery"]
+    });
+  });
+
+  it("archive reconciles an earlier missing flow_completed event before making the flow terminally archived", async () => {
+    const faultStore = new LedgerFaultStore(tempRoot, "flow_completed", "before");
+    const faultEngine = new FlowEngine(faultStore);
+    const flowId = await prepareCompletableMechanicalGoal(
+      faultEngine,
+      "dex-code:test-archive-recovers-prior-completion",
+      "Arquivar sem perder a proveniencia da conclusao"
+    );
+
+    await expect(
+      faultEngine.goalAdvance({
+        flow_id: flowId,
+        evidence_ids: ["ev_before_archive"],
+        provided: { residual_risks: [], next_step: "arquivar depois", clean_house: true }
+      })
+    ).rejects.toThrow(/LEDGER_FAULT_BEFORE_APPEND/);
+
+    await faultEngine.archiveFlow({ flow_id: flowId, reason: "archive after completion transport failure" });
+    await faultEngine.archiveFlow({ flow_id: flowId, reason: "idempotent archive retry" });
+    const ledger = await faultStore.readLedger(flowId);
+
+    expect(ledger.filter((event) => event.type === "flow_completed")).toHaveLength(0);
+    expect(ledger.filter((event) => event.type === "flow_completed_recovered")).toHaveLength(1);
+    expect(ledger.find((event) => event.type === "flow_completed_recovered")?.data).toMatchObject({
+      original_event_type: "flow_completed",
+      evidence_ids: ["ev_before_archive"]
+    });
+    expect(ledger.filter((event) => event.type === "flow_archived")).toHaveLength(1);
+    expect(ledger.filter((event) => event.type === "flow_archived_recovered")).toHaveLength(0);
+  });
+
+  it("flow completed recovery preserves one original and zero recovery events after append-then-throw", async () => {
+    const faultStore = new LedgerFaultStore(tempRoot, "flow_completed", "after");
+    const faultEngine = new FlowEngine(faultStore);
+    const flowId = await prepareCompletableMechanicalGoal(
+      faultEngine,
+      "dex-code:test-flow-completed-recovery-after-ledger",
+      "Preservar append terminal confirmado apos falha de retorno"
+    );
+
+    await expect(
+      faultEngine.goalAdvance({
+        flow_id: flowId,
+        provided: { residual_risks: [], next_step: "encerrar agora", clean_house: true }
+      })
+    ).rejects.toThrow(/LEDGER_FAULT_AFTER_APPEND/);
+    const reloadedEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
+    await reloadedEngine.goalAdvance({ flow_id: flowId, detail: "full" });
+    const ledger = await faultStore.readLedger(flowId);
+
+    expect(ledger.filter((event) => event.type === "flow_completed")).toHaveLength(1);
+    expect(ledger.filter((event) => event.type === "flow_completed_recovered")).toHaveLength(0);
+  });
+
+  it("flow archived recovery appends one explicit recovery without rewriting archived state", async () => {
+    const faultStore = new LedgerFaultStore(tempRoot, "flow_archived", "before");
+    const faultEngine = new FlowEngine(faultStore);
+    const flow = await faultEngine.createFlow({ goal: "Recuperar ledger de archive" });
+
+    await expect(
+      faultEngine.archiveFlow({ flow_id: flow.flow_id, reason: "archive causal" })
+    ).rejects.toThrow(/LEDGER_FAULT_BEFORE_APPEND/);
+    const persistedBeforeRetry = await readFile(faultStore.flowPath(flow.flow_id), "utf8");
+    const reloadedEngineA = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
+    const reloadedEngineB = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
+    const retries = await Promise.all([
+      reloadedEngineA.archiveFlow({ flow_id: flow.flow_id, reason: "retry A" }),
+      reloadedEngineB.archiveFlow({ flow_id: flow.flow_id, reason: "retry B" })
+    ]);
+    const retried = retries[0];
+    const persistedAfterRetry = await readFile(faultStore.flowPath(flow.flow_id), "utf8");
+    const ledger = await faultStore.readLedger(flow.flow_id);
+    const archivedHistory = (await faultStore.loadFlow(flow.flow_id)).history.find((event) => event.type === "flow_archived");
+
+    expect(retried.status).toBe("archived");
+    expect(persistedAfterRetry).toBe(persistedBeforeRetry);
+    expect(ledger.filter((event) => event.type === "flow_archived")).toHaveLength(0);
+    expect(ledger.filter((event) => event.type === "flow_archived_recovered")).toHaveLength(1);
+    expect(ledger.find((event) => event.type === "flow_archived_recovered")?.data).toMatchObject({
+      original_event_type: "flow_archived",
+      original_at: archivedHistory?.at,
+      recovery_reason: "state_persisted_ledger_missing"
+    });
+  });
+
+  it("flow archived recovery preserves one original and zero recovery events after append-then-throw", async () => {
+    const faultStore = new LedgerFaultStore(tempRoot, "flow_archived", "after");
+    const faultEngine = new FlowEngine(faultStore);
+    const flow = await faultEngine.createFlow({ goal: "Preservar append de archive" });
+
+    await expect(
+      faultEngine.archiveFlow({ flow_id: flow.flow_id, reason: "archive causal" })
+    ).rejects.toThrow(/LEDGER_FAULT_AFTER_APPEND/);
+    const reloadedEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
+    await reloadedEngine.archiveFlow({ flow_id: flow.flow_id, reason: "retry" });
+    const ledger = await faultStore.readLedger(flow.flow_id);
+
+    expect(ledger.filter((event) => event.type === "flow_archived")).toHaveLength(1);
+    expect(ledger.filter((event) => event.type === "flow_archived_recovered")).toHaveLength(0);
   });
 
   it("renders a clean phase advance action without inventing closure debt", async () => {
@@ -2371,6 +3316,8 @@ describe("PPIRTV flow engine", () => {
     };
     await engine.store.saveFlow(flow);
     const flowId = flow.flow_id;
+    await mkdir(path.join(workspace, "docs"), { recursive: true });
+    await writeFile(path.join(workspace, "docs", "status.md"), "validation status\n", "utf8");
     await engine.updateFlowFacts(flowId, {
       scope: { in: ["validar texto de veredito"], out: ["alterar contrato MCP publico"] },
       tasks: ["percorrer validacao"],
@@ -2388,6 +3335,7 @@ describe("PPIRTV flow engine", () => {
       flow_id: flowId,
       kind: "code_review",
       title: "Review do fluxo de validacao",
+      reviewed_implementation_fingerprint: await currentImplementationFingerprint(flowId),
       content: "Review executado para isolar o requisito de veredito canonico.",
       satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
       observed_result: { diff_reviewed: true, reviewed_targets: ["docs/status.md"], barata_scan: true, searched_patterns: ["verdict neighbors"], findings: [], regression_risks: ["falso pronto por texto livre"] },
@@ -3149,6 +4097,8 @@ describe("PPIRTV flow engine", () => {
     const flowId = started.flow_id as string;
     const flow = await preflightStore.loadFlow(flowId);
     flow.phase = "teste";
+    flow.scope.in = ["tests/preflight.ts"];
+    flow.changed_files = ["tests/preflight.ts"];
     await preflightStore.saveFlow(flow);
     await preflightEngine.addGoalEvidence({
       flow_id: flowId,
@@ -3158,7 +4108,7 @@ describe("PPIRTV flow engine", () => {
       satisfies: ["test_executed"],
       observed_result: { passed: 7, failed: 0, exit_code: 0 },
       scope_classification: "target",
-      scope_reference: "Executar fluxo PPIRTV do SPT validado"
+      scope_reference: "tests/preflight.ts"
     });
     const beforeFlow = JSON.stringify(await preflightStore.loadFlow(flowId));
     const beforeLedger = await readFile(preflightStore.ledgerPath, "utf8");
@@ -3861,6 +4811,7 @@ describe("PPIRTV flow engine", () => {
       flow_id: flowId,
       kind: "code_review",
       title: "Parecer adversarial dos artefatos finais",
+      reviewed_implementation_fingerprint: await currentImplementationFingerprint(flowId),
       content: "Findings reais, riscos residuais e decisao de revisao foram registrados.",
       satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
       observed_result: { diff_reviewed: true, reviewed_targets: ["src/flow-engine.ts"], barata_scan: true, searched_patterns: ["review_required neighbors"], findings: [], regression_risks: ["risco de regressao"] },
@@ -4673,6 +5624,7 @@ describe("PPIRTV flow engine", () => {
       flow_id: flowId,
       kind: "code_review",
       title: "Revisao adversarial dos artefatos finais",
+      reviewed_implementation_fingerprint: await currentImplementationFingerprint(flowId),
       content: "Review feito sobre src/flow-engine.ts. Achado: blocker antigo nao deve ser preservado apos evidencia. Decisao: liberar nova checagem.",
       satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
       observed_result: { diff_reviewed: true, reviewed_targets: ["src/flow-engine.ts"], barata_scan: true, searched_patterns: ["fiscal blocker neighbors"], findings: [], regression_risks: ["blocker fiscal stale"] },
@@ -4798,10 +5750,11 @@ describe("PPIRTV flow engine", () => {
     const oldLoopId = (beforeReset.loop_monitor as Record<string, unknown>).loop_id;
     expect(beforeReset.loop_monitor).toMatchObject({ count: 3, escalation: { active: true } });
 
-    await engine.addGoalEvidence({
+    const review = await engine.addGoalEvidence({
       flow_id: flowId,
       kind: "code_review",
       title: "Review explicito reseta loop antigo",
+      reviewed_implementation_fingerprint: await currentImplementationFingerprint(flowId),
       content: "Review feito sobre src/flow-engine.ts. Achado real registrado; review_required nao deve continuar contando.",
       satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
       observed_result: { diff_reviewed: true, reviewed_targets: ["src/flow-engine.ts"], barata_scan: true, searched_patterns: ["loop fiscal neighbors"], findings: [], regression_risks: ["loop fiscal stale"] },
@@ -4812,7 +5765,7 @@ describe("PPIRTV flow engine", () => {
     expect(afterProgress.blockers).not.toContain("review_required");
     expect(afterProgress.loop_monitor).toMatchObject({ count: 0, escalation: { active: false } });
 
-    await repeatFiscalBlock(flowId, evidenceId, 1);
+    await repeatFiscalBlock(flowId, review.evidence_id as string, 1);
     const nextError = await engine.goalStatus({ flow_id: flowId });
     expect(nextError.loop_monitor).toMatchObject({ count: 1, escalation: { active: false } });
     expect((nextError.loop_monitor as Record<string, unknown>).loop_id).not.toEqual(oldLoopId);
@@ -5306,6 +6259,8 @@ describe("PPIRTV flow engine", () => {
     ).rejects.toThrow(/required_cooperation/i);
 
     const archived = await engine.archiveFlow({ flow_id: flowId, reason: "preservar bloqueio" });
+    const ledgerAfterArchive = await engine.store.readLedger(flowId);
+    const archiveRetry = await engine.archiveFlow({ flow_id: flowId, reason: "retry" });
     const status = await engine.goalStatus({ flow_id: flowId });
 
     expect(archived).toMatchObject({
@@ -5313,6 +6268,12 @@ describe("PPIRTV flow engine", () => {
       preserved_blockers: expect.arrayContaining(["required_cooperation"])
     });
     expect(archived.display.direct_action.action).toContain("Arquivado com bloqueios preservados");
+    expect(archiveRetry).toMatchObject({
+      archived_blocked_flow: true,
+      preserved_blockers: expect.arrayContaining(["required_cooperation"])
+    });
+    expect(archiveRetry.display.direct_action.action).toContain("Arquivado com bloqueios preservados");
+    expect(await engine.store.readLedger(flowId)).toEqual(ledgerAfterArchive);
     expect(status.ppirtv_checkout).toMatchObject({
       status: "archived",
       direct_action: expect.stringContaining("check-out bloqueado:")
@@ -5869,10 +6830,11 @@ describe("PPIRTV flow engine", () => {
     const statusBeforeReview = await engine.goalStatus({ flow_id: flowId });
     expect(statusBeforeReview.blockers).not.toContain("memory_required_but_empty");
     expect(statusBeforeReview.blockers).toContain("review_required");
-    await engine.addGoalEvidence({
+    const review = await engine.addGoalEvidence({
       flow_id: flowId,
       kind: "code_review",
       title: "Review da proveniencia",
+      reviewed_implementation_fingerprint: await currentImplementationFingerprint(flowId),
       content: "Path de arquivo revisado sem inferir intencao semantica.",
       satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
       observed_result: {
@@ -5891,7 +6853,7 @@ describe("PPIRTV flow engine", () => {
       flow_id: flowId,
       status: "pronto",
       rationale: "Entrega concluida e validada.",
-      evidence_ids: [evidenceId],
+      evidence_ids: [evidenceId, review.evidence_id as string],
       next_step: "acompanhar somente se surgir nova falha"
     });
 
@@ -6807,6 +7769,92 @@ describe("PPIRTV flow engine", () => {
   });
 });
 
+async function currentImplementationFingerprint(
+  flowId: string,
+  targetEngine: FlowEngine = engine
+): Promise<string> {
+  const flow = await targetEngine.store.loadFlow(flowId);
+  const workspace = flow.goal_binding?.envelope.workspace;
+  if (workspace) {
+    return fingerprintReviewedImplementation(
+      workspace,
+      flow.changed_files,
+      process.platform,
+      { allowedMissingFiles: flow.deleted_files ?? [] }
+    );
+  }
+  if (!flow.implementation_fingerprint) {
+    throw new Error(`Missing implementation fingerprint for ${flowId}`);
+  }
+  return flow.implementation_fingerprint;
+}
+
+async function prepareCompletableMechanicalGoal(
+  targetEngine: FlowEngine,
+  idempotencyKey: string,
+  objective: string
+): Promise<string> {
+  const { flowId, evidenceId } = await startGoalWithEvidence(idempotencyKey, objective, targetEngine);
+  const flow = await targetEngine.store.loadFlow(flowId);
+  flow.goal_binding!.envelope.risk_level = "mechanical";
+  await targetEngine.store.saveFlow(flow);
+  await targetEngine.goalAdvance({ flow_id: flowId });
+  await targetEngine.goalAdvance({ flow_id: flowId });
+  await targetEngine.goalAdvance({
+    flow_id: flowId,
+    provided: { implementation_done: true, changed_files: ["docs/contract.md"] }
+  });
+  await targetEngine.goalAdvance({
+    flow_id: flowId,
+    provided: {
+      diff_reviewed: true,
+      barata_scan: true,
+      regression_risks: ["recovery terminal"],
+      review_findings: ["mudanca mecanica revisada"]
+    }
+  });
+  await targetEngine.goalAdvance({ flow_id: flowId, provided: { test_executed: true } });
+  await targetEngine.goalVerdict({
+    flow_id: flowId,
+    status: "pronto",
+    rationale: "GOAL mecanico validado para fixture de recovery.",
+    evidence_ids: [evidenceId],
+    next_step: "encerrar agora"
+  });
+  return flowId;
+}
+
+function countingMemoryHooks(): {
+  runner: MemoryHookRunner;
+  afterPhaseCalls: () => number;
+} {
+  let afterPhaseCalls = 0;
+  return {
+    afterPhaseCalls: () => afterPhaseCalls,
+    runner: {
+      beforePhase: async ({ flow, phase }) => ({
+        flow_id: flow.flow_id,
+        phase,
+        recalled_at: new Date().toISOString(),
+        items: [],
+        warnings: [],
+        visual_status: { librarian: "empty", graphify: "disabled" }
+      }),
+      afterPhase: async ({ flow, phase }) => {
+        afterPhaseCalls += 1;
+        return {
+          flow_id: flow.flow_id,
+          phase,
+          recorded_at: new Date().toISOString(),
+          candidates_count: 0,
+          parking_count: 0,
+          warnings: []
+        };
+      }
+    }
+  };
+}
+
 async function startGoalWithEvidence(
   idempotencyKey: string,
   objective: string,
@@ -6814,6 +7862,18 @@ async function startGoalWithEvidence(
 ): Promise<{ flowId: string; evidenceId: string; workspace: string; sptPath: string }> {
   const workspace = path.join(tempRoot, idempotencyKey.replace(/[^a-z0-9_-]+/gi, "-"));
   const sptPath = await writeFakeSpt(workspace, objective);
+  for (const relativePath of [
+    "docs/contract.md",
+    "docs/status.md",
+    "src/flow-engine.ts",
+    "src/l1-adapter.ts",
+    "src/server.ts",
+    "src/x.ts"
+  ]) {
+    const target = path.join(workspace, relativePath);
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, `fixture:${relativePath}\n`, "utf8");
+  }
   const started = await targetEngine.startGoal({
     workspace,
     spt_path: sptPath,
@@ -6833,6 +7893,47 @@ async function startGoalWithEvidence(
     satisfies: ["npm run check"]
   });
   return { flowId, evidenceId: evidence.evidence_id as string, workspace, sptPath };
+}
+
+class LedgerFaultStore extends PpirtvStore {
+  private pendingFault = true;
+
+  constructor(
+    root: string,
+    private readonly targetType: string,
+    private readonly boundary: "before" | "after"
+  ) {
+    super(root, { fixtureOnlyNoncanonicalRoot: true });
+  }
+
+  override async appendLedger(event: LedgerEvent): Promise<void> {
+    if (!this.pendingFault || event.type !== this.targetType) {
+      await super.appendLedger(event);
+      return;
+    }
+    this.pendingFault = false;
+    if (this.boundary === "before") {
+      throw new Error(`LEDGER_FAULT_BEFORE_APPEND: ${event.type}`);
+    }
+    await super.appendLedger(event);
+    throw new Error(`LEDGER_FAULT_AFTER_APPEND: ${event.type}`);
+  }
+}
+
+class FirstOfficialSaveThenThrowStore extends PpirtvStore {
+  private pendingFault = true;
+
+  constructor(root: string) {
+    super(root, { fixtureOnlyNoncanonicalRoot: true });
+  }
+
+  override async saveFlow(flow: Flow): Promise<void> {
+    await super.saveFlow(flow);
+    if (this.pendingFault && flow.goal_binding) {
+      this.pendingFault = false;
+      throw new Error(`FIRST_OFFICIAL_SAVE_THEN_THROW: ${flow.flow_id}`);
+    }
+  }
 }
 
 class DriftMemoryMiningStore extends PpirtvStore {
