@@ -465,6 +465,7 @@ export type Verdict = {
   rationale: string;
   evidence_ids: string[];
   residual_risks: string[];
+  review_artifact_path?: string;
   review_findings: string[];
   parking_lot: string[];
   gold_mining: string[];

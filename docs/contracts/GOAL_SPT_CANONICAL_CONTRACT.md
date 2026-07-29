@@ -501,6 +501,9 @@ O modo fiscal e acionado por sinais como:
 Quando fiscal, o motor deve expor:
 
 - `blockers`;
+- `phase_blockers`;
+- `closure_blockers`;
+- `phase_advance_allowed`;
 - `required_cooperation`;
 - `fiscal_policy.meeting_policy`;
 - `ppirtv_checkin`;
@@ -508,10 +511,40 @@ Quando fiscal, o motor deve expor:
 - `librarian_status`;
 - `memory_mining.memory_required_but_empty`, quando aplicavel.
 
+Gate de fase e gate de fechamento sao contratos distintos:
+
+- `goal_gate_check` e `goal_gate_preflight` avaliam somente os requisitos da
+  fase solicitada; fiscal de review, memoria, hygiene, cooperacao ou
+  Bibliotecario que ainda nao pode existir naquela fase permanece em
+  `closure_blockers`, sem contaminar `missing`;
+- `goal_advance` pode sair da fase quando `phase_blockers=[]` e
+  `phase_advance_allowed=true`, mesmo que o status global continue `blocked`
+  por `closure_blockers`;
+- `next_step` e `phase_next_required_action` indicam a transicao local
+  permitida, enquanto `next_required_action` preserva a acao fiscal de
+  fechamento; uma orientacao nao substitui a outra;
+- `ppirtv_checkout` preserva `phase_blockers`, `closure_blockers` e
+  `phase_advance_allowed` no topo do recibo, inclusive nos detalhes `lean` e
+  `compact`;
+- na fase terminal, o GOAL oficial somente conclui com veredito canonico
+  positivo e sem `closure_blockers`. Falha nesse gate nao executa hook
+  pos-fase nem grava `flow_completed`; flows manuais legados sem `goal_binding`
+  preservam sua compatibilidade;
+- `goal_verdict` positivo autoriza a tentativa de fechamento, mas nao publica
+  `status=complete` no GOAL oficial. A conclusao publica nasce apenas da
+  transicao terminal que reavalia blockers frescos, inclusive uma cooperacao
+  elegivel ainda nao vinculada por `meeting_id` ao veredito;
+- terminalizacao e serializada pelo flow lock e idempotente: depois de
+  `flow_completed`, retries retornam reutilizacao sem repetir hook ou ledger.
+  Metadados de review aceitos por `goal_verdict` permanecem no veredito para
+  que a reavaliacao terminal use a mesma prova apos reload.
+
 Se `blockers` existir, `display.direct_action` deve apontar o bloqueio real,
 por exemplo `Bloqueado: required_cooperation, review_required`; nao pode
 mostrar `Gate pronto para avancar`. A regra vale recursivamente para
 subpayloads como checklist, evidence/status e archive de flow bloqueado.
+Quando o gate local estiver satisfeito, `phase_direct_action` pode indicar o
+avanco permitido sem apagar o bloqueio global exibido por `display.direct_action`.
 
 `librarian_status` deve ser estruturado sempre, inclusive quando desabilitado,
 com `bibliotecario.status`, `graphify.status`, `functional_tested`,

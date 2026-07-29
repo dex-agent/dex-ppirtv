@@ -598,17 +598,19 @@ export class FlowEngine {
     // checkout, checkin, checklist ou fiscal_policy. Target: <5KB.
     if (detail === "lean") {
       const gate = flow.gates[flow.phase];
+      const phaseSnapshot = this.resolveGateSnapshot(
+        flow,
+        flow.phase,
+        (gate?.provided ?? {}) as Record<string, unknown>
+      );
+      const phaseBlockers = reconciledBlockers(flow, phaseSnapshot.missing);
       // BUG-LEAN-01+02: calcular campos acionaveis de blocker mesmo em lean.
       // Sem isso, o operador fica preso sem saber o que fazer para destravar.
       const fiscal = evaluateFiscalPolicy(flow);
       const persistedFiscal = latestFiscalBlock(flow);
       const meetings = await this.store.listMeetings(flow.flow_id);
-      const blockers = reconciledBlockers(flow, gate?.missing ?? []);
-      const reconciledBlockersList = reconciledBlockers(flow, [...fiscal.blocking_reasons, ...persistedFiscal.blocking_reasons]);
-      const baseBlockers = blockers.length > 0 ? blockers : reconciledBlockersList;
-      const allBlockers = blockers.length === 0 && requiredCooperationNeedsMeetingIdRetry(flow, meetings)
-        ? unique([...baseBlockers, "required_cooperation"])
-        : baseBlockers;
+      const closureBlockers = closureBlockersFor(flow, meetings);
+      const allBlockers = unique([...phaseBlockers, ...closureBlockers]);
       const meetingRequired = allBlockers.includes("required_cooperation");
       const requiredCooperation = meetingRequired
         ? fiscal.required_cooperation.length > 0
@@ -619,7 +621,15 @@ export class FlowEngine {
         : [];
       const regressCount = countRegressions(flow);
       const regressLimitReached = regressCount >= FISCAL_CONFIG.maxRegressions;
-      const next = allBlockers.length > 0 ? `complete_gate_${flow.phase}` : (profileFor(flow.mode).nextPhase[flow.phase] ? `advance_to_${profileFor(flow.mode).nextPhase[flow.phase]}` : "complete");
+      const nextPhase = profileFor(flow.mode).nextPhase[flow.phase] as AnyPhase | null;
+      const canAdvancePhase = phaseAdvanceAllowed(flow, phaseBlockers);
+      const next = phaseBlockers.length > 0
+        ? `complete_gate_${flow.phase}`
+        : nextPhase
+          ? `advance_to_${nextPhase}`
+          : closureBlockers.length > 0
+            ? fiscalResult(true, closureBlockers).direct_action
+            : "complete";
       // next_required_action: acao concreta para o operador destravar.
       let nextRequiredAction = nextRequiredActionFor(
         flow,
@@ -639,11 +649,13 @@ export class FlowEngine {
           nextRequiredAction = { type: "resolve_blockers", tool: "goal_status", detail: "full", reason: `blockers: ${allBlockers.join(", ")}` };
         }
       }
-      const directAction = allBlockers.length > 0 ? `Bloqueado: ${allBlockers.join(", ")}` : "Sem bloqueio local; verificar status fiscal antes de avancar";
+      const directAction = allBlockers.length > 0
+        ? `Bloqueado: ${allBlockers.join(", ")}`
+        : "Sem bloqueio local; verificar status fiscal antes de avancar";
       // barata_scan (auditoria): incluir counts de vizinhos do erro para o
       // operador aplicar "barata nunca esta sozinha" sem precisar de full.
       const currentVerdict = flow.verdicts.at(-1) ?? null;
-      const loopMonitor = fiscalLoopMonitor(flow, allBlockers);
+      const loopMonitor = strongestLoopMonitor(flow, phaseBlockers, closureBlockers, allBlockers);
       const runtimeLayoutStatus = await this.store.runtimeLayoutStatus();
       const workProgress = workProgressSummary(flow);
       const lean: Record<string, unknown> = {
@@ -656,15 +668,30 @@ export class FlowEngine {
         runtime_layout_status: runtimeLayoutStatus,
         memory_writer_runtime: memoryWriterRuntimeSummary(this.options.memory_writer, runtimeLayoutStatus.project_root),
         blockers: allBlockers,
+        phase_blockers: phaseBlockers,
+        closure_blockers: closureBlockers,
+        phase_advance_allowed: canAdvancePhase,
         next_step: next,
-        gate_status: gate ? (blockers.length === 0 ? "passed" : "blocked") : "unchecked",
-        gate_missing: blockers,
+        gate_status: gate ? (phaseBlockers.length === 0 ? "passed" : "blocked") : "unchecked",
+        gate_missing: phaseBlockers,
         goal: flow.goal,
         goal_envelope: flow.goal_binding?.envelope ?? null,
         // Campos acionaveis de blocker (BUG-LEAN-01+02): pequenos em bytes
         // mas essenciais para o operador saber COMO destravar o flow.
         required_cooperation: requiredCooperation,
         next_required_action: nextRequiredAction,
+        phase_next_required_action: canAdvancePhase && nextPhase
+          ? {
+              type: "advance_phase",
+              tool: "goal_advance",
+              reason: closureBlockers.length > 0
+                ? `gate local concluido; pendencias fiscais permanecem para o fechamento: ${closureBlockers.join(", ")}`
+                : "gate local concluido"
+            }
+          : null,
+        phase_direct_action: canAdvancePhase && nextPhase
+          ? phaseAdvanceDirectAction(closureBlockers, nextPhase)
+          : null,
         meeting_required: meetingRequired,
         regress_required: allBlockers.length > 0 && !regressLimitReached,
         regress_count: regressCount,
@@ -711,10 +738,10 @@ export class FlowEngine {
     const meetings = await this.store.listMeetings(flow.flow_id);
     const gateBlockers = flow.status === "complete" || flow.status === "archived" ? [] : gate.status === "blocked" ? gate.missing : [];
     const memoryMiningBlockers = memoryMiningVerdictBlockers(flow);
-    const baseBlockers = reconciledBlockers(flow, [...gateBlockers, ...fiscal.blocking_reasons, ...persistedFiscal.blocking_reasons, ...memoryMiningBlockers]);
-    const blockers = gateBlockers.length === 0 && requiredCooperationNeedsMeetingIdRetry(flow, meetings)
-      ? unique([...baseBlockers, "required_cooperation"])
-      : baseBlockers;
+    const closureBlockers = closureBlockersFor(flow, meetings);
+    const blockers = unique([...gateBlockers, ...closureBlockers]);
+    const nextPhase = profileFor(flow.mode).nextPhase[flow.phase] as AnyPhase | null;
+    const canAdvancePhase = phaseAdvanceAllowed(flow, gateBlockers);
     if (blockers.includes("required_cooperation") && requiredCooperation.length === 0) {
       requiredCooperation = requiredCoo(blockers);
     }
@@ -726,8 +753,16 @@ export class FlowEngine {
     const backTo = blockers.length > 0 ? fiscalBackTo(flow) : null;
     const regressCount = countRegressions(flow);
     const regressLimitReached = regressCount >= FISCAL_CONFIG.maxRegressions;
-    const loopMonitor = fiscalLoopMonitor(flow, blockers);
-    const nextRequiredAction = nextRequiredActionFor(flow, meetings, blockers, backTo, regressCount, regressLimitReached, loopMonitor);
+    const loopMonitor = strongestLoopMonitor(flow, gateBlockers, closureBlockers, blockers);
+    const nextRequiredAction = nextRequiredActionFor(
+      flow,
+      meetings,
+      blockers,
+      backTo,
+      regressCount,
+      regressLimitReached,
+      loopMonitor
+    );
     const resolutionGuidance = blockerResolutionGuidance(blockers, nextRequiredAction, loopMonitor);
     const runtimeLayoutStatus = await this.store.runtimeLayoutStatus();
     const workProgress = workProgressSummary(flow);
@@ -786,11 +821,32 @@ export class FlowEngine {
       memory_mining: memoryMiningStatus(flow),
       work_progress: workProgress,
       blockers,
+      phase_blockers: gateBlockers,
+      closure_blockers: closureBlockers,
+      phase_advance_allowed: canAdvancePhase,
       gate_status: gate.status,
       gate_missing: reconciledBlockers(flow, gate.missing),
       blocker_diagnostics: blockerDiagnostics,
-      next_step: blockers.length > 0 ? fiscalResult(true, blockers).direct_action : nextGoalStep(flow, gate),
+      next_step: gateBlockers.length > 0
+        ? `complete_gate_${flow.phase}`
+        : nextPhase
+          ? `advance_to_${nextPhase}`
+          : closureBlockers.length > 0
+            ? fiscalResult(true, closureBlockers).direct_action
+            : nextGoalStep(flow, gate),
       meeting_required: blockers.includes("required_cooperation"),
+      phase_next_required_action: canAdvancePhase && nextPhase
+        ? {
+            type: "advance_phase",
+            tool: "goal_advance",
+            reason: closureBlockers.length > 0
+              ? `gate local concluido; pendencias fiscais permanecem para o fechamento: ${closureBlockers.join(", ")}`
+              : "gate local concluido"
+          }
+        : null,
+      phase_direct_action: canAdvancePhase && nextPhase
+        ? phaseAdvanceDirectAction(closureBlockers, nextPhase)
+        : null,
       regress_required: blockers.length > 0 && !regressLimitReached,
       regress_count: regressCount,
       max_regressions: FISCAL_CONFIG.maxRegressions,
@@ -815,7 +871,22 @@ export class FlowEngine {
       fiscal_policy: fiscal,
       librarian_status: librarianStatus,
       ppirtv_checkin: ppirtvCheckIn(presentationFlow, requiredCooperation, librarianStatus, blockers, resolutionGuidance),
-      ppirtv_checkout: compactPpirtvCheckout(ppirtvCheckOut(presentationFlow, librarianStatus, blockers, resolutionGuidance, blockerDiagnostics, runtimeLayoutStatus), detail)
+      ppirtv_checkout: compactPpirtvCheckout(
+        ppirtvCheckOut(
+          presentationFlow,
+          librarianStatus,
+          blockers,
+          resolutionGuidance,
+          blockerDiagnostics,
+          runtimeLayoutStatus,
+          {
+            phase_blockers: gateBlockers,
+            closure_blockers: closureBlockers,
+            phase_advance_allowed: canAdvancePhase
+          }
+        ),
+        detail
+      )
     };
   }
 
@@ -833,6 +904,9 @@ export class FlowEngine {
         phase: flow.phase,
         mode: flow.mode,
         blockers: status.blockers,
+        phase_blockers: status.phase_blockers,
+        closure_blockers: status.closure_blockers,
+        phase_advance_allowed: status.phase_advance_allowed,
         direct_action: display.direct_action ?? status.next_step,
         complete: status.status === "complete",
         verdict: currentVerdict ? { verdict_id: currentVerdict.verdict_id, status: currentVerdict.status } : null,
@@ -859,6 +933,9 @@ export class FlowEngine {
       status: status.status,
       phase: status.phase,
       blockers: status.blockers,
+      phase_blockers: status.phase_blockers,
+      closure_blockers: status.closure_blockers,
+      phase_advance_allowed: status.phase_advance_allowed,
       direct_action: checkout.direct_action,
       complete: checkout.complete,
       verdict: checkout.verdict,
@@ -942,6 +1019,9 @@ export class FlowEngine {
     const persistedProvided = (flow.gates[phase]?.provided ?? {}) as Record<string, unknown>;
     const effectiveProvided = { ...persistedProvided, ...(input.provided ?? {}) };
     const snapshot = this.resolveGateSnapshot(flow, phase, effectiveProvided);
+    const meetings = await this.store.listMeetings(flow.flow_id);
+    const closureBlockers = closureBlockersFor(flow, meetings);
+    const currentPhaseAdvanceAllowed = phase === flow.phase && phaseAdvanceAllowed(flow, snapshot.missing);
     const evidenceCandidates = unique(snapshot.requirements.flatMap((item) => item.evidence_ids));
     return {
       flow_id: flow.flow_id,
@@ -954,6 +1034,9 @@ export class FlowEngine {
       })),
       already_satisfied: snapshot.requirements.filter((item) => item.satisfied).map((item) => item.key),
       missing: snapshot.missing,
+      phase_blockers: snapshot.missing,
+      closure_blockers: closureBlockers,
+      phase_advance_allowed: currentPhaseAdvanceAllowed,
       evidence_candidates: evidenceCandidates,
       next_required_action: phase !== flow.phase
         ? { type: "preview_future_phase", executable: false, current_phase: flow.phase }
@@ -987,8 +1070,8 @@ export class FlowEngine {
     const savedGate = flow.gates[flow.phase];
     const shouldReuseSavedGate =
       !input.provided &&
-      ((savedGate?.status === "passed" && !officialGoalNeedsCanonicalVerdict(flow)) ||
-        (savedGate?.status === "blocked" && officialGoalNeedsCanonicalVerdict(flow)));
+      savedGate?.status === "passed" &&
+      !officialGoalNeedsCanonicalVerdict(flow);
     const providedForGate =
       !input.provided && savedGate?.status === "passed" && officialGoalNeedsCanonicalVerdict(flow)
         ? savedGate.provided
@@ -1004,7 +1087,8 @@ export class FlowEngine {
     if (gate.status === "blocked") {
       if (input.detail === "compact") {
         const fresh = await this.store.loadFlow(flow.flow_id);
-        return this.compactMutationReceipt(fresh, {
+        const meetings = await this.store.listMeetings(fresh.flow_id);
+        return this.compactMutationReceipt(fresh, meetings, {
           action: "goal_advance",
           advanced: false,
           before_missing: beforeSnapshot.missing
@@ -1025,11 +1109,13 @@ export class FlowEngine {
     });
     if (input.detail === "compact") {
       const fresh = await this.store.loadFlow(flow.flow_id);
-      return this.compactMutationReceipt(fresh, {
+      const meetings = await this.store.listMeetings(fresh.flow_id);
+      return this.compactMutationReceipt(fresh, meetings, {
         action: "goal_advance",
-        advanced: true,
+        advanced: advanced.advanced === true,
         from: flow.phase,
-        before_missing: beforeSnapshot.missing
+        before_missing: beforeSnapshot.missing,
+        result_missing: stringArray(advanced.missing)
       });
     }
     return {
@@ -2273,8 +2359,9 @@ export class FlowEngine {
     const reviewDiagnostics = reviewEvidenceRequested(input) ? reviewEvidenceDiagnostics(flow, evidence) : null;
     if (input.detail === "compact") {
       const fresh = await this.store.loadFlow(input.flow_id);
+      const meetings = await this.store.listMeetings(fresh.flow_id);
       return {
-        ...this.compactMutationReceipt(fresh, {
+        ...this.compactMutationReceipt(fresh, meetings, {
         action: "evidence_add",
         evidence_id: evidence.evidence_id,
         before_missing: beforeSnapshot.missing
@@ -2416,6 +2503,7 @@ export class FlowEngine {
       rationale: input.rationale,
       evidence_ids: evidenceIds,
       residual_risks: input.residual_risks ?? [],
+      review_artifact_path: input.review_artifact_path,
       review_findings: input.review_findings ?? [],
       parking_lot: verdictLearning.parking_lot,
       gold_mining: verdictLearning.gold_mining,
@@ -2555,20 +2643,19 @@ export class FlowEngine {
     if (needsReviewCoherence(flow, phase, provided)) {
       missing.push("review_evidence_coherent");
     }
-    if (missing.length === 0) {
-      missing.push(...evaluateFiscalPolicy(flow).blocking_reasons);
-    }
     return { requirements, missing: unique(missing) };
   }
 
   private compactMutationReceipt(
     flow: Flow,
+    meetings: Meeting[],
     input: {
       action: "evidence_add" | "goal_advance";
       evidence_id?: string;
       advanced?: boolean;
       from?: AnyPhase;
       before_missing: string[];
+      result_missing?: string[];
     }
   ): Record<string, unknown> {
     const snapshot = this.resolveGateSnapshot(
@@ -2576,19 +2663,27 @@ export class FlowEngine {
       flow.phase,
       (flow.gates[flow.phase]?.provided ?? {}) as Record<string, unknown>
     );
-    const remainingBlockers = snapshot.missing;
+    const phaseBlockers = snapshot.missing;
+    const resultBlockers = input.result_missing ?? [];
+    const closureBlockers = unique([...closureBlockersFor(flow, meetings), ...resultBlockers]);
+    const blockers = unique([...phaseBlockers, ...closureBlockers]);
     return {
       action: input.action,
       flow_id: flow.flow_id,
       ...(input.evidence_id ? { evidence_id: input.evidence_id } : {}),
       ...(input.from ? { from: input.from } : {}),
       phase: flow.phase,
-      status: effectiveFlowStatus(flow, remainingBlockers),
+      status: effectiveFlowStatus(flow, blockers),
       ...(typeof input.advanced === "boolean" ? { advanced: input.advanced } : {}),
       satisfied: snapshot.requirements.filter((item) => item.satisfied).map((item) => item.key),
-      cleared_blockers: input.before_missing.filter((item) => !remainingBlockers.includes(item)),
-      remaining_blockers: remainingBlockers,
-      next_step: remainingBlockers.length === 0
+      cleared_blockers: input.before_missing.filter((item) => !phaseBlockers.includes(item)),
+      remaining_blockers: blockers,
+      phase_blockers: phaseBlockers,
+      closure_blockers: closureBlockers,
+      phase_advance_allowed: phaseAdvanceAllowed(flow, phaseBlockers),
+      next_step: resultBlockers.length > 0
+        ? `complete_gate_${flow.phase}`
+        : phaseBlockers.length === 0
         ? `advance_to_${profileFor(flow.mode).nextPhase[flow.phase] ?? "complete"}`
         : `complete_gate_${flow.phase}`
     };
@@ -2600,15 +2695,36 @@ export class FlowEngine {
     evidence_ids?: string[];
     actor?: string;
   }): Promise<Record<string, unknown> & Partial<PresentationEnvelope>> {
+    return this.store.withFlowLock(input.flow_id, () => this.advanceUnlocked(input));
+  }
+
+  private async advanceUnlocked(input: {
+    flow_id: string;
+    provided?: Record<string, unknown>;
+    evidence_ids?: string[];
+    actor?: string;
+  }): Promise<Record<string, unknown> & Partial<PresentationEnvelope>> {
     const flow = await this.store.loadFlow(input.flow_id);
     if (flow.status === "archived") {
       throw new Error(`Flow ${flow.flow_id} is archived`);
     }
+    if (flow.history.some((event) => event.type === "flow_completed")) {
+      return presentGate({
+        advanced: false,
+        reused: true,
+        phase: flow.phase,
+        from: flow.phase,
+        to: null,
+        status: "complete",
+        next: "complete",
+        back_to: null
+      }, flow);
+    }
     const savedGate = flow.gates[flow.phase];
     const shouldReuseSavedGate =
       !input.provided &&
-      ((savedGate?.status === "passed" && !officialGoalNeedsCanonicalVerdict(flow)) ||
-        (savedGate?.status === "blocked" && officialGoalNeedsCanonicalVerdict(flow)));
+      savedGate?.status === "passed" &&
+      !officialGoalNeedsCanonicalVerdict(flow);
     const providedForGate =
       !input.provided && savedGate?.status === "passed" && officialGoalNeedsCanonicalVerdict(flow)
         ? savedGate.provided
@@ -2638,8 +2754,32 @@ export class FlowEngine {
     // Patch B (modo compact wire-up): proxima fase segundo o perfil do flow.
     const to = profileFor(fresh.mode).nextPhase[from] as AnyPhase | null;
     const now = nowIso();
-    await this.runAfterPhaseHook(fresh, from, input.actor);
     if (to === null) {
+      if (fresh.goal_binding) {
+        const latestVerdict = fresh.verdicts.at(-1);
+        const positiveVerdict =
+          latestVerdict?.status === "pronto" || latestVerdict?.status === "pronto_com_ressalvas";
+        const meetings = await this.store.listMeetings(fresh.flow_id);
+        const closureBlockers = closureBlockersFor(fresh, meetings);
+        const terminalBlockers = unique([
+          ...(positiveVerdict ? [] : ["goal_positive_verdict_required"]),
+          ...closureBlockers
+        ]);
+        if (terminalBlockers.length > 0) {
+          fresh.status = "blocked";
+          fresh.updated_at = now;
+          await this.store.saveFlow(fresh);
+          return presentGate({
+            advanced: false,
+            status: "blocked",
+            phase: from,
+            missing: terminalBlockers,
+            next: "complete_gate_validacao",
+            back_to: profileFor(fresh.mode).defaultBackTo[from] as AnyPhase | null
+          }, fresh);
+        }
+      }
+      await this.runAfterPhaseHook(fresh, from, input.actor);
       fresh.status = "complete";
       fresh.updated_at = now;
       fresh.history.push({ at: now, type: "flow_completed", data: { from } });
@@ -2647,6 +2787,7 @@ export class FlowEngine {
       await this.ledger(fresh.flow_id, "flow_completed", { from, evidence_ids: input.evidence_ids ?? [] }, input.actor);
       return presentGate({ advanced: true, phase: from, from, to: null, status: "complete", next: "complete", back_to: null }, fresh);
     }
+    await this.runAfterPhaseHook(fresh, from, input.actor);
     fresh.phase = to;
     fresh.status = "active";
     fresh.updated_at = now;
@@ -3271,6 +3412,10 @@ export class FlowEngine {
     markdown?: string;
     items: Array<{ label: string; checked: boolean }>;
     blockers?: string[];
+    phase_blockers?: string[];
+    closure_blockers?: string[];
+    phase_advance_allowed?: boolean;
+    phase_direct_action?: { available: boolean; action: string } | null;
     next_step?: string;
     operational_principles?: PrincipleChecklistItem[];
     operational_principles_count?: number;
@@ -3285,6 +3430,7 @@ export class FlowEngine {
     work_progress?: WorkProgressSummary;
   } & PresentationEnvelope> {
     const flow = await this.store.loadFlow(flowId);
+    const meetings = await this.store.listMeetings(flow.flow_id);
     const checklistProfile = profileFor(flow.mode);
     const checklistRequirements = checklistProfile.gateRequirements[flow.phase] ?? [];
     const items = checklistRequirements.map((requirement) => ({
@@ -3293,29 +3439,47 @@ export class FlowEngine {
     }));
     const fiscal = evaluateFiscalPolicy(flow);
     const persistedFiscal = latestFiscalBlock(flow);
-    const blockers = reconciledBlockers(flow, [...fiscal.blocking_reasons, ...persistedFiscal.blocking_reasons]);
+    const phaseBlockers = checklistRequirements
+      .filter((requirement) => !hasRequirement(flow, requirement.key, requirement.source, flow.gates[flow.phase]?.provided ?? {}))
+      .map((requirement) => requirement.key);
+    if (needsReviewCoherence(flow, flow.phase, flow.gates[flow.phase]?.provided ?? {})) {
+      phaseBlockers.push("review_evidence_coherent");
+    }
+    const closureBlockers = closureBlockersFor(flow, meetings);
+    const blockers = unique([...phaseBlockers, ...closureBlockers]);
+    const nextPhase = checklistProfile.nextPhase[flow.phase] as AnyPhase | null;
+    const canAdvancePhase = phaseAdvanceAllowed(flow, phaseBlockers);
+    const nextStep = phaseBlockers.length > 0
+      ? `complete_gate_${flow.phase}`
+      : nextPhase
+        ? `advance_to_${nextPhase}`
+        : closureBlockers.length > 0
+          ? fiscalResult(true, closureBlockers).direct_action
+          : "complete";
     if (detail === "visual-only" || detail === "lean") {
-      const missing = checklistRequirements
-        .filter((requirement) => !hasRequirement(flow, requirement.key, requirement.source, flow.gates[flow.phase]?.provided ?? {}))
-        .map((requirement) => requirement.key);
-      const effectiveBlockers = unique([...missing, ...blockers]);
-      const nextPhase = checklistProfile.nextPhase[flow.phase];
-      const nextStep = effectiveBlockers.length > 0 ? `complete_gate_${flow.phase}` : nextPhase ? `advance_to_${nextPhase}` : "complete";
       const presented = presentChecklist({ flow, markdown: "", items });
-      const withAction = effectiveBlockers.length > 0 ? withDirectAction(presented, blockedDirectAction(effectiveBlockers)) : presented;
+      const withAction = blockers.length > 0
+        ? withDirectAction(presented, blockedDirectAction(blockers))
+        : presented;
       const workProgress = workProgressSummary(flow);
       return {
         flow_id: flow.flow_id,
         phase: flow.phase,
         mode: flow.mode,
-        status: effectiveFlowStatus(flow, effectiveBlockers),
+        status: effectiveFlowStatus(flow, blockers),
         items,
-        blockers: effectiveBlockers,
+        blockers,
+        phase_blockers: phaseBlockers,
+        closure_blockers: closureBlockers,
+        phase_advance_allowed: canAdvancePhase,
+        phase_direct_action: canAdvancePhase && nextPhase
+          ? phaseAdvanceDirectAction(closureBlockers, nextPhase)
+          : null,
         next_step: nextStep,
         work_progress: workProgress,
         aliases: {
           ...withAction.aliases,
-          faltando: effectiveBlockers,
+          faltando: blockers,
           proximo: nextStep
         },
         display: { ...withAction.display, work_progress: workProgress },
@@ -3383,7 +3547,18 @@ export class FlowEngine {
         ]
       });
     return {
-      ...(blockers.length > 0 || effectiveFlowStatus(flow, blockers) === "blocked" ? withDirectAction(presented, blockedDirectAction(blockers.length > 0 ? blockers : ["flow_blocked"])) : presented),
+      ...(blockers.length > 0 || effectiveFlowStatus(flow, blockers) === "blocked"
+        ? withDirectAction(presented, blockedDirectAction(blockers.length > 0 ? blockers : ["flow_blocked"]))
+        : presented),
+      status: effectiveFlowStatus(flow, blockers),
+      blockers,
+      phase_blockers: phaseBlockers,
+      closure_blockers: closureBlockers,
+      phase_advance_allowed: canAdvancePhase,
+      phase_direct_action: canAdvancePhase && nextPhase
+        ? phaseAdvanceDirectAction(closureBlockers, nextPhase)
+        : null,
+      next_step: nextStep,
       work_progress: workProgressSummary(flow),
       // BUG 5 (detail compact): omitir arrays grandes quando detail=compact.
       // Substituir por contagens para manter sinal sem custo de tokens.
@@ -3406,6 +3581,7 @@ export class FlowEngine {
     rationale: string;
     evidence_ids?: string[];
     residual_risks?: string[];
+    review_artifact_path?: string;
     review_findings?: string[];
     parking_lot?: string[];
     gold_mining?: string[];
@@ -3425,6 +3601,7 @@ export class FlowEngine {
     rationale: string;
     evidence_ids?: string[];
     residual_risks?: string[];
+    review_artifact_path?: string;
     review_findings?: string[];
     parking_lot?: string[];
     gold_mining?: string[];
@@ -3456,6 +3633,7 @@ export class FlowEngine {
       rationale: input.rationale,
       evidence_ids: evidenceIds,
       residual_risks: residualRisks,
+      review_artifact_path: input.review_artifact_path,
       review_findings: input.review_findings ?? [],
       parking_lot: input.parking_lot ?? [],
       gold_mining: input.gold_mining ?? [],
@@ -3473,7 +3651,11 @@ export class FlowEngine {
     flow.cooperators = uniqueCooperators([...flow.cooperators, ...verdict.cooperators]);
     flow.active_credits = unique([...flow.active_credits, ...verdict.active_credits]);
     flow.updated_at = now;
-    flow.status = status === "pronto" || status === "pronto_com_ressalvas" ? "complete" : flow.status;
+    if (status === "pronto" || status === "pronto_com_ressalvas") {
+      // Um veredito positivo autoriza o guard terminal, mas nao substitui a
+      // transicao que executa hooks e grava flow_completed em GOAL oficial.
+      flow.status = flow.goal_binding ? "active" : "complete";
+    }
     flow.history.push({ at: now, type: "verdict_recorded", data: verdict as unknown as Record<string, unknown> });
     await this.store.saveFlow(flow);
     await this.ledger(flow.flow_id, "verdict_recorded", verdict as unknown as Record<string, unknown>);
@@ -4148,6 +4330,33 @@ function effectiveFlowStatus(flow: Flow, blockers: string[]): Flow["status"] {
   return blockers.length > 0 ? "blocked" : "active";
 }
 
+function phaseAdvanceAllowed(flow: Flow, phaseBlockers: string[]): boolean {
+  return phaseBlockers.length === 0 && profileFor(flow.mode).nextPhase[flow.phase] !== null;
+}
+
+function closureBlockersFor(flow: Flow, meetings: Meeting[]): string[] {
+  const fiscal = evaluateFiscalPolicy(flow);
+  const persistedFiscal = latestFiscalBlock(flow);
+  const latestVerdict = flow.verdicts.at(-1);
+  const terminalVerdictBlockers =
+    flow.goal_binding &&
+    profileFor(flow.mode).nextPhase[flow.phase] === null &&
+    latestVerdict &&
+    latestVerdict.status !== "pronto" &&
+    latestVerdict.status !== "pronto_com_ressalvas"
+      ? ["goal_positive_verdict_required"]
+      : [];
+  const blockers = reconciledBlockers(flow, [
+    ...fiscal.blocking_reasons,
+    ...persistedFiscal.blocking_reasons,
+    ...memoryMiningVerdictBlockers(flow),
+    ...terminalVerdictBlockers
+  ]);
+  return requiredCooperationNeedsMeetingIdRetry(flow, meetings)
+    ? unique([...blockers, "required_cooperation"])
+    : blockers;
+}
+
 function assertCompatibleGoalBinding(
   binding: GoalBinding | undefined,
   envelope: GoalEnvelope,
@@ -4711,6 +4920,9 @@ function hasReviewEvidence(flow: Flow, input: FiscalVerdictInput): boolean {
   return (
     truthy(input.review_artifact_path) ||
     truthy(input.review_findings) ||
+    flow.verdicts.some((verdict) =>
+      truthy(verdict.review_artifact_path) || verdict.review_findings.length > 0
+    ) ||
     flow.evidence.some((evidence) => isStructuredReviewEvidence(flow, evidence))
   );
 }
@@ -5361,6 +5573,15 @@ function blockedDirectAction(blockers: string[]): { available: boolean; action: 
   return {
     available: true,
     action: `Bloqueado: ${blockers.join(", ")}`
+  };
+}
+
+function phaseAdvanceDirectAction(blockers: string[], nextPhase: AnyPhase): { available: boolean; action: string } {
+  return {
+    available: true,
+    action: blockers.length > 0
+      ? `Avanco de fase permitido para ${nextPhase}; pendencias fiscais de fechamento: ${blockers.join(", ")}`
+      : `Avanco de fase permitido para ${nextPhase}`
   };
 }
 
@@ -6273,6 +6494,16 @@ function fiscalLoopMonitor(flow: Flow, blockers: string[]): LoopMonitor | null {
   };
 }
 
+function strongestLoopMonitor(flow: Flow, ...blockerSets: string[][]): LoopMonitor | null {
+  const monitors = blockerSets
+    .map((blockers) => fiscalLoopMonitor(flow, blockers))
+    .filter((monitor): monitor is LoopMonitor => monitor !== null);
+  return monitors.reduce<LoopMonitor | null>(
+    (strongest, monitor) => !strongest || monitor.count > strongest.count ? monitor : strongest,
+    null
+  );
+}
+
 function loopWindowEvents(flow: Flow, signature: string): Flow["history"] {
   const history = flow.history;
   let start = 0;
@@ -6542,7 +6773,12 @@ function ppirtvCheckOut(
   blockers: string[],
   resolutionGuidance: Record<string, unknown> | null = null,
   blockerDiagnostics: BlockerDiagnostics | null = null,
-  runtimeLayoutStatus: RuntimeLayoutStatus | null = null
+  runtimeLayoutStatus: RuntimeLayoutStatus | null = null,
+  phaseState: {
+    phase_blockers: string[];
+    closure_blockers: string[];
+    phase_advance_allowed: boolean;
+  } = { phase_blockers: [], closure_blockers: [], phase_advance_allowed: false }
 ): Record<string, unknown> {
   const latestVerdict = flow.verdicts.at(-1);
   const closed = flow.status === "complete" || flow.status === "archived";
@@ -6582,6 +6818,9 @@ function ppirtvCheckOut(
   return {
     complete: closed,
     status: flow.status,
+    phase_blockers: phaseState.phase_blockers,
+    closure_blockers: phaseState.closure_blockers,
+    phase_advance_allowed: phaseState.phase_advance_allowed,
     verdict: latestVerdict?.status ?? null,
     project_root: runtimeLayoutStatus?.project_root ?? null,
     ppirtv_home: runtimeLayoutStatus?.ppirtv_home ?? null,
@@ -7345,7 +7584,9 @@ function utilityCheckoutAccountability(input: {
 }
 
 function loopCheckoutAccountability(flow: Flow, blockers: string[]): Record<string, unknown> {
-  const current = blockers.length > 0 ? fiscalLoopMonitor(flow, blockers) : null;
+  const phaseGate = flow.gates[flow.phase];
+  const phaseBlockers = phaseGate?.status === "blocked" ? phaseGate.missing : [];
+  const current = strongestLoopMonitor(flow, phaseBlockers, blockers);
   const gateChecks = flow.history.filter((event) => event.type === "gate_checked");
   const blockedGateChecks = gateChecks.filter((event) => event.data.status === "blocked");
   const gateBlocksBySignature = countBySignature(

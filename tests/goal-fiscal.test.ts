@@ -774,6 +774,86 @@ describe("GOAL fiscal canonical verdict boundary", () => {
     expect(ledgerTypes).not.toContain("flow_completed");
   });
 
+  it("does not complete while a later fiscal block still requires meeting_id in the canonical verdict", async () => {
+    const flow = await createOfficialValidationFlow("official-terminal-meeting-id-retry");
+    const evidence = await engine.addGoalEvidence({
+      flow_id: flow.flow_id,
+      title: "Evidencia terminal",
+      content: "Validacao inicial suficiente antes de uma cooperacao material posterior."
+    });
+    await engine.goalGateCheck({
+      flow_id: flow.flow_id,
+      phase: "validacao",
+      provided: {
+        residual_risks: [],
+        next_step: "encerrar quando o guard terminal permitir",
+        clean_house: true
+      }
+    });
+    await engine.goalVerdict({
+      flow_id: flow.flow_id,
+      status: "pronto",
+      rationale: "Primeiro veredito positivo antes da cooperacao posterior.",
+      evidence_ids: [evidence.evidence_id],
+      next_step: "encerrar quando o guard terminal permitir"
+    });
+    const meeting = await engine.goalMeetingOpen({
+      flow_id: flow.flow_id,
+      kind: "convergente",
+      question: "Registrar cooperacao material posterior ao primeiro veredito"
+    });
+    await engine.goalMeetingClose({
+      flow_id: flow.flow_id,
+      meeting_id: meeting.meeting_id as string,
+      participants_present: ["chato", "questionador", "reuniao", "validador-pronto"],
+      decision: "Cooperacao posterior exige novo veredito vinculado.",
+      satisfies_blockers: ["required_cooperation"]
+    });
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flow.flow_id,
+        status: "pronto",
+        rationale: "Tentativa posterior sem vincular a reuniao elegivel.",
+        evidence_ids: [evidence.evidence_id],
+        next_step: "repetir com meeting_id"
+      })
+    ).rejects.toThrow(/required_cooperation/i);
+
+    const before = await engine.goalStatus({ flow_id: flow.flow_id, detail: "full" });
+    const compactEvidence = await engine.addGoalEvidence({
+      flow_id: flow.flow_id,
+      title: "Evidencia durante retry terminal",
+      content: "Mutacao compacta nao pode esconder a cooperacao ainda pendente.",
+      detail: "compact"
+    });
+    const advanced = await engine.goalAdvance({ flow_id: flow.flow_id, detail: "full" });
+    const checkout = await engine.goalCheckout({ flow_id: flow.flow_id, detail: "full" });
+    const ledgerTypes = await ledgerEventTypes(flow.flow_id);
+
+    expect(before).toMatchObject({
+      status: "blocked",
+      closure_blockers: expect.arrayContaining(["required_cooperation"]),
+      checklist: {
+        status: "blocked",
+        closure_blockers: expect.arrayContaining(["required_cooperation"])
+      }
+    });
+    expect(compactEvidence).toMatchObject({
+      status: "blocked",
+      closure_blockers: expect.arrayContaining(["required_cooperation"]),
+      remaining_blockers: expect.arrayContaining(["required_cooperation"])
+    });
+    expect(advanced).toMatchObject({ advanced: false, status: "blocked" });
+    expect(advanced.missing).toEqual(expect.arrayContaining(["required_cooperation"]));
+    expect(checkout).toMatchObject({
+      status: "blocked",
+      complete: false,
+      closure_blockers: expect.arrayContaining(["required_cooperation"])
+    });
+    expect(ledgerTypes).not.toContain("flow_completed");
+  });
+
   it("keeps goal_verdict_required visible when validation has verdict and another blocker", async () => {
     const flow = await createOfficialValidationFlow("official-verdict-plus-clean-house");
 
@@ -874,7 +954,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
 
     const status = await engine.goalStatus({ flow_id: flow.flow_id });
 
-    expect(status).toMatchObject({ status: "complete", phase: "validacao" });
+    expect(status).toMatchObject({ status: "active", phase: "validacao" });
     expect(status.blockers).not.toContain("attempt_regress_count");
     expect((status.blocker_diagnostics as { persisted_fiscal_blockers: string[] }).persisted_fiscal_blockers).toEqual([]);
   });

@@ -147,6 +147,65 @@ describe("PPIRTV MCP stdio server", () => {
     expect(JSON.stringify(traced)).not.toContain("PRIVATE_MCP_TRACE_SENTINEL_4927");
   });
 
+  it("keeps closure blockers visible while the public MCP advances a satisfied local phase gate", async () => {
+    await connectClient();
+    const objective = "Corrigir codigo e preservar aprendizado reutilizavel";
+    const sptPath = await writeFakeSpt(mcpWorkspace, objective);
+    const started = resultOf(await client!.callTool({
+      name: "goal_start",
+      arguments: {
+        workspace: mcpWorkspace,
+        spt_path: sptPath,
+        objective,
+        idempotency_key: "dex-code:test-mcp-phase-versus-closure-gates",
+        evidence_required: true,
+        required_evidence: ["vitest"],
+        requested_verdict_policy: "evidence_required",
+        source: "test",
+        mode: "full"
+      }
+    }));
+    const flowId = started.flow_id as string;
+
+    const preflight = resultOf(await client!.callTool({
+      name: "goal_gate_preflight",
+      arguments: { flow_id: flowId, phase: "pensamentos" }
+    }));
+    const advanced = resultOf(await client!.callTool({
+      name: "goal_advance",
+      arguments: { flow_id: flowId, detail: "full" }
+    }));
+    const status = resultOf(await client!.callTool({
+      name: "goal_status",
+      arguments: { flow_id: flowId, detail: "full" }
+    }));
+    const checkout = resultOf(await client!.callTool({
+      name: "ppirtv_checkout",
+      arguments: { flow_id: flowId, detail: "full" }
+    }));
+
+    expect(preflight).toMatchObject({
+      status: "passed",
+      missing: [],
+      phase_blockers: [],
+      phase_advance_allowed: true
+    });
+    expect(preflight.closure_blockers).toEqual(expect.arrayContaining(["memory_required_but_empty"]));
+    expect(advanced).toMatchObject({ advanced: true, from: "pensamentos", to: "planejamento" });
+    expect(status).toMatchObject({
+      phase: "planejamento",
+      phase_blockers: [],
+      phase_advance_allowed: true,
+      next_step: "advance_to_implementacao"
+    });
+    expect(status.closure_blockers).toEqual(expect.arrayContaining(["memory_required_but_empty"]));
+    expect(checkout).toMatchObject({
+      phase_blockers: [],
+      phase_advance_allowed: true
+    });
+    expect(checkout.closure_blockers).toEqual(expect.arrayContaining(["memory_required_but_empty"]));
+  });
+
   it("creates a flow through MCP and exposes it through resources after restart", async () => {
     await connectClient();
     const created = await client!.callTool({
@@ -306,9 +365,9 @@ describe("PPIRTV MCP stdio server", () => {
     expect((resultOf(status).current_verdict as Record<string, unknown>).status).toBe("pronto");
     expect(resultOf(checkout)).toMatchObject({
       flow_id: flowId,
-      complete: true,
+      complete: false,
       verdict: "pronto",
-      direct_action: "fechamento_total_registrado",
+      direct_action: "check-out pendente ate veredito/arquivo",
       memory_accountability: expect.any(Object),
       learning_accountability: expect.any(Object),
       cooperation_accountability: expect.any(Object),

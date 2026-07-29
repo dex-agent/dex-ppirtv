@@ -10,6 +10,21 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Corrigido
 
+- Gates de fase deixam de incorporar prematuramente blockers fiscais de
+  fechamento, permitindo Pensamentos/Concepcao avancar enquanto review,
+  memoria, hygiene e cooperacao continuam visiveis e bloqueiam o veredito.
+- A conclusao terminal agora exige veredito canonico positivo e ausencia de
+  blockers de fechamento antes de executar o hook pos-fase ou registrar
+  `flow_completed`; o veredito positivo, sozinho, nao publica mais um
+  `status=complete` prematuro.
+- O guard terminal agora preserva `required_cooperation` quando uma reuniao
+  elegivel ainda precisa ser vinculada por `meeting_id` ao novo veredito.
+- A terminalizacao foi serializada e tornou-se idempotente; retries e chamadas
+  concorrentes nao repetem hook nem evento de conclusao.
+- Metadados de review aceitos por `goal_verdict` agora persistem no veredito e
+  continuam validos para o guard terminal apos reload.
+- O monitor de loops preserva o escalonamento causado por blockers locais
+  mesmo quando o status fiscal usa uma identidade agregada equivalente.
 - O resolvedor de candidatos de memoria passou a aceitar identidades V2 em
   `candidate_id`, preservar compatibilidade com `id` legado e rejeitar
   identidades ausentes, divergentes ou duplicadas antes de mutacao.
@@ -25,6 +40,13 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Alterado
 
+- Receipts de status, preflight, checklist e mutacao separam
+  `phase_blockers`, `closure_blockers` e `phase_advance_allowed`; a acao fiscal
+  existente permanece em `next_required_action` e o avanco local aparece em
+  `phase_next_required_action`.
+- `ppirtv_checkout` lean/full/compact preserva a mesma separacao, e receipts
+  compactos nao declaram `active` ou `advanced=true` quando o resultado real
+  ficou bloqueado.
 - A promocao publica de candidato `destinations_required` aceita metadados
   explicitos de destino, densidade, tags, tema e owner; promocao deep continua
   fail-closed sem `owner_skill`.
@@ -32,6 +54,14 @@ escopo, evidencias e lacunas quando existirem.
   para promocao V2 sem adivinhar decisoes de dominio.
 - O estado agregado da mineracao distingue candidatos resolvidos, ledger-only,
   estacionamento, descarte, destino promovido e bloqueio residual.
+
+### Documentado
+
+- Novo handoff cross-repo confirmou que a separacao fase/fechamento permite
+  chegar oficialmente a Validacao, mas `hygiene_scan` ainda mistura dez
+  findings rich externos ao SPT e acopla `memory_required_but_empty` quando o
+  writer do flow está `unconfigured`. O laudo preserva flow, evidence/event
+  IDs, hashes, limites e RED sintético recomendado; nenhum código foi alterado.
 
 ### Compatibilidade e riscos
 
@@ -44,6 +74,9 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Validacao
 
+- Correcao de gates fase/fechamento: engine 167/167; contrato MCP focal 1/1;
+  `npm run check` com build, auditoria canonica, 451 testes aprovados e 4
+  ignorados.
 - Mineracao V2 focal: 51 testes aprovados.
 - Contrato MCP focal: 2 testes aprovados com roots temporarios.
 - Compatibilidade legada filtrada: 1 teste executado e aprovado.
