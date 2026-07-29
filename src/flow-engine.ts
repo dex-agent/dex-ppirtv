@@ -229,6 +229,7 @@ type LoopMonitor = {
   count: number;
   fiscal_block_count: number;
   gate_block_count: number;
+  terminal_block_count: number;
   review_regress_count: number;
   reset_policy: string;
   escalation: {
@@ -622,7 +623,7 @@ export class FlowEngine {
       const regressCount = countRegressions(flow);
       const regressLimitReached = regressCount >= FISCAL_CONFIG.maxRegressions;
       const nextPhase = profileFor(flow.mode).nextPhase[flow.phase] as AnyPhase | null;
-      const canAdvancePhase = phaseAdvanceAllowed(flow, phaseBlockers);
+      const canAdvancePhase = phaseAdvanceAllowed(flow, phaseBlockers, closureBlockers);
       const next = phaseBlockers.length > 0
         ? `complete_gate_${flow.phase}`
         : nextPhase
@@ -741,7 +742,7 @@ export class FlowEngine {
     const closureBlockers = closureBlockersFor(flow, meetings);
     const blockers = unique([...gateBlockers, ...closureBlockers]);
     const nextPhase = profileFor(flow.mode).nextPhase[flow.phase] as AnyPhase | null;
-    const canAdvancePhase = phaseAdvanceAllowed(flow, gateBlockers);
+    const canAdvancePhase = phaseAdvanceAllowed(flow, gateBlockers, closureBlockers);
     if (blockers.includes("required_cooperation") && requiredCooperation.length === 0) {
       requiredCooperation = requiredCoo(blockers);
     }
@@ -1021,7 +1022,7 @@ export class FlowEngine {
     const snapshot = this.resolveGateSnapshot(flow, phase, effectiveProvided);
     const meetings = await this.store.listMeetings(flow.flow_id);
     const closureBlockers = closureBlockersFor(flow, meetings);
-    const currentPhaseAdvanceAllowed = phase === flow.phase && phaseAdvanceAllowed(flow, snapshot.missing);
+    const currentPhaseAdvanceAllowed = phase === flow.phase && phaseAdvanceAllowed(flow, snapshot.missing, closureBlockers);
     const evidenceCandidates = unique(snapshot.requirements.flatMap((item) => item.evidence_ids));
     return {
       flow_id: flow.flow_id,
@@ -2510,11 +2511,29 @@ export class FlowEngine {
       meeting_ids: meetingIds,
       next_step: input.next_step
     });
+    const statusSnapshot = await this.goalStatus({ flow_id: input.flow_id, detail: mutationStatusDetail(flow) });
+    const closureBlockers = stringArray(statusSnapshot.closure_blockers);
+    const terminalAdvanceAllowed =
+      (effectiveStatus === "pronto" || effectiveStatus === "pronto_com_ressalvas") &&
+      statusSnapshot.phase_advance_allowed === true &&
+      closureBlockers.length === 0;
     return {
       verdict,
       verdict_learning: verdictLearning,
       memory_mining: memoryMining,
-      status: await this.goalStatus({ flow_id: input.flow_id, detail: mutationStatusDetail(flow) })
+      phase_advance_allowed: terminalAdvanceAllowed,
+      closure_blockers: closureBlockers,
+      next_required_action: terminalAdvanceAllowed
+        ? {
+            type: profileFor(flow.mode).nextPhase[flow.phase] === null ? "advance_terminal" : "advance_phase",
+            tool: "goal_advance",
+            args: { flow_id: input.flow_id },
+            reason: profileFor(flow.mode).nextPhase[flow.phase] === null
+              ? "veredito positivo registrado; executar a transicao terminal protegida"
+              : "veredito positivo registrado; avancar a fase atual"
+          }
+        : statusSnapshot.next_required_action ?? null,
+      status: statusSnapshot
     };
   }
 
@@ -2680,7 +2699,7 @@ export class FlowEngine {
       remaining_blockers: blockers,
       phase_blockers: phaseBlockers,
       closure_blockers: closureBlockers,
-      phase_advance_allowed: phaseAdvanceAllowed(flow, phaseBlockers),
+      phase_advance_allowed: phaseAdvanceAllowed(flow, phaseBlockers, closureBlockers),
       next_step: resultBlockers.length > 0
         ? `complete_gate_${flow.phase}`
         : phaseBlockers.length === 0
@@ -2766,9 +2785,20 @@ export class FlowEngine {
           ...closureBlockers
         ]);
         if (terminalBlockers.length > 0) {
+          const loopSignature = blockerSignature(terminalBlockers);
+          const terminalBlock = {
+            source: "goal_advance",
+            phase: from,
+            loop_id: blockerLoopId(terminalBlockers),
+            loop_signature: loopSignature,
+            blocking_reasons: terminalBlockers,
+            evidence_ids: input.evidence_ids ?? []
+          };
           fresh.status = "blocked";
           fresh.updated_at = now;
+          fresh.history.push({ at: now, type: "goal_terminal_blocked", data: terminalBlock });
           await this.store.saveFlow(fresh);
+          await this.ledger(fresh.flow_id, "goal_terminal_blocked", terminalBlock, input.actor ?? "goal_advance");
           return presentGate({
             advanced: false,
             status: "blocked",
@@ -3448,7 +3478,7 @@ export class FlowEngine {
     const closureBlockers = closureBlockersFor(flow, meetings);
     const blockers = unique([...phaseBlockers, ...closureBlockers]);
     const nextPhase = checklistProfile.nextPhase[flow.phase] as AnyPhase | null;
-    const canAdvancePhase = phaseAdvanceAllowed(flow, phaseBlockers);
+    const canAdvancePhase = phaseAdvanceAllowed(flow, phaseBlockers, closureBlockers);
     const nextStep = phaseBlockers.length > 0
       ? `complete_gate_${flow.phase}`
       : nextPhase
@@ -3635,6 +3665,10 @@ export class FlowEngine {
       residual_risks: residualRisks,
       review_artifact_path: input.review_artifact_path,
       review_findings: input.review_findings ?? [],
+      reviewed_changed_files:
+        truthy(input.review_artifact_path) || stringArray(input.review_findings).length > 0
+          ? canonicalChangedFiles(flow.changed_files)
+          : undefined,
       parking_lot: input.parking_lot ?? [],
       gold_mining: input.gold_mining ?? [],
       cooperators: input.cooperators ?? [],
@@ -4330,8 +4364,11 @@ function effectiveFlowStatus(flow: Flow, blockers: string[]): Flow["status"] {
   return blockers.length > 0 ? "blocked" : "active";
 }
 
-function phaseAdvanceAllowed(flow: Flow, phaseBlockers: string[]): boolean {
-  return phaseBlockers.length === 0 && profileFor(flow.mode).nextPhase[flow.phase] !== null;
+function phaseAdvanceAllowed(flow: Flow, phaseBlockers: string[], closureBlockers: string[] = []): boolean {
+  if (flow.status === "complete" || flow.status === "archived" || phaseBlockers.length > 0) {
+    return false;
+  }
+  return profileFor(flow.mode).nextPhase[flow.phase] !== null || closureBlockers.length === 0;
 }
 
 function closureBlockersFor(flow: Flow, meetings: Meeting[]): string[] {
@@ -4919,12 +4956,114 @@ function codeReviewRequired(flow: Flow, input: FiscalVerdictInput): boolean {
 function hasReviewEvidence(flow: Flow, input: FiscalVerdictInput): boolean {
   return (
     truthy(input.review_artifact_path) ||
-    truthy(input.review_findings) ||
+    stringArray(input.review_findings).length > 0 ||
     flow.verdicts.some((verdict) =>
-      truthy(verdict.review_artifact_path) || verdict.review_findings.length > 0
+      (
+        truthy(verdict.review_artifact_path) ||
+        verdict.review_findings.length > 0
+      ) &&
+      changedFilesMatchReview(flow.changed_files, reviewedChangedFilesForVerdict(flow, verdict)) &&
+      reviewRemainsCurrent(flow, verdict)
     ) ||
     flow.evidence.some((evidence) => isStructuredReviewEvidence(flow, evidence))
   );
+}
+
+function canonicalChangedFiles(changedFiles: string[]): string[] {
+  return unique(changedFiles.map(normalizeReviewPath).filter(Boolean)).sort();
+}
+
+function changedFilesMatchReview(changedFiles: string[], reviewedChangedFiles: string[] | undefined): boolean {
+  if (!reviewedChangedFiles) {
+    return false;
+  }
+  const current = canonicalChangedFiles(changedFiles);
+  const reviewed = canonicalChangedFiles(reviewedChangedFiles);
+  return current.length === reviewed.length && current.every((item, index) => item === reviewed[index]);
+}
+
+function reviewedChangedFilesForVerdict(flow: Flow, verdict: Verdict): string[] | undefined {
+  if (verdict.reviewed_changed_files) {
+    return verdict.reviewed_changed_files;
+  }
+  const verdictIndex = verdictHistoryIndex(flow, verdict);
+  if (verdictIndex < 0) {
+    return undefined;
+  }
+  const changedFiles = changedFilesSnapshotAt(flow, verdictIndex);
+  return changedFiles.length > 0 ? changedFiles : undefined;
+}
+
+function changedFilesSnapshotAt(flow: Flow, historyIndex: number): string[] {
+  let changedFiles: string[] = [];
+  for (const event of flow.history.slice(0, historyIndex + 1)) {
+    const nextChangedFiles = changedFilesAfterEvent(changedFiles, event);
+    if (nextChangedFiles) {
+      changedFiles = nextChangedFiles;
+    }
+  }
+  return canonicalChangedFiles(changedFiles);
+}
+
+function reviewRemainsCurrent(flow: Flow, verdict: Verdict): boolean {
+  const verdictIndex = verdictHistoryIndex(flow, verdict);
+  const reviewedChangedFiles = reviewedChangedFilesForVerdict(flow, verdict);
+  if (verdictIndex < 0 || !reviewedChangedFiles) {
+    return false;
+  }
+  let current = canonicalChangedFiles(reviewedChangedFiles);
+  for (const event of flow.history.slice(verdictIndex + 1)) {
+    if (
+      event.type === "flow_facts_updated" &&
+      Object.prototype.hasOwnProperty.call(event.data, "changed_files")
+    ) {
+      return false;
+    }
+    const next = changedFilesAfterEvent(current, event);
+    if (!next) {
+      continue;
+    }
+    if (!changedFilesMatchReview(current, next)) {
+      return false;
+    }
+    current = next;
+  }
+  return true;
+}
+
+function verdictHistoryIndex(flow: Flow, verdict: Verdict): number {
+  return flow.history.findIndex(
+    (event) => event.type === "verdict_recorded" && event.data.verdict_id === verdict.verdict_id
+  );
+}
+
+function changedFilesAfterEvent(
+  current: string[],
+  event: Flow["history"][number]
+): string[] | undefined {
+  if (event.type === "flow_facts_updated") {
+    return Object.prototype.hasOwnProperty.call(event.data, "changed_files")
+      ? canonicalChangedFiles(stringArray(event.data.changed_files))
+      : undefined;
+  }
+  if (event.type !== "gate_checked" || event.data.phase !== "implementacao") {
+    return undefined;
+  }
+  const provided = event.data.provided;
+  if (!provided || typeof provided !== "object" || Array.isArray(provided)) {
+    return undefined;
+  }
+  if (!Object.prototype.hasOwnProperty.call(provided, "changed_files")) {
+    return undefined;
+  }
+  return canonicalChangedFiles([
+    ...current,
+    ...stringArray((provided as Record<string, unknown>).changed_files)
+  ]);
+}
+
+function normalizeReviewPath(value: string): string {
+  return value.trim().replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\.\/+/, "").toLowerCase();
 }
 
 function hasMaterialMeeting(flow: Flow): boolean {
@@ -6467,11 +6606,17 @@ function fiscalLoopMonitor(flow: Flow, blockers: string[]): LoopMonitor | null {
   const signature = blockerSignature(activeBlockers);
   const loopId = blockerLoopId(activeBlockers);
   const windowEvents = loopWindowEvents(flow, signature);
+  const terminalWindowEvents = loopWindowEvents(flow, signature, false);
   const fiscalBlockCount = windowEvents.filter(
     (event) => event.type === "fiscal_policy_blocked" && String(event.data.loop_signature ?? blockerSignature(stringArray(event.data.blocking_reasons))) === signature
   ).length;
   const gateBlockCount = windowEvents.filter(
     (event) => event.type === "gate_checked" && event.data.status === "blocked" && blockerSignature(stringArray(event.data.missing)) === signature
+  ).length;
+  const terminalBlockCount = terminalWindowEvents.filter(
+    (event) =>
+      event.type === "goal_terminal_blocked" &&
+      String(event.data.loop_signature ?? blockerSignature(stringArray(event.data.blocking_reasons))) === signature
   ).length;
   const reviewRegressCount = windowEvents.filter((event) => {
     if (event.type !== "phase_returned" || String(event.data.to) !== "revisao") {
@@ -6480,7 +6625,7 @@ function fiscalLoopMonitor(flow: Flow, blockers: string[]): LoopMonitor | null {
     const text = [event.data.reason, ...(Array.isArray(event.data.evidence_ids) ? event.data.evidence_ids : [])].filter(Boolean).join("\n");
     return /review|revis|block|fiscal/i.test(text);
   }).length;
-  const count = Math.max(fiscalBlockCount, gateBlockCount, reviewRegressCount);
+  const count = Math.max(fiscalBlockCount, gateBlockCount, terminalBlockCount, reviewRegressCount);
   return {
     loop_id: loopId,
     signature,
@@ -6488,8 +6633,9 @@ function fiscalLoopMonitor(flow: Flow, blockers: string[]): LoopMonitor | null {
     count,
     fiscal_block_count: fiscalBlockCount,
     gate_block_count: gateBlockCount,
+    terminal_block_count: terminalBlockCount,
     review_regress_count: reviewRegressCount,
-    reset_policy: "contagem considera apenas a janela desde o ultimo progresso: evidencia, reuniao fechada, memoria minerada, gate passado, fase avancada, veredito ou blocker diferente; gate bloqueado repetido conta quando missing tem a mesma assinatura",
+    reset_policy: "contagem considera apenas a janela desde o ultimo progresso: evidencia, reuniao fechada, memoria minerada, fase avancada, veredito ou blocker diferente; gate passado reseta loops de gate/fiscal, mas nao apaga retries terminais com a mesma assinatura",
     escalation: loopEscalationFor(count)
   };
 }
@@ -6504,11 +6650,11 @@ function strongestLoopMonitor(flow: Flow, ...blockerSets: string[][]): LoopMonit
   );
 }
 
-function loopWindowEvents(flow: Flow, signature: string): Flow["history"] {
+function loopWindowEvents(flow: Flow, signature: string, resetOnPassedGate = true): Flow["history"] {
   const history = flow.history;
   let start = 0;
   for (let index = history.length - 1; index >= 0; index -= 1) {
-    if (isLoopResetEvent(history[index], signature)) {
+    if (isLoopResetEvent(history[index], signature, resetOnPassedGate)) {
       start = index + 1;
       break;
     }
@@ -6516,12 +6662,12 @@ function loopWindowEvents(flow: Flow, signature: string): Flow["history"] {
   return history.slice(start);
 }
 
-function isLoopResetEvent(event: Flow["history"][number], signature: string): boolean {
-  if (event.type === "fiscal_policy_blocked") {
+function isLoopResetEvent(event: Flow["history"][number], signature: string, resetOnPassedGate: boolean): boolean {
+  if (event.type === "fiscal_policy_blocked" || event.type === "goal_terminal_blocked") {
     const eventSignature = String(event.data.loop_signature ?? blockerSignature(stringArray(event.data.blocking_reasons)));
     return eventSignature !== signature;
   }
-  if (event.type === "gate_checked" && event.data.status === "passed") {
+  if (resetOnPassedGate && event.type === "gate_checked" && event.data.status === "passed") {
     return true;
   }
   return ["evidence_attached", "meeting_closed", "memory_mined", "phase_advanced", "verdict_recorded", "flow_completed", "flow_archived"].includes(event.type);

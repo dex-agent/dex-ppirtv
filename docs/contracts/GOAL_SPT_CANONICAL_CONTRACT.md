@@ -533,11 +533,31 @@ Gate de fase e gate de fechamento sao contratos distintos:
 - `goal_verdict` positivo autoriza a tentativa de fechamento, mas nao publica
   `status=complete` no GOAL oficial. A conclusao publica nasce apenas da
   transicao terminal que reavalia blockers frescos, inclusive uma cooperacao
-  elegivel ainda nao vinculada por `meeting_id` ao veredito;
+  elegivel ainda nao vinculada por `meeting_id` ao veredito. O proprio recibo
+  positivo publica `next_required_action.tool=goal_advance`,
+  `phase_advance_allowed` e `closure_blockers`, sem depender de descricao de
+  tool ou prompt que o cliente possa ter armazenado em cache.
+  `phase_advance_allowed=true` inclui a transicao terminal protegida quando o
+  gate local e os blockers de fechamento estiverem satisfeitos;
 - terminalizacao e serializada pelo flow lock e idempotente: depois de
   `flow_completed`, retries retornam reutilizacao sem repetir hook ou ledger.
-  Metadados de review aceitos por `goal_verdict` permanecem no veredito para
-  que a reavaliacao terminal use a mesma prova apos reload.
+  Tentativas bloqueadas antes da conclusao registram
+  `goal_terminal_blocked` com assinatura dos blockers no historico e ledger,
+  alimentando o monitor de repeticao sem tratar gate local passado como
+  progresso terminal;
+- metadados de review aceitos por `goal_verdict` permanecem no veredito
+  vinculados ao conjunto exato de `changed_files` revisado. Qualquer mudanca
+  posterior registrada em `changed_files` invalida a prova persistida, mesmo
+  que o conjunto volte depois ao valor anterior. Vereditos pre-upgrade sem
+  snapshot explicito podem reconstruir o conjunto revisado apenas do historico
+  anterior ao proprio `verdict_recorded`; ausencia de trilha continua
+  fail-closed. Caminhos de review sao comparados com separadores e casing
+  normalizados. Evidencia estruturada de review somente permanece valida
+  quando `reviewed_targets` cobre todos os `changed_files` correntes e nao
+  houve mutacao posterior. Reenvio identico de `changed_files` pelo gate de
+  implementacao preserva a prova; nova declaracao por `updateFlowFacts`
+  inaugura outra geracao e exige novo review, mesmo quando os nomes dos
+  arquivos permanecem iguais.
 
 Se `blockers` existir, `display.direct_action` deve apontar o bloqueio real,
 por exemplo `Bloqueado: required_cooperation, review_required`; nao pode

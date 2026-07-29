@@ -467,6 +467,7 @@ export type Verdict = {
   residual_risks: string[];
   review_artifact_path?: string;
   review_findings: string[];
+  reviewed_changed_files?: string[];
   parking_lot: string[];
   gold_mining: string[];
   cooperators: Cooperator[];

@@ -22,7 +22,14 @@ escopo, evidencias e lacunas quando existirem.
 - A terminalizacao foi serializada e tornou-se idempotente; retries e chamadas
   concorrentes nao repetem hook nem evento de conclusao.
 - Metadados de review aceitos por `goal_verdict` agora persistem no veredito e
-  continuam validos para o guard terminal apos reload.
+  continuam validos para o guard terminal apos reload somente enquanto o
+  conjunto de `changed_files` permanecer identico; qualquer mutacao posterior
+  invalida review de veredito e evidencia estruturada, inclusive no ciclo
+  A-B-A. Flows pre-upgrade recuperam o snapshot somente da trilha anterior ao
+  veredito, e caminhos Windows equivalentes usam identidade canonica.
+- Tentativas de conclusao bloqueadas agora registram
+  `goal_terminal_blocked` no historico e ledger, com assinatura contada pelo
+  monitor de loops mesmo quando o gate local acabou de passar.
 - O monitor de loops preserva o escalonamento causado por blockers locais
   mesmo quando o status fiscal usa uma identidade agregada equivalente.
 - O resolvedor de candidatos de memoria passou a aceitar identidades V2 em
@@ -44,6 +51,12 @@ escopo, evidencias e lacunas quando existirem.
   `phase_blockers`, `closure_blockers` e `phase_advance_allowed`; a acao fiscal
   existente permanece em `next_required_action` e o avanco local aparece em
   `phase_next_required_action`.
+- A descricao e o prompt publicos de `goal_verdict` agora explicitam que um
+  veredito positivo nao conclui GOAL oficial sozinho e que o cliente deve
+  consultar `phase_advance_allowed`/`closure_blockers` antes do
+  `goal_advance` terminal. O recibo positivo tambem devolve esses campos e
+  `next_required_action.tool=goal_advance`, protegendo clientes com descriptor
+  antigo ou em cache.
 - `ppirtv_checkout` lean/full/compact preserva a mesma separacao, e receipts
   compactos nao declaram `active` ou `advanced=true` quando o resultado real
   ficou bloqueado.
@@ -74,8 +87,8 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Validacao
 
-- Correcao de gates fase/fechamento: engine 167/167; contrato MCP focal 1/1;
-  `npm run check` com build, auditoria canonica, 451 testes aprovados e 4
+- Correcao de gates fase/fechamento: engine 168/168; contrato MCP focal 2/2;
+  `npm run check` com build, auditoria canonica, 455 testes aprovados e 4
   ignorados.
 - Mineracao V2 focal: 51 testes aprovados.
 - Contrato MCP focal: 2 testes aprovados com roots temporarios.

@@ -41,6 +41,25 @@ describe("gate requirement resolution", () => {
     expect(evidenceSatisfiesRequirement(flowWithEvidence(evidence), evidence, "diff_reviewed")).toBe(true);
   });
 
+  it("treats equivalent Windows review paths as the same target", () => {
+    const evidence = reviewEvidence({
+      scope_reference: "src\\flow-engine.ts",
+      observed_result: {
+        diff_reviewed: true,
+        reviewed_targets: ["SRC/flow-engine.ts"],
+        barata_scan: true,
+        searched_patterns: ["review path normalization"],
+        findings: [],
+        regression_risks: []
+      }
+    });
+    const flow = flowWithEvidence(evidence);
+    flow.scope.in = ["src/flow-engine.ts"];
+    flow.changed_files = ["src/flow-engine.ts"];
+
+    expect(evidenceSatisfiesRequirement(flow, evidence, "diff_reviewed")).toBe(true);
+  });
+
   it.each(["target", "declared_dependency"] as const)("lets scope.out override %s authorization", (classification) => {
     const evidence = reviewEvidence({ scope_classification: classification });
     const flow = flowWithEvidence(evidence);

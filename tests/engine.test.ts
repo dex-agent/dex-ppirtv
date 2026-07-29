@@ -2023,10 +2023,84 @@ describe("PPIRTV flow engine", () => {
     expect(fresh.status).not.toBe("complete");
     expect(ledger.some((event) => event.type === "flow_completed")).toBe(false);
     expect(status.closure_blockers).toEqual(expect.arrayContaining(["goal_positive_verdict_required"]));
+    expect(status.phase_advance_allowed).toBe(false);
     expect(checkout.closure_blockers).toEqual(expect.arrayContaining(["goal_positive_verdict_required"]));
+    expect(status.loop_monitor).toMatchObject({
+      count: 1,
+      terminal_block_count: 1
+    });
     expect(retry).toMatchObject({ advanced: false, status: "blocked" });
     expect(retry.remaining_blockers).toEqual(expect.arrayContaining(["goal_positive_verdict_required"]));
-    expect((await reloadedEngine.store.readLedger(flowId)).some((event) => event.type === "flow_completed")).toBe(false);
+    const retriedLedger = await reloadedEngine.store.readLedger(flowId);
+    expect(retriedLedger.some((event) => event.type === "flow_completed")).toBe(false);
+    expect(retriedLedger.filter((event) => event.type === "goal_terminal_blocked")).toHaveLength(2);
+    expect((await reloadedEngine.goalStatus({ flow_id: flowId })).loop_monitor).toMatchObject({
+      count: 2,
+      terminal_block_count: 2
+    });
+    await reloadedEngine.goalAdvance({ flow_id: flowId, detail: "compact" });
+    expect((await reloadedEngine.goalStatus({ flow_id: flowId })).loop_monitor).toMatchObject({
+      count: 3,
+      terminal_block_count: 3,
+      escalation: { active: true, level: "convergence_transversal", threshold: 3 }
+    });
+  });
+
+  it("exposes and escalates terminal retries when no verdict exists", async () => {
+    const { flowId } = await startGoalWithEvidence(
+      "dex-code:test-terminal-completion-without-verdict",
+      "Nao esconder retry terminal sem veredito"
+    );
+    const flow = await engine.store.loadFlow(flowId);
+    flow.goal_binding!.envelope.risk_level = "mechanical";
+    await engine.store.saveFlow(flow);
+
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { implementation_done: true, changed_files: ["docs/contract.md"] }
+    });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: {
+        diff_reviewed: true,
+        barata_scan: true,
+        regression_risks: ["retry sem veredito"],
+        review_findings: ["docs/contract.md revisado"]
+      }
+    });
+    await engine.goalAdvance({ flow_id: flowId, provided: { test_executed: true } });
+
+    const first = await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { residual_risks: [], next_step: "registrar veredito agora", clean_house: true }
+    });
+    const reloadedEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
+    await reloadedEngine.goalAdvance({ flow_id: flowId });
+    await reloadedEngine.goalAdvance({ flow_id: flowId });
+    const status = await reloadedEngine.goalStatus({ flow_id: flowId, detail: "full" });
+
+    expect(first).toMatchObject({
+      advanced: false,
+      status: "blocked",
+      missing: expect.arrayContaining(["verdict"])
+    });
+    expect(status).toMatchObject({
+      status: "blocked",
+      blockers: expect.arrayContaining(["verdict"]),
+      closure_blockers: [],
+      next_required_action: {
+        type: "convergence_transversal_meetings",
+        tool: "goal_meeting_open"
+      },
+      loop_monitor: {
+        count: 3,
+        gate_block_count: 3,
+        terminal_block_count: 0,
+        escalation: { active: true, level: "convergence_transversal", threshold: 3 }
+      }
+    });
   });
 
   it("persists verdict review metadata so a positive official GOAL can complete", async () => {
@@ -2074,10 +2148,107 @@ describe("PPIRTV flow engine", () => {
     });
 
     expect(completed).toMatchObject({ advanced: true, from: "validacao", to: null, status: "complete" });
+    expect((await engine.goalStatus({ flow_id: flowId, detail: "full" })).phase_advance_allowed).toBe(false);
     expect((await engine.store.loadFlow(flowId)).verdicts.at(-1)).toMatchObject({
       review_artifact_path: ".agents/REPORTS/review-terminal.md",
       review_findings: ["review material fornecido pelo contrato publico"]
     });
+  });
+
+  it("reconstructs a pre-upgrade review snapshot without accepting later changed files", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-terminal-review-pre-upgrade",
+      "Preservar review legitimo criado antes do snapshot versionado"
+    );
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { implementation_done: true, changed_files: ["src\\flow-engine.ts"] }
+    });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: {
+        diff_reviewed: true,
+        barata_scan: true,
+        regression_risks: ["compatibilidade de upgrade"],
+        review_findings: ["SRC/flow-engine.ts foi revisado"]
+      }
+    });
+    await engine.goalAdvance({ flow_id: flowId, provided: { test_executed: true } });
+    await engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto",
+      rationale: "Review anterior ao campo de snapshot.",
+      evidence_ids: [evidenceId],
+      review_artifact_path: ".agents/REPORTS/review-pre-upgrade.md",
+      review_findings: ["SRC/flow-engine.ts foi revisado"],
+      next_step: "encerrar agora"
+    });
+
+    const legacyFlow = await engine.store.loadFlow(flowId);
+    delete legacyFlow.verdicts.at(-1)?.reviewed_changed_files;
+    const legacyHistoryVerdict = legacyFlow.history.findLast((event) => event.type === "verdict_recorded");
+    delete legacyHistoryVerdict?.data.reviewed_changed_files;
+    await engine.store.saveFlow(legacyFlow);
+
+    const reloadedEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }));
+    const status = await reloadedEngine.goalStatus({ flow_id: flowId, detail: "full" });
+    const completed = await reloadedEngine.goalAdvance({
+      flow_id: flowId,
+      provided: { residual_risks: [], next_step: "encerrar agora", clean_house: true }
+    });
+
+    expect(status.closure_blockers).not.toContain("review_required");
+    expect(completed).toMatchObject({ advanced: true, status: "complete" });
+  });
+
+  it("invalidates persisted review evidence when changed files change after the verdict", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence(
+      "dex-code:test-terminal-review-stale-after-change",
+      "Impedir review antigo de liberar alteracao posterior"
+    );
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] }
+    });
+    await engine.goalAdvance({
+      flow_id: flowId,
+      provided: {
+        diff_reviewed: true,
+        barata_scan: true,
+        regression_risks: ["review stale"],
+        review_findings: ["src/flow-engine.ts foi revisado"]
+      }
+    });
+    await engine.goalAdvance({ flow_id: flowId, provided: { test_executed: true } });
+    await engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto",
+      rationale: "Alteracao original revisada.",
+      evidence_ids: [evidenceId],
+      review_artifact_path: ".agents/REPORTS/review-original.md",
+      review_findings: ["src/flow-engine.ts foi revisado"],
+      next_step: "encerrar agora"
+    });
+
+    await engine.updateFlowFacts(flowId, { changed_files: ["SRC\\flow-engine.ts"] });
+    await engine.updateFlowFacts(flowId, { changed_files: ["src/server.ts"] });
+    await engine.updateFlowFacts(flowId, { changed_files: ["SRC\\flow-engine.ts"] });
+
+    const status = await engine.goalStatus({ flow_id: flowId, detail: "full" });
+    const completion = await engine.goalAdvance({
+      flow_id: flowId,
+      provided: { residual_risks: [], next_step: "encerrar agora", clean_house: true }
+    });
+    const latestVerdict = (await engine.store.loadFlow(flowId)).verdicts.at(-1);
+
+    expect(latestVerdict?.reviewed_changed_files).toEqual(["src/flow-engine.ts"]);
+    expect(status.closure_blockers).toContain("review_required");
+    expect(completion).toMatchObject({ advanced: false, status: "blocked" });
+    expect(completion.missing).toContain("review_required");
   });
 
   it("serializes and reuses terminal completion without duplicating hooks or ledger events", async () => {
@@ -4524,6 +4695,12 @@ describe("PPIRTV flow engine", () => {
     expect(resolved.ppirtv_checkout).toMatchObject({
       resolution_guidance: resolved.blockers.length > 0 ? expect.any(Object) : null
     });
+
+    await engine.updateFlowFacts(flowId, { changed_files: ["src/server.ts"] });
+    const staleReview = await engine.goalStatus({ flow_id: flowId });
+
+    expect(staleReview.blockers).toContain("review_required");
+    expect(staleReview.next_required_action).toMatchObject({ type: "attach_review" });
   });
 
   it("T25c escalates repeated fiscal review loops by loop_id without relying on elapsed time", async () => {

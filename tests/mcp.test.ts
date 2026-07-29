@@ -44,6 +44,11 @@ describe("PPIRTV MCP stdio server", () => {
     const goalStartTool = tools.tools.find((tool) => tool.name === "goal_start");
     const goalStartProperties = (goalStartTool?.inputSchema as { properties?: Record<string, Record<string, unknown>> }).properties;
     expect(goalStartProperties?.flow_role?.enum).toEqual(["execution", "reconciliation", "recovery"]);
+    const goalVerdictTool = tools.tools.find((tool) => tool.name === "goal_verdict");
+    expect(goalVerdictTool?.description).toContain("does not complete");
+    expect(goalVerdictTool?.description).toContain("goal_advance");
+    expect(goalVerdictTool?.description).toContain("phase_advance_allowed");
+    expect(goalVerdictTool?.description).toContain("closure_blockers");
     const traceTool = tools.tools.find((tool) => tool.name === "ppirtv_trace");
     expect(traceTool?.description).toContain("origin, history, evolution, provenance, decisions, evidence, or reconstruction");
     expect(traceTool?.description).toContain("read-only");
@@ -547,19 +552,6 @@ describe("PPIRTV MCP stdio server", () => {
       name: "evidence_add",
       arguments: { flow_id: flowId, title: "vitest fiscal", content: "pass", satisfies: ["vitest"] }
     });
-    await client!.callTool({
-      name: "evidence_add",
-      arguments: {
-        flow_id: flowId,
-        kind: "code_review",
-        title: "review fiscal",
-        content: "review confirmou que provided.verdict nao substitui goal_verdict",
-        satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
-        observed_result: { diff_reviewed: true, reviewed_targets: ["Executar fluxo PPIRTV do SPT validado"], barata_scan: true, searched_patterns: ["verdict MCP neighbors"], findings: [], regression_risks: ["falso pronto MCP"] },
-        scope_classification: "target",
-        scope_reference: "Executar fluxo PPIRTV do SPT validado"
-      }
-    });
     const meeting = await client!.callTool({
       name: "goal_meeting_open",
       arguments: { flow_id: flowId, type: "convergent", question: "Validacao sem veredito canonico pode completar?" }
@@ -581,6 +573,19 @@ describe("PPIRTV MCP stdio server", () => {
     await client!.callTool({
       name: "goal_advance",
       arguments: { flow_id: flowId, provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] } }
+    });
+    await client!.callTool({
+      name: "evidence_add",
+      arguments: {
+        flow_id: flowId,
+        kind: "code_review",
+        title: "review fiscal",
+        content: "review confirmou que provided.verdict nao substitui goal_verdict",
+        satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+        observed_result: { diff_reviewed: true, reviewed_targets: ["src/flow-engine.ts"], barata_scan: true, searched_patterns: ["verdict MCP neighbors"], findings: [], regression_risks: ["falso pronto MCP"] },
+        scope_classification: "target",
+        scope_reference: "src/flow-engine.ts"
+      }
     });
     await client!.callTool({
       name: "goal_advance",
@@ -646,6 +651,35 @@ describe("PPIRTV MCP stdio server", () => {
     });
     expect(ledgerText).not.toContain("verdict_recorded");
     expect(ledgerText).not.toContain("flow_completed");
+
+    const positiveVerdict = await client!.callTool({
+      name: "goal_verdict",
+      arguments: {
+        flow_id: flowId,
+        status: "pronto",
+        rationale: "Veredito canonico registrado com evidencia e review.",
+        evidence_ids: [resultOf(evidence).evidence_id],
+        meeting_id: resultOf(meeting).meeting_id,
+        review_artifact_path: ".agents/REPORTS/review-mcp.md",
+        review_findings: ["src/flow-engine.ts revisado"],
+        residual_risks: [],
+        next_step: "executar goal_advance agora"
+      }
+    });
+
+    expect(resultOf(positiveVerdict)).toMatchObject({
+      phase_advance_allowed: true,
+      closure_blockers: [],
+      next_required_action: {
+        type: "advance_terminal",
+        tool: "goal_advance",
+        args: { flow_id: flowId }
+      },
+      status: {
+        phase_advance_allowed: true,
+        closure_blockers: []
+      }
+    });
   });
 
   it("does not turn negative meeting trigger text into required_cooperation over MCP", async () => {
@@ -2143,6 +2177,8 @@ describe("PPIRTV MCP stdio server", () => {
     expect(text).toContain("Modelo de relatorio final PPIRTV");
     expect(text).toContain("Status final: pronto | parcial | bloqueado");
     expect(text).toContain("goal_verdict");
+    expect(text).toContain("goal_advance");
+    expect(text).toContain("nao conclui sozinho");
     expect(text).toContain("L1");
     expect(text).toContain("PLAN-TASKS");
 

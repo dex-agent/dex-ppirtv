@@ -617,7 +617,7 @@ function registerTools(
   server.registerTool(
     "goal_verdict",
     {
-      description: "Record a GOAL/SPT verdict. Positive conclusions require traceable evidence_ids.",
+      description: "Record a GOAL/SPT verdict. Positive conclusions require traceable evidence_ids. A positive verdict does not complete an official GOAL: inspect phase_advance_allowed and closure_blockers, then call goal_advance for the guarded terminal transition.",
       inputSchema: {
         flow_id: z.string().min(1),
         status: z.enum(VERDICTS),

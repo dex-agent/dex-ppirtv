@@ -168,6 +168,7 @@ export function promptText(name: string, args: Record<string, unknown>): string 
       `Prepare veredito final para ${flowId}.`,
       "Compare objetivo, implementacao, evidencias, testes, risco residual e proximo passo.",
       "Use goal_verdict para fluxo GOAL/SPT oficial; use verdict_record apenas para flow legado/manual.",
+      "Em GOAL oficial, goal_verdict positivo nao conclui sozinho: consulte phase_advance_allowed e closure_blockers, depois use goal_advance para executar a transicao terminal protegida.",
       "Sem evidencia, registre ressalva ou nao_pronto.",
       "Se houve decisao de implementacao sem SPEC-PLAN-TASKs salvo em .agents\\PLAN-TASKS, declare que o plano ainda nao virou trilho PPIRTV.",
       readyDefinitionText(),
