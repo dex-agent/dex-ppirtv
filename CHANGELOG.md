@@ -20,6 +20,11 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Corrigido
 
+- Evidências de review de flows com `changed_files` agora usam somente esses
+  paths como autoridade e deixam de publicar ou aceitar frases operacionais de
+  `scope.in` como alvos revisáveis. A cobertura integral dos arquivos e dos
+  critérios SPT v3 permanece fail-closed; flows legados sem `changed_files`
+  preservam o fallback histórico comprovado para `scope.in`.
 - O fechamento de SPT entrega a prestação de contas aos owners:
   `garimpeiro` classifica, `estacionamento` persiste itens ativos,
   `napkin-projeto` avalia o runbook e `dex-memoria` grava memoráveis com

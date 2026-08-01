@@ -152,7 +152,7 @@ export function reviewEvidenceDiagnostics(flow: Flow, evidence: Evidence): Revie
     owner: "evidence_add",
     reasons,
     scope_reference: scopeReference,
-    authorized_scope: uniqueStrings([...flow.changed_files, ...flow.scope.in]).filter((item) => !flow.scope.out.includes(item))
+    authorized_scope: authorizedReviewScope(flow)
   };
 }
 
@@ -204,16 +204,16 @@ function nonNegativeInteger(value: unknown): value is number {
 
 function scopeIsAuthorized(flow: Flow, evidence: Evidence): boolean {
   const reference = normalizeReviewPath(evidence.scope_reference as string);
-  if (flow.scope.out.map(normalizeReviewPath).includes(reference)) {
-    return false;
-  }
-  if (evidence.scope_classification === "target") {
-    return flow.changed_files.map(normalizeReviewPath).includes(reference) || flow.scope.in.map(normalizeReviewPath).includes(reference);
-  }
-  if (evidence.scope_classification === "declared_dependency") {
-    return flow.scope.in.map(normalizeReviewPath).includes(reference);
-  }
-  return false;
+  const hasReviewableClassification = evidence.scope_classification === "target"
+    || evidence.scope_classification === "declared_dependency";
+  return hasReviewableClassification
+    && authorizedReviewScope(flow).map(normalizeReviewPath).includes(reference);
+}
+
+function authorizedReviewScope(flow: Flow): string[] {
+  const candidates = flow.changed_files.length > 0 ? flow.changed_files : flow.scope.in;
+  const excluded = new Set(flow.scope.out.map(normalizeReviewPath));
+  return uniqueStrings(candidates).filter((item) => !excluded.has(normalizeReviewPath(item)));
 }
 
 function stringArray(value: unknown): value is string[] {

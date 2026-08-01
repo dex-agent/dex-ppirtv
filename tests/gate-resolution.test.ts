@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Evidence, Flow } from "../src/domain.js";
-import { evidenceSatisfiesRequirement, resolveGateRequirements } from "../src/gate-resolution.js";
+import {
+  evidenceSatisfiesRequirement,
+  resolveGateRequirements,
+  reviewEvidenceDiagnostics
+} from "../src/gate-resolution.js";
 import {
   fingerprintReviewedImplementation,
   normalizeReviewPathForPlatform
@@ -46,6 +50,58 @@ describe("gate requirement resolution", () => {
   it("accepts an explicitly declared dependency that exists in scope.in", () => {
     const evidence = reviewEvidence({ scope_classification: "declared_dependency" });
     expect(evidenceSatisfiesRequirement(flowWithEvidence(evidence), evidence, "diff_reviewed")).toBe(true);
+  });
+
+  it("does not authorize an operational scope sentence when changed files define the review boundary", () => {
+    const operationalScope = "Executar o flow PPIRTV lean ate o veredito";
+    const changedFile = "src/gate-resolution.ts";
+    const evidence = reviewEvidence({
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      scope_reference: operationalScope,
+      observed_result: {
+        diff_reviewed: true,
+        reviewed_targets: [changedFile, operationalScope],
+        barata_scan: true,
+        searched_patterns: ["review scope authorization consumers"],
+        findings: [],
+        regression_risks: []
+      }
+    });
+    const flow = flowWithEvidence(evidence);
+    flow.scope.in = [operationalScope];
+    flow.changed_files = [changedFile];
+
+    expect(reviewEvidenceDiagnostics(flow, evidence)).toMatchObject({
+      valid: false,
+      reasons: ["scope_reference_not_authorized"],
+      authorized_scope: [changedFile]
+    });
+  });
+
+  it("keeps full changed-file coverage as an independent review blocker", () => {
+    const reviewedFile = "src/gate-resolution.ts";
+    const omittedFile = "tests/gate-resolution.test.ts";
+    const evidence = reviewEvidence({
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      scope_reference: reviewedFile,
+      observed_result: {
+        diff_reviewed: true,
+        reviewed_targets: [reviewedFile],
+        barata_scan: true,
+        searched_patterns: ["review scope authorization consumers"],
+        findings: [],
+        regression_risks: []
+      }
+    });
+    const flow = flowWithEvidence(evidence);
+    flow.scope.in = ["Executar o flow PPIRTV lean ate o veredito"];
+    flow.changed_files = [reviewedFile, omittedFile];
+
+    expect(reviewEvidenceDiagnostics(flow, evidence)).toMatchObject({
+      valid: false,
+      reasons: ["changed_files_not_fully_reviewed"],
+      authorized_scope: [reviewedFile, omittedFile]
+    });
   });
 
   it("treats equivalent Windows review paths as the same target", () => {
