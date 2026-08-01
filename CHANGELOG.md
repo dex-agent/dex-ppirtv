@@ -8,6 +8,16 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+### Adicionado
+
+- Trilhos SPT v3 agora possuem um grafo canônico de requisitos, critérios,
+  tasks e requisitos de evidência. `spt_validate` publica
+  `contract_version=3` e `execution_eligible=true`; provas por critério derivam
+  a expectativa do SPT vinculado, e vereditos positivos permanecem bloqueados
+  até cobrir todos os critérios mínimos. SPT v2 continua legível e reutilizável
+  por retry exato, recovery ou reconciliation explícitos, mas não inicia nova
+  execução oficial.
+
 ### Corrigido
 
 - O fechamento de SPT entrega a prestação de contas aos owners:

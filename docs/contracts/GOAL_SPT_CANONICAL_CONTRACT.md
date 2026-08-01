@@ -73,7 +73,7 @@ Bibliotecario. Ele nao e memoria canonica, nao altera L1/L2/L3, nao substitui
 `rg` para busca exata e todo achado dele deve ser marcado como `source:
 graphify` para permitir medicao separada.
 
-## Trilho/SPT canonico v2
+## Trilho/SPT canonico v3
 
 Um Trilho canonico e um arquivo Markdown salvo em:
 
@@ -81,7 +81,120 @@ Um Trilho canonico e um arquivo Markdown salvo em:
 <workspace>\.agents\PLAN-TASKS\YYYY-MM-DD-<slug>.md
 ```
 
-O SPT v2 separa duas responsabilidades:
+O SPT v3 usa um unico grafo estruturado no front matter YAML. A matriz,
+checklist e demais visoes humanas sao projecoes: nao podem virar uma segunda
+autoridade mantida manualmente.
+
+Campos obrigatorios:
+
+- `dex_contract: spt` e `version: 3`;
+- metadados, `goal`, contexto, decisao, escopo, plano, riscos, incertezas,
+  gates, validacao e `execution_prompt`;
+- `requirements[]` com `id`, `statement` e `criteria[]`;
+- `tasks[]` com `id`, `action`, `covers`, `done_when`, `depends_on` e
+  `evidence_requirements[]`;
+- cada `evidence_requirement` possui ID estavel, `proves`, `method`,
+  `procedure` e `expectation`;
+- `closure_gates[]` fica separado dos criterios minimos do produto.
+
+O expectation e discriminado por tipo. Use `boolean_assertion`,
+`command_exit`, `hash_equality`, `measurement` ou `text`; nao fabrique
+operador ou limiar numerico para review, igualdade de hash ou assercao
+booleana.
+
+Exemplo minimo:
+
+```yaml
+---
+dex_contract: spt
+version: 3
+status: RASCUNHO
+owner: sprinter
+date: '2026-07-30'
+workspace: 'C:\CodexProjetos\dex-PPIRTV'
+origin: 'reuniao PPIRTV'
+goal:
+  id: exemplo-spt-v3
+  title: 'Exemplo SPT v3'
+  objective: 'Demonstrar um requisito por criterio, task e evidencia.'
+context: 'Contexto operacional suficiente.'
+problem: 'Listas independentes permitem falso verde.'
+decision: 'Usar rastreabilidade causal v3.'
+scope:
+  include: ['src/']
+  exclude: ['Mudancas fora deste objetivo.']
+requirements:
+  - id: REQ-01
+    statement: 'O comando canonico deve passar.'
+    criteria:
+      - id: C-01
+        statement: 'O processo termina com exit code zero.'
+plan: ['Executar o menor passo verificavel.']
+tasks:
+  - id: A-01
+    action: 'Executar o comando canonico.'
+    covers: [REQ-01]
+    done_when: [C-01]
+    depends_on: []
+    evidence_requirements:
+      - id: ER-01
+        proves: [C-01]
+        method: command
+        procedure: 'Executar npm.cmd run check.'
+        expectation:
+          kind: command_exit
+          expected_exit_code: 0
+closure_gates: ['Review e teste possuem receipts independentes.']
+risks: ['Falso pronto sem evidencia.']
+uncertainties: ['Consumidores antigos ainda podem emitir v2.']
+gates: ['spt_validate retorna valid=true e contract_version=3.']
+validation: ['npm.cmd run check']
+execution_prompt: |
+  /GOAL
+  Execute este Trilho pelo MCP PPIRTV.
+---
+```
+
+`spt_validate` rejeita IDs duplicados, referencias inexistentes, requisitos ou
+criterios orfaos, criterio fora da cobertura da task, criterio sem
+`evidence_requirement` e ciclos de `depends_on`.
+
+Nova execucao oficial exige v3. Ausencia de `flow_role` significa
+`execution`. V2 permanece legivel para historia e permite retry exato de flow
+ja vinculado; `recovery` e `reconciliation` precisam ser declarados
+explicitamente.
+
+### Evidencia causal v3
+
+`evidence_add.criterion_proof` deve citar `task_id`, `requirement_id`,
+`criterion_id` e `evidence_requirement_id`, alem de `observed_value`,
+`revision_set`, ambiente, produtor, timestamp e limites. O runtime deriva o
+expectation e o operador do SPT vinculado, calcula `passed` e rejeita
+referencias incoerentes. O produtor nao pode redefinir o esperado no receipt.
+
+`revision_set` identifica a revisao material por root, HEAD opcional e paths
+com SHA-256. No v3 atual, cada root deve corresponder literalmente ao workspace
+vinculado por `goal_start`; roots adicionais permanecem fail-closed ate existir
+um contrato explicito de autorizacao multi-workspace. Os paths sao re-hashados
+no attach e novamente no veredito. Isso oferece proveniencia e
+reprodutibilidade declaradas; nao e assinatura criptografica de autoria nem
+persistencia transacional.
+
+`pronto` e `pronto_com_ressalvas` exigem ao menos uma prova selecionada e
+`passed=true` para cada criterio minimo. Criterio sem prova nao vira ressalva:
+permanece nao pronto ou nao avaliavel. Review e teste geram receipts
+independentes; `validador-pronto` apenas os consolida.
+
+## Trilho/SPT v2 legado e legivel
+
+Um Trilho canonico e um arquivo Markdown salvo em:
+
+```text
+<workspace>\.agents\PLAN-TASKS\YYYY-MM-DD-<slug>.md
+```
+
+O SPT v2 separa duas responsabilidades, mas suas listas independentes nao
+oferecem a rastreabilidade causal exigida para uma nova execucao:
 
 - a camada de maquina e um front matter YAML obrigatorio no topo do arquivo;
 - a camada humana e o Markdown livre depois do fechamento do front matter.
@@ -178,8 +291,9 @@ Veredito esperado do PPI:
 
 ### Fechamento operacional e retomada
 
-O schema continua SPT v2. O fechamento abaixo e um gate operacional depois do
-veredito e nao adiciona campos ao front matter:
+No contrato v2 legado, o fechamento abaixo e um gate operacional depois do
+veredito e nao adiciona campos ao front matter. No v3, ele permanece em
+`closure_gates`, separado dos criterios minimos:
 
 1. Use `memoria-viva` em todo fechamento de Trilho/SPT para reconciliar a
    menor camada local que permite retomada sem o chat. Atualize, conforme o
@@ -300,7 +414,7 @@ Regras:
   store ativo. Divergencia falha antes de criar flow ou anexar ledger.
 - `spt_path` deve apontar para um arquivo dentro de `.agents\PLAN-TASKS`.
 - `objective` deve nomear o resultado esperado do ciclo e corresponder a
-  `goal.objective` do front matter v2.
+  `goal.objective` do front matter estruturado.
 - `idempotency_key` deve ser estavel para retry e nao pode duplicar flows. O
   primeiro `goal_start` vincula o envelope, `goal.id`, o fingerprint do front
   matter e o SHA-256 dos bytes exatos do documento iniciado. O fingerprint
@@ -333,11 +447,11 @@ Regras:
 - `requested_verdict_policy=evidence_required` faz `goal_verdict` recusar
   `pronto` e `pronto_com_ressalvas` sem `evidence_ids` existentes.
 - `source` identifica a origem, por exemplo `dex-code`.
-- `flow_role` e opcional para compatibilidade e aceita somente `execution`,
+- `flow_role` e opcional no payload e aceita somente `execution`,
   `reconciliation` ou `recovery`. O valor e uma declaracao do chamador, fica
   persistido uma unica vez em `goal_binding.flow_role` e participa do gate de
-  retry. Ausencia, valor historico invalido ou binding antigo aparece como
-  `unknown`; o runtime nunca infere `execution` por data, source ou texto.
+  retry. Em binding novo, ausencia normaliza para `execution`; valor historico
+  invalido ou binding antigo sem papel aparece como `unknown`.
   Retry que omite o campo preserva o papel existente; retry que fornece papel
   divergente falha com `GOAL_BINDING_MISMATCH` antes de mutacao.
 
@@ -362,8 +476,9 @@ Ao iniciar um GOAL com `goal_start`, o flow e o ledger precisam preservar:
 - `expected_evidence`
 - `done_criteria`
 
-`tasks`, `expected_evidence` e `done_criteria` vem exclusivamente do front
-matter v2 e sao obrigatorios antes de sair da fase Planejamento.
+No v3, `tasks`, `expected_evidence` e `done_criteria` sao projecoes derivadas
+do grafo canonico de requirements, tasks e evidence requirements. No v2
+legado, continuam vindo das listas do front matter.
 
 ## Rastreamento reverso
 
@@ -460,7 +575,7 @@ runtime privado em artefato publico.
 
 Fluxo canonico:
 
-1. Criar Trilho SPT v2 em `.agents\PLAN-TASKS` usando
+1. Criar Trilho SPT v3 em `.agents\PLAN-TASKS` usando
    `templates/SPEC-PLAN-TASKS.template.md`.
 2. Montar `GoalEnvelope`.
 3. Chamar `spt_validate`.
@@ -731,9 +846,11 @@ informar, no proprio conteudo ou metadados:
 - resultado observado;
 - limitacao ou risco residual, quando houver.
 
-Evidencia sem data/hora, origem, objetivo, SPT/Trilho e `flow_id` e fraca para
-veredito positivo. Pode ser usada como anotacao auxiliar, mas nao deve sustentar
-`pronto` ou `pronto_com_ressalvas` sozinha.
+Em flow v3, evidencia de criterio sem `criterion_proof`,
+`evidence_requirement_id`, `revision_set`, ambiente, produtor, timestamp,
+limites ou comparacao aprovada pelo runtime nao cobre o criterio. Pode ser
+usada como anotacao auxiliar, mas nao sustenta `pronto` nem
+`pronto_com_ressalvas`.
 
 Fluxo multi-flow, somente quando solicitado ou quando o objetivo tiver mais de
 um SPT/flow:

@@ -6,7 +6,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Evidence, Flow, LedgerEvent, Meeting, Verdict } from "../src/domain.js";
 import { FlowEngine } from "../src/flow-engine.js";
 import { tracePpirtvArtifact } from "../src/provenance-trace.js";
-import { fingerprintSptV2Contract, parseSptV2Document } from "../src/spt-contract.js";
+import {
+  fingerprintSptContract,
+  fingerprintSptV2Contract,
+  parseSptDocument,
+  parseSptV2Document
+} from "../src/spt-contract.js";
 import { PpirtvStore } from "../src/store.js";
 
 let tempRoot: string;
@@ -277,8 +282,8 @@ describe("PPIRTV provenance trace", () => {
       "utf8"
     );
     const currentDocument = await readFile(fixture.sptPath, "utf8");
-    const currentContract = parseSptV2Document(currentDocument).contract!;
-    const currentFingerprint = fingerprintSptV2Contract(currentContract);
+    const currentContract = parseSptDocument(currentDocument).contract!;
+    const currentFingerprint = fingerprintSptContract(currentContract);
     const driftedFlow = await store.loadFlow(fixture.flow.flow_id);
     driftedFlow.goal_binding!.spt_document_sha256_at_start = "not-a-sha";
     await store.saveFlow(driftedFlow);
@@ -428,7 +433,7 @@ describe("PPIRTV provenance trace", () => {
       "execution",
       "reconciliation",
       "recovery",
-      "unknown",
+      "execution",
       "unknown"
     ]);
     const storedReconciliation = await store.loadFlow(reconciliation.flow.flow_id);
@@ -656,7 +661,7 @@ async function createExplicitFixture(
 }
 
 async function createLegacyFixture(goalId: string): Promise<Flow> {
-  const sptPath = await writeSpt(goalId);
+  const sptPath = await writeSptV2(goalId);
   const parsed = parseSptV2Document(await readFile(sptPath, "utf8"));
   const created = await engine.createFlow({ goal: `Legacy ${goalId}` });
   const flow = await store.loadFlow(created.flow_id);
@@ -710,7 +715,7 @@ async function writeSpt(goalId: string): Promise<string> {
   await writeFile(sptPath, [
     "---",
     "dex_contract: spt",
-    "version: 2",
+    "version: 3",
     "status: EM_TESTE",
     "owner: Teste",
     "date: '2026-07-24'",
@@ -728,15 +733,30 @@ async function writeSpt(goalId: string): Promise<string> {
     "    - Proveniência.",
     "  exclude:",
     "    - Índice novo.",
-    "spec: Rastrear sem mutação.",
+    "requirements:",
+    "  - id: REQ-01",
+    "    statement: O artefato deve ser rastreável.",
+    "    criteria:",
+    "      - id: C-01",
+    "        statement: O receipt deve ser determinístico.",
     "plan:",
     "  - Criar fixture.",
     "tasks:",
-    "  - Rastrear fixture.",
-    "expected_evidence:",
-    "  - Receipt.",
-    "done_criteria:",
-    "  - Receipt determinístico.",
+    "  - id: A-01",
+    "    action: Rastrear fixture.",
+    "    covers: [REQ-01]",
+    "    done_when: [C-01]",
+    "    depends_on: []",
+    "    evidence_requirements:",
+    "      - id: ER-01",
+    "        proves: [C-01]",
+    "        method: receipt",
+    "        procedure: Produzir receipt determinístico.",
+    "        expectation:",
+    "          kind: boolean_assertion",
+    "          expected: true",
+    "closure_gates:",
+    "  - Sem mutação.",
     "risks:",
     "  - Vazamento.",
     "uncertainties:",
@@ -750,6 +770,47 @@ async function writeSpt(goalId: string): Promise<string> {
     "  Execute.",
     "---",
     "# Fixture sintética"
+  ].join("\n"), "utf8");
+  return sptPath;
+}
+
+async function writeSptV2(goalId: string): Promise<string> {
+  const dir = path.join(workspace, ".agents", "PLAN-TASKS");
+  await mkdir(dir, { recursive: true });
+  const sptPath = path.join(dir, `${goalId}.md`);
+  await writeFile(sptPath, [
+    "---",
+    "dex_contract: spt",
+    "version: 2",
+    "status: HISTORICO",
+    "owner: Teste",
+    "date: '2026-07-24'",
+    `workspace: ${JSON.stringify(workspace)}`,
+    "origin: teste legado",
+    "goal:",
+    `  id: ${goalId}`,
+    `  title: Trace ${goalId}`,
+    `  objective: Trace ${goalId}`,
+    "context: Fixture legada.",
+    "problem: Preservar leitura v2.",
+    "decision: Usar somente como histórico.",
+    "scope:",
+    "  include: [Proveniência.]",
+    "  exclude: [Execução nova.]",
+    "spec: Rastrear sem mutação.",
+    "plan: [Criar fixture.]",
+    "tasks: [Rastrear fixture.]",
+    "expected_evidence: [Receipt.]",
+    "done_criteria: [Receipt determinístico.]",
+    "risks: [Vazamento.]",
+    "uncertainties: [Histórico legado.]",
+    "gates: [Sem mutação.]",
+    "validation: [npm test.]",
+    "execution_prompt: |",
+    "  /GOAL",
+    "  Recupere.",
+    "---",
+    "# Fixture v2"
   ].join("\n"), "utf8");
   return sptPath;
 }

@@ -80,20 +80,25 @@ export async function fingerprintReviewedImplementation(
 }
 
 function assertReviewSnapshotPathIsNotSensitive(relativePath: string): void {
-  const segments = relativePath.split("/").map((segment) => segment.toLowerCase());
+  if (isSensitiveWorkspacePath(relativePath)) {
+    throw new Error(`REVIEW_SNAPSHOT_SENSITIVE_PATH: ${relativePath}`);
+  }
+}
+
+export function isSensitiveWorkspacePath(relativePath: string): boolean {
+  const normalizedPath = relativePath.replace(/\\/g, "/").toLowerCase();
+  const segments = normalizedPath.split("/");
   const basename = segments.at(-1) ?? "";
   const envTemplates = new Set([".env.example", ".env.sample", ".env.template"]);
   const sensitive =
     segments.some((segment) => segment === ".env" || (/^\.env\./.test(segment) && !envTemplates.has(segment)))
     || [".npmrc", ".netrc", ".pypirc"].includes(basename)
-    || relativePath.toLowerCase() === "config.toml"
+    || normalizedPath === "config.toml"
     || segments.some((segment, index) => segment === ".codex" && segments[index + 1] === "config.toml")
     || segments.some((segment, index) => segment === ".git" && segments[index + 1] === "config")
     || /^(?:credentials?|secrets?|tokens?|cookies?|authorization)$/.test(basename)
     || /^(?:credentials?|secrets?|tokens?|cookies?|authorization)\.(?:json|toml|ya?ml|ini|conf|txt|dat|db)$/.test(basename);
-  if (sensitive) {
-    throw new Error(`REVIEW_SNAPSHOT_SENSITIVE_PATH: ${relativePath}`);
-  }
+  return sensitive;
 }
 
 function assertInsideWorkspace(workspace: string, candidate: string, platform: NodeJS.Platform): void {

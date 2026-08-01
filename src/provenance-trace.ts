@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { GOAL_FLOW_ROLES, type Flow, type GoalFlowRole, type LedgerEvent, type Meeting } from "./domain.js";
 import { sameRuntimePath } from "./config.js";
-import { fingerprintSptV2Contract, parseSptV2Document } from "./spt-contract.js";
+import { fingerprintSptContract, parseSptDocument } from "./spt-contract.js";
 import type { PpirtvStore } from "./store.js";
 
 export const PPIRTV_TRACE_SELECTOR_KEYS = [
@@ -198,11 +198,11 @@ async function classifyFlow(store: PpirtvStore, flow: Flow, projectRoot: string)
   let parsedGoalId: string;
   let currentFingerprint: string;
   try {
-    const parsed = parseSptV2Document(await readFile(sptPath, "utf8"));
+    const parsed = parseSptDocument(await readFile(sptPath, "utf8"));
     if (!parsed.contract) {
       return unresolved(flow, null, sptPath, flowRole, "spt_contract_invalid");
     }
-    currentFingerprint = fingerprintSptV2Contract(parsed.contract);
+    currentFingerprint = fingerprintSptContract(parsed.contract);
     parsedGoalId = parsed.contract.goal.id;
   } catch {
     return unresolved(flow, null, sptPath, flowRole, "spt_contract_unreadable");
@@ -337,7 +337,7 @@ async function addSptSelectorDiagnostics(
     return;
   }
   try {
-    const parsed = parseSptV2Document(await readFile(sptPath, "utf8"));
+    const parsed = parseSptDocument(await readFile(sptPath, "utf8"));
     if (parsed.contract) {
       if (sameRuntimePath(parsed.contract.workspace, projectRoot)) {
         warnings.push("spt_valid_without_goal_binding");

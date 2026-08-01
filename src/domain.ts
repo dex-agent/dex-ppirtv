@@ -97,11 +97,92 @@ export type SptV2Contract = {
   execution_prompt: string;
 };
 
+export type SptEvidenceExpectation =
+  | { kind: "boolean_assertion"; expected: boolean }
+  | { kind: "command_exit"; expected_exit_code: number }
+  | { kind: "hash_equality" }
+  | { kind: "measurement"; operator: "eq" | "gte" | "lte"; expected: number; unit?: string }
+  | { kind: "text"; operator: "equals" | "contains" | "matches"; expected: string };
+
+export type SptV3Criterion = {
+  id: string;
+  statement: string;
+};
+
+export type SptV3Requirement = {
+  id: string;
+  statement: string;
+  criteria: SptV3Criterion[];
+};
+
+export type SptV3EvidenceRequirement = {
+  id: string;
+  proves: string[];
+  method: "command" | "test" | "inspection" | "receipt" | "review";
+  procedure: string;
+  expectation: SptEvidenceExpectation;
+};
+
+export type SptV3Task = {
+  id: string;
+  action: string;
+  covers: string[];
+  done_when: string[];
+  depends_on: string[];
+  evidence_requirements: SptV3EvidenceRequirement[];
+};
+
+export type SptV3Contract = Omit<
+  SptV2Contract,
+  "version" | "spec" | "tasks" | "expected_evidence" | "done_criteria"
+> & {
+  version: 3;
+  requirements: SptV3Requirement[];
+  tasks: SptV3Task[];
+  closure_gates: string[];
+};
+
+export type SptContract = SptV2Contract | SptV3Contract;
+
+export type SptV3Traceability = {
+  requirements: SptV3Requirement[];
+  tasks: SptV3Task[];
+};
+
+export type EvidenceRevision = {
+  workspace: string;
+  head?: string;
+  paths: Array<{
+    path: string;
+    sha256: string;
+  }>;
+};
+
+export type CriterionProofInput = {
+  task_id: string;
+  requirement_id: string;
+  criterion_id: string;
+  evidence_requirement_id: string;
+  observed_value: unknown;
+  revision_set: EvidenceRevision[];
+  environment: string;
+  producer: string;
+  timestamp: string;
+  limits: string[];
+};
+
+export type CriterionProof = CriterionProofInput & {
+  expectation: SptEvidenceExpectation;
+  passed: boolean;
+  evaluation: string;
+};
+
 export type SptValidationResult = {
   valid: boolean;
   workspace: string;
   spt_path: string;
-  contract_version: 2 | null;
+  contract_version: 2 | 3 | null;
+  execution_eligible: boolean;
   goal_id: string | null;
   contract_fingerprint: string | null;
   document_sha256: string | null;
@@ -113,6 +194,7 @@ export type SptValidationResult = {
   tasks: string[];
   expected_evidence: string[];
   done_criteria: string[];
+  traceability?: SptV3Traceability;
   next_step: string;
 };
 
@@ -398,6 +480,7 @@ export type Evidence = {
   note?: string;
   satisfies?: string[];
   observed_result?: Record<string, unknown>;
+  criterion_proof?: CriterionProof;
   scope_classification?: "target" | "declared_dependency" | "outside";
   scope_reference?: string;
   reviewed_implementation_fingerprint?: string;
@@ -484,6 +567,8 @@ export type Flow = {
   flow_id: string;
   goal: string;
   goal_binding?: GoalBinding;
+  spt_contract_version?: 2 | 3;
+  spt_traceability?: SptV3Traceability;
   owner?: string;
   context?: string;
   phase: AnyPhase;

@@ -44,6 +44,7 @@ describe("PPIRTV MCP stdio server", () => {
     const goalStartTool = tools.tools.find((tool) => tool.name === "goal_start");
     const goalStartProperties = (goalStartTool?.inputSchema as { properties?: Record<string, Record<string, unknown>> }).properties;
     expect(goalStartProperties?.flow_role?.enum).toEqual(["execution", "reconciliation", "recovery"]);
+    expect(goalStartTool?.description).toContain("new execution requires SPT v3");
     const goalVerdictTool = tools.tools.find((tool) => tool.name === "goal_verdict");
     expect(goalVerdictTool?.description).toContain("does not complete");
     expect(goalVerdictTool?.description).toContain("goal_advance");
@@ -56,6 +57,8 @@ describe("PPIRTV MCP stdio server", () => {
     expect(evidenceAddTool?.description).toContain("code_review attestation");
     expect(evidenceAddTool?.description).toContain("exact implementation_fingerprint");
     expect(evidenceAddTool?.description).toContain("verdict text alone never satisfies review_required");
+    expect(evidenceAddTool?.description).toContain("expected/operator are derived from the bound SPT");
+    expect(evidenceAddProperties?.criterion_proof).toBeDefined();
     expect(evidenceAddProperties?.reviewed_implementation_fingerprint?.pattern).toBe("^sha256:[a-f0-9]{64}$");
     const traceTool = tools.tools.find((tool) => tool.name === "ppirtv_trace");
     expect(traceTool?.description).toContain("origin, history, evolution, provenance, decisions, evidence, or reconstruction");
@@ -113,6 +116,43 @@ describe("PPIRTV MCP stdio server", () => {
     expect(errorText).toContain("Input validation error");
     expect(errorText).toContain("\"tags\"");
     expect(errorText).not.toContain("invalid-flat-tag");
+  });
+
+  it("enforces the v3 execution boundary through the public MCP default route", async () => {
+    await connectClient({}, { injectLegacyV2Recovery: false });
+    const objective = "Provar fronteira publica SPT v3";
+    const v2Path = await writeFakeSpt(mcpWorkspace, objective);
+    const envelope = {
+      workspace: mcpWorkspace,
+      objective,
+      evidence_required: true,
+      required_evidence: [],
+      requested_verdict_policy: "evidence_required",
+      source: "test"
+    };
+
+    const rejected = await client!.callTool({
+      name: "goal_start",
+      arguments: {
+        ...envelope,
+        spt_path: v2Path,
+        idempotency_key: "mcp-default-v2-rejected"
+      }
+    });
+    expect((rejected as { isError?: boolean }).isError).toBe(true);
+    expect(resultOf(rejected).error).toMatchObject({ code: "SPT_V2_EXECUTION_MIGRATION_REQUIRED" });
+
+    const v3Path = await writeV3Spt(mcpWorkspace, objective);
+    const started = resultOf(await client!.callTool({
+      name: "goal_start",
+      arguments: {
+        ...envelope,
+        spt_path: v3Path,
+        idempotency_key: "mcp-default-v3-started"
+      }
+    }));
+    expect(started).toMatchObject({ started: true });
+    expect(started.flow_id).toEqual(expect.any(String));
   });
 
   it("traces an evidence id through the real MCP stdio tool without returning payload content", async () => {
@@ -1102,7 +1142,7 @@ describe("PPIRTV MCP stdio server", () => {
     const checkoutResult = resultOf(leanCheckout);
 
     expect(resultOf(started)).toMatchObject({ phase: "concepcao", mode: "compact", goal_envelope: { mode: "compact" } });
-    expect(JSON.stringify(resultOf(started)).length).toBeLessThan(5120);
+    expect(JSON.stringify(resultOf(started)).length).toBeLessThan(5200);
     expect((leanStatus as { isError?: boolean }).isError).not.toBe(true);
     expect((leanCheckout as { isError?: boolean }).isError).not.toBe(true);
     expect(JSON.stringify(leanStatus)).not.toContain("PPIRTV_TOOL_ERROR");
@@ -2322,7 +2362,10 @@ describe("PPIRTV MCP stdio server", () => {
   });
 });
 
-async function connectClient(extraEnv: Record<string, string> = {}): Promise<void> {
+async function connectClient(
+  extraEnv: Record<string, string> = {},
+  options: { injectLegacyV2Recovery?: boolean } = {}
+): Promise<void> {
   const workspace = path.join(tempRoot, "mcp-workspace");
   await mkdir(workspace, { recursive: true });
   mcpWorkspace = await realpath(workspace);
@@ -2340,6 +2383,25 @@ async function connectClient(extraEnv: Record<string, string> = {}): Promise<voi
     stderr: "pipe"
   });
   await client.connect(transport);
+  // The broad MCP regression corpus intentionally keeps its historical v2
+  // fixture. Declare the compatibility route explicitly so these tests do not
+  // masquerade as new execution; SPT v3 execution policy has dedicated causal
+  // coverage in spt-contract-v3.test.ts.
+  if (options.injectLegacyV2Recovery !== false) {
+    const callTool = client.callTool.bind(client);
+    client.callTool = ((request, ...rest) => {
+      if (request.name === "goal_start") {
+        request = {
+          ...request,
+          arguments: {
+            ...(request.arguments ?? {}),
+            flow_role: (request.arguments as Record<string, unknown> | undefined)?.flow_role ?? "recovery"
+          }
+        };
+      }
+      return callTool(request, ...rest);
+    }) as typeof client.callTool;
+  }
 }
 
 function resultOf(response: Awaited<ReturnType<Client["callTool"]>>): Record<string, unknown> {
@@ -2415,5 +2477,63 @@ async function writeFakeSpt(workspace: string, objective = "Auditar ponte GOAL/S
     ].join("\n"),
     "utf8"
   );
+  return sptPath;
+}
+
+async function writeV3Spt(workspace: string, objective: string): Promise<string> {
+  const dir = path.join(workspace, ".agents", "PLAN-TASKS");
+  await mkdir(dir, { recursive: true });
+  const sptPath = path.join(dir, "2026-08-01-public-v3-goal-spt.md");
+  await writeFile(sptPath, [
+    "---",
+    "dex_contract: spt",
+    "version: 3",
+    "status: EM_TESTE",
+    "owner: Teste",
+    "date: '2026-08-01'",
+    `workspace: ${JSON.stringify(workspace)}`,
+    "origin: teste MCP causal",
+    "goal:",
+    "  id: public-mcp-v3",
+    "  title: Public MCP v3",
+    `  objective: ${objective}`,
+    "context: Fixture sintetica da superficie publica.",
+    "problem: Recovery implicito pode mascarar a politica de execucao.",
+    "decision: Exercitar o default real sem monkeypatch.",
+    "scope:",
+    "  include: [Validar MCP.]",
+    "  exclude: [Alterar produto externo.]",
+    "requirements:",
+    "  - id: REQ-01",
+    "    statement: O flow v3 deve iniciar.",
+    "    criteria:",
+    "      - id: C-01",
+    "        statement: goal_start retorna flow_id.",
+    "plan: [Iniciar o flow.]",
+    "tasks:",
+    "  - id: A-01",
+    "    action: Chamar goal_start.",
+    "    covers: [REQ-01]",
+    "    done_when: [C-01]",
+    "    depends_on: []",
+    "    evidence_requirements:",
+    "      - id: ER-01",
+    "        proves: [C-01]",
+    "        method: test",
+    "        procedure: Observar flow_id no receipt.",
+    "        expectation:",
+    "          kind: boolean_assertion",
+    "          expected: true",
+    "closure_gates: [Nenhum para o inicio.]",
+    "risks: [Fixture local.]",
+    "uncertainties: [Nenhuma.]",
+    "gates: [spt_validate execution_eligible.]",
+    "validation: [vitest.]",
+    "execution_prompt: |",
+    "  /GOAL",
+    "  Execute esta fixture.",
+    "---",
+    "# Fixture MCP v3"
+  ].join("\n"), "utf8");
   return sptPath;
 }

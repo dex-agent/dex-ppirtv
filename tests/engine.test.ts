@@ -3541,7 +3541,7 @@ describe("PPIRTV flow engine", () => {
     const validation = await engine.validateSpt({ workspace, spt_path: sptPath });
 
     expect(validation.valid).toBe(false);
-    expect(validation.contract_errors).toContain("spt_v2.version: Invalid literal value, expected 2");
+    expect(validation.contract_errors).toContain("spt_v2.version: unsupported explicit version 1; expected 2 or 3");
   });
 
   it("reports malformed SPT v2 YAML without inspecting the human body", async () => {

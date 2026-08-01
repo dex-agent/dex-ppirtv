@@ -7,6 +7,7 @@ import {
   GOAL_FLOW_ROLES,
   type AnyPhase,
   type Cooperator,
+  type CriterionProofInput,
   type Evidence,
   type EvidenceQuality,
   type Flow,
@@ -34,6 +35,7 @@ import {
   type Scope,
   type StructuredLibrarianStatus,
   type SptValidationResult,
+  type SptV3Contract,
   type Verdict,
   type VerdictStatus,
   type WorkProgressEvent,
@@ -86,7 +88,17 @@ import {
 import { PpirtvStore, type RuntimeLayoutStatus } from "./store.js";
 import { profileFor, type GateRequirement } from "./phase-profile.js";
 import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured, sameRuntimePath } from "./config.js";
-import { fingerprintSptV2Contract, parseSptV2Document, sha256SptDocument } from "./spt-contract.js";
+import { fingerprintSptContract, parseSptDocument, sha256SptDocument } from "./spt-contract.js";
+import {
+  assertCriterionProofRevisionCurrent,
+  criterionProjection,
+  evidenceRequirementProjection,
+  missingCriterionCoverage,
+  qualifyCriterionProof,
+  staleSelectedCriterionProofPaths,
+  taskProjection,
+  traceabilityFromContract
+} from "./spt-traceability.js";
 import { fingerprintReviewedImplementation, normalizeReviewPath } from "./review-snapshot.js";
 
 const DEFAULT_SCOPE: Scope = { in: [], out: [] };
@@ -453,15 +465,26 @@ export class FlowEngine {
       text = documentBytes.toString("utf8");
     }
 
-    const parsedSpt = parseSptV2Document(text);
+    const parsedSpt = parseSptDocument(text);
     const contract = parsedSpt.contract;
-    checks.spt_v2_frontmatter_present = parsedSpt.checks.frontmatter_present;
-    checks.spt_v2_frontmatter_closed = parsedSpt.checks.frontmatter_closed;
-    checks.spt_v2_yaml_valid = parsedSpt.checks.yaml_valid;
-    checks.spt_v2_schema_valid = parsedSpt.checks.schema_valid;
-    checks.spt_v2_workspace_matches = !!contract && path.resolve(contract.workspace) === workspace;
-    checks.spt_v2_objective_matches =
+    const contractLabel = contract?.version === 3 || parsedSpt.errors.some((error) => error.startsWith("spt_v3."))
+      ? "spt_v3"
+      : "spt_v2";
+    checks.spt_frontmatter_present = parsedSpt.checks.frontmatter_present;
+    checks.spt_frontmatter_closed = parsedSpt.checks.frontmatter_closed;
+    checks.spt_yaml_valid = parsedSpt.checks.yaml_valid;
+    checks.spt_schema_valid = parsedSpt.checks.schema_valid;
+    checks.spt_semantics_valid = parsedSpt.checks.semantics_valid;
+    checks.spt_workspace_matches = !!contract && path.resolve(contract.workspace) === workspace;
+    checks.spt_objective_matches =
       !input.objective || (!!contract && normalizeComparable(contract.goal.objective) === normalizeComparable(input.objective));
+    checks[`${contractLabel}_frontmatter_present`] = checks.spt_frontmatter_present;
+    checks[`${contractLabel}_frontmatter_closed`] = checks.spt_frontmatter_closed;
+    checks[`${contractLabel}_yaml_valid`] = checks.spt_yaml_valid;
+    checks[`${contractLabel}_schema_valid`] = checks.spt_schema_valid;
+    checks[`${contractLabel}_semantics_valid`] = checks.spt_semantics_valid;
+    checks[`${contractLabel}_workspace_matches`] = checks.spt_workspace_matches;
+    checks[`${contractLabel}_objective_matches`] = checks.spt_objective_matches;
 
     const requiredChecks: Record<string, string> = {
       workspace_absolute: "workspace_absolute",
@@ -472,12 +495,13 @@ export class FlowEngine {
       spt_under_plan_tasks: "spt_under_plan_tasks",
       spt_exists: "spt_exists",
       spt_is_file: "spt_is_file",
-      spt_v2_frontmatter_present: "spt_v2.frontmatter",
-      spt_v2_frontmatter_closed: "spt_v2.frontmatter_closing_marker",
-      spt_v2_yaml_valid: "spt_v2.yaml",
-      spt_v2_schema_valid: "spt_v2.schema",
-      spt_v2_workspace_matches: "spt_v2.workspace_matches_request",
-      spt_v2_objective_matches: "spt_v2.objective_matches_request"
+      spt_frontmatter_present: `${contractLabel}.frontmatter`,
+      spt_frontmatter_closed: `${contractLabel}.frontmatter_closing_marker`,
+      spt_yaml_valid: `${contractLabel}.yaml`,
+      spt_schema_valid: `${contractLabel}.schema`,
+      spt_semantics_valid: `${contractLabel}.semantics`,
+      spt_workspace_matches: `${contractLabel}.workspace_matches_request`,
+      spt_objective_matches: `${contractLabel}.objective_matches_request`
     };
     for (const [key, label] of Object.entries(requiredChecks)) {
       if (!checks[key]) {
@@ -488,7 +512,10 @@ export class FlowEngine {
     if (contract && /\b(api[_-]?key|token|password|secret|authorization)\b/i.test(JSON.stringify(contract))) {
       warnings.push("spt_mentions_sensitive_terms_review_without_echoing_values");
     }
-    missing.push(...parsedSpt.errors.filter((error) => !missing.includes(error)));
+    const contractErrors = parsedSpt.errors.map((error) =>
+      contractLabel === "spt_v2" ? error.replace(/^spt\./, "spt_v2.") : error.replace(/^spt\./, "spt_v3.")
+    );
+    missing.push(...contractErrors.filter((error) => !missing.includes(error)));
     if (!checks.spt_under_plan_tasks) {
       risks.push("SPT fora de .agents/PLAN-TASKS pode quebrar a retomada canonica.");
     }
@@ -501,18 +528,34 @@ export class FlowEngine {
       workspace,
       spt_path: sptPath,
       contract_version: contract?.version ?? null,
+      execution_eligible: contract?.version === 3,
       goal_id: contract?.goal.id ?? null,
-      contract_fingerprint: contract ? fingerprintSptV2Contract(contract) : null,
+      contract_fingerprint: contract ? fingerprintSptContract(contract) : null,
       document_sha256: documentBytes ? sha256SptDocument(documentBytes) : null,
       checks,
-      contract_errors: parsedSpt.errors,
+      contract_errors: contractErrors,
       missing,
       warnings,
       risks,
-      tasks: contract?.tasks ?? [],
-      expected_evidence: contract?.expected_evidence ?? [],
-      done_criteria: contract?.done_criteria ?? [],
-      next_step: missing.length === 0 ? "goal_start" : `corrigir_spt: ${missing.join(", ")}`
+      tasks:
+        contract?.version === 3
+          ? taskProjection(contract)
+          : contract?.tasks ?? [],
+      expected_evidence:
+        contract?.version === 3
+          ? evidenceRequirementProjection(contract)
+          : contract?.expected_evidence ?? [],
+      done_criteria:
+        contract?.version === 3
+          ? criterionProjection(contract)
+          : contract?.done_criteria ?? [],
+      ...(contract?.version === 3 ? { traceability: traceabilityFromContract(contract) } : {}),
+      next_step:
+        missing.length > 0
+          ? `corrigir_spt: ${missing.join(", ")}`
+          : contract?.version === 3
+            ? "goal_start"
+            : "migrar_spt_v3_para_nova_execucao"
     };
   }
 
@@ -587,6 +630,18 @@ export class FlowEngine {
       newlyCreated = true;
     }
 
+    const effectiveFlowRole = envelope.flow_role ?? "execution";
+    if (
+      !reused
+      && validation.contract_version === 2
+      && effectiveFlowRole === "execution"
+      && !this.store.fixtureOnlyNoncanonicalRoot
+    ) {
+      throw new Error(
+        "SPT_V2_EXECUTION_MIGRATION_REQUIRED: new execution bindings require an explicit SPT v3; v2 remains readable for exact retry, recovery or reconciliation"
+      );
+    }
+
     return this.store.withFlowLock(flow.flow_id, async () => {
     if (!newlyCreated) {
       flow = await this.store.loadFlow(flow.flow_id);
@@ -627,7 +682,7 @@ export class FlowEngine {
     const previousMode = flow.mode;
     const previousPhase = flow.phase;
     const incomingMode = envelope.mode ?? (reused ? flow.mode ?? "compact" : "compact");
-    const flowRole = previousBinding?.flow_role ?? envelope.flow_role;
+    const flowRole = previousBinding?.flow_role ?? envelope.flow_role ?? "execution";
     const { flow_role: _inputFlowRole, ...envelopeWithoutFlowRole } = envelope;
     const boundEnvelope = previousBinding?.envelope ?? {
       ...envelopeWithoutFlowRole,
@@ -644,6 +699,10 @@ export class FlowEngine {
       started_at: previousBinding?.started_at ?? now,
       last_seen_at: now
     };
+    if (!previousBinding) {
+      flow.spt_contract_version = validation.contract_version ?? undefined;
+      flow.spt_traceability = validation.traceability;
+    }
     assertNoSecretLikeItems(parsedValidationItems(validation), "spt_validation");
     flow.tasks = unique([...flow.tasks, ...validation.tasks]);
     flow.done_criteria = unique([...flow.done_criteria, ...validation.done_criteria]);
@@ -2499,6 +2558,7 @@ export class FlowEngine {
     note?: string;
     satisfies?: string[];
     observed_result?: Record<string, unknown>;
+    criterion_proof?: CriterionProofInput;
     scope_classification?: "target" | "declared_dependency" | "outside";
     scope_reference?: string;
     reviewed_implementation_fingerprint?: string;
@@ -2511,6 +2571,7 @@ export class FlowEngine {
     assertNoSecretLikeText(input.note, "note");
     assertNoSecretLikeText(input.scope_reference, "scope_reference");
     assertNoSecretLikePayload(input.observed_result, "observed_result");
+    assertNoSecretLikePayload(input.criterion_proof, "criterion_proof");
     const flow = await this.store.loadFlow(input.flow_id);
     const beforeSnapshot = this.resolveGateSnapshot(
       flow,
@@ -2526,6 +2587,7 @@ export class FlowEngine {
       note: mergeEvidenceNotes(input.note, goalEvidenceMetadataNote(flow, input)),
       satisfies: input.satisfies,
       observed_result: input.observed_result,
+      criterion_proof: input.criterion_proof,
       scope_classification: input.scope_classification,
       scope_reference: input.scope_reference,
       reviewed_implementation_fingerprint: input.reviewed_implementation_fingerprint,
@@ -2636,6 +2698,27 @@ export class FlowEngine {
       throw new Error("goal_verdict requires traceable evidence_ids for positive conclusions");
     }
     const positiveVerdict = input.status === "pronto" || input.status === "pronto_com_ressalvas";
+    if (positiveVerdict && flow.spt_contract_version === 3) {
+      if (!flow.spt_traceability) {
+        throw new Error("SPT_V3_TRACEABILITY_MISSING: flow is bound to v3 without its canonical traceability map");
+      }
+      const staleCriterionProofPaths = await staleSelectedCriterionProofPaths(
+        flow.evidence,
+        evidenceIds,
+        flow.goal_binding!.envelope.workspace
+      );
+      if (staleCriterionProofPaths.length > 0) {
+        throw new Error(
+          `SPT_V3_EVIDENCE_STALE: selected criterion proof revision differs from current files; paths=${staleCriterionProofPaths.join(",")}`
+        );
+      }
+      const uncoveredCriteria = missingCriterionCoverage(flow.spt_traceability, flow.evidence, evidenceIds);
+      if (uncoveredCriteria.length > 0) {
+        throw new Error(
+          `SPT_V3_CRITERION_COVERAGE_REQUIRED: positive verdict requires passed evidence for every minimum criterion; missing=${uncoveredCriteria.join(",")}`
+        );
+      }
+    }
     const fiscalFlow = await this.flowWithCurrentImplementationFingerprint(await this.store.loadFlow(input.flow_id));
     const memoryMining: Record<string, unknown> | null = positiveVerdict && hasMemoryMiningRun(fiscalFlow) ? (fiscalFlow.memory_mining ?? null) : null;
     if (positiveVerdict && memoryMining?.blocked_verdict === true) {
@@ -3629,6 +3712,7 @@ export class FlowEngine {
     note?: string;
     satisfies?: string[];
     observed_result?: Record<string, unknown>;
+    criterion_proof?: CriterionProofInput;
     scope_classification?: "target" | "declared_dependency" | "outside";
     scope_reference?: string;
     reviewed_implementation_fingerprint?: string;
@@ -3649,6 +3733,7 @@ export class FlowEngine {
     note?: string;
     satisfies?: string[];
     observed_result?: Record<string, unknown>;
+    criterion_proof?: CriterionProofInput;
     scope_classification?: "target" | "declared_dependency" | "outside";
     scope_reference?: string;
     reviewed_implementation_fingerprint?: string;
@@ -3680,6 +3765,19 @@ export class FlowEngine {
       flow.implementation_fingerprint = strictFingerprint;
     }
     const now = nowIso();
+    if (input.criterion_proof && flow.spt_contract_version !== 3) {
+      throw new Error("SPT_V3_EVIDENCE_INVALID: criterion_proof requires a flow bound to SPT v3");
+    }
+    if (input.criterion_proof && !flow.spt_traceability) {
+      throw new Error("SPT_V3_TRACEABILITY_MISSING: criterion_proof requires the bound canonical traceability map");
+    }
+    const criterionProof =
+      input.criterion_proof && flow.spt_traceability
+        ? qualifyCriterionProof(flow.spt_traceability, input.criterion_proof)
+        : undefined;
+    if (criterionProof) {
+      await assertCriterionProofRevisionCurrent(criterionProof, flow.goal_binding!.envelope.workspace);
+    }
     const evidence: Evidence = {
       evidence_id: await this.store.nextId("evd"),
       flow_id: flow.flow_id,
@@ -3690,6 +3788,7 @@ export class FlowEngine {
       note: input.note,
       satisfies: input.satisfies,
       observed_result: input.observed_result,
+      criterion_proof: criterionProof,
       scope_classification: input.scope_classification,
       scope_reference: input.scope_reference,
       reviewed_implementation_fingerprint:

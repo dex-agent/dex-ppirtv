@@ -87,6 +87,48 @@ function registerTools(
     mode: z.enum(["full", "compact", "lean"]).optional(),
     flow_role: z.enum(GOAL_FLOW_ROLES).optional()
   };
+  const criterionProofSchema = z
+    .object({
+      task_id: z.string().min(1),
+      requirement_id: z.string().min(1),
+      criterion_id: z.string().min(1),
+      evidence_requirement_id: z.string().min(1),
+      observed_value: z.union([
+        z.string(),
+        z.number(),
+        z.boolean(),
+        z.record(z.unknown()),
+        z.array(z.unknown()),
+        z.null()
+      ]),
+      revision_set: z
+        .array(
+          z
+            .object({
+              workspace: z.string().min(1),
+              head: z.string().min(1).optional(),
+              paths: z
+                .array(
+                  z
+                    .object({
+                      path: z.string().min(1),
+                      sha256: z.string().regex(/^[a-f0-9]{64}$/)
+                    })
+                    .strict()
+                )
+                .min(1)
+                .max(4096)
+            })
+            .strict()
+        )
+        .min(1)
+        .max(32),
+      environment: z.string().min(1),
+      producer: z.string().min(1),
+      timestamp: z.string().datetime({ offset: true }),
+      limits: z.array(z.string().min(1)).min(1)
+    })
+    .strict();
 
   server.registerTool(
     "runtime_probe",
@@ -345,7 +387,7 @@ function registerTools(
   server.registerTool(
     "spt_validate",
     {
-      description: "Validate a SPEC-PLAN-TASKs file for GOAL execution without echoing sensitive contents.",
+      description: "Validate an explicit SPT v2 or v3 contract without echoing sensitive contents. V2 stays readable for history/recovery; new execution requires v3.",
       inputSchema: {
         workspace: z.string().min(1),
         spt_path: z.string().min(1),
@@ -358,7 +400,7 @@ function registerTools(
   server.registerTool(
     "goal_start",
     {
-      description: "Start or reuse an official GOAL/SPT execution flow. Default mode is canonical 'compact'; 'lean' is its input alias and 'full' must be requested explicitly.",
+      description: "Start or reuse an official GOAL/SPT flow. Omitted flow_role means execution; new execution requires SPT v3, while exact v2 retry and explicit recovery/reconciliation remain supported. Default mode is canonical 'compact'; 'lean' is its input alias and 'full' must be requested explicitly.",
       inputSchema: goalEnvelopeSchema
     },
     async (args) => toolResponse(() => engine.startGoal(args))
@@ -602,7 +644,7 @@ function registerTools(
   server.registerTool(
     "evidence_add",
     {
-      description: "Add traceable evidence without recording secret-like payloads. A structured code_review attestation must cite the exact implementation_fingerprint observed by the reviewer; the server rejects stale snapshots and verdict text alone never satisfies review_required. Status receipt defaults to lean; use detail:'full' only for a complete diagnostic.",
+      description: "Add traceable evidence without recording secret-like payloads. For SPT v3, criterion_proof binds the observed value to one task, requirement, criterion and evidence requirement; expected/operator are derived from the bound SPT and cannot be supplied by the caller. A structured code_review attestation must cite the exact implementation_fingerprint observed by the reviewer; the server rejects stale snapshots and verdict text alone never satisfies review_required. Status receipt defaults to lean; use detail:'full' only for a complete diagnostic.",
       inputSchema: {
         flow_id: z.string().min(1),
         kind: z.string().default("goal_evidence"),
@@ -612,6 +654,7 @@ function registerTools(
         note: z.string().optional(),
         satisfies: z.array(z.string()).optional(),
         observed_result: z.record(z.unknown()).optional(),
+        criterion_proof: criterionProofSchema.optional(),
         scope_classification: z.enum(["target", "declared_dependency", "outside"]).optional(),
         scope_reference: z.string().optional(),
         reviewed_implementation_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional(),
@@ -896,6 +939,39 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
       code: "GOAL_NAO_ATIVO",
       recoverable: true,
       next_required_action: goalStartRequiredAction(errorContext)
+    };
+  }
+  if (/SPT_V2_EXECUTION_MIGRATION_REQUIRED/i.test(message)) {
+    return {
+      ...base,
+      code: "SPT_V2_EXECUTION_MIGRATION_REQUIRED",
+      recoverable: true,
+      next_required_action: {
+        type: "migrate_spt_contract",
+        tool: "spt_validate",
+        required_version: 3
+      }
+    };
+  }
+  if (/SPT_V3_EVIDENCE_INVALID|SPT_V3_EVIDENCE_STALE|SPT_V3_CRITERION_COVERAGE_REQUIRED|SPT_V3_TRACEABILITY_MISSING/i.test(message)) {
+    const flowId = typeof errorContext?.flow_id === "string" && errorContext.flow_id.length > 0 ? errorContext.flow_id : undefined;
+    const code =
+      /TRACEABILITY_MISSING/i.test(message)
+        ? "SPT_V3_TRACEABILITY_MISSING"
+        : /EVIDENCE_STALE/i.test(message)
+          ? "SPT_V3_EVIDENCE_STALE"
+        : /COVERAGE_REQUIRED/i.test(message)
+          ? "SPT_V3_CRITERION_COVERAGE_REQUIRED"
+          : "SPT_V3_EVIDENCE_INVALID";
+    return {
+      ...base,
+      code,
+      recoverable: code !== "SPT_V3_TRACEABILITY_MISSING",
+      next_required_action: {
+        type: code === "SPT_V3_TRACEABILITY_MISSING" ? "recover_bound_spt_traceability" : "attach_bound_criterion_evidence",
+        tool: code === "SPT_V3_TRACEABILITY_MISSING" ? "goal_resume" : "evidence_add",
+        ...(flowId ? { args: { flow_id: flowId } } : {})
+      }
     };
   }
   if (/goal_verdict requires traceable evidence_ids|Unknown evidence_ids/i.test(message)) {
