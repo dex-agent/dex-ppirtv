@@ -5779,7 +5779,9 @@ function librarianExplicitlyOutOfScope(flow: Flow, inputText: string): boolean {
 }
 
 function recurringRisk(input: FiscalVerdictInput): boolean {
-  return /(erro recorrente|recorrente|tentativa|regress)/i.test([input.rationale, input.next_step, ...(input.residual_risks ?? [])].filter(Boolean).join("\n"));
+  return /\b(?:erros?|falhas?|bugs?|defeitos?|problemas?|incidentes?|riscos?)\s+recorrentes?\b|\btentativas?\b|\bregress/i.test(
+    [input.rationale, input.next_step, ...(input.residual_risks ?? [])].filter(Boolean).join("\n")
+  );
 }
 
 function hasEnoughAttempts(flow: Flow, input: FiscalVerdictInput): boolean {

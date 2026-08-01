@@ -4866,14 +4866,33 @@ describe("PPIRTV flow engine", () => {
       engine.goalVerdict({
         flow_id: flowId,
         status: "pronto_com_ressalvas",
-        rationale: "Erro recorrente ainda sem regresso suficiente.",
+        rationale: "Erro recorrente ainda sem resolucao suficiente.",
         evidence_ids: [evidenceId],
-        residual_risks: ["erro recorrente em risco de produto"],
+        residual_risks: [],
         attempt_count: 1,
         regress_count: 0,
         next_step: "arquivar"
       })
     ).rejects.toThrow(/attempt_regress_count/i);
+  });
+
+  it("T10a accepts Recorrentes V2 as a legitimate domain name without a recurring failure signal", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-fiscal-t10a", "Nome de dominio nao e risco recorrente");
+
+    const verdict = await engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto_com_ressalvas",
+      rationale: "A fase foi concluida e validada.",
+      evidence_ids: [evidenceId],
+      residual_risks: [],
+      attempt_count: 1,
+      regress_count: 0,
+      next_step: "Abrir novo SPT para revisar a interface Recorrentes V2."
+    });
+
+    expect(verdict.verdict).toMatchObject({ status: "pronto_com_ressalvas" });
+    const status = await engine.goalStatus({ flow_id: flowId });
+    expect(status.blockers).not.toContain("attempt_regress_count");
   });
 
   it("T11 exposes corrective check-in with disabled librarian/Graphify visible and explained", async () => {

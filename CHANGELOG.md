@@ -20,6 +20,12 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Corrigido
 
+- O detector fiscal de risco recorrente agora exige contexto de falha para
+  `recorrente`, evitando que o nome legítimo `Recorrentes V2` gere
+  `attempt_regress_count`. O controle `Erro recorrente` permanece bloqueado;
+  `tentativa` e `regress` foram preservados por compatibilidade até RED causal
+  próprio. A correção é geral e não altera produto, UI, dados, schema ou deploy
+  do PremierFinanceiro.
 - Evidências de review de flows com `changed_files` agora usam somente esses
   paths como autoridade e deixam de publicar ou aceitar frases operacionais de
   `scope.in` como alvos revisáveis. A cobertura integral dos arquivos e dos
