@@ -10,3 +10,4 @@ export * from "./parking-lot.js";
 export * from "./mining-policy.js";
 export * from "./post-write-validation.js";
 export * from "./memory-writer-selector-cutover.js";
+export * from "./recall-consumption-contract.js";

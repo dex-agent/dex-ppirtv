@@ -112,3 +112,11 @@ Graphify e Bibliotecario nao promovem memoria canonica.
 - cada arquivo curado e limitado a 1 MiB e permanece confinado ao `.agents`;
 - o adapter pos-escrita nao escolhe root nem writer: ele reabre recibos e exige
   exatamente um L1 case-equivalent e o destino derivado da camada e do slug.
+
+## Contrato de consumo do recall
+
+`recall-consumption-contract.ts` concentra a política pura que normaliza e
+valida as referências que o executor declara ter consumido. O módulo não lê
+ledger, não persiste flow e não decide fase; essas responsabilidades continuam
+na fachada `FlowEngine`. `flow-engine.ts` mantém re-exports de compatibilidade
+para os consumidores públicos existentes.

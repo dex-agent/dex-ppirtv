@@ -10,6 +10,19 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
+- O contrato puro de consumo de recall agora vive em
+  `src/memory/recall-consumption-contract.ts`, com normalização, validação,
+  limites, erro e comparação testados diretamente. `FlowEngine` preserva a
+  fachada pública e mantém somente a orquestração de ledger/store, sem mudar
+  schemas, mensagens, idempotência ou o consumidor MCP existente.
+- Mapa de missão do acampamento `src/flow-engine.ts`, apoiado por Code Review
+  Graph sincronizado no HEAD `03423df`: documenta 8.678 linhas, sete regiões
+  de responsabilidade, consumidores reais, hotspots, seams de extração por
+  ondas e um primeiro experimento reversível, sem alterar código de produto.
+- Receipt local do Code Review Graph reconciliado para 1.710 nós, 27.751
+  arestas e 64 arquivos, com `head_matches_build=true`, backup do registry,
+  hash do banco e limite explícito da consulta divergente de fluxos afetados.
+
 - Trilhos SPT v3 agora possuem um grafo canônico de requisitos, critérios,
   tasks e requisitos de evidência. `spt_validate` publica
   `contract_version=3` e `execution_eligible=true`; provas por critério derivam

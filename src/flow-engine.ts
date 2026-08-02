@@ -100,13 +100,24 @@ import {
   traceabilityFromContract
 } from "./spt-traceability.js";
 import { fingerprintReviewedImplementation, normalizeReviewPath } from "./review-snapshot.js";
+import {
+  normalizeRecallConsumptionInput,
+  sameRecallReferences,
+  validateRecallConsumptionReferences,
+  type RecallConsumptionInput
+} from "./memory/recall-consumption-contract.js";
+
+export {
+  boundedRecallErrorReferences,
+  RecallConsumptionReferenceError,
+  RECALL_ERROR_MAX_REFERENCE_LENGTH,
+  RECALL_ERROR_MAX_REFERENCES
+} from "./memory/recall-consumption-contract.js";
 
 const DEFAULT_SCOPE: Scope = { in: [], out: [] };
 const MEMORY_MINING_BLOCKED_VERDICT_REASON = "memory_mining_blocked_verdict";
 const MEMORY_V2_TAG_PATTERN = /^#[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)+$/;
 const USER_PROFILE_POINTER = "$env:USERPROFILE";
-export const RECALL_ERROR_MAX_REFERENCES = 12;
-export const RECALL_ERROR_MAX_REFERENCE_LENGTH = 160;
 export const WORK_PROGRESS_MAX_RUNNING_EVENTS = 100;
 
 type RecallVisualStatus = NonNullable<PresentationEnvelope["display"]["librarian"]>;
@@ -154,12 +165,6 @@ type ResolveMemoryCandidatesInput = {
   tags?: string[];
 };
 
-type RecallConsumptionInput = {
-  references: string[];
-  graphify_references?: string[];
-  note?: string;
-};
-
 type WorkProgressInput = {
   flow_id?: string;
   idempotency_key?: string;
@@ -183,37 +188,6 @@ export class WorkProgressContractError extends Error {
     this.code = code;
     this.details = details;
   }
-}
-
-export class RecallConsumptionReferenceError extends Error {
-  readonly code: "RECALL_CONSUMPTION_UNKNOWN_REFERENCES" | "GRAPHIFY_CONSUMPTION_UNKNOWN_REFERENCES";
-  readonly unknownReferences: string[];
-  readonly validReferences: string[];
-  readonly validGraphifyReferences: string[];
-
-  constructor(
-    code: RecallConsumptionReferenceError["code"],
-    unknownReferences: string[],
-    validReferences: string[],
-    validGraphifyReferences: string[] = []
-  ) {
-    const boundedUnknownReferences = boundedRecallErrorReferences(unknownReferences);
-    super(`${code}: ${boundedUnknownReferences.length} unknown reference(s)`);
-    this.name = "RecallConsumptionReferenceError";
-    this.code = code;
-    this.unknownReferences = boundedUnknownReferences;
-    this.validReferences = boundedRecallErrorReferences(validReferences);
-    this.validGraphifyReferences = boundedRecallErrorReferences(validGraphifyReferences);
-  }
-}
-
-export function boundedRecallErrorReferences(references: string[]): string[] {
-  return unique(
-    references
-      .map((reference) => reference.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim())
-      .filter(Boolean)
-      .map((reference) => reference.slice(0, RECALL_ERROR_MAX_REFERENCE_LENGTH))
-  ).slice(0, RECALL_ERROR_MAX_REFERENCES);
 }
 
 type CanonicalGoalEnvelope = Omit<GoalEnvelope, "mode"> & { mode?: "full" | "compact" };
@@ -3256,11 +3230,7 @@ export class FlowEngine {
 
   private async confirmRecallConsumption(flow: Flow, input: RecallConsumptionInput, actor: string): Promise<Record<string, unknown>> {
     assertNoSecretLikePayload(input, "recall_consumption");
-    const references = unique((input.references ?? []).map((item) => item.trim()).filter(Boolean));
-    const graphifyReferences = unique((input.graphify_references ?? []).map((item) => item.trim()).filter(Boolean));
-    if (references.length === 0) {
-      throw new Error("RECALL_CONSUMPTION_REFERENCES_REQUIRED: informe ao menos uma referencia recuperada");
-    }
+    const normalizedInput = normalizeRecallConsumptionInput(input);
     const ledger = await this.store.readLedger(flow.flow_id);
     const recallEventIndex = lastIndexWhere(
       ledger,
@@ -3271,33 +3241,12 @@ export class FlowEngine {
     if (recalledItems.length === 0) {
       throw new Error(`RECALL_CONSUMPTION_WITHOUT_RECALL: nenhum item recuperado para a fase ${flow.phase}`);
     }
-    const validReferences = recallReferenceValues(recalledItems);
-    const knownReferences = recallReferenceSet(validReferences);
-    const unknownReferences = references.filter((reference) => !knownReferences.has(normalizeRecallReference(reference)));
-    if (unknownReferences.length > 0) {
-      throw new RecallConsumptionReferenceError(
-        "RECALL_CONSUMPTION_UNKNOWN_REFERENCES",
-        unknownReferences,
-        validReferences
-      );
-    }
-    const graphifyItems = recalledItems.filter((item) => item.source === "graphify");
-    const validGraphifyReferences = recallReferenceValues(graphifyItems);
-    const knownGraphifyReferences = recallReferenceSet(validGraphifyReferences);
-    const unknownGraphifyReferences = graphifyReferences.filter((reference) => !knownGraphifyReferences.has(normalizeRecallReference(reference)));
-    if (unknownGraphifyReferences.length > 0) {
-      throw new RecallConsumptionReferenceError(
-        "GRAPHIFY_CONSUMPTION_UNKNOWN_REFERENCES",
-        unknownGraphifyReferences,
-        validReferences,
-        validGraphifyReferences
-      );
-    }
+    validateRecallConsumptionReferences(normalizedInput, recalledItems);
     const existingConfirmation = [...ledger.slice(recallEventIndex + 1)].reverse().find((event) =>
       event.type === "memory_recall_consumed" &&
       event.data.recall_phase === flow.phase &&
-      sameRecallReferences(stringArray(event.data.references), references) &&
-      sameRecallReferences(stringArray(event.data.graphify_references), graphifyReferences)
+      sameRecallReferences(stringArray(event.data.references), normalizedInput.references) &&
+      sameRecallReferences(stringArray(event.data.graphify_references), normalizedInput.graphifyReferences)
     );
     if (existingConfirmation) {
       return { ...existingConfirmation.data, reused: true };
@@ -3305,11 +3254,11 @@ export class FlowEngine {
     const now = nowIso();
     const data = {
       recall_phase: flow.phase,
-      references,
-      graphify_references: graphifyReferences,
-      note: input.note?.trim() ?? null,
+      references: normalizedInput.references,
+      graphify_references: normalizedInput.graphifyReferences,
+      note: normalizedInput.note,
       consumption_confirmed: true,
-      graphify_consumption_confirmed: graphifyReferences.length > 0
+      graphify_consumption_confirmed: normalizedInput.graphifyReferences.length > 0
     };
     const stored = await this.store.loadFlow(flow.flow_id);
     stored.history.push({ at: now, type: "memory_recall_consumed", data });
@@ -8447,28 +8396,6 @@ function librarianCheckoutAccountability(librarianStatus: StructuredLibrarianSta
         ? "Recall executado; consumo pelo executor ainda nao confirmado"
         : `Recall nao executado; graphify=${librarianStatus.graphify.status}, bibliotecario=${librarianStatus.bibliotecario.status}`
   };
-}
-
-function recallReferenceValues(items: Array<Record<string, unknown>>): string[] {
-  return unique(
-    items.flatMap((item) => [item.path, item.title, item.destination])
-      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
-      .map((item) => item.trim())
-  );
-}
-
-function recallReferenceSet(references: string[]): Set<string> {
-  return new Set(references.map(normalizeRecallReference));
-}
-
-function normalizeRecallReference(reference: string): string {
-  return reference.trim().replace(/\\/g, "/").toLowerCase();
-}
-
-function sameRecallReferences(left: string[], right: string[]): boolean {
-  const leftNormalized = unique(left.map(normalizeRecallReference)).sort();
-  const rightNormalized = unique(right.map(normalizeRecallReference)).sort();
-  return leftNormalized.length === rightNormalized.length && leftNormalized.every((item, index) => item === rightNormalized[index]);
 }
 
 function progressText(value: string, maxLength: number, field: string): string {
