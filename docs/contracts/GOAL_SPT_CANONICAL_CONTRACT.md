@@ -168,9 +168,55 @@ explicitamente.
 
 `evidence_add.criterion_proof` deve citar `task_id`, `requirement_id`,
 `criterion_id` e `evidence_requirement_id`, alem de `observed_value`,
-`revision_set`, ambiente, produtor, timestamp e limites. O runtime deriva o
-expectation e o operador do SPT vinculado, calcula `passed` e rejeita
+`revision_set`, `environment`, `producer`, `timestamp` e `limits`. O runtime
+deriva o expectation e o operador do SPT vinculado, calcula `passed` e rejeita
 referencias incoerentes. O produtor nao pode redefinir o esperado no receipt.
+
+O nesting e estrito: `environment` e irmao de `revision_set`, ambos diretamente
+dentro de `criterion_proof`. Nunca coloque `environment` dentro de um item de
+`revision_set`. Cada item de `revision_set` aceita somente `workspace`, `head`
+opcional e `paths`; cada item de `paths` aceita somente `path` e `sha256`.
+
+Exemplo JSON completo e copiavel de `criterion_proof`:
+
+```json
+{
+  "criterion_proof": {
+    "task_id": "A-03",
+    "requirement_id": "REQ-02",
+    "criterion_id": "C-02",
+    "evidence_requirement_id": "ER-03",
+    "observed_value": true,
+    "revision_set": [
+      {
+        "workspace": "C:\\CodexProjetos\\dex-PPIRTV",
+        "head": "0123456789abcdef0123456789abcdef01234567",
+        "paths": [
+          {
+            "path": "src/flow-engine.ts",
+            "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          }
+        ]
+      }
+    ],
+    "environment": "Windows 11; Node.js 22; npm test focal",
+    "producer": "tio-testador",
+    "timestamp": "2026-08-02T15:30:00.000Z",
+    "limits": [
+      "Prova local; nao cobre outro sistema operacional"
+    ]
+  }
+}
+```
+
+`reviewed_implementation_fingerprint` e uma atestacao estruturada, nao um campo
+informativo solto. Quando ele for enviado, `kind` deve ser `code_review` ou
+`review` e `satisfies` deve conter pelo menos um claim material entre
+`diff_reviewed`, `barata_scan` e `regression_risks`. Sem essa combinacao, o
+runtime rejeita a chamada com `REVIEW_ATTESTATION_CLAIMS_REQUIRED`; ele nao cria
+um `evidence_id` de sucesso nem descarta o fingerprint silenciosamente. Uma
+atestacao valida continua sujeita ao fingerprint atual e aos demais checks de
+coerencia de review.
 
 `revision_set` identifica a revisao material por root, HEAD opcional e paths
 com SHA-256. No v3 atual, cada root deve corresponder literalmente ao workspace

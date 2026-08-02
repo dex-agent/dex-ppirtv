@@ -58,7 +58,20 @@ describe("PPIRTV MCP stdio server", () => {
     expect(evidenceAddTool?.description).toContain("exact implementation_fingerprint");
     expect(evidenceAddTool?.description).toContain("verdict text alone never satisfies review_required");
     expect(evidenceAddTool?.description).toContain("expected/operator are derived from the bound SPT");
-    expect(evidenceAddProperties?.criterion_proof).toBeDefined();
+    expect(evidenceAddTool?.description).toContain("environment is a root sibling of revision_set");
+    expect(evidenceAddTool?.description).toContain("REVIEW_ATTESTATION_CLAIMS_REQUIRED");
+    const criterionProofSchema = evidenceAddProperties?.criterion_proof as {
+      required?: string[];
+      properties?: Record<string, unknown>;
+    };
+    const revisionSetSchema = criterionProofSchema.properties?.revision_set as {
+      items?: { additionalProperties?: boolean; properties?: Record<string, unknown> };
+    };
+    expect(criterionProofSchema.required).toContain("environment");
+    expect(criterionProofSchema.properties?.environment).toBeDefined();
+    expect(revisionSetSchema.items?.additionalProperties).toBe(false);
+    expect(Object.keys(revisionSetSchema.items?.properties ?? {}).sort()).toEqual(["head", "paths", "workspace"]);
+    expect(revisionSetSchema.items?.properties?.environment).toBeUndefined();
     expect(evidenceAddProperties?.reviewed_implementation_fingerprint?.pattern).toBe("^sha256:[a-f0-9]{64}$");
     const traceTool = tools.tools.find((tool) => tool.name === "ppirtv_trace");
     expect(traceTool?.description).toContain("origin, history, evolution, provenance, decisions, evidence, or reconstruction");
@@ -446,6 +459,48 @@ describe("PPIRTV MCP stdio server", () => {
       utility_accountability: expect.any(Object),
       contract_accountability: expect.any(Object),
       final_report_model: expect.any(Array)
+    });
+  });
+
+  it("rejects an incomplete review fingerprint through the public MCP boundary", async () => {
+    await connectClient();
+    const workspace = mcpWorkspace;
+    const objective = "Rejeitar atestacao de review incompleta por MCP";
+    const sptPath = await writeFakeSpt(workspace, objective);
+    const started = await client!.callTool({
+      name: "goal_start",
+      arguments: {
+        workspace,
+        spt_path: sptPath,
+        objective,
+        idempotency_key: "dex-code:mcp-review-fingerprint-without-claims",
+        evidence_required: true,
+        required_evidence: ["vitest"],
+        requested_verdict_policy: "evidence_required",
+        source: "dex-code",
+        mode: "full"
+      }
+    });
+    const startedResult = resultOf(started);
+    const rejected = await client!.callTool({
+      name: "evidence_add",
+      arguments: {
+        flow_id: startedResult.flow_id,
+        kind: "code_review",
+        title: "Review sem claims estruturados",
+        reviewed_implementation_fingerprint: startedResult.implementation_fingerprint
+      }
+    });
+
+    expect((rejected as { isError?: boolean }).isError).toBe(true);
+    expect(resultOf(rejected).error).toMatchObject({
+      code: "REVIEW_ATTESTATION_CLAIMS_REQUIRED",
+      recoverable: true,
+      next_required_action: {
+        type: "retry_evidence_with_structured_review_claims",
+        tool: "evidence_add",
+        args: { flow_id: startedResult.flow_id }
+      }
     });
   });
 

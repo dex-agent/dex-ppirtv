@@ -644,7 +644,7 @@ function registerTools(
   server.registerTool(
     "evidence_add",
     {
-      description: "Add traceable evidence without recording secret-like payloads. For SPT v3, criterion_proof binds the observed value to one task, requirement, criterion and evidence requirement; expected/operator are derived from the bound SPT and cannot be supplied by the caller. A structured code_review attestation must cite the exact implementation_fingerprint observed by the reviewer; the server rejects stale snapshots and verdict text alone never satisfies review_required. Status receipt defaults to lean; use detail:'full' only for a complete diagnostic.",
+      description: "Add traceable evidence without recording secret-like payloads. For SPT v3, criterion_proof binds the observed value to one task, requirement, criterion and evidence requirement; expected/operator are derived from the bound SPT and cannot be supplied by the caller. In criterion_proof, environment is a root sibling of revision_set; each strict revision_set item accepts only workspace, optional head, and paths. A structured code_review attestation must cite the exact implementation_fingerprint observed by the reviewer; when reviewed_implementation_fingerprint is supplied, kind must be code_review or review and satisfies must contain diff_reviewed, barata_scan, or regression_risks, otherwise the request fails with REVIEW_ATTESTATION_CLAIMS_REQUIRED. The server rejects stale snapshots and verdict text alone never satisfies review_required. Status receipt defaults to lean; use detail:'full' only for a complete diagnostic.",
       inputSchema: {
         flow_id: z.string().min(1),
         kind: z.string().default("goal_evidence"),
@@ -661,7 +661,7 @@ function registerTools(
         detail: z.enum(["lean", "compact", "full"]).optional()
       }
     },
-    async (args) => toolResponse(() => engine.addGoalEvidence(args))
+    async (args) => toolResponse(() => engine.addGoalEvidence(args), args)
   );
 
   server.registerTool(
@@ -1068,6 +1068,21 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
       next_required_action: /LOCK_INVALID|IDENTITY_CHANGED/i.test(message)
         ? { type: "inspect_meeting_lock_integrity", tool: "goal_status", detail: "full" }
         : { type: "retry_meeting_mutation", tool: errorContext?.tool ?? "goal_status" }
+    };
+  }
+  if (/REVIEW_ATTESTATION_CLAIMS_REQUIRED/i.test(message)) {
+    return {
+      ...base,
+      code: "REVIEW_ATTESTATION_CLAIMS_REQUIRED",
+      recoverable: true,
+      next_required_action: {
+        type: "retry_evidence_with_structured_review_claims",
+        tool: "evidence_add",
+        args: {
+          ...(typeof errorContext?.flow_id === "string" ? { flow_id: errorContext.flow_id } : {})
+        },
+        rule: "use kind code_review or review and satisfies containing diff_reviewed, barata_scan, or regression_risks"
+      }
     };
   }
   if (/secret-like|Authorization|Bearer|token|api[_-]?key|password|secret/i.test(rawMessage)) {

@@ -33,6 +33,12 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Corrigido
 
+- `evidence_add` agora rejeita `reviewed_implementation_fingerprint` sem uma
+  atestação estruturada de review, em vez de retornar sucesso e descartar o
+  fingerprint silenciosamente. O contrato MCP e o contrato SPT canônico
+  documentam a exigência de `kind`/`satisfies`, o erro acionável e o nesting
+  estrito de `criterion_proof`, com exemplo JSON completo e sincronizado entre
+  a fonte global e a cópia versionada.
 - O detector fiscal de risco recorrente agora exige contexto de falha para
   `recorrente`, evitando que o nome legítimo `Recorrentes V2` gere
   `attempt_regress_count`. O controle `Erro recorrente` permanece bloqueado;

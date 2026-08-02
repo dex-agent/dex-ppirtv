@@ -3695,6 +3695,11 @@ export class FlowEngine {
     const flow = await this.flowWithCurrentImplementationFingerprint(await this.store.loadFlow(input.flow_id));
     assertFlowAcceptsMutation(flow);
     const reviewAttestation = structuredReviewAttestationRequested(input);
+    if (input.reviewed_implementation_fingerprint !== undefined && !reviewAttestation) {
+      throw new Error(
+        "REVIEW_ATTESTATION_CLAIMS_REQUIRED: reviewed_implementation_fingerprint requires kind code_review or review and satisfies containing diff_reviewed, barata_scan, or regression_risks"
+      );
+    }
     if (reviewAttestation && flow.goal_binding?.envelope.workspace) {
       const strictFingerprint = await fingerprintReviewedImplementation(
         flow.goal_binding.envelope.workspace,

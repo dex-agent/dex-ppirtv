@@ -2486,6 +2486,33 @@ describe("PPIRTV flow engine", () => {
     });
   });
 
+  it("rejects a review fingerprint when no structured review claim is declared", async () => {
+    const { flowId } = await startGoalWithEvidence(
+      "dex-code:test-review-fingerprint-without-claims",
+      "Rejeitar fingerprint de review sem claims estruturados"
+    );
+    await engine.updateFlowFacts(flowId, { changed_files: ["src/flow-engine.ts"] });
+    const implementationFingerprint = await currentImplementationFingerprint(flowId);
+
+    await expect(
+      engine.addGoalEvidence({
+        flow_id: flowId,
+        kind: "code_review",
+        title: "Review sem claims estruturados",
+        reviewed_implementation_fingerprint: implementationFingerprint
+      })
+    ).rejects.toThrow(/REVIEW_ATTESTATION_CLAIMS_REQUIRED/);
+    await expect(
+      engine.addGoalEvidence({
+        flow_id: flowId,
+        kind: "goal_evidence",
+        title: "Claims de review em evidencia de outro tipo",
+        satisfies: ["diff_reviewed"],
+        reviewed_implementation_fingerprint: implementationFingerprint
+      })
+    ).rejects.toThrow(/REVIEW_ATTESTATION_CLAIMS_REQUIRED/);
+  });
+
   it("persists verdict review metadata so a positive official GOAL can complete", async () => {
     const idempotencyKey = "dex-code:test-terminal-review-from-verdict";
     const objective = "Corrigir codigo com review fornecido no veredito";
