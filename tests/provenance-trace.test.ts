@@ -172,6 +172,11 @@ describe("PPIRTV provenance trace", () => {
     expect(receipts[1]?.matches[0]?.goal_id).toBe("goal-legacy");
     expect(receipts[2]?.matches[0]?.goal_id).toBeNull();
     expect(receipts[3]?.matches[0]?.goal_id).toBeNull();
+    expect(receipts[3]?.diagnostics).toContainEqual(expect.objectContaining({
+      code: "GOAL_BINDING_ABSENT",
+      owner: "executor_orchestrator",
+      next_required_action: { tool: "goal_start", type: "goal_binding_absent", rule: expect.any(String) }
+    }));
     expect(receipts.map((receipt) => receipt.matches[0]?.binding_integrity)).toEqual([
       expect.objectContaining({ status: "coherent", reason_code: null }),
       expect.objectContaining({ status: "legacy", reason_code: "legacy_binding_without_explicit_identity" }),
@@ -195,6 +200,11 @@ describe("PPIRTV provenance trace", () => {
       status: "unverifiable",
       reason_code: "workspace_drift"
     });
+    expect(receipt.diagnostics).toContainEqual(expect.objectContaining({
+      code: "GOAL_BINDING_WORKSPACE_DRIFT",
+      owner: "executor_orchestrator",
+      field: "workspace"
+    }));
   });
 
   it("classifies contradictory explicit goal or document sha fields as unresolved, never legacy", async () => {
@@ -336,6 +346,63 @@ describe("PPIRTV provenance trace", () => {
     expect(after).toEqual(before);
   });
 
+  it("resolves a relative spt_path selector against the runtime project root", async () => {
+    const fixture = await createExplicitFixture(
+      "goal-relative-selector",
+      "dex-code:relative-selector",
+      "PRIVATE_RELATIVE_SELECTOR"
+    );
+    const relativeSelector = path.relative(workspace, fixture.sptPath);
+
+    const receipt = await tracePpirtvArtifact(store, { spt_path: relativeSelector });
+
+    expect(receipt.matches.map((match) => match.flow_id)).toContain(fixture.flow.flow_id);
+    expect(receipt.selector_value).toBe(relativeSelector);
+  });
+
+  it("returns an actionable warning when spt_path exists outside PLAN-TASKS", async () => {
+    const misplacedSpt = path.join(workspace, "misplaced-spt.md");
+    await writeFile(misplacedSpt, "synthetic misplaced SPT probe", "utf8");
+
+    const receipt = await tracePpirtvArtifact(store, { spt_path: misplacedSpt });
+
+    expect(receipt.matches).toEqual([]);
+    expect(receipt.warnings).toContain("spt_path_outside_plan_tasks");
+    expect(receipt.diagnostics).toContainEqual(expect.objectContaining({
+      code: "SPT_PATH_OUTSIDE_PLAN_TASKS",
+      owner: "sprinter",
+      field: "spt_path",
+      recoverable: true
+    }));
+  });
+
+  it("assigns an incomplete persisted binding to dex-PPIRTV without rewriting history", async () => {
+    const fixture = await createExplicitFixture(
+      "goal-binding-without-spt-path",
+      "dex-code:binding-without-spt-path",
+      "PRIVATE_BINDING_WITHOUT_SPT_PATH"
+    );
+    const flow = await store.loadFlow(fixture.flow.flow_id);
+    delete (flow.goal_binding!.envelope as unknown as Record<string, unknown>).spt_path;
+    await store.saveFlow(flow);
+    const before = await runtimeHashes(store);
+
+    const receipt = await tracePpirtvArtifact(store, { flow_id: flow.flow_id });
+    const after = await runtimeHashes(store);
+
+    expect(receipt.matches[0]?.binding_integrity).toMatchObject({
+      status: "unverifiable",
+      reason_code: "goal_binding_spt_path_missing"
+    });
+    expect(receipt.diagnostics).toContainEqual(expect.objectContaining({
+      code: "GOAL_BINDING_SPT_PATH_MISSING",
+      owner: "dex_ppirtv",
+      field: "goal_binding.envelope.spt_path",
+      recoverable: false
+    }));
+    expect(after).toEqual(before);
+  });
+
   it("does not claim a valid SPT is unbound when flow discovery is incomplete", async () => {
     const validSpt = await writeSpt("goal-binding-indeterminate");
     await writeFile(path.join(store.flowsDir, "flow_unreadable.json"), "{not-json", "utf8");
@@ -345,6 +412,10 @@ describe("PPIRTV provenance trace", () => {
     expect(receipt.matches).toEqual([]);
     expect(receipt.warnings).toContain("unreadable_flow_files:1");
     expect(receipt.warnings).toContain("spt_binding_indeterminate_due_to_unreadable_flows");
+    expect(receipt.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "PPIRTV_TRACE_FLOW_UNREADABLE", owner: "dex_ppirtv" }),
+      expect.objectContaining({ code: "SPT_BINDING_DISCOVERY_INCOMPLETE", owner: "dex_ppirtv" })
+    ]));
     expect(receipt.warnings).not.toContain("spt_valid_without_goal_binding");
   });
 

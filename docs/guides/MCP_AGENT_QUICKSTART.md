@@ -84,13 +84,30 @@ contract_errors=[]
 
 The `objective` passed to `goal_start` must match `goal.objective` literally.
 
+### Who fixes `spt_path`
+
+- `sprinter` creates or corrects the SPT v3 file under
+  `.agents/PLAN-TASKS`.
+- The executor/orchestrator supplies `spt_path` to `spt_validate`, then sends
+  the same canonical path returned by the validator to `goal_start`.
+- The validator blocks and routes; it never edits the SPT. On failure, follow
+  `diagnostic.owner` and `diagnostic.next_required_action`, then repeat the
+  call. Do not continue from `valid=false`.
+- `goal_start` persists `goal_binding.envelope.spt_path` in the first official
+  state. If a persisted binding lacks it, the defect belongs to `dex_ppirtv`;
+  preserve the flow and do not manufacture provenance.
+- For an empty historical lookup, use `runtime_probe` first and inspect
+  `ppirtv_trace.warnings` plus `diagnostics`. Zero matches alone does not prove
+  that no history existed.
+
 ## Passos
 
 Minimum GOAL sequence:
 
 1. `runtime_probe` — confirm the active `project_root`, runtime and memory
    writer before creating state.
-2. `spt_validate` — validate the absolute SPT path and literal objective.
+2. `spt_validate` — validate an absolute path or one relative to the confirmed
+   runtime `project_root`, plus the literal objective.
 3. `goal_start` — start or reuse the official flow with one stable
    `idempotency_key`.
 4. `goal_status` — read phase blockers and the exact next action.

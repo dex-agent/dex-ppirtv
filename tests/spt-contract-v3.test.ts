@@ -19,12 +19,14 @@ afterEach(async () => {
 
 describe("SPT v3 traceability contract", () => {
   it("keeps public agent documentation current and discoverable", async () => {
-    const [gitignore, readme, docsIndex, quickstart, reportContract] = await Promise.all([
+    const [gitignore, readme, docsIndex, quickstart, reportContract, canonicalContract, executionBridge] = await Promise.all([
       readFile(path.resolve(".gitignore"), "utf8"),
       readFile(path.resolve("README.md"), "utf8"),
       readFile(path.resolve("docs/INDEX.md"), "utf8"),
       readFile(path.resolve("docs/guides/MCP_AGENT_QUICKSTART.md"), "utf8"),
-      readFile(path.resolve("docs/contracts/CROSS_REPO_PROBLEM_REPORT_CONTRACT.md"), "utf8")
+      readFile(path.resolve("docs/contracts/CROSS_REPO_PROBLEM_REPORT_CONTRACT.md"), "utf8"),
+      readFile(path.resolve("docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md"), "utf8"),
+      readFile(path.resolve("docs/contracts/GOAL_EXECUTION_BRIDGE.md"), "utf8")
     ]);
     expect(readme).not.toContain("SPT v2 is the only executable format");
     expect(readme).toContain("New official execution requires SPT v3");
@@ -41,6 +43,14 @@ describe("SPT v3 traceability contract", () => {
     expect(quickstart).toContain("execution_eligible=true");
     expect(quickstart).toContain("criterion_proof");
     expect(quickstart).toContain("REVIEW_ATTESTATION_CLAIMS_REQUIRED");
+    expect(quickstart).toContain("Who fixes `spt_path`");
+    expect(quickstart).toContain("Zero matches alone does not prove");
+    expect(canonicalContract).toContain("Ownership de `spt_path`");
+    expect(canonicalContract).toContain("Matriz de comportamento reproduzivel");
+    expect(canonicalContract).toContain("GOAL_BINDING_SPT_PATH_MISSING");
+    expect(executionBridge).toContain("`version: 3`");
+    expect(executionBridge).toContain("`sprinter` | criar/corrigir o SPT v3");
+    expect(executionBridge).not.toContain("`version: 2`");
     expect(reportContract).toContain("type: cross-repo-reproducible-handoff");
     expect(reportContract).toContain("## Confirmed facts");
     expect(reportContract).toContain("## Unexplained gaps");

@@ -38,6 +38,16 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Corrigido
 
+- `spt_path` agora tem ownership acionavel de ponta a ponta: `spt_validate`,
+  `goal_start` e `ppirtv_trace` devolvem `code`, `owner`, `field`, `reason`,
+  `next_required_action` e `recoverable` nas falhas cobertas. O trace resolve
+  paths relativos contra `project_root`, deixa de silenciar SPT existente fora
+  de `PLAN-TASKS` e distingue binding persistido sem path de arquivo SPT
+  ausente, sem reescrever flows ou ledger historicos.
+- `GOAL_EXECUTION_BRIDGE.md` deixou de ensinar SPT v2 como contrato de nova
+  execucao e agora aponta SPT v3, a cadeia de ownership e a obrigacao de repetir
+  a chamada corrigida. O contrato canonico global/local publica a matriz A-J.
+
 - O README agora ensina corretamente que novas execuções exigem SPT v3 e
   limita v2 a histórico, retry exato, recovery e reconciliation, alinhando a
   introdução pública ao contrato canônico e ao schema vivo de `goal_start`.

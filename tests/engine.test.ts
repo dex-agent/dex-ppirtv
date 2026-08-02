@@ -1358,7 +1358,15 @@ describe("PPIRTV flow engine", () => {
       requested_verdict_policy: "evidence_required",
       source: "dex-code",
       mode: "full"
-    })).rejects.toThrow(/GOAL_WORKSPACE_STORE_MISMATCH/i);
+    })).rejects.toMatchObject({
+      message: expect.stringMatching(/GOAL_WORKSPACE_STORE_MISMATCH/i),
+      diagnostic: {
+        code: "GOAL_WORKSPACE_STORE_MISMATCH",
+        owner: "executor_orchestrator",
+        field: "workspace",
+        recoverable: true
+      }
+    });
 
     expect(await isolatedEngine.store.listFlows()).toEqual([]);
   });
@@ -7102,6 +7110,12 @@ describe("PPIRTV flow engine", () => {
 
     expect(validation.valid).toBe(false);
     expect(validation.missing).toContain("spt_under_plan_tasks");
+    expect(validation.diagnostic).toMatchObject({
+      code: "SPT_PATH_OUTSIDE_PLAN_TASKS",
+      owner: "sprinter",
+      field: "spt_path",
+      recoverable: true
+    });
   });
 
   it("renders only the current phase by default and keeps the full checklist explicit", async () => {

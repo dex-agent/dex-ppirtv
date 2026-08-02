@@ -26,6 +26,7 @@ import { scrubSecretLikeText } from "./security/secret-redaction.js";
 import { PpirtvStore } from "./store.js";
 import { resolveMemoryWriterConfigFromEnv } from "./config.js";
 import { PPIRTV_TRACE_SELECTOR_KEYS, tracePpirtvArtifact } from "./provenance-trace.js";
+import { SptPathContractError } from "./spt-path-diagnostics.js";
 
 const ANY_PHASES = [...PHASES, ...COMPACT_PHASES] as const;
 
@@ -172,7 +173,7 @@ function registerTools(
     "ppirtv_trace",
     {
       description:
-        "Locate origin, history, evolution, provenance, decisions, evidence, or reconstruction clues from exactly one exact PPIRTV selector; this is read-only and works without creating an index or returning artifact payloads.",
+        "Locate origin, history, evolution, provenance, decisions, evidence, or reconstruction clues from exactly one exact PPIRTV selector; this is read-only and works without creating an index or returning artifact payloads. Relative spt_path is resolved from runtime project_root. Empty SPT traces diagnose missing path, valid SPT without binding, wrong runtime, misplaced SPT, unreadable flow, or incomplete legacy binding with owner and next_required_action; history is never rewritten.",
       inputSchema: Object.fromEntries(
         PPIRTV_TRACE_SELECTOR_KEYS.map((key) => [key, z.string().min(1).optional()])
       )
@@ -387,7 +388,7 @@ function registerTools(
   server.registerTool(
     "spt_validate",
     {
-      description: "Validate an explicit SPT v2 or v3 contract without echoing sensitive contents. V2 stays readable for history/recovery; new execution requires v3.",
+      description: "Validate an explicit SPT v2 or v3 contract without echoing sensitive contents. sprinter owns the canonical SPT file; the executor_orchestrator supplies spt_path and repeats the corrected call. The validator blocks and returns diagnostic {code, owner, field, reason, next_required_action, recoverable}; it never edits the SPT. V2 stays readable for history/recovery; new execution requires v3.",
       inputSchema: {
         workspace: z.string().min(1),
         spt_path: z.string().min(1),
@@ -400,7 +401,7 @@ function registerTools(
   server.registerTool(
     "goal_start",
     {
-      description: "Start or reuse an official GOAL/SPT flow. Omitted flow_role means execution; new execution requires SPT v3, while exact v2 retry and explicit recovery/reconciliation remain supported. Default mode is canonical 'compact'; 'lean' is its input alias and 'full' must be requested explicitly.",
+      description: "Start or reuse an official GOAL/SPT flow. The executor_orchestrator must resend the same canonical spt_path returned by spt_validate; goal_start revalidates it and atomically persists goal_binding.envelope.spt_path before an official flow can proceed. Invalid input returns owner and next_required_action; internal persistence defects belong to dex_ppirtv. Omitted flow_role means execution; new execution requires SPT v3, while exact v2 retry and explicit recovery/reconciliation remain supported. Default mode is canonical 'compact'; 'lean' is its input alias and 'full' must be requested explicitly.",
       inputSchema: goalEnvelopeSchema
     },
     async (args) => toolResponse(() => engine.startGoal(args))
@@ -851,6 +852,13 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
     details: { original_error: message },
     contract_source: "docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md"
   };
+  if (error instanceof SptPathContractError) {
+    return {
+      ...base,
+      ...error.diagnostic,
+      details: { ...base.details, reason: error.diagnostic.reason }
+    };
+  }
   if (error instanceof RecallConsumptionReferenceError) {
     const unknownReferences = safeRecallReferences(error.unknownReferences);
     const validReferences = safeRecallReferences(error.validReferences);

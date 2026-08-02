@@ -90,6 +90,12 @@ import { profileFor, type GateRequirement } from "./phase-profile.js";
 import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured, sameRuntimePath } from "./config.js";
 import { fingerprintSptContract, parseSptDocument, sha256SptDocument } from "./spt-contract.js";
 import {
+  missingValidationDiagnostic,
+  runtimeWorkspaceMismatchDiagnostic,
+  SptPathContractError,
+  validationSptPathDiagnostic
+} from "./spt-path-diagnostics.js";
+import {
   assertCriterionProofRevisionCurrent,
   criterionProjection,
   evidenceRequirementProjection,
@@ -497,6 +503,7 @@ export class FlowEngine {
       risks.push("SPT aponta para path sensivel e nao deve ser lido pelo harness.");
     }
 
+    const diagnostic = validationSptPathDiagnostic({ checks, contractErrors });
     return {
       valid: missing.length === 0,
       workspace,
@@ -511,6 +518,7 @@ export class FlowEngine {
       missing,
       warnings,
       risks,
+      diagnostic,
       tasks:
         contract?.version === 3
           ? taskProjection(contract)
@@ -561,7 +569,8 @@ export class FlowEngine {
       this.store.fixtureOnlyNoncanonicalRoot
       || sameRuntimePath(envelope.workspace, this.store.runtimePaths.projectRoot);
     if (!workspaceMatchesStore) {
-      throw new Error(
+      throw new SptPathContractError(
+        runtimeWorkspaceMismatchDiagnostic(),
         `GOAL_WORKSPACE_STORE_MISMATCH: requested workspace ${envelope.workspace} differs from runtime project_root ${this.store.runtimePaths.projectRoot}`
       );
     }
@@ -571,7 +580,10 @@ export class FlowEngine {
       objective: envelope.objective
     });
     if (!validation.valid) {
-      throw new Error(`Invalid SPT for goal_start: ${validation.missing.join(", ")}`);
+      throw new SptPathContractError(
+        validation.diagnostic ?? missingValidationDiagnostic(),
+        `Invalid SPT for goal_start: ${validation.missing.join(", ")}`
+      );
     }
     const now = nowIso();
     const existingByKey = await this.findGoalFlowByIdempotencyKey(envelope.idempotency_key);

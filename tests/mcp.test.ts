@@ -1,4 +1,4 @@
-import { access, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, realpath, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -42,9 +42,15 @@ describe("PPIRTV MCP stdio server", () => {
     expect(flowCreateProperties?.detail?.enum).toEqual(["lean", "full"]);
     expect(flowCreateProperties?.mode).toBeUndefined();
     const goalStartTool = tools.tools.find((tool) => tool.name === "goal_start");
+    const sptValidateTool = tools.tools.find((tool) => tool.name === "spt_validate");
     const goalStartProperties = (goalStartTool?.inputSchema as { properties?: Record<string, Record<string, unknown>> }).properties;
     expect(goalStartProperties?.flow_role?.enum).toEqual(["execution", "reconciliation", "recovery"]);
     expect(goalStartTool?.description).toContain("new execution requires SPT v3");
+    expect(goalStartTool?.description).toContain("same canonical spt_path");
+    expect(goalStartTool?.description).toContain("dex_ppirtv");
+    expect(sptValidateTool?.description).toContain("sprinter owns");
+    expect(sptValidateTool?.description).toContain("executor_orchestrator");
+    expect(sptValidateTool?.description).toContain("next_required_action");
     const goalVerdictTool = tools.tools.find((tool) => tool.name === "goal_verdict");
     expect(goalVerdictTool?.description).toContain("does not complete");
     expect(goalVerdictTool?.description).toContain("goal_advance");
@@ -77,6 +83,8 @@ describe("PPIRTV MCP stdio server", () => {
     expect(traceTool?.description).toContain("origin, history, evolution, provenance, decisions, evidence, or reconstruction");
     expect(traceTool?.description).toContain("read-only");
     expect(traceTool?.description).toContain("without");
+    expect(traceTool?.description).toContain("runtime project_root");
+    expect(traceTool?.description).toContain("owner and next_required_action");
     const memoryMiningTool = tools.tools.find((tool) => tool.name === "mm_memory_mining");
     const memoryMiningProperties = (memoryMiningTool?.inputSchema as { properties?: Record<string, Record<string, unknown>> }).properties;
     expect(memoryMiningTool?.description).toContain("ordinary call needs only flow_id");
@@ -408,8 +416,10 @@ describe("PPIRTV MCP stdio server", () => {
     const checkout = await client!.callTool({ name: "ppirtv_checkout", arguments: { idempotency_key: envelope.idempotency_key, detail: "full" } });
 
     expect(resultOf(validation).valid).toBe(true);
+    expect(resultOf(validation).diagnostic).toBeNull();
     expect(resultOf(validation).tasks).toContain("Rodar teste MCP.");
     expect(resultOf(validation).expected_evidence).toContain("vitest.");
+    expect(resultOf(started).goal_envelope).toMatchObject({ spt_path: sptPath });
     expect(resultOf(started).started).toBe(true);
     expect(resultOf(reused).reused).toBe(true);
     expect(resultOf(reused).flow_id).toBe(flowId);
@@ -502,6 +512,59 @@ describe("PPIRTV MCP stdio server", () => {
         args: { flow_id: startedResult.flow_id }
       }
     });
+  });
+
+  it("routes invalid spt_path and wrong runtime to actionable owners without creating a flow", async () => {
+    await connectClient({}, { injectLegacyV2Recovery: false });
+    const missingPath = path.join(mcpWorkspace, ".agents", "PLAN-TASKS", "missing-spt.md");
+    const envelope = {
+      workspace: mcpWorkspace,
+      spt_path: missingPath,
+      objective: "Diagnosticar ownership de spt_path",
+      idempotency_key: "dex-code:mcp-spt-path-owner",
+      evidence_required: true,
+      required_evidence: ["vitest"],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code"
+    };
+
+    const validation = resultOf(await client!.callTool({ name: "spt_validate", arguments: envelope }));
+    expect(validation).toMatchObject({
+      valid: false,
+      diagnostic: {
+        code: "SPT_PATH_NOT_FOUND",
+        owner: "executor_orchestrator",
+        field: "spt_path",
+        recoverable: true
+      }
+    });
+
+    const rejected = await client!.callTool({ name: "goal_start", arguments: envelope });
+    expect((rejected as { isError?: boolean }).isError).toBe(true);
+    expect(resultOf(rejected).error).toMatchObject({
+      code: "SPT_PATH_NOT_FOUND",
+      owner: "executor_orchestrator",
+      field: "spt_path",
+      recoverable: true,
+      reason: expect.any(String),
+      next_required_action: { tool: "spt_validate" }
+    });
+
+    const otherWorkspace = path.join(tempRoot, "other-workspace");
+    const otherSpt = await writeFakeSpt(otherWorkspace, envelope.objective);
+    const wrongRuntime = await client!.callTool({
+      name: "goal_start",
+      arguments: { ...envelope, workspace: otherWorkspace, spt_path: otherSpt }
+    });
+    expect(resultOf(wrongRuntime).error).toMatchObject({
+      code: "GOAL_WORKSPACE_STORE_MISMATCH",
+      owner: "executor_orchestrator",
+      field: "workspace",
+      recoverable: true,
+      next_required_action: { tool: "runtime_probe" }
+    });
+
+    expect(await readdir(path.join(mcpWorkspace, ".ppirtv", "flows"))).toEqual([]);
   });
 
   it("returns an actionable duplicate bindings receipt without mutating flows or ledger", async () => {

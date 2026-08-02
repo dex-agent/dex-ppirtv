@@ -484,7 +484,12 @@ never returns artifact payloads. Every match includes additive `flow_role` and
 `binding_integrity` metadata. Fingerprint drift remains `unresolved` while
 preserving a stable registered `goal_id`; `spt_path` warnings distinguish a
 valid unbound SPT, a missing path, a workspace mismatch and incomplete flow
-discovery.
+discovery. Relative `spt_path` is resolved against the runtime `project_root`,
+not the process working directory. A misplaced SPT or incomplete persisted
+binding returns an actionable diagnostic with `code`, `owner`, `field`,
+`reason`, `next_required_action` and `recoverable`; the trace never rewrites
+history. `sprinter` owns the canonical SPT document, the executor owns supplying
+and resubmitting the path, and `dex-ppirtv` owns internal persistence defects.
 
 `ppirtv_checkout` is the direct closing/accountability tool. It returns the
 same canonical checkout embedded in `goal_status.ppirtv_checkout`, but promotes

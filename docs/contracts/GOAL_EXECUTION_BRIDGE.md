@@ -25,8 +25,10 @@ continuam em `templates/`.
 
 | Parte | Responsabilidade |
 | --- | --- |
-| `dex-code` | montar `GoalEnvelope`, chamar tools MCP, mostrar checklist, bloqueios, evidencia e veredito |
-| `dex-ppirtv` | validar SPT, criar ou reutilizar flow, aplicar gates, registrar evidencia e veredito |
+| `sprinter` | criar/corrigir o SPT v3 em `.agents/PLAN-TASKS`; nao executa a chamada MCP |
+| `dex-code` / executor | montar `GoalEnvelope`, fornecer o mesmo `spt_path` a `spt_validate` e `goal_start`, obedecer o receipt e repetir a chamada corrigida |
+| `dex-ppirtv` | validar sem editar o SPT, persistir binding oficial atomicamente, devolver owner/acao e corrigir defeitos internos de persistencia |
+| `ppirtv_trace` | diagnosticar e localizar historia read-only; nunca criar binding nem reescrever flows/ledger |
 | CodeWhale `/goal` | manter objetivo/contexto da sessao como espelho humano, sem executar SPT invisivel |
 
 Hooks do CodeWhale, quando existirem, devem ser adaptadores de observacao:
@@ -85,12 +87,14 @@ Checa:
 - workspace absoluto, existente e diretorio;
 - SPT existente, arquivo e dentro do workspace;
 - SPT em `.agents/PLAN-TASKS`;
-- front matter YAML no topo com `dex_contract: spt` e `version: 2`;
-- schema v2 completo, estrito e sem campos desconhecidos;
+- front matter YAML no topo com `dex_contract: spt`, `version: 3` e
+  `schema_version: 3` para nova execucao oficial;
+- schema v3 completo, estrito e sem campos desconhecidos, com rastreabilidade
+  `requirement -> task -> done criterion -> evidence requirement`;
 - `workspace` do contrato igual ao workspace da chamada;
-- metadados, objetivo, contexto, problema, decisao, escopo, spec, plano,
-  tasks, evidencias esperadas, criterios de pronto, riscos, incertezas, gates,
-  validacao e prompt de execucao na camada estruturada.
+- metadados, objetivo, contexto, escopo, requirements, tasks, criterios,
+  requisitos de evidencia, riscos, gates, validacao e prompt de execucao na
+  camada estruturada.
 
 Retorna tambem:
 
@@ -99,9 +103,10 @@ Retorna tambem:
 - `done_criteria`.
 
 Esses tres campos vem apenas do front matter e entram no flow/ledger durante
-`goal_start`. O corpo Markdown e livre e nao e consultado pelo parser. SPT V1,
-front matter ausente, YAML invalido ou `version` diferente de `2` falham sem
-fallback.
+`goal_start`. O corpo Markdown e livre e nao e consultado pelo parser. SPT v2
+permanece legivel apenas para historia, retry exato, recovery ou reconciliation
+explicitos. O retorno inclui `diagnostic` com `code`, `owner`, `field`,
+`reason`, `next_required_action` e `recoverable`; o validator nao edita o SPT.
 
 ### `goal_start`
 
@@ -110,7 +115,7 @@ Recebe `GoalEnvelope`, valida o SPT e cria ou reutiliza o flow por
 corresponda ao `project_root` do store ativo.
 
 O primeiro `goal_start` congela o envelope semantico, `goal.id`, o fingerprint
-do front matter v2 e o SHA-256 dos bytes exatos do documento. Retry com
+do front matter v3 e o SHA-256 dos bytes exatos do documento. Retry com
 objetivo divergente, envelope incompatível ou front matter alterado falha
 explicitamente. O SHA documental e recibo de proveniencia, nao gate de retry;
 reescrita somente do Markdown humano permanece permitida.
@@ -148,6 +153,9 @@ O retorno `ppirtv.trace.receipt.v1`:
   o SPT atual continuam verificaveis, sem promover `unresolved` a coerente;
 - diferencia SPT valido sem binding, path inexistente, workspace divergente e
   varredura indeterminada por flow ilegivel;
+- resolve `spt_path` relativo contra o `project_root`, diagnostica path fora de
+  `PLAN-TASKS` e binding incompleto, e devolve owner/proxima acao sem inventar
+  proveniencia;
 - inclui apenas metadados allowlisted, nunca payload de artefato;
 - declara `consistency=non_transactional_read` e `mutated=false`;
 - nao cria indice, cache, projecao ou storage.

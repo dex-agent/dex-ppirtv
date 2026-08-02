@@ -2,9 +2,10 @@ import { readFile } from "node:fs/promises";
 import { realpathSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { GOAL_FLOW_ROLES, type Flow, type GoalFlowRole, type LedgerEvent, type Meeting } from "./domain.js";
+import { GOAL_FLOW_ROLES, type Flow, type GoalFlowRole, type LedgerEvent, type Meeting, type SptPathDiagnostic } from "./domain.js";
 import { sameRuntimePath } from "./config.js";
 import { fingerprintSptContract, parseSptDocument } from "./spt-contract.js";
+import { traceSptPathDiagnostic } from "./spt-path-diagnostics.js";
 import type { PpirtvStore } from "./store.js";
 
 export const PPIRTV_TRACE_SELECTOR_KEYS = [
@@ -33,6 +34,7 @@ export type PpirtvTraceBindingComparison = {
 
 export type PpirtvTraceBindingReasonCode =
   | "goal_binding_absent"
+  | "goal_binding_spt_path_missing"
   | "workspace_drift"
   | "spt_path_missing"
   | "spt_path_outside_plan_tasks"
@@ -75,6 +77,7 @@ export type PpirtvTraceReceipt = {
   selector_value: string;
   matches: PpirtvTraceMatch[];
   warnings: string[];
+  diagnostics?: SptPathDiagnostic[];
   consistency: "non_transactional_read";
   mutated: false;
 };
@@ -101,8 +104,11 @@ export async function tracePpirtvArtifact(
   const [selectorType, selectorValue] = selected[0];
   validateSelector(selectorType, selectorValue);
   const projectRoot = path.resolve(store.runtimePaths.projectRoot);
+  const effectiveSelectorValue = selectorType === "spt_path"
+    ? path.resolve(projectRoot, selectorValue)
+    : selectorValue;
   const warnings: string[] = [];
-  if (selectorType === "spt_path" && !insideWorkspace(projectRoot, path.resolve(selectorValue))) {
+  if (selectorType === "spt_path" && !insideWorkspace(projectRoot, effectiveSelectorValue)) {
     return baseReceipt(selectorType, "[outside-workspace]", [], ["selector_path_outside_workspace"]);
   }
 
@@ -129,7 +135,7 @@ export async function tracePpirtvArtifact(
   const matches: PpirtvTraceMatch[] = [];
 
   for (const candidate of classified) {
-    if (!matchesSelector(candidate, selectorType, selectorValue, meetings, events)) {
+    if (!matchesSelector(candidate, selectorType, effectiveSelectorValue, meetings, events)) {
       continue;
     }
     const locators = await buildLocators(
@@ -159,13 +165,18 @@ export async function tracePpirtvArtifact(
     await addSptSelectorDiagnostics(
       store,
       projectRoot,
-      selectorValue,
+      effectiveSelectorValue,
       matches,
       flowRead.unreadable_count,
       warnings
     );
   }
-  return baseReceipt(selectorType, sanitizedSelectorValue(selectorType, selectorValue, projectRoot), matches, [...new Set(warnings)].sort());
+  return baseReceipt(
+    selectorType,
+    sanitizedSelectorValue(selectorType, effectiveSelectorValue, projectRoot),
+    matches,
+    [...new Set(warnings)].sort()
+  );
 }
 
 async function classifyFlow(store: PpirtvStore, flow: Flow, projectRoot: string): Promise<ClassifiedFlow> {
@@ -187,7 +198,7 @@ async function classifyFlow(store: PpirtvStore, flow: Flow, projectRoot: string)
   }
   const sptPath = binding.envelope.spt_path ? path.resolve(binding.envelope.spt_path) : null;
   if (!sptPath) {
-    return unresolved(flow, null, null, flowRole, "spt_path_missing");
+    return unresolved(flow, null, null, flowRole, "goal_binding_spt_path_missing");
   }
   if (!insidePlanTasks(projectRoot, sptPath)) {
     return unresolved(flow, null, sptPath, flowRole, "spt_path_outside_plan_tasks");
@@ -321,8 +332,9 @@ async function addSptSelectorDiagnostics(
   unreadableFlowCount: number,
   warnings: string[]
 ): Promise<void> {
-  const sptPath = path.resolve(selectorValue);
+  const sptPath = path.resolve(projectRoot, selectorValue);
   if (!insidePlanTasks(projectRoot, sptPath)) {
+    warnings.push("spt_path_outside_plan_tasks");
     return;
   }
   if (!(await store.pathExists(sptPath))) {
@@ -479,15 +491,38 @@ function baseReceipt(
   matches: PpirtvTraceMatch[],
   warnings: string[]
 ): PpirtvTraceReceipt {
+  const diagnostics = collectSptPathDiagnostics(matches, warnings);
   return {
     contract: "ppirtv.trace.receipt.v1",
     selector_type: selectorType,
     selector_value: selectorValue,
     matches,
     warnings,
+    ...(diagnostics.length > 0 ? { diagnostics } : {}),
     consistency: "non_transactional_read",
     mutated: false
   };
+}
+
+function collectSptPathDiagnostics(matches: PpirtvTraceMatch[], warnings: string[]): SptPathDiagnostic[] {
+  const codes = [
+    ...warnings,
+    ...matches.flatMap((match) => match.binding_integrity.reason_code ?? [])
+  ];
+  const seen = new Set<string>();
+  const diagnostics: SptPathDiagnostic[] = [];
+  for (const code of codes) {
+    const item = traceSptPathDiagnostic(code);
+    if (!item) {
+      continue;
+    }
+    const key = `${item.code}\u0000${item.owner}\u0000${item.field}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      diagnostics.push(item);
+    }
+  }
+  return diagnostics;
 }
 
 function sanitizedSelectorValue(selectorType: PpirtvTraceSelectorKey, selectorValue: string, projectRoot: string): string {

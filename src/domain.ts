@@ -177,6 +177,21 @@ export type CriterionProof = CriterionProofInput & {
   evaluation: string;
 };
 
+export type SptPathOwner = "sprinter" | "executor_orchestrator" | "dex_ppirtv";
+
+export type SptPathDiagnostic = {
+  code: string;
+  owner: SptPathOwner;
+  field: "spt_path" | "workspace" | "goal_binding.envelope.spt_path";
+  reason: string;
+  next_required_action: {
+    type: string;
+    tool: "spt_validate" | "goal_start" | "runtime_probe" | "ppirtv_trace";
+    rule: string;
+  };
+  recoverable: boolean;
+};
+
 export type SptValidationResult = {
   valid: boolean;
   workspace: string;
@@ -191,6 +206,7 @@ export type SptValidationResult = {
   missing: string[];
   warnings: string[];
   risks: string[];
+  diagnostic: SptPathDiagnostic | null;
   tasks: string[];
   expected_evidence: string[];
   done_criteria: string[];

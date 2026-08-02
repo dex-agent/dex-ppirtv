@@ -501,6 +501,40 @@ Regras:
   Retry que omite o campo preserva o papel existente; retry que fornece papel
   divergente falha com `GOAL_BINDING_MISMATCH` antes de mutacao.
 
+### Ownership de `spt_path`
+
+`spt_path` nao pertence ao front matter SPT v3. Ele identifica o artefato e
+pertence ao `GoalEnvelope` da chamada MCP e, depois do inicio oficial, a
+`goal_binding.envelope.spt_path`. O caminho relativo e sempre resolvido contra
+o `workspace`/`project_root`, nunca contra o diretorio acidental do processo.
+
+| Etapa | Campo | Produtor | Validator | Owner da correcao | Erro acionavel | Proxima acao |
+| --- | --- | --- | --- | --- | --- | --- |
+| Criacao do Trilho | arquivo em `.agents/PLAN-TASKS` | `sprinter` | contrato SPT v3 | `sprinter` | `SPT_CONTRACT_INVALID` ou `SPT_PATH_OUTSIDE_PLAN_TASKS` | corrigir/criar o documento canonico |
+| Chamada `spt_validate` | `workspace`, `spt_path` | executor/orquestrador | `FlowEngine.validateSpt` | executor para chamada/path; `sprinter` para documento | `diagnostic` com `code`, `owner`, `field`, `reason`, `next_required_action`, `recoverable` | corrigir pelo owner e repetir `spt_validate` |
+| Chamada `goal_start` | o mesmo caminho canonico retornado pelo validator | executor/orquestrador | runtime + nova validacao do SPT | executor para runtime/chamada; `sprinter` para documento | erro MCP estruturado com os mesmos seis campos | executar a tool indicada e reapresentar a chamada |
+| Binding oficial | `goal_binding.envelope.spt_path` | `dex-ppirtv` a partir do envelope validado | persistencia atomica do primeiro estado oficial | `dex_ppirtv` se o campo se perder | `GOAL_BINDING_SPT_PATH_MISSING` | preservar o flow, investigar store/ledger; nao fabricar historia |
+| Consulta historica | seletor `spt_path` | consumidor | `ppirtv_trace` read-only | conforme `diagnostics[].owner` | warning + diagnostico acionavel | corrigir a origem e repetir; nunca reescrever flows historicos |
+
+Detectar nao significa corrigir: o validator bloqueia e roteia, mas nao edita o
+SPT; o owner do dado corrige; o executor repete a chamada; `dex-ppirtv` corrige
+falhas internas de persistencia. Receipt invalido nao autoriza seguir.
+
+Matriz de comportamento reproduzivel:
+
+| Caso | Chamada e resultado | Codigo/warning | Estado persistido | Owner e proxima acao |
+| --- | --- | --- | --- | --- |
+| A. SPT valido sem `goal_start` | `spt_validate` valido; trace vazio diagnosticado | `spt_valid_without_goal_binding` | nenhum flow novo | executor chama `goal_start` |
+| B. path inexistente | validacao e start bloqueiam | `SPT_PATH_NOT_FOUND` | nenhum flow novo | executor confirma path do `sprinter` e repete |
+| C. fora de `PLAN-TASKS` | validacao e trace bloqueiam/diagnosticam | `SPT_PATH_OUTSIDE_PLAN_TASKS` | nenhum flow novo | `sprinter` reposiciona/corrige; executor repete |
+| D. workspace divergente | validacao bloqueia | `SPT_CONTRACT_WORKSPACE_MISMATCH` | nenhum flow novo | `sprinter` corrige contrato |
+| E. validate + start corretos | ambos passam | sem erro | binding preserva exatamente o path canonico | executor segue pelo receipt |
+| F. `flow_create` sem binding | permitido somente como legacy/advisory | `goal_binding_absent` | flow nao oficial | executor usa `spt_validate` + `goal_start` se desejar GOAL oficial |
+| G. binding sem path | trace por `flow_id` fica unresolved | `goal_binding_spt_path_missing` + `GOAL_BINDING_SPT_PATH_MISSING` | historico permanece intacto | `dex_ppirtv` investiga defeito interno |
+| H. trace apos binding valido | match `explicit/coherent` | sem warning | nenhuma mutacao | consumidor usa os locators |
+| I. runtime de outro projeto | `goal_start` bloqueia antes do flow | `GOAL_WORKSPACE_STORE_MISMATCH` | nenhum flow novo | executor usa `runtime_probe`, reconecta e repete |
+| J. relativo versus absoluto | ambos resolvem contra `project_root` | mesmo path canonico | mesmo binding | executor pode usar ambos; receipt publica path relativo sanitizado |
+
 ## Campos de ledger
 
 Ao iniciar um GOAL com `goal_start`, o flow e o ledger precisam preservar:
@@ -556,7 +590,7 @@ campos desconhecidos. Remocao, renomeacao ou mudanca incompativel dos campos
 existentes exige nova versao do receipt.
 
 O `reason_code` usa a primeira falha estrutural encontrada nesta precedencia:
-`goal_binding_absent`, `workspace_drift`, `spt_path_missing`,
+`goal_binding_absent`, `workspace_drift`, `goal_binding_spt_path_missing`, `spt_path_missing`,
 `spt_path_outside_plan_tasks`, `spt_contract_invalid`,
 `spt_contract_unreadable`, `spt_contract_fingerprint_missing`,
 `spt_contract_fingerprint_drift`, `goal_id_invalid`, `goal_id_drift`,
@@ -573,6 +607,9 @@ invalido, `goal_id` conflitante ou SHA inicial invalido continuam com
 
 Para seletor `spt_path` sem match:
 
+- path relativo e resolvido contra o `project_root` do runtime;
+- path fora do workspace emite `selector_path_outside_workspace`;
+- path existente fora de `PLAN-TASKS` emite `spt_path_outside_plan_tasks`;
 - path inexistente em `PLAN-TASKS` emite `spt_path_missing`;
 - SPT schema-valido, no workspace ativo e com varredura completa dos flows
   emite `spt_valid_without_goal_binding`;
@@ -580,6 +617,12 @@ Para seletor `spt_path` sem match:
   `spt_binding_indeterminate_due_to_unreadable_flows`;
 - contrato cujo workspace diverge emite
   `spt_workspace_mismatch_without_goal_binding`.
+
+Quando a causa for acionavel, o receipt acrescenta `diagnostics[]` com
+`code`, `owner`, `field`, `reason`, `next_required_action` e `recoverable`.
+Zero matches sem esse contexto nao deve ser interpretado como prova de que a
+historia nunca existiu. `ppirtv_trace` diagnostica e localiza; nao cria binding,
+nao edita SPT e nao reescreve flows ou ledgers historicos.
 
 Eventos de memoria operacional tambem podem aparecer no ledger quando houver
 avanco de fase:
