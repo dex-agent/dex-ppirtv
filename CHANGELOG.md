@@ -10,6 +10,17 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
+- Gate `PPIRTV-FLOW-ENGINE-RESPONSIBILITY-BALANCE` para toda edição de
+  `src/flow-engine.ts`: o fiscal read-only classifica o diff como `SHRINK`,
+  `CONTAIN`, `EXCEPTION` ou `FAIL`, vincula a declaração a blobs Git, rejeita
+  crédito por formatação/exclusão alheia e exige consumidor, evidência, dívida
+  e próxima ação. O ledger é append-only daqui em diante; comparação explícita
+  não oculta worktree sujo, somente `SHRINK` paga dívida, e consumidor, RED,
+  expiração e marcadores precisam de prova verificável. O desenho arquitetural vivo e o ledger público registram
+  extrações já realizadas, `FE-DEBT-001`, próximos seams e a obrigação de
+  atualizar este changelog; consultas sem alteração retornam
+  `NOT_APPLICABLE`.
+
 - Índice público de documentação, quickstart/FAQ operacional para agentes
   pequenos e contrato reproduzível de relatos cross-repo. Os dois documentos
   novos são publicados por links em `README.md`, `AGENTS.md`, `docs/INDEX.md`

@@ -32,6 +32,8 @@ docs/*
 !docs/guides/**
 !docs/contracts/
 !docs/contracts/**
+!docs/architecture/
+!docs/architecture/**
 examples/
 skills/
 setup-ppirtv-repo.ps1

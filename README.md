@@ -83,6 +83,23 @@ npm run check
 
 `npm run check` builds the TypeScript project and runs the Vitest suite.
 
+### FlowEngine camping gate
+
+Any diff that changes `src/flow-engine.ts` must pass the read-only evolutionary
+boundary check:
+
+```powershell
+npm run check:flow-engine
+node scripts/validate-flow-engine-boundary.mjs --help
+```
+
+Read-only consultation is `NOT_APPLICABLE`. Changed diffs must produce
+`SHRINK`, `CONTAIN` or a bounded `EXCEPTION`; otherwise the receipt is `FAIL`.
+See the [living FlowEngine architecture](docs/architecture/FLOW_ENGINE_EVOLUTION.md)
+and its [machine ledger](docs/architecture/flow-engine-evolution.json). Every
+confirmed material target change also updates `CHANGELOG.md` under
+`$projeto-manter-changelog`.
+
 Run the end-to-end MCP smoke:
 
 ```bash

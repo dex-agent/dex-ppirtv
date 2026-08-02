@@ -1,0 +1,85 @@
+{
+  "contract": "dex.flow-engine.evolution-ledger.v1",
+  "target": "src/flow-engine.ts",
+  "owner": "$refactoring-fowler-rich",
+  "changelog_owner": "$projeto-manter-changelog",
+  "records": [
+    {
+      "id": "FE-2026-08-01-RECALL-CONSUMPTION",
+      "date": "2026-08-01",
+      "mode": "SHRINK",
+      "commit": "ab14213",
+      "base_blob": "a0e67b9499296b75e2275189533dc19e438f6c7c",
+      "head_blob": "8191906ceaa11ad28710b8fc3e871f8c39d9c184",
+      "spt_path": ".agents/PLAN-TASKS/2026-08-01-extrair-contrato-consumo-recall.md",
+      "responsibility": "Normalize and validate recall-consumption references.",
+      "owner": "$refactoring-fowler-rich",
+      "destination_module": "src/memory/recall-consumption-contract.ts",
+      "consumers": ["src/server.ts"],
+      "evidence": [
+        "tests/recall-consumption-contract.test.ts",
+        "tests/engine.test.ts",
+        "npm run check"
+      ],
+      "evidence_selectors": {
+        "tests/recall-consumption-contract.test.ts": "normalizes declared references while preserving a trimmed note"
+      },
+      "changelog_marker": "contrato puro de consumo de recall agora vive",
+      "architecture_marker": "FE-2026-08-01-RECALL-CONSUMPTION",
+      "removed_symbols": [
+        "RecallConsumptionReferenceError",
+        "boundedRecallErrorReferences",
+        "recallReferenceValues",
+        "recallReferenceSet",
+        "normalizeRecallReference",
+        "sameRecallReferences"
+      ],
+      "symbol_mappings": {
+        "RecallConsumptionReferenceError": "RecallConsumptionReferenceError",
+        "boundedRecallErrorReferences": "boundedRecallErrorReferences",
+        "recallReferenceValues": "recallReferenceValues",
+        "recallReferenceSet": "recallReferenceSet",
+        "normalizeRecallReference": "normalizeRecallReference",
+        "sameRecallReferences": "sameRecallReferences"
+      },
+      "same_responsibility": true,
+      "behavior_preserved_by": [
+        "tests/recall-consumption-contract.test.ts",
+        "tests/engine.test.ts"
+      ]
+    },
+    {
+      "id": "FE-2026-08-02-SPT-PATH-DIAGNOSTICS",
+      "date": "2026-08-02",
+      "mode": "CONTAIN",
+      "commit": "e5fef78",
+      "base_blob": "7f294043fc49560ef3de09efaa7690c946967e2f",
+      "head_blob": "9fbdcd7224d97275b5c94ecfa3aad45be975615a",
+      "spt_path": ".agents/PLAN-TASKS/2026-08-02-tornar-spt-path-acionavel.md",
+      "responsibility": "Classify and route actionable spt_path failures.",
+      "owner": "$refactoring-fowler-rich",
+      "destination_module": "src/spt-path-diagnostics.ts",
+      "consumers": ["src/server.ts"],
+      "evidence": [
+        "tests/provenance-trace.test.ts",
+        "tests/engine.test.ts",
+        "tests/mcp.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/provenance-trace.test.ts": "resolves a relative spt_path selector against the runtime project root"
+      },
+      "changelog_marker": "`spt_path` agora tem ownership acionavel",
+      "architecture_marker": "FE-2026-08-02-SPT-PATH-DIAGNOSTICS",
+      "guard_adaptation": "Fallback de resultado do diagnostico acionavel sem nova decisao de dominio.",
+      "glue_only": true,
+      "debt": {
+        "id": "FE-DEBT-001",
+        "status": "open",
+        "owner": "$refactoring-fowler-rich",
+        "when": "next diff that touches src/flow-engine.ts",
+        "responsibility": "Classify and route actionable spt_path failures.",
+        "payment_scope": "any_verified_shrink"
+      }
+    }
+  ]
+}

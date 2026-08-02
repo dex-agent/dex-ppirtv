@@ -37,6 +37,15 @@ state under `.agents/` is outside the public documentation boundary.
   flow, `tools/list` as help, evidence examples, FAQ and troubleshooting.
 - [Cross-repository problem report contract](contracts/CROSS_REPO_PROBLEM_REPORT_CONTRACT.md)
   — reproducible and sanitized handoff format for consumer repositories.
+- [FlowEngine evolutionary architecture](architecture/FLOW_ENGINE_EVOLUTION.md)
+  — mandatory edit gate, living extraction map, machine ledger and safe seam
+  sequence for the monolithic facade.
+
+## Architecture
+
+- [Architecture index](architecture/INDEX.md).
+- [FlowEngine evolution ledger](architecture/flow-engine-evolution.json) —
+  Git-blob-bound declarations consumed by the read-only fiscal.
 
 ## Contracts
 
