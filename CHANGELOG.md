@@ -10,6 +10,11 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
+- Índice público de documentação, quickstart/FAQ operacional para agentes
+  pequenos e contrato reproduzível de relatos cross-repo. Os dois documentos
+  novos são publicados por links em `README.md`, `AGENTS.md`, `docs/INDEX.md`
+  e `INDEX.md`, com teste contra regressão de achabilidade.
+
 - O contrato puro de consumo de recall agora vive em
   `src/memory/recall-consumption-contract.ts`, com normalização, validação,
   limites, erro e comparação testados diretamente. `FlowEngine` preserva a
@@ -32,6 +37,10 @@ escopo, evidencias e lacunas quando existirem.
   execução oficial.
 
 ### Corrigido
+
+- O README agora ensina corretamente que novas execuções exigem SPT v3 e
+  limita v2 a histórico, retry exato, recovery e reconciliation, alinhando a
+  introdução pública ao contrato canônico e ao schema vivo de `goal_start`.
 
 - `evidence_add` agora rejeita `reviewed_implementation_fingerprint` sem uma
   atestação estruturada de review, em vez de retornar sucesso e descartar o

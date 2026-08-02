@@ -45,6 +45,19 @@ Development notes, internal plans and handoff files may exist in a maintainer
 workspace. They are not part of the public package unless they are rewritten as
 stable public documentation.
 
+## Documentation for agents
+
+- [`docs/INDEX.md`](docs/INDEX.md) is the public documentation map.
+- [MCP quickstart for agents](docs/guides/MCP_AGENT_QUICKSTART.md) explains the
+  minimum GOAL flow, `tools/list` as machine-readable help, evidence, FAQ and
+  troubleshooting for smaller models.
+- [Cross-repository problem report contract](docs/contracts/CROSS_REPO_PROBLEM_REPORT_CONTRACT.md)
+  defines the reproducible and sanitized handoff expected from consumer
+  repositories.
+
+The live MCP `tools/list` schema is authoritative for invoking tools. Stable
+documents explain workflow and invariants; they do not replace dynamic schemas.
+
 ## Requirements
 
 - Node.js 22 or newer.
@@ -432,6 +445,7 @@ execution continues to start with `spt_validate` and `goal_start`.
 
 Official GOAL/SPT tools:
 
+- `runtime_probe`
 - `spt_validate`
 - `goal_start`
 - `goal_status`
@@ -458,8 +472,9 @@ runtime `project_root` before creating a flow. On the first valid binding it
 preserves `goal_id`, the semantic front-matter fingerprint and
 `spt_document_sha256_at_start`; the byte-exact document hash is provenance,
 not a retry gate. Callers may declare `flow_role` as `execution`,
-`reconciliation` or `recovery`; omission remains `unknown` and is never
-inferred from timestamps, source text or later evidence.
+`reconciliation` or `recovery`; omission means `execution`. The runtime never
+infers recovery or reconciliation from timestamps, source text or later
+evidence.
 
 `ppirtv_trace` is the read-only reverse lookup for exact `flow_id`, `goal_id`,
 `idempotency_key`, `evidence_id`, `meeting_id`, `verdict_id`, `event_id` or
@@ -485,11 +500,13 @@ Memory and pipeline tools:
 
 ## Typical GOAL/SPT Flow
 
-SPT v2 is the only executable format. Its YAML front matter is the machine
+New official execution requires SPT v3. Its YAML front matter is the machine
 contract; the Markdown body is free-form human documentation and is not parsed.
-V1 heading-based trails must be regenerated or migrated before execution.
+SPT v2 remains readable for history, exact retry and explicit recovery or
+reconciliation. V1 heading-based trails must be regenerated before execution.
 
-1. Validate an SPT v2 with `spt_validate`.
+1. Validate an SPT v3 with `spt_validate` and require
+   `execution_eligible=true`.
 2. Start or reuse a flow with `goal_start`.
 3. Inspect live state with `goal_status`, including `ppirtv_checkin`.
 4. Open, discuss and close meetings with `goal_meeting_open`,
@@ -821,4 +838,7 @@ Current public documentation is intentionally small:
 | Immediate | `README.md` | Public setup, tool map and safety boundary | Current |
 | Immediate | `SECURITY.md` | Public vulnerability and secret-handling policy | Current |
 | Immediate | `CONTRIBUTING.md` | Public contribution and test workflow | Current |
+| Immediate | `docs/INDEX.md` | Navigable public documentation map | Current |
+| Immediate | `docs/guides/MCP_AGENT_QUICKSTART.md` | Small-agent help, FAQ and troubleshooting | Current |
+| Immediate | `docs/contracts/CROSS_REPO_PROBLEM_REPORT_CONTRACT.md` | Reproducible consumer-to-owner problem reports | Current |
 | Later | Generated tool reference | Public schemas derived from the MCP server | Planned |

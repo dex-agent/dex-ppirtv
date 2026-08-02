@@ -18,6 +18,35 @@ afterEach(async () => {
 });
 
 describe("SPT v3 traceability contract", () => {
+  it("keeps public agent documentation current and discoverable", async () => {
+    const [gitignore, readme, docsIndex, quickstart, reportContract] = await Promise.all([
+      readFile(path.resolve(".gitignore"), "utf8"),
+      readFile(path.resolve("README.md"), "utf8"),
+      readFile(path.resolve("docs/INDEX.md"), "utf8"),
+      readFile(path.resolve("docs/guides/MCP_AGENT_QUICKSTART.md"), "utf8"),
+      readFile(path.resolve("docs/contracts/CROSS_REPO_PROBLEM_REPORT_CONTRACT.md"), "utf8")
+    ]);
+    expect(readme).not.toContain("SPT v2 is the only executable format");
+    expect(readme).toContain("New official execution requires SPT v3");
+    expect(readme).toContain("- `runtime_probe`");
+    expect(readme).toContain("omission means `execution`");
+    expect(readme).not.toContain("omission remains `unknown`");
+    expect(gitignore).toContain("!docs/INDEX.md");
+    expect(gitignore).toContain("!docs/guides/**");
+    expect(readme).toContain("docs/guides/MCP_AGENT_QUICKSTART.md");
+    expect(readme).toContain("docs/contracts/CROSS_REPO_PROBLEM_REPORT_CONTRACT.md");
+    expect(docsIndex).toContain("guides/MCP_AGENT_QUICKSTART.md");
+    expect(docsIndex).toContain("contracts/CROSS_REPO_PROBLEM_REPORT_CONTRACT.md");
+    expect(quickstart).toContain("tools/list");
+    expect(quickstart).toContain("execution_eligible=true");
+    expect(quickstart).toContain("criterion_proof");
+    expect(quickstart).toContain("REVIEW_ATTESTATION_CLAIMS_REQUIRED");
+    expect(reportContract).toContain("type: cross-repo-reproducible-handoff");
+    expect(reportContract).toContain("## Confirmed facts");
+    expect(reportContract).toContain("## Unexplained gaps");
+    expect(reportContract).toContain("## Receiver protocol");
+  });
+
   it("accepts one canonical graph and rejects disconnected or cyclic graphs", () => {
     const valid = parseSptDocument(v3Document("C:\\workspace"));
     expect(valid.checks.schema_valid).toBe(true);

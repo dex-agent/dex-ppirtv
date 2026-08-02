@@ -27,6 +27,9 @@ SPEC.md
 SPRINTS.md
 TASKS.md
 docs/*
+!docs/INDEX.md
+!docs/guides/
+!docs/guides/**
 !docs/contracts/
 !docs/contracts/**
 examples/
