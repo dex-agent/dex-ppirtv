@@ -10,6 +10,96 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
+- Reparo governado do Estacionamento para o piloto semântico: uma ficha já
+  promovida teve status, lifecycle e closure reconciliados sem apagar
+  proveniência. O writer oficial voltou a aceitar capturas e criou três riscos
+  P2 separados para isolamento causal, delta B-A de loops e identidade do
+  score receipt. Um P2 lateral sobre itens terminais nos gatilhos de retomada
+  foi roteado ao owner do writer; o índice passou a 29 itens e valida sem issues.
+
+- Piloto de nao inferioridade do revisor semantico executado em Mini/Sol low
+  A/B e preservado sem rerun cosmetico. A auditoria dos eventos supersedeu o
+  primeiro verde: Mini ARM_A leu tres artefatos do tratamento e houve tres
+  leituras externas ao snapshot. O resultado correto e
+  `causal_comparable=false`, `inconclusive`/`no_promotion`, sem atribuir
+  degradacao causal a candidata. O renderer agora prende receipt, manifesto
+  normalizado, manager terminal, run, summary, oracle e matriz Mini/Sol 4/4;
+  a suite focal passa 57/57. Auditoria lexical detecta violacoes observadas, mas isolamento futuro
+  exige workspace fisicamente separado ou telemetria completa.
+  `src/flow-engine.ts` permaneceu intocado.
+
+- Contrato experimental de não inferioridade do revisor semântico com matriz
+  Mini/Sol low A/B, delta único, fingerprint explícito de ambiente e paths
+  observados, rubrica por eixos e limites de custo separados. O novo gate
+  `validate-spt-semantic-causal-comparison.mjs` acumula falhas independentes em
+  `diagnostics[]` para correção em lote; RED por módulo ausente virou 25/25
+  GREEN e a validação suplementar da CLI estruturada fechou 26/26. O scorer
+  separado de não inferioridade distingue degradação, benefício e inconclusão
+  em sete eixos; as três suítes combinadas passam 33/33. Nenhuma lane,
+  promoção, MCP de produto ou `src/flow-engine.ts` foi acionado.
+
+- Contrato experimental do piloto semantico endurecido para ligar ARM,
+  fixtures, manifesto normalizado, manager terminal e run root exato. A suite
+  focal rejeita manager em execucao, terminal com erro e `artifact_root`
+  cruzado; o piloto v5 autentico permaneceu valido 4/4. O resultado nao foi
+  promovido: score estrito 0/4, reviewer timeout sem decisao semantica e gaps
+  prospectivos de `recoverable`, `candidate_evaluation` e budget permanecem
+  documentados. `src/flow-engine.ts` nao foi tocado.
+
+- Squad local `squad-spt-semantic-admission` com autoria publica de SPT,
+  separacao entre produtor, operador, validator e reviewer, e piloto A/B
+  read-only em Mini/Sol. O forward-test preservou um RED: tres lanes completas
+  ignoraram os fixtures e pontuaram `0/3`, uma expirou e o schema de
+  `benchmark_ok` aceitou completude superficial. A candidata nao foi promovida
+  e o MCP completo permaneceu bloqueado; o proximo corte deve exigir fixture
+  IDs/ARM exatos e terminal fail-fast do reviewer.
+
+- Skill candidata local `dex-ppirtv-validate-spt` para revisar viabilidade
+  semantica depois de `spt_validate`, sem alterar o SPT ou o runtime MCP. Um
+  forward-test cego com tres fixtures estruturalmente validas aceitou o caso
+  feliz e detectou uma ambiguidade material e uma impossibilidade contratual;
+  scorer independente 3/3 e review terminal liberam apenas um futuro Trilho de
+  admissao, mantendo instalacao global bloqueada.
+
+- Experimento isolado `EvaluatePhaseGate` sob `src/vnext/phase-gate/`, sem
+  consumidor de producao e sem alterar `src/flow-engine.ts`. O slice compara
+  decisoes semanticas com o oraculo atual, cobre blockers de fase e fechamento
+  terminal, impede escalada por historico/fingerprint ausente, recupera resumo
+  serializado por port read-only e preserva rollback pela remocao integral da
+  fronteira. O microbenchmark mede core e oraculo separadamente e nao representa
+  ganho de velocidade do produto.
+
+- Decisão arquitetural pública para a vNext do PPIRTV: compara evolução do
+  runtime atual, núcleo compatível isolado e greenfield; preserva a versão
+  funcional como oráculo/rollback, define gate proporcional para novo
+  repositório, separa fases visíveis de evidências exclusivas e propõe um
+  primeiro experimento `EvaluatePhaseGate` side-by-side. O mapa também registra
+  a capacidade parcial existente de escalada de loops e a lacuna de cobertura
+  percebida entre classes de erro e consumidores, sem implementar produto.
+
+- Catálogo tipado e fail-closed de efeitos MCP para as 32 tools públicas. O
+  `tools/list` agora expõe `readOnlyHint`, `destructiveHint`,
+  `idempotentHint` e `openWorldHint` em todas elas; `runtime_probe` é declarado
+  leitura idempotente de mundo fechado e usa inspeção do adapter que não
+  inicializa `.ppirtv` nem o ledger; seu receipt declara `mutated=false`. A
+  matriz pelo efeito máximo contém 3 tools
+  somente leitura, 11 aditivas e 18 mutantes: consultas que ainda inicializam o
+  store são declaradas aditivas, evidências que podem substituir o fingerprint
+  de implementação são mutantes e retries terminalmente congelados preservam
+  idempotência. O contrato público explica a fronteira
+  de aprovação headless e proíbe resolver cancelamentos com filtro, proxy,
+  wrapper ou renomeação exclusiva de laboratório. Testes e smoke validam o
+  transporte real das annotations; a dívida comum de inicialização em APIs de
+  leitura do store permanece explícita para Trilho próprio.
+
+- Snapshot público e imutável do sistema em 2026-08-03, com identidade Git e
+  runtime, CRG sincronizado, limites do benchmark Compact v3, mapa da
+  arquitetura atual e caminho sequenciado para a próxima versão. Um contrato
+  público de versionamento agora separa versão declarada, release comprovada,
+  versões de contrato e versões documentais; `0.2.0` é somente candidata
+  condicional até a auditoria de compatibilidade, sem bump, tag ou release
+  neste corte.
+
 - Gate `PPIRTV-FLOW-ENGINE-RESPONSIBILITY-BALANCE` para toda edição de
   `src/flow-engine.ts`: o fiscal read-only classifica o diff como `SHRINK`,
   `CONTAIN`, `EXCEPTION` ou `FAIL`, vincula a declaração a blobs Git, rejeita
@@ -48,6 +138,14 @@ escopo, evidencias e lacunas quando existirem.
   execução oficial.
 
 ### Corrigido
+
+- O fiscal de higiene V2 deixou de classificar o índice histórico
+  `conhecimento/INDEX.md` como rota V2 rejeitada. A detecção agora reconhece
+  como candidato L3 apenas uma rota aninhada sob `conhecimento/`, mantendo
+  bloqueio para traversal, URI, anchor, backslash e sufixo invalido em rotas V2 L2/L3. O RED e
+  o GREEN cobrem parser e `hygiene_scan`; corpora de memória permanecem
+  intocados e processos MCP persistentes ainda exigem rebuild/reconexão para
+  carregar o reparo.
 
 - `spt_path` agora tem ownership acionavel de ponta a ponta: `spt_validate`,
   `goal_start` e `ppirtv_trace` devolvem `code`, `owner`, `field`, `reason`,
@@ -223,8 +321,14 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Compatibilidade e riscos
 
-- Nao houve bump de versao, tag, release ou breaking change declarado; a
-  versao permanece a confirmar.
+- O patch isolado de annotations MCP é candidato a mudança `MINOR` aditiva,
+  mas a auditoria do conteúdo acumulado em `Unreleased` encontrou risco
+  `MAJOR` por contratos anteriores de SPT v3, defaults e fechamento. Nenhum
+  bump, tag ou release foi autorizado; o owner de release ainda deve decidir
+  migração compatível ou declaração explícita da quebra.
+- Nao houve bump de versao, tag ou release. O risco de incompatibilidade
+  acumulada permanece explícito e a versão continua a confirmar pelo owner de
+  release; nenhuma quebra foi publicada por este Trilho.
 - Locks vivos de outro processo e locks estaveis malformados continuam
   fail-closed.
 - A recuperacao simultanea de lock morto possui risco TOCTOU vizinho fora

@@ -6,6 +6,7 @@ import process from "node:process";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport, getDefaultEnvironment } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { REQUIRED_TOOLS } from "../dist/domain.js";
+import { TOOL_EFFECTS } from "../dist/mcp/tool-effects.js";
 
 const args = parseArgs(process.argv.slice(2));
 const repoRoot = path.resolve(import.meta.dirname, "..");
@@ -73,6 +74,20 @@ try {
   const listed = await client.listTools();
   const names = listed.tools.map((tool) => tool.name).sort();
   const missing = REQUIRED_TOOLS.filter((tool) => !names.includes(tool));
+  const unexpected = names.filter((tool) => !REQUIRED_TOOLS.includes(tool));
+  const annotationMismatches = listed.tools.flatMap((tool) => {
+    const expected = TOOL_EFFECTS[tool.name]?.annotations;
+    return expected && JSON.stringify(tool.annotations) === JSON.stringify(expected)
+      ? []
+      : [{ name: tool.name, expected: expected ?? null, observed: tool.annotations ?? null }];
+  });
+  const toolEffects = {
+    ok: missing.length === 0 && unexpected.length === 0 && annotationMismatches.length === 0,
+    annotations_present: listed.tools.filter((tool) => tool.annotations !== undefined).length,
+    missing_annotations: listed.tools.filter((tool) => tool.annotations === undefined).map((tool) => tool.name),
+    mismatches: annotationMismatches,
+    runtime_probe: listed.tools.find((tool) => tool.name === "runtime_probe")?.annotations ?? null
+  };
   const runtimeProbe = names.includes("runtime_probe")
     ? resultOf(await client.callTool({ name: "runtime_probe", arguments: {} }))
     : null;
@@ -89,12 +104,16 @@ try {
   const flowSmoke = args.flowSmoke && missing.length === 0 ? await runFlowSmoke(client, flowWorkspace) : null;
   const result = {
     ok: missing.length === 0
+      && unexpected.length === 0
+      && toolEffects.ok
       && (!args.flowSmoke || Boolean(flowSmoke?.archived))
       && (!args.failOnConfigConflict || !configAudit?.conflicts.length)
       && (!args.requireMemoryV2 || (memoryV2Requirement.ok && memoryV2Capability?.ok === true)),
     count: names.length,
     missing,
+    unexpected,
     required: REQUIRED_TOOLS,
+    tool_effects: toolEffects,
     server: serverSummary(server, serverSource, serverName),
     runtime_server: workspacePlaceholder.applied ? serverSummary(runtimeServer, "effective", serverName) : undefined,
     workspace_placeholder: workspacePlaceholder.summary,

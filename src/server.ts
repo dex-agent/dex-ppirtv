@@ -27,6 +27,8 @@ import { PpirtvStore } from "./store.js";
 import { resolveMemoryWriterConfigFromEnv } from "./config.js";
 import { PPIRTV_TRACE_SELECTOR_KEYS, tracePpirtvArtifact } from "./provenance-trace.js";
 import { SptPathContractError } from "./spt-path-diagnostics.js";
+import { registerPpirtvTool } from "./mcp/tool-effects.js";
+import { inspectRuntimeLayoutReadOnly } from "./mcp/runtime-layout.js";
 
 const ANY_PHASES = [...PHASES, ...COMPACT_PHASES] as const;
 
@@ -131,15 +133,17 @@ function registerTools(
     })
     .strict();
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "runtime_probe",
     {
       description: "Return a read-only runtime identity receipt for launcher, workspace and memory-writer activation checks.",
       inputSchema: {}
     },
     async () => toolResponse(async () => {
-      const layout = await store.runtimeLayoutStatus();
+      const layout = inspectRuntimeLayoutReadOnly(store.runtimePaths);
       return {
+        mutated: false,
         project_root: layout.project_root,
         ppirtv_home: layout.ppirtv_home,
         memory_writer_runtime: memoryWriter.profile === "v2"
@@ -169,7 +173,8 @@ function registerTools(
       };
     })
   );
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "ppirtv_trace",
     {
       description:
@@ -197,7 +202,8 @@ function registerTools(
     verdict_gold_mining: z.array(z.string()).optional()
   });
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "flow_create",
     {
       description:
@@ -219,16 +225,18 @@ function registerTools(
       })
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "flow_status",
     {
-      description: "Return the current state of a flow by flow_id.",
+      description: "Return the current state of a flow by flow_id. In an incomplete runtime layout, the underlying store may add missing runtime directories and an empty ledger before reading; tools/list declares that maximum additive effect.",
       inputSchema: { flow_id: z.string().min(1) }
     },
     async ({ flow_id }) => toolResponse(() => engine.status(flow_id))
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "flow_advance",
     {
       description: "Advance a flow only when the current phase gate passes.",
@@ -242,7 +250,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.advance(args))
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "flow_return",
     {
       description: "Return a flow to a previous phase with reason and optional evidence.",
@@ -257,7 +266,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.returnTo(args))
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "gate_check",
     {
       description: "Check the PPIRTV gate for the current or requested phase.",
@@ -271,7 +281,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.checkGate(args))
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "meeting_open",
     {
       description: "Open a divergent, convergent or transversal meeting artifact linked to a flow.",
@@ -288,7 +299,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.openMeeting(args))
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "meeting_record",
     {
       description: "Record structured meeting outputs.",
@@ -314,10 +326,11 @@ function registerTools(
     async (args) => toolResponse(() => engine.recordMeeting(args))
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "evidence_attach",
     {
-      description: "Attach evidence to a flow without writing secrets to the ledger.",
+      description: "Attach evidence to a flow without writing secrets to the ledger. The operation can also replace the implementation fingerprint used by review-coherence gates, so tools/list classifies it as state-changing.",
       inputSchema: {
         flow_id: z.string().min(1),
         kind: z.string().default("note"),
@@ -334,10 +347,11 @@ function registerTools(
     async (args) => toolResponse(() => engine.attachEvidence(args))
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "checklist_render",
     {
-      description: "Render only the current phase by default. The visual-only receipt returns that phase's items, blockers and next step; use detail:'full' only for principles, the canonical workflow and complete governance arrays.",
+      description: "Render only the current phase by default. The visual-only receipt returns that phase's items, blockers and next step; use detail:'full' only for principles, the canonical workflow and complete governance arrays. In an incomplete runtime layout, the underlying store may add missing runtime directories and an empty ledger before reading.",
       inputSchema: {
         flow_id: z.string().min(1),
         detail: z.enum(["visual-only", "lean", "compact", "full"]).optional()
@@ -346,7 +360,8 @@ function registerTools(
     async ({ flow_id, detail }) => toolResponse(() => engine.renderChecklist(flow_id, detail ?? "visual-only"))
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "verdict_record",
     {
       description: "Record a legacy/advisory flow verdict. Official GOAL/SPT flows reject this route and require goal_verdict so fiscal evidence and review attribution cannot be bypassed.",
@@ -367,7 +382,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.recordVerdict(args), { flow_id: typeof args.flow_id === "string" ? args.flow_id : undefined })
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "hygiene_scan",
     {
       description: "Scan for clean-house findings and apply the barata nunca esta sozinha rule.",
@@ -376,7 +392,8 @@ function registerTools(
     async ({ flow_id }) => toolResponse(() => engine.hygieneScan(flow_id))
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "flow_archive",
     {
       description: "Archive a flow after verdict or with an explicit reason.",
@@ -385,7 +402,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.archiveFlow(args))
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "spt_validate",
     {
       description: "Validate an explicit SPT v2 or v3 contract without echoing sensitive contents. sprinter owns the canonical SPT file; the executor_orchestrator supplies spt_path and repeats the corrected call. The validator blocks and returns diagnostic {code, owner, field, reason, next_required_action, recoverable}; it never edits the SPT. V2 stays readable for history/recovery; new execution requires v3.",
@@ -398,19 +416,21 @@ function registerTools(
     async (args) => toolResponse(() => engine.validateSpt(args))
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "goal_start",
     {
-      description: "Start or reuse an official GOAL/SPT flow. The executor_orchestrator must resend the same canonical spt_path returned by spt_validate; goal_start revalidates it and atomically persists goal_binding.envelope.spt_path before an official flow can proceed. Invalid input returns owner and next_required_action; internal persistence defects belong to dex_ppirtv. Omitted flow_role means execution; new execution requires SPT v3, while exact v2 retry and explicit recovery/reconciliation remain supported. Default mode is canonical 'compact'; 'lean' is its input alias and 'full' must be requested explicitly.",
+      description: "Start or reuse an official GOAL/SPT flow. The executor_orchestrator must resend the same canonical spt_path returned by spt_validate; goal_start revalidates it and atomically persists goal_binding.envelope.spt_path before an official flow can proceed. Invalid input returns owner and next_required_action; internal persistence defects belong to dex_ppirtv. Omitted flow_role means execution; new execution requires SPT v3, while exact v2 retry and explicit recovery/reconciliation remain supported. A reuse can update last_seen_at and append goal_reused, so the tool does not promise MCP idempotence. Default mode is canonical 'compact'; 'lean' is its input alias and 'full' must be requested explicitly.",
       inputSchema: goalEnvelopeSchema
     },
     async (args) => toolResponse(() => engine.startGoal(args))
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "goal_status",
     {
-      description: "Return GOAL execution status. Default detail is 'lean' for the actionable core under 5KB; use detail:'full' only for the complete diagnostic.",
+      description: "Return GOAL execution status. Default detail 'lean' is a read-only actionable core under 5KB; compact/full can append before-phase recall receipts, so tools/list declares the maximum additive effect. Use detail:'full' only for the complete diagnostic.",
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
@@ -420,10 +440,11 @@ function registerTools(
     async (args) => toolResponse(() => engine.goalStatus({ ...args, detail: args.detail ?? "lean" }), args)
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "ppirtv_checkout",
     {
-      description: "Return PPIRTV closing accountability. Default detail is 'lean'; use detail:'full' only for complete accountability arrays.",
+      description: "Return PPIRTV closing accountability. Default detail 'lean' is read-only; compact/full can append before-phase recall receipts through goal_status, so tools/list declares the maximum additive effect. Use detail:'full' only for complete accountability arrays.",
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
@@ -433,7 +454,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.goalCheckout({ ...args, detail: args.detail ?? "lean" }), args)
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "goal_resume",
     {
       description: "Resume an existing GOAL/SPT flow by flow_id or idempotency_key without creating a duplicate.",
@@ -446,7 +468,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.resumeGoal(args), args)
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "goal_gate_check",
     {
       description: "Run and persist an official GOAL phase gate by flow_id or idempotency_key. Status receipt defaults to lean; use detail:'full' only for diagnostics.",
@@ -462,10 +485,11 @@ function registerTools(
     async (args) => toolResponse(() => engine.goalGateCheck(args), args)
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "goal_gate_preflight",
     {
-      description: "Preview the exact GOAL gate requirements without persisting state, writing ledger events, incrementing counters or triggering recall.",
+      description: "Preview the exact GOAL gate requirements without persisting domain state, gate events, counters or recall. In an incomplete runtime layout, the underlying store may add missing directories and an empty ledger once, so tools/list declares the maximum additive effect.",
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
@@ -477,7 +501,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.goalGatePreflight(args), args)
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "goal_advance",
     {
       description: "Advance an official GOAL flow only after a real persisted gate passes. During implementation, declare intentional removals in both provided.changed_files and provided.deleted_files; an absent changed file without deleted_files fails closed. Status receipt defaults to lean; recall_consumption can explicitly confirm cited recall references.",
@@ -497,7 +522,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.goalAdvance(args), args)
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "goal_progress_record",
     {
       description: "Record sanitized, idempotent work progress for an official GOAL without turning progress into evidence or a fiscal blocker.",
@@ -517,7 +543,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.recordGoalProgress(args), args)
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "goal_meeting_open",
     {
       description: "Open a live GOAL meeting linked to a flow without granting material credit yet.",
@@ -536,7 +563,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.goalMeetingOpen(args))
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "goal_meeting_add_turn",
     {
       description: "Add an auditable turn to a live GOAL meeting before it is closed.",
@@ -554,10 +582,11 @@ function registerTools(
     async (args) => toolResponse(() => engine.goalMeetingAddTurn(args), { flow_id: args.flow_id, tool: "goal_meeting_add_turn" })
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "goal_meeting_close",
     {
-      description: "Close and freeze a GOAL meeting result. Only meeting-owned blockers are accepted; downstream impact requires an exact later meeting_id reference.",
+      description: "Close and freeze a GOAL meeting result. Only meeting-owned blockers are accepted; downstream impact requires an exact later meeting_id reference. Repeating the same frozen decision is an idempotent retry.",
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
@@ -588,7 +617,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.goalMeetingClose(args), { flow_id: args.flow_id, tool: "goal_meeting_close" })
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "mm_memory_mining",
     {
       description: "Classify and automatically write valid GOAL memory candidates, reporting every action. The ordinary call needs only flow_id when the human learning text states project/local, global/cross-project, both, or a recognizable theme; v2_* fields are advanced overrides.",
@@ -609,7 +639,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.mineMemory(args))
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "mm_memory_candidate_resolve",
     {
       description: "Resolve strong GOAL memory candidates with a traceable destination before retrying goal_verdict. target_scope selects only the memory destination inside the runtime-bound workspace; it never selects or changes the workspace. Promoting an unresolved V2 candidate requires explicit target_scope, density and tags; deep also requires owner_skill. A classified V2 candidate reuses its complete destination and metadata, and conflicting overrides fail before mutation.",
@@ -629,7 +660,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.resolveMemoryCandidates(args))
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "mm_pipeline_run",
     {
       description: "Create and run multiple PPIRTV flows sequentially with gates, verdicts and optional memory mining.",
@@ -642,10 +674,11 @@ function registerTools(
     async (args) => toolResponse(() => engine.runPipeline(args))
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "evidence_add",
     {
-      description: "Add traceable evidence without recording secret-like payloads. For SPT v3, criterion_proof binds the observed value to one task, requirement, criterion and evidence requirement; expected/operator are derived from the bound SPT and cannot be supplied by the caller. In criterion_proof, environment is a root sibling of revision_set; each strict revision_set item accepts only workspace, optional head, and paths. A structured code_review attestation must cite the exact implementation_fingerprint observed by the reviewer; when reviewed_implementation_fingerprint is supplied, kind must be code_review or review and satisfies must contain diff_reviewed, barata_scan, or regression_risks, otherwise the request fails with REVIEW_ATTESTATION_CLAIMS_REQUIRED. The server rejects stale snapshots and verdict text alone never satisfies review_required. Status receipt defaults to lean; use detail:'full' only for a complete diagnostic.",
+      description: "Add traceable evidence without recording secret-like payloads. The operation can replace the implementation fingerprint used by review-coherence gates, so tools/list classifies its maximum effect as state-changing. For SPT v3, criterion_proof binds the observed value to one task, requirement, criterion and evidence requirement; expected/operator are derived from the bound SPT and cannot be supplied by the caller. In criterion_proof, environment is a root sibling of revision_set; each strict revision_set item accepts only workspace, optional head, and paths. A structured code_review attestation must cite the exact implementation_fingerprint observed by the reviewer; when reviewed_implementation_fingerprint is supplied, kind must be code_review or review and satisfies must contain diff_reviewed, barata_scan, or regression_risks, otherwise the request fails with REVIEW_ATTESTATION_CLAIMS_REQUIRED. The server rejects stale snapshots and verdict text alone never satisfies review_required. Status receipt defaults to lean; use detail:'full' only for a complete diagnostic.",
       inputSchema: {
         flow_id: z.string().min(1),
         kind: z.string().default("goal_evidence"),
@@ -665,7 +698,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.addGoalEvidence(args), args)
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "goal_verdict",
     {
       description: "Record a GOAL/SPT verdict. Positive conclusions require traceable evidence_ids. review_artifact_path and review_findings are metadata only; review_required needs structured code_review evidence bound to the current implementation fingerprint. A positive verdict does not complete an official GOAL: inspect phase_advance_allowed and closure_blockers, then call goal_advance for the guarded terminal transition.",
@@ -689,7 +723,8 @@ function registerTools(
     async (args) => toolResponse(() => engine.goalVerdict(args), args)
   );
 
-  server.registerTool(
+  registerPpirtvTool(
+    server,
     "goal_regress",
     {
       description: "Persist an official GOAL fiscal regress tied to a meeting or blocker.",

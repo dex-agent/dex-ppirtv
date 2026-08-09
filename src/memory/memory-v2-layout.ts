@@ -48,11 +48,17 @@ export function inspectCanonicalV2Routes(markdownLine: string): CanonicalV2Route
     const route = canonicalV2Route(href);
     if (route) {
       routes.set(`${route.layer}:${route.relativePath}`, route);
-    } else if (/(?:^|[\\/])(?:memorias|conhecimento)[\\/]/i.test(href)) {
+    } else if (looksLikeV2RouteCandidate(href)) {
       rejectedHrefs.push(href);
     }
   }
   return { routes: [...routes.values()], rejectedHrefs };
+}
+
+function looksLikeV2RouteCandidate(href: string): boolean {
+  if (/(?:^|[\\/])memorias[\\/]/i.test(href)) return true;
+  const knowledge = href.match(/(?:^|[\\/])conhecimento[\\/]([\s\S]*)/i);
+  return /[\\/]/.test(knowledge?.[1] ?? "");
 }
 
 export function canonicalV2Route(href: string): CanonicalV2Route | null {

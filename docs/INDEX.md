@@ -40,10 +40,27 @@ state under `.agents/` is outside the public documentation boundary.
 - [FlowEngine evolutionary architecture](architecture/FLOW_ENGINE_EVOLUTION.md)
   — mandatory edit gate, living extraction map, machine ledger and safe seam
   sequence for the monolithic facade.
+- [System snapshot and evolution map — 2026-08-03](architecture/SYSTEM_SNAPSHOT_AND_EVOLUTION_MAP_2026-08-03.md)
+  — dated, evidence-bound view of the whole system, measured bottlenecks,
+  version clocks and path to the next release.
+- [PPIRTV vNext architecture decision — 2026-08-03](architecture/PPIRTV_VNEXT_ARCHITECTURE_DECISION_2026-08-03.md)
+  — compares incremental evolution, an isolated compatible core and a
+  greenfield MCP, with recovery and repository-isolation gates.
+- [Product versioning contract](contracts/PRODUCT_VERSIONING_CONTRACT.md) —
+  authoritative local rules for package, release, contract and document
+  versions.
+- [MCP tool effects contract](contracts/MCP_TOOL_EFFECTS_CONTRACT.md) —
+  truthful annotations for all public tools, fail-closed catalog rules and the
+  boundary between dex-PPIRTV and headless host approval.
 
 ## Architecture
 
 - [Architecture index](architecture/INDEX.md).
+- [System snapshot and evolution map — 2026-08-03](architecture/SYSTEM_SNAPSHOT_AND_EVOLUTION_MAP_2026-08-03.md)
+  — immutable map bound to Git, runtime, CRG and benchmark evidence.
+- [PPIRTV vNext architecture decision — 2026-08-03](architecture/PPIRTV_VNEXT_ARCHITECTURE_DECISION_2026-08-03.md)
+  — target architecture, comparative decision and first side-by-side
+  conformance experiment.
 - [FlowEngine evolution ledger](architecture/flow-engine-evolution.json) —
   Git-blob-bound declarations consumed by the read-only fiscal.
 
@@ -55,6 +72,11 @@ state under `.agents/` is outside the public documentation boundary.
   bridge between the public workflow and runtime tools.
 - [Principles synchronization contract](contracts/PRINCIPLES_SYNC_CONTRACT.md)
   — relationship between canonical principles and the repository copy.
+- [Product versioning contract](contracts/PRODUCT_VERSIONING_CONTRACT.md) —
+  SemVer classification, release authority and compatibility gate.
+- [MCP tool effects contract](contracts/MCP_TOOL_EFFECTS_CONTRACT.md) —
+  read-only, additive and state-changing effects plus actionable host-cancel
+  diagnostics.
 - [ADR 0007: shared principles memory](adr/0007-shared-principles-memory.md).
 
 ## Publication rule

@@ -26,6 +26,53 @@ afterEach(async () => {
 });
 
 describe("PPIRTV MCP stdio server", () => {
+  it("keeps runtime_probe read-only before the runtime layout exists", async () => {
+    await connectClient();
+
+    const runtimeRoot = path.join(mcpWorkspace, ".ppirtv");
+    await expect(access(runtimeRoot)).rejects.toMatchObject({ code: "ENOENT" });
+    const before = await readdir(mcpWorkspace);
+
+    const response = await client!.callTool({ name: "runtime_probe", arguments: {} });
+
+    expect(resultOf(response)).toMatchObject({
+      mutated: false,
+      project_root: mcpWorkspace,
+      ppirtv_home: runtimeRoot
+    });
+    await expect(access(runtimeRoot)).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await readdir(mcpWorkspace)).toEqual(before);
+  });
+
+  it.each([
+    ["flow_status", { flow_id: "flow_missing" }],
+    ["checklist_render", { flow_id: "flow_missing" }],
+    ["goal_gate_preflight", { flow_id: "flow_missing" }]
+  ])("declares %s additive because the current store initializes a missing runtime once", async (name, args) => {
+    await connectClient();
+
+    const runtimeRoot = path.join(mcpWorkspace, ".ppirtv");
+    await expect(access(runtimeRoot)).rejects.toMatchObject({ code: "ENOENT" });
+    const tool = (await client!.listTools()).tools.find((candidate) => candidate.name === name);
+    expect(tool?.annotations).toEqual({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    });
+
+    const first = await client!.callTool({ name, arguments: args });
+    expect(resultOf(first).error).toBeDefined();
+    const treeAfterFirstCall = (await readdir(runtimeRoot, { recursive: true })).sort();
+    expect(treeAfterFirstCall).toContain("ledger.ndjson");
+    const ledgerAfterFirstCall = await readFile(path.join(runtimeRoot, "ledger.ndjson"), "utf8");
+
+    const second = await client!.callTool({ name, arguments: args });
+    expect(resultOf(second).error).toBeDefined();
+    expect((await readdir(runtimeRoot, { recursive: true })).sort()).toEqual(treeAfterFirstCall);
+    expect(await readFile(path.join(runtimeRoot, "ledger.ndjson"), "utf8")).toBe(ledgerAfterFirstCall);
+  });
+
   it("starts and lists tools, resources and prompts deterministically", async () => {
     await connectClient();
 
@@ -35,6 +82,20 @@ describe("PPIRTV MCP stdio server", () => {
     const prompts = await client!.listPrompts();
 
     expect(tools.tools.map((tool) => tool.name)).toEqual([...REQUIRED_TOOLS]);
+    expect(tools.tools.every((tool) => tool.annotations !== undefined)).toBe(true);
+    const runtimeProbeTool = tools.tools.find((tool) => tool.name === "runtime_probe");
+    expect(runtimeProbeTool?.annotations).toEqual({
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    });
+    const flowAdvanceTool = tools.tools.find((tool) => tool.name === "flow_advance");
+    expect(flowAdvanceTool?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      openWorldHint: false
+    });
     const flowCreateTool = tools.tools.find((tool) => tool.name === "flow_create");
     const flowCreateProperties = (flowCreateTool?.inputSchema as { properties?: Record<string, Record<string, unknown>> }).properties;
     expect(flowCreateTool?.description).toContain("legacy/advisory");
@@ -48,9 +109,28 @@ describe("PPIRTV MCP stdio server", () => {
     expect(goalStartTool?.description).toContain("new execution requires SPT v3");
     expect(goalStartTool?.description).toContain("same canonical spt_path");
     expect(goalStartTool?.description).toContain("dex_ppirtv");
+    expect(goalStartTool?.description).toContain("does not promise MCP idempotence");
+    expect(goalStartTool?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: false
+    });
     expect(sptValidateTool?.description).toContain("sprinter owns");
     expect(sptValidateTool?.description).toContain("executor_orchestrator");
     expect(sptValidateTool?.description).toContain("next_required_action");
+    const goalStatusTool = tools.tools.find((tool) => tool.name === "goal_status");
+    const checkoutTool = tools.tools.find((tool) => tool.name === "ppirtv_checkout");
+    expect(goalStatusTool?.description).toContain("maximum additive effect");
+    expect(checkoutTool?.description).toContain("maximum additive effect");
+    expect(goalStatusTool?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: false, idempotentHint: true });
+    expect(checkoutTool?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: false, idempotentHint: true });
+    const evidenceAttachTool = tools.tools.find((tool) => tool.name === "evidence_attach");
+    const flowArchiveTool = tools.tools.find((tool) => tool.name === "flow_archive");
+    const goalMeetingCloseTool = tools.tools.find((tool) => tool.name === "goal_meeting_close");
+    expect(evidenceAttachTool?.annotations).toMatchObject({ destructiveHint: true, idempotentHint: false });
+    expect(flowArchiveTool?.annotations).toMatchObject({ destructiveHint: true, idempotentHint: true });
+    expect(goalMeetingCloseTool?.annotations).toMatchObject({ destructiveHint: true, idempotentHint: true });
     const goalVerdictTool = tools.tools.find((tool) => tool.name === "goal_verdict");
     expect(goalVerdictTool?.description).toContain("does not complete");
     expect(goalVerdictTool?.description).toContain("goal_advance");
@@ -66,6 +146,8 @@ describe("PPIRTV MCP stdio server", () => {
     expect(evidenceAddTool?.description).toContain("expected/operator are derived from the bound SPT");
     expect(evidenceAddTool?.description).toContain("environment is a root sibling of revision_set");
     expect(evidenceAddTool?.description).toContain("REVIEW_ATTESTATION_CLAIMS_REQUIRED");
+    expect(evidenceAddTool?.description).toContain("state-changing");
+    expect(evidenceAddTool?.annotations).toMatchObject({ destructiveHint: true, idempotentHint: false });
     const criterionProofSchema = evidenceAddProperties?.criterion_proof as {
       required?: string[];
       properties?: Record<string, unknown>;

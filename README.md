@@ -54,6 +54,18 @@ stable public documentation.
 - [Cross-repository problem report contract](docs/contracts/CROSS_REPO_PROBLEM_REPORT_CONTRACT.md)
   defines the reproducible and sanitized handoff expected from consumer
   repositories.
+- [System snapshot and evolution map — 2026-08-03](docs/architecture/SYSTEM_SNAPSHOT_AND_EVOLUTION_MAP_2026-08-03.md)
+  records the measured architecture, performance boundary, current version
+  state and sequenced route toward the next release.
+- [PPIRTV vNext architecture decision — 2026-08-03](docs/architecture/PPIRTV_VNEXT_ARCHITECTURE_DECISION_2026-08-03.md)
+  compares evolving the current engine, an isolated compatible core and a
+  greenfield MCP while keeping the working runtime as conformance oracle.
+- [Product versioning contract](docs/contracts/PRODUCT_VERSIONING_CONTRACT.md)
+  separates package, release, contract and document versions and defines the
+  compatibility gate before any bump or tag.
+- [MCP tool effects contract](docs/contracts/MCP_TOOL_EFFECTS_CONTRACT.md)
+  explains the truthful annotations published for all 32 tools, the headless
+  approval boundary and actionable recovery when a host cancels a call.
 
 The live MCP `tools/list` schema is authoritative for invoking tools. Stable
 documents explain workflow and invariants; they do not replace dynamic schemas.

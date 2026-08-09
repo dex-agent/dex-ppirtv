@@ -75,6 +75,27 @@ describe("mixed V1 and V2 curated recall", () => {
     ]);
   });
 
+  it("distinguishes legacy knowledge indexes from malformed V2 route candidates", () => {
+    const legacy = inspectCanonicalV2Routes(
+      "- LEGACY -> [Local](memoria.md) | [L3](conhecimento/INDEX.md) ^legacy"
+    );
+    expect(legacy).toEqual({ routes: [], rejectedHrefs: [] });
+
+    for (const href of [
+      "memorias/../invalida.md",
+      "memorias/invalida.md#anchor",
+      "https://example.invalid/memorias/invalida.md",
+      "memorias\\invalida.md",
+      "conhecimento/../invalida/README.md",
+      "conhecimento/invalida/README.md#anchor",
+      "https://example.invalid/conhecimento/invalida/README.md",
+      "conhecimento\\invalida\\README.md",
+      "conhecimento/invalida/README.md.bak"
+    ]) {
+      expect(inspectCanonicalV2Routes(`- INVALIDA -> [Destino](${href})`).rejectedHrefs).toEqual([href]);
+    }
+  });
+
   it("rejects duplicate governed front-matter keys", () => {
     expect(parseV2UnitMetadata("---\nimplementation_version: v2\nlayer: L2\nlayer: L3\nslug: duplicada\n---\n# Duplicada\n")).toBeNull();
   });

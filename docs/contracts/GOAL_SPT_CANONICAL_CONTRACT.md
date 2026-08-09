@@ -14,7 +14,8 @@ o objetivo humano visivel, mas nao inicia execucao PPIRTV.
 
 `/GOAL` PPIRTV so esta ativo depois de uma chamada real bem-sucedida para a
 tool oficial `goal_start`. Texto do modelo, checklist manual ou chamada a tools
-antigas nao substituem `goal_start`.
+antigas nao substituem `goal_start`. Valide a semântica do SPT com a
+`$dex-ppirtv-validate-spt` antes do `goal_start`
 
 ## Tools oficiais
 
@@ -46,7 +47,8 @@ substituto silencioso das tools oficiais de `/GOAL`.
 GOAL oficial e nao recebe `mode`. Sua resposta usa recibo lean por padrao, com
 `advisory=true` e `official_goal=false`; `detail:"full"` preserva o payload
 historico apenas para compatibilidade. Pedido de GOAL oficial continua seguindo
-`spt_validate -> goal_start`.
+`spt_validate -> goal_start`. Valide a semântica do SPT com a
+`$dex-ppirtv-validate-spt` antes do `goal_start`
 
 As wrappers vivas `goal_gate_check`, `goal_advance`, `goal_meeting_open` e
 `goal_meeting_add_turn`/`goal_meeting_close` encapsulam explicitamente as tools

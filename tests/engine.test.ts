@@ -610,7 +610,7 @@ describe("PPIRTV flow engine", () => {
     );
   });
 
-  it("keeps goal_resume working for official GOAL flows", async () => {
+  it("records every goal_resume retry because resume is state-changing and non-idempotent", async () => {
     const workspace = path.join(tempRoot, "workspace-goal-resume-official");
     const sptPath = await writeFakeSpt(workspace, "Retomar GOAL oficial");
     const started = await engine.startGoal({
@@ -624,13 +624,19 @@ describe("PPIRTV flow engine", () => {
       source: "dex-code"
     });
 
-    const resumed = await engine.resumeGoal({ flow_id: started.flow_id as string, note: "retomada oficial" });
+    const flowId = started.flow_id as string;
+    const resumed = await engine.resumeGoal({ flow_id: flowId, note: "retomada oficial" });
+    await engine.resumeGoal({ flow_id: flowId, note: "retomada oficial" });
+    const persisted = await engine.store.loadFlow(flowId);
+    const ledger = await engine.store.readLedger(flowId);
 
     expect(resumed).toMatchObject({
       flow_id: started.flow_id,
       resumed: true,
       goal_envelope: expect.objectContaining({ idempotency_key: "dex-code:test-goal-resume-official" })
     });
+    expect(persisted.history.filter((event) => event.type === "goal_resumed")).toHaveLength(2);
+    expect(ledger.filter((event) => event.type === "goal_resumed")).toHaveLength(2);
   });
 
   it("does not promote unknown parking items to gold by default", async () => {
@@ -2492,6 +2498,50 @@ describe("PPIRTV flow engine", () => {
         escalation: { active: true, level: "convergence_transversal", threshold: 3 }
       }
     });
+  });
+
+  it("persists a refreshed implementation fingerprint through both evidence routes", async () => {
+    const { flowId, workspace } = await startGoalWithEvidence(
+      "dex-code:test-evidence-refreshes-fingerprint",
+      "Provar efeito máximo das rotas de evidência"
+    );
+    const relativeTarget = "src/tool-effects-target.ts";
+    const target = path.join(workspace, relativeTarget);
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, "export const revision = 1;\n", "utf8");
+    await engine.updateFlowFacts(flowId, { changed_files: [relativeTarget] });
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalAdvance({ flow_id: flowId });
+    await engine.goalGateCheck({ flow_id: flowId, persist: true });
+    const staleFingerprint = (await engine.store.loadFlow(flowId)).implementation_fingerprint;
+    expect(staleFingerprint).toBe(
+      await fingerprintReviewedImplementation(workspace, [relativeTarget], process.platform)
+    );
+
+    await writeFile(target, "export const revision = 2;\n", "utf8");
+    await engine.attachEvidence({
+      flow_id: flowId,
+      kind: "note",
+      title: "Evidence attach refresh"
+    });
+    const afterAttach = await engine.store.loadFlow(flowId);
+    expect(afterAttach.implementation_fingerprint).toBe(
+      await fingerprintReviewedImplementation(workspace, [relativeTarget], process.platform)
+    );
+    expect(afterAttach.implementation_fingerprint).not.toBe(staleFingerprint);
+
+    const attachFingerprint = afterAttach.implementation_fingerprint;
+    await writeFile(target, "export const revision = 3;\n", "utf8");
+    await engine.addGoalEvidence({
+      flow_id: flowId,
+      kind: "goal_evidence",
+      title: "Evidence add refresh"
+    });
+    const afterAdd = await engine.store.loadFlow(flowId);
+    expect(afterAdd.implementation_fingerprint).toBe(
+      await fingerprintReviewedImplementation(workspace, [relativeTarget], process.platform)
+    );
+    expect(afterAdd.implementation_fingerprint).not.toBe(attachFingerprint);
   });
 
   it("rejects a review fingerprint when no structured review claim is declared", async () => {
@@ -6089,14 +6139,18 @@ describe("PPIRTV flow engine", () => {
   it("T27b goal_status probes Graphify when configured even before goal_advance", async () => {
     const previousGraphifyRecall = process.env.PPIRTV_GRAPHIFY_RECALL;
     process.env.PPIRTV_GRAPHIFY_RECALL = "1";
+    let recallCalls = 0;
     const provider: MemoryGraphProvider = {
-      recall: async (input) => ({
-        flow_id: input.flow_id,
-        phase: input.phase,
-        queried_at: new Date().toISOString(),
-        warnings: [],
-        items: [graphHit(input.question, "checkout accountability", ".agents/PLAN-TASKS/checkout.md", 8)]
-      })
+      recall: async (input) => {
+        recallCalls += 1;
+        return {
+          flow_id: input.flow_id,
+          phase: input.phase,
+          queried_at: new Date().toISOString(),
+          warnings: [],
+          items: [graphHit(input.question, "checkout accountability", ".agents/PLAN-TASKS/checkout.md", 8)]
+        };
+      }
     };
     try {
       const graphEngine = new FlowEngine(new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }), new MemoryLibrarian(tempRoot, { graphProvider: provider }));
@@ -6104,6 +6158,9 @@ describe("PPIRTV flow engine", () => {
 
       const status = await graphEngine.goalStatus({ flow_id: flowId });
       const ledger = await graphEngine.store.readLedger(flowId);
+      const flowAfterFirstStatus = await readFile(graphEngine.store.flowPath(flowId), "utf8");
+      const ledgerAfterFirstStatus = await readFile(graphEngine.store.ledgerPath, "utf8");
+      await graphEngine.goalStatus({ flow_id: flowId });
 
       expect(status.librarian_status).toMatchObject({
         graphify: {
@@ -6114,7 +6171,56 @@ describe("PPIRTV flow engine", () => {
         },
         functional_tested: true
       });
-      expect(ledger.map((event) => event.type)).toContain("memory_recalled");
+      expect(ledger.filter((event) => event.type === "memory_recalled")).toHaveLength(1);
+      expect(recallCalls).toBe(1);
+      expect(await readFile(graphEngine.store.flowPath(flowId), "utf8")).toBe(flowAfterFirstStatus);
+      expect(await readFile(graphEngine.store.ledgerPath, "utf8")).toBe(ledgerAfterFirstStatus);
+    } finally {
+      if (previousGraphifyRecall === undefined) {
+        delete process.env.PPIRTV_GRAPHIFY_RECALL;
+      } else {
+        process.env.PPIRTV_GRAPHIFY_RECALL = previousGraphifyRecall;
+      }
+    }
+  });
+
+  it("ppirtv_checkout persists one guarded recall and is idempotent on an identical retry", async () => {
+    const previousGraphifyRecall = process.env.PPIRTV_GRAPHIFY_RECALL;
+    process.env.PPIRTV_GRAPHIFY_RECALL = "1";
+    let recallCalls = 0;
+    const provider: MemoryGraphProvider = {
+      recall: async (input) => {
+        recallCalls += 1;
+        return {
+          flow_id: input.flow_id,
+          phase: input.phase,
+          queried_at: new Date().toISOString(),
+          warnings: [],
+          items: [graphHit(input.question, "checkout retry", ".agents/PLAN-TASKS/checkout-retry.md", 8)]
+        };
+      }
+    };
+    try {
+      const graphEngine = new FlowEngine(
+        new PpirtvStore(tempRoot, { fixtureOnlyNoncanonicalRoot: true }),
+        new MemoryLibrarian(tempRoot, { graphProvider: provider })
+      );
+      const { flowId } = await startGoalWithEvidence(
+        "dex-code:test-graphify-checkout-retry",
+        "Graphify checkout retry",
+        graphEngine
+      );
+
+      await graphEngine.goalCheckout({ flow_id: flowId, detail: "full" });
+      const flowAfterFirstCheckout = await readFile(graphEngine.store.flowPath(flowId), "utf8");
+      const ledgerAfterFirstCheckout = await readFile(graphEngine.store.ledgerPath, "utf8");
+      await graphEngine.goalCheckout({ flow_id: flowId, detail: "full" });
+      const ledger = await graphEngine.store.readLedger(flowId);
+
+      expect(ledger.filter((event) => event.type === "memory_recalled")).toHaveLength(1);
+      expect(recallCalls).toBe(1);
+      expect(await readFile(graphEngine.store.flowPath(flowId), "utf8")).toBe(flowAfterFirstCheckout);
+      expect(await readFile(graphEngine.store.ledgerPath, "utf8")).toBe(ledgerAfterFirstCheckout);
     } finally {
       if (previousGraphifyRecall === undefined) {
         delete process.env.PPIRTV_GRAPHIFY_RECALL;
@@ -7357,6 +7463,26 @@ describe("PPIRTV flow engine", () => {
         "memory:.agents:v2_noncanonical_casing:Memorias",
         "memory:.agents:v2_metadata_invalid:Memorias/invalida.md"
       ]));
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("does not classify a legacy knowledge index as a rejected V2 route", async () => {
+    const originalCwd = process.cwd();
+    const agentsRoot = path.join(tempRoot, ".agents");
+    await mkdir(path.join(agentsRoot, "conhecimento"), { recursive: true });
+    await writeFile(
+      path.join(agentsRoot, "lembranca.md"),
+      "- LEGACY -> [Local](memoria.md) | [L3](conhecimento/INDEX.md) ^legacy\n",
+      "utf8"
+    );
+    await writeFile(path.join(agentsRoot, "memoria.md"), "# Memoria historica\n", "utf8");
+    await writeFile(path.join(agentsRoot, "conhecimento", "INDEX.md"), "# Conhecimento historico\n", "utf8");
+    process.chdir(tempRoot);
+    try {
+      const hygiene = await engine.hygieneScan();
+      expect(hygiene.blocking_findings.map((item) => item.id)).not.toContain("memory:.agents:v2_route_rejected");
     } finally {
       process.chdir(originalCwd);
     }
