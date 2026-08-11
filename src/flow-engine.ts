@@ -3078,6 +3078,16 @@ export class FlowEngine {
           latestVerdict?.status === "pronto" || latestVerdict?.status === "pronto_com_ressalvas";
         const meetings = await this.store.listMeetings(fresh.flow_id);
         const closureBlockers = closureBlockersFor(fresh, meetings);
+        if (positiveVerdict && closureBlockers.length === 0 && hasVerdictAfterLatestMemoryMining(fresh)) {
+          return presentGate({
+            advanced: false,
+            status: "blocked",
+            phase: from,
+            missing: ["memory_required_but_empty"],
+            next: "mm_memory_mining",
+            back_to: null
+          }, fresh);
+        }
         const terminalBlockers = unique([
           ...(positiveVerdict ? [] : ["goal_positive_verdict_required"]),
           ...closureBlockers
@@ -5782,6 +5792,12 @@ function hasHygieneScan(flow: Flow): boolean {
 
 function hasMemoryMiningRun(flow: Flow): boolean {
   return flow.history.some((event) => event.type === "memory_mined") || Boolean(flow.memory_mining?.last_run_at);
+}
+
+function hasVerdictAfterLatestMemoryMining(flow: Flow): boolean {
+  const eventTypes = flow.history.map((event) => event.type);
+  const latestMining = eventTypes.lastIndexOf("memory_mined");
+  return latestMining >= 0 && eventTypes.lastIndexOf("verdict_recorded") > latestMining;
 }
 
 function isMaterialHygieneFinding(finding: HygieneFinding): boolean {

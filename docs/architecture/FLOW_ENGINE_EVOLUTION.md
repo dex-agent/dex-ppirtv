@@ -158,6 +158,12 @@ git hash-object src/flow-engine.ts
 | --- | --- | --- | --- | --- |
 | `FE-2026-08-01-RECALL-CONSUMPTION` | `SHRINK` | recall reference normalization/validation | `src/memory/recall-consumption-contract.ts` | responsibility removed from facade |
 | `FE-2026-08-02-SPT-PATH-DIAGNOSTICS` | `CONTAIN` | actionable `spt_path` diagnostics | `src/spt-path-diagnostics.ts` | new behavior contained; `FE-DEBT-001` open |
+| `FE-2026-08-11-POST-VERDICT-MINING-GATE` | `EXCEPTION` | prevent terminal completion before post-verdict mining | `FlowEngine` terminal glue | bounded integrity guard with causal MCP RED |
+
+`FE-2026-08-11-POST-VERDICT-MINING-GATE` expires on the next diff that touches
+`src/flow-engine.ts`. That visit must remove or relocate the guard through a
+safe seam or renew authority through a new causal Trilho; this record does not
+pay `FE-DEBT-001`.
 
 ## Safe seam sequence
 

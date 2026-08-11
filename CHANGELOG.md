@@ -10,6 +10,12 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
+- A mineracao posterior ao ultimo veredito agora precede o fechamento de um
+  GOAL oficial: `goal_advance` bloqueia a conclusao enquanto o ultimo
+  `verdict_recorded` for posterior ao ultimo `memory_mined`, sem cursor, campo
+  persistente, blocker publico ou schema novo. Um teste MCP preserva o RED
+  causal e confirma que a guarda temporal sai depois da nova mineracao.
+
 - Reparo governado do Estacionamento para o piloto semântico: uma ficha já
   promovida teve status, lifecycle e closure reconciliados sem apagar
   proveniência. O writer oficial voltou a aceitar capturas e criou três riscos

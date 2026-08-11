@@ -80,6 +80,30 @@
         "responsibility": "Classify and route actionable spt_path failures.",
         "payment_scope": "any_verified_shrink"
       }
+    },
+    {
+      "id": "FE-2026-08-11-POST-VERDICT-MINING-GATE",
+      "date": "2026-08-11",
+      "mode": "EXCEPTION",
+      "base_blob": "9fbdcd7224d97275b5c94ecfa3aad45be975615a",
+      "head_blob": "de7bf7c1276f91070a6d72ef887bdf4af412db00",
+      "spt_path": ".agents/PLAN-TASKS/2026-08-10-impedir-fechamento-sem-mineracao-pos-veredito.md",
+      "responsibility": "Prevent official GOAL completion before mining the latest verdict state.",
+      "owner": "$refactoring-fowler-rich",
+      "consumers": ["src/server.ts"],
+      "evidence": ["tests/mcp.test.ts"],
+      "evidence_selectors": {
+        "tests/mcp.test.ts": "keeps goal_verdict_required over MCP when validation only has provided verdict text"
+      },
+      "changelog_marker": "mineracao posterior ao ultimo veredito agora precede o fechamento",
+      "architecture_marker": "FE-2026-08-11-POST-VERDICT-MINING-GATE",
+      "exception_reason": "integrity",
+      "rollback": "Remove the terminal guard and helper to restore the previous completion behavior.",
+      "expires": "next diff that touches src/flow-engine.ts",
+      "red_evidence": "tests/mcp.test.ts::keeps goal_verdict_required over MCP when validation only has provided verdict text",
+      "red_base_blob": "9fbdcd7224d97275b5c94ecfa3aad45be975615a",
+      "red_observed_failure": "Without the guard, goal_advance returned advanced=true and status=complete immediately after goal_verdict.",
+      "red_command": "npm.cmd run build; npm.cmd test -- --run tests/mcp.test.ts -t keeps goal_verdict_required over MCP when validation only has provided verdict text"
     }
   ]
 }

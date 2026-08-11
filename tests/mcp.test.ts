@@ -1021,18 +1021,20 @@ describe("PPIRTV MCP stdio server", () => {
       }
     });
 
+    await client!.callTool({
+      name: "mm_memory_mining",
+      arguments: { flow_id: flowId, auto_classify: true, write_policy: "auto_write" }
+    });
     const positiveVerdict = await client!.callTool({
       name: "goal_verdict",
       arguments: {
         flow_id: flowId,
         status: "pronto",
-        rationale: "Veredito canonico registrado com evidencia e review.",
+        rationale: "Pronto.",
         evidence_ids: [resultOf(evidence).evidence_id, resultOf(reviewEvidence).evidence_id],
         meeting_id: resultOf(meeting).meeting_id,
-        review_artifact_path: ".agents/REPORTS/review-mcp.md",
-        review_findings: ["src/flow-engine.ts revisado"],
         residual_risks: [],
-        next_step: "executar goal_advance agora"
+        next_step: "executar mm_memory_mining agora"
       }
     });
 
@@ -1049,6 +1051,21 @@ describe("PPIRTV MCP stdio server", () => {
         closure_blockers: []
       }
     });
+
+    const blockedUntilMining = resultOf(await client!.callTool({ name: "goal_advance", arguments: { flow_id: flowId } }));
+    expect(blockedUntilMining).toMatchObject({
+      advanced: false,
+      status: "blocked",
+      missing: ["memory_required_but_empty"],
+      next: "mm_memory_mining"
+    });
+
+    await client!.callTool({
+      name: "mm_memory_mining",
+      arguments: { flow_id: flowId, auto_classify: true, write_policy: "auto_write" }
+    });
+    const completedAfterMining = resultOf(await client!.callTool({ name: "goal_advance", arguments: { flow_id: flowId } }));
+    expect(completedAfterMining.missing ?? []).not.toContain("memory_required_but_empty");
   });
 
   it("does not turn negative meeting trigger text into required_cooperation over MCP", async () => {
