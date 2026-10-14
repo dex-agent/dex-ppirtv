@@ -22,6 +22,61 @@ const THEME_RULES: Array<{ theme: string; pattern: RegExp }> = [
 const PARKING_ONLY_PATTERN = /avaliar|depois|futuro|talvez|pendente|backlog|proximo ciclo/i;
 const DISCARD_PATTERN = /descartar|ruido|sem promocao/i;
 const LEDGER_ONLY_PATTERN = /ledger[-_ ]only|somente ledger/i;
+
+// Bookkeeping do proprio flow NUNCA vira candidato de memoria: sao registros
+// operacionais (rationale do veredito, risco residual, linha de evidencia e o
+// proprio achado derivado do veredito), nao aprendizado reutilizavel.
+// Origem: ACH-01/P1 do flow_20260914103135338_2081_0063 (15 unidades-boilerplate
+// gravadas em um unico dia, somadas a 37 antigas).
+const BOOKKEEPING_NUGGET_PREFIXES: readonly string[] = [
+  "racional de veredito:",
+  "risco residual:",
+  "risco residual estacionado:",
+  "evidencia usada no veredito:",
+  "achado garimpado do veredito:"
+];
+// "Achado de review:" NAO entra nesta lista de proposito: por contrato de
+// produto (tests/engine.test.ts T33) achados de review continuam elegiveis a
+// candidato editavel. Filtrar review aqui trocaria um defeito por uma regressao.
+
+// O deposito de parking-lot promove itens para gold_mining embrulhando-os com
+// um prefixo de observacao (ver src/memory/parking-lot.ts), e flow-engine.ts
+// promove o parking ANTES de collectMemoryNuggets. Filtrar por prefixo exige,
+// portanto, olhar a forma FINAL do item: estes wrappers sao removidos antes do
+// teste de bookkeeping. RED de origem: evd_20260914114519433_2448_0038.
+const PROMOTION_WRAPPER_PREFIXES: readonly string[] = [
+  "armadilha observada:",
+  "ponto cego observado:",
+  "dica de ouro observada:",
+  "heuristica pratica:"
+];
+const MAX_PROMOTION_UNWRAP_DEPTH = 4;
+// Por que 4: a promocao real produz UM nivel de embrulho
+// (parking-lot.ts:67 -> `${prefix}: ${item}`); 4 da folga para o embrulho duplo
+// observado em producao e o limite tem teste proprio (P-KIMI-02), em vez de ser
+// numero magico sem ancora.
+
+function unwrapPromotionPrefixes(value: string): string {
+  let current = value;
+  for (let depth = 0; depth < MAX_PROMOTION_UNWRAP_DEPTH; depth += 1) {
+    const wrapper = PROMOTION_WRAPPER_PREFIXES.find((prefix) => current.startsWith(prefix));
+    if (!wrapper) break;
+    current = current.slice(wrapper.length).trimStart();
+  }
+  return current;
+}
+
+function stripDiacritics(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+export function isBookkeepingNugget(item: string): boolean {
+  const normalized = stripDiacritics(item.trim().toLowerCase());
+  if (!normalized) return false;
+  const finalForm = unwrapPromotionPrefixes(normalized);
+  if (!finalForm) return false;
+  return BOOKKEEPING_NUGGET_PREFIXES.some((prefix) => finalForm.startsWith(stripDiacritics(prefix)));
+}
 const GLOBAL_SCOPE_PATTERN = /global|cross-project|reutilizavel em qualquer projeto|qualquer repo/i;
 const V2_GLOBAL_SCOPE_INTENT_PATTERN = /\bmem[oó]ria\s+global\b|\bescopo\s+global\b|cross-project|reutilizavel em qualquer projeto|qualquer repo/i;
 const V2_PROJECT_SCOPE_INTENT_PATTERN = /\bmem[oó]ria\s+local\b|\baprendizado\s+local\b|\blocal\s+(?:deste|desse|neste|nesse|do)\s+(?:projeto|repositorio|repositório|repo)\b|\b(?:deste|desse|neste|nesse)\s+(?:projeto|repositorio|repositório|repo)\b|\b(?:projeto|repositorio|repositório|repo)\s+atual\b/i;
@@ -48,7 +103,7 @@ export function collectMemoryNuggets(flow: Flow, meetings: Meeting[]): MemoryNug
   ) => {
     for (const entry of items) {
       const item = entry.item;
-      if (!item.trim() || /^evidence_required:/i.test(item.trim())) {
+      if (!item.trim() || /^evidence_required:/i.test(item.trim()) || isBookkeepingNugget(item)) {
         continue;
       }
       nuggets.push({
