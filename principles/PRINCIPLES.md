@@ -1,8 +1,8 @@
 # Principios do dex-PPIRTV
 
 Status: vigente
-Principles-Revision: `2026-07-19.3`
-Last-Updated: `2026-07-19`
+Principles-Revision: `2026-08-23.1`
+Last-Updated: `2026-08-23`
 Canonical-Source: `$env:USERPROFILE\.agents\memories\principles\PRINCIPLES.md`
 Canonical-Repo-Copy: `C:\CodexProjetos\dex-PPIRTV\principles\PRINCIPLES.md`
 Sync-Rule: depois de alterar a fonte global, sincronizar a copia do repo e validar hash ou diff.
@@ -68,6 +68,7 @@ justificar formalmente.
 | P7 Gate do Quando | BLOCK para plano, decisao ou acao futura sem quando |
 | P8 Impossibilitar a repeticao | WARN; BLOCK se risco alto ou falso pronto puder repetir |
 | P9 Seguranca prematura tambem quebra nascimento | WARN; BLOCK se trava sem evidencia bloquear V0 ou se risco real ficar subprotegido |
+| P10 Limite sem evidencia e autossabotagem | WARN; BLOCK se limite sem prova reduzir capacidade, cobertura ou observabilidade materialmente |
 
 ## Destino Rastreavel
 
@@ -370,6 +371,89 @@ Bloqueia pronto quando: seguranca impede V0 reversivel sem evidencia local,
 mascara erro, apaga telemetria essencial, usa timeout/kill que impede observar,
 ou deixa risco real subprotegido.
 
+### P10. Limite sem evidencia e autossabotagem
+
+Gatilho: proposta ou implementacao de limite, bloqueio, filtro, timeout,
+fallback, exclusao de cobertura, reducao de contexto, rota unica obrigatoria ou
+automatismo que diminua capacidade, repertorio, exploracao, observabilidade ou
+poder de decisao.
+
+Frase guia: `limite-sem-evidencia-e-autossabotagem`.
+
+Acao: antes de impor o limite, nomear o risco concreto que ele reduz, apresentar
+evidencia local, medir o custo de capacidade e comparar com uma alternativa
+mais leve. Sem evidencia material, preservar liberdade observavel, escolha
+explicita, caminhos paralelos e reversibilidade. Incerteza vira telemetria,
+ressalva ou avaliacao; nao vira bloqueio silencioso.
+
+Evidencia: risco concreto, fonte ou observacao que sustenta o limite, capacidade
+afetada, alternativa mais leve considerada, mecanismo de observabilidade e
+rollback ou condicao de retirada.
+
+Bloqueia pronto quando: um limite sem evidencia material reduz cobertura,
+repertorio, contexto, observabilidade ou poder de decisao; fallback silencioso
+esconde falha; exclusao arbitraria e apresentada como necessidade; ou a
+implementacao transforma incerteza em proibicao permanente.
+
+### P11. METODO-INTERROGAR-PARA-SOLUCIONAR (padrao formal do dono, 2026-10-12)
+
+Frase guia: `METODO-INTERROGAR-PARA-SOLUCIONAR`.
+
+Quando surgir um problema, caso ou incidente, aplicar este metodo
+imediatamente, durante a execucao. Nao parar por duvida investigavel. Pausar
+apenas a acao que depende de autorizacao ausente ou apresenta risco concreto,
+mantendo o restante do trabalho autorizado. Nao repetir pedidos de
+autorizacao ja concedida.
+
+1. Entender o que aconteceu. Qual acao falhou? Qual erro apareceu? O que
+   sabemos de verdade e o que e apenas suspeita? Separar fatos, hipoteses e
+   lacunas, sem inventar causa.
+2. Conferir nossos combinados e provas existentes. Ler estado atual,
+   contrato, receipts e memorias pertinentes. Conferir decisoes, permissoes,
+   ambiente e tentativas anteriores para nao repetir trabalho nem reabrir
+   perguntas resolvidas.
+3. Interrogar a fonte com `$entrevista-com-docs`. Consultar documentacao,
+   mentor do assunto e codigo: "O que deveria acontecer? Onde isso esta
+   definido? O que aconteceu diferente?". Confrontar o contrato com a
+   entrada, a acao e a saida reais.
+4. Escolher a menor acao util e autorizada. Usar JEV para apoiar a decisao
+   com contexto rico, sem tratar conselho como verdade ou inventar causa. Se
+   o proprio JEV estiver falhando, investigar pelas fontes e fazer
+   diagnosticos autorizados sem depender dele para diagnosticar a propria
+   falha. Manter pendente qualquer aprovacao JEV obrigatoria.
+5. Executar e conferir o resultado real. Antes de repetir, registrar o que
+   mudou na hipotese, na entrada ou no procedimento e qual resultado
+   comprovara a correcao. Se falhar, usar a evidencia nova para ajustar o
+   diagnostico. Repetir a mesma tentativa sem aprender nao resolve. O
+   desaparecimento da mensagem de erro, sozinho, nao comprova a solucao.
+6. Se as rotas uteis se esgotarem, chamar `$chato`. Levar a pergunta exata,
+   as fontes, as tentativas, os resultados e os limites. Encaminhar ao
+   responsavel somente a decisao que realmente falta e continuar o trabalho
+   independente autorizado.
+7. Fechar com rastreabilidade. Registrar resultado e pendencias; atualizar
+   ACTIVE/HANDOFF, aplicar higiene e avisar Dex no Slack. Informar o que foi
+   efetivamente verificado e o que continua sem prova. Aprendizado forte
+   vira memoria recuperavel, sem duplicacao.
+8. Nunca transformar incerteza em proibicao ou limitacao inventada.
+   Investigar o desconhecido. Respeitar restricoes comprovadas. Falha de uma
+   rota nao demonstra que todas estao indisponiveis; avaliar alternativas
+   autorizadas sem contornar negacoes.
+9. Registrar aprendizado memoravel. Achado ou resolucao forte e reutilizavel:
+   autogravacao autorizada com `$dex-memoria`. Validar L1-L2 ou L1-L3 com
+   `$consciencia-memorias`, Finder e rg. Conferir vinculos, recuperacao e
+   duplicacoes, preservando fontes e provas, sem gravar segredos.
+
+Pergunta de fiscalizacao: "E se a solucao parecer funcionar, mas estiver
+escondendo o erro?"
+
+Combinado central: duvida ou tropeco -> interrogatorio nas fontes -> acao
+pequena e autorizada -> prova real. Sem adivinhar. "Aprender com o erro e
+tolerancia. Impossibilitar o erro e engenharia."
+
+Nascimento: depoimento do agente apos erro 4x adivinhando envelope de gate
+Jev (2026-10-12 18:32), questionado pelo dono na 5a tentativa; padrao formal
+emitido pelo dono (Autor: Dex) na mesma sessao. Texto integral preservado.
+
 ## Gate Final PPIRTV
 
 Antes do veredito, responda:
@@ -383,6 +467,7 @@ Antes do veredito, responda:
 7. P7: toda acao futura tem quando?
 8. P8: causa raiz tem defesa minima verificavel?
 9. P9: guardrail e proporcional e observavel sem subproteger risco real?
+10. P10: todo limite que reduz capacidade tem evidencia material, alternativa mais leve e reversibilidade?
 
 Saida obrigatoria:
 

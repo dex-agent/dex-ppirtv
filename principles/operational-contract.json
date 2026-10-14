@@ -1,8 +1,8 @@
 {
   "version": "1.0",
-  "numeric_version": 10,
-  "principles_revision": "2026-07-19.3",
-  "updated_at": "2026-07-19",
+  "numeric_version": 11,
+  "principles_revision": "2026-08-23.1",
+  "updated_at": "2026-08-23",
   "source": "principles/PRINCIPLES.md",
   "canonical_source": "$env:USERPROFILE\\.agents\\memories\\principles\\PRINCIPLES.md",
   "canonical_contract": "$env:USERPROFILE\\.agents\\memories\\principles\\operational-contract.json",
@@ -557,6 +557,75 @@
         "estacionamento com quando",
         "HANDOFF"
       ]
+    },
+    {
+      "id": "P10",
+      "legacy_id": "limite_sem_evidencia_autossabotagem",
+      "name": "Limite sem evidencia e autossabotagem",
+      "label": "Limite sem evidencia e autossabotagem",
+      "summary": "Limite que reduz capacidade, cobertura, repertorio, contexto, observabilidade ou poder de decisao exige risco concreto e evidencia material. Sem prova, preservar liberdade observavel, escolha explicita, caminhos paralelos e reversibilidade.",
+      "trigger": [
+        "proposta ou implementacao de limite, bloqueio, filtro, timeout ou fallback",
+        "exclusao de cobertura, reducao de contexto ou rota unica obrigatoria",
+        "automatismo que reduz capacidade, repertorio, exploracao, observabilidade ou poder de decisao",
+        "incerteza sendo convertida em proibicao permanente"
+      ],
+      "required_actions": [
+        "nomear o risco concreto que o limite reduz",
+        "apresentar evidencia local ou fonte que sustenta o limite",
+        "declarar a capacidade afetada e o custo da restricao",
+        "comparar com alternativa mais leve e observavel",
+        "preservar escolha explicita, caminhos paralelos e reversibilidade quando nao houver evidencia material",
+        "definir condicao de retirada, revisao ou endurecimento do limite"
+      ],
+      "evidence": [
+        "risco concreto e verificavel",
+        "fonte, teste, telemetria ou observacao local",
+        "capacidade afetada pelo limite",
+        "alternativa mais leve considerada",
+        "rollback, flag reversivel ou condicao de retirada"
+      ],
+      "blocks_ready_when": [
+        "limite sem evidencia material reduz cobertura, repertorio, contexto, observabilidade ou poder de decisao",
+        "fallback silencioso esconde falha real",
+        "exclusao arbitraria e apresentada como necessidade",
+        "incerteza vira proibicao permanente sem telemetria ou avaliacao"
+      ],
+      "default_severity": "WARN",
+      "severity": "warning",
+      "escalates_to_block_when": [
+        "restricao sem evidencia causa perda material de capacidade ou cobertura",
+        "limite apaga observabilidade essencial ou mascara falha",
+        "restricao arbitraria governa runtime, skill, corpus, grafo ou orquestracao"
+      ],
+      "responsible_roles": [
+        "executor da tarefa",
+        "chato",
+        "questionador",
+        "validador-pronto"
+      ],
+      "checklist_label": "Limites que reduzem capacidade tem evidencia material, alternativa mais leve e reversibilidade",
+      "applies_to": [
+        "design_review",
+        "implementation_plan",
+        "skill_design",
+        "graph_reconciliation",
+        "llm_orchestration",
+        "gate_check",
+        "checklist_render",
+        "verdict",
+        "prompts"
+      ],
+      "trace_destination": [
+        "contrato operacional",
+        "teste",
+        "telemetria",
+        "harness",
+        "flag reversivel",
+        "decisao registrada",
+        "estacionamento com quando",
+        "HANDOFF"
+      ]
     }
   ],
   "secret_env_consumption_policy": {
@@ -625,6 +694,30 @@
       "a alternativa mais leve nao foi considerada",
       "nao ha quando para endurecer depois",
       "o sistema real fica subprotegido em segredo, permissao, sensivel, destrutivo, compliance ou autorizacao"
+    ]
+  },
+  "evidence_bound_limit_policy": {
+    "principle_id": "P10",
+    "localizer": "LIMITE-SEM-EVIDENCIA-E-AUTOSSABOTAGEM",
+    "rule": "Antes de impor uma restricao que reduza capacidade, cobertura, repertorio, contexto, observabilidade ou poder de decisao, exigir risco concreto e evidencia material; sem prova, preservar escolha explicita, caminhos paralelos e reversibilidade.",
+    "required_actions": [
+      "nomear risco e capacidade afetada",
+      "apresentar evidencia local",
+      "comparar alternativa mais leve",
+      "preservar observabilidade",
+      "definir rollback ou condicao de retirada"
+    ],
+    "forbidden": [
+      "transformar incerteza em bloqueio silencioso",
+      "usar fallback automatico para mascarar erro",
+      "reduzir corpus, contexto ou rotas por conveniencia nao medida",
+      "apresentar exclusao arbitraria como necessidade tecnica"
+    ],
+    "blocks_ready_when": [
+      "restricao material nao tem evidencia",
+      "capacidade perdida nao foi declarada",
+      "alternativa mais leve nao foi considerada",
+      "nao existe observabilidade ou reversibilidade"
     ]
   },
   "ready_definition": [
@@ -741,7 +834,9 @@
     "P8 Impossibilitar a repeticao: apos causa raiz confirmada, crie a menor defesa verificavel proporcional ao risco ou estacione com justificativa e quando.",
     "P8 default WARN; escale para BLOCK quando envolver seguranca, dados, memoria, contrato publico, fonte canonica, falso pronto, recorrencia ou ausencia de gate verificavel.",
     "P9 Seguranca prematura: em V0, nao bloqueie experimento reversivel sem evidencia local; prefira liberdade observavel, falha explicita, telemetria, escopo limitado e gates reversiveis.",
-    "P9 nao reduz protecao para segredo, permissao, dado sensivel, acao destrutiva, compliance ou autorizacao."
+    "P9 nao reduz protecao para segredo, permissao, dado sensivel, acao destrutiva, compliance ou autorizacao.",
+    "P10 Limite sem evidencia e autossabotagem: restricao que reduz capacidade exige risco concreto, evidencia material, alternativa mais leve e reversibilidade.",
+    "REVIEW-STOP-BLOCKER-REAL: revisao bloqueia apenas com P0/P1 reproduzivel ligado ao objetivo ou gate obrigatorio vermelho; apos PASS independente sem P0/P1, achado P2 novo vira residuo com owner e quando, sem reabrir a missao."
   ],
   "hygiene_checks": [
     "principles_source_exists",
@@ -769,7 +864,9 @@
     "explicit_secret_env_key_consumed_without_echo",
     "repeat_prevention_defense_depth",
     "premature_security_controls_have_local_evidence",
-    "v0_experiments_preserve_observability_and_rollback"
+    "v0_experiments_preserve_observability_and_rollback",
+    "capacity_reducing_limits_have_material_evidence",
+    "limits_preserve_observability_alternatives_and_rollback"
   ],
   "ai_application": {
     "rule": "principios devem ser aplicados como gates de decisao, nao como frases decorativas",
@@ -822,7 +919,8 @@
       "P6": "BLOCK",
       "P7": "BLOCK para plano, decisao ou acao futura",
       "P8": "WARN; BLOCK quando risco alto, recorrencia ou falta de defesa verificavel permitir falso pronto",
-      "P9": "WARN; BLOCK se trava sem evidencia impedir experimento reversivel ou se risco real ficar subprotegido"
+      "P9": "WARN; BLOCK se trava sem evidencia impedir experimento reversivel ou se risco real ficar subprotegido",
+      "P10": "WARN; BLOCK se limite sem evidencia reduzir materialmente capacidade, cobertura ou observabilidade"
     },
     "runtime_mapping": {
       "INFO": "info",
