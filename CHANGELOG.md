@@ -10,6 +10,22 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
+- O contrato de tag governada agora vive em um unico helper
+  `src/memory/governed-tag.ts`: o padrao aninhado `#tema/assunto` e a assercao
+  de rejeicao deixam de existir em quatro copias independentes (schemas MCP,
+  FlowEngine e adapter Dex Memoria V2) e passam a ter definicao unica, com
+  rejeicao provada na fronteira MCP stdio, no adapter e nas duas camadas do
+  engine. A politica de metadados de promocao V2
+  (`requireV2PromotionMetadata`) deixou a fachada para
+  `src/memory/mining-policy.ts` no mesmo trilho e o SHRINK do ledger de
+  evolucao paga `FE-DEBT-001`.
+
+- A identidade do lock de meeting voltou a distinguir `dev:ino` em caminhos
+  normais, mantendo `dev`-only apenas em pastas compartilhadas VirtualBox
+  (`\\VBoxSvr`), onde o inode oscila entre `lstat`: o guard detecta troca de
+  arquivo no filesystem comum sem gerar falso `MEETING_LOCK_IDENTITY_CHANGED`
+  no VBoxSvr (teste focal `tests/lock-identity-vbox.test.ts`).
+
 - A mineracao posterior ao ultimo veredito agora precede o fechamento de um
   GOAL oficial: `goal_advance` bloqueia a conclusao enquanto o ultimo
   `verdict_recorded` for posterior ao ultimo `memory_mined`, sem cursor, campo

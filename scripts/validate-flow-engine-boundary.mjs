@@ -7,7 +7,11 @@ import ts from "typescript";
 const TARGET_PATH = "src/flow-engine.ts";
 const DEFAULT_MANIFEST = "docs/architecture/flow-engine-evolution.json";
 const ARCHITECTURE_PATH = "docs/architecture/FLOW_ENGINE_EVOLUTION.md";
-const EXPECTED_OWNER = "$refactoring-fowler-rich";
+// Camping ownership transition (2026-10-14, owner decision): the current
+// evolution owner is $oraculo-refatoracao; the legacy $refactoring-fowler-rich
+// stays valid so the immutable ledger history and its replay keep passing.
+const EXPECTED_OWNER = "$oraculo-refatoracao";
+const CAMPING_OWNERS = new Set(["$refactoring-fowler-rich", "$oraculo-refatoracao"]);
 const ALLOWED_MODES = new Set(["SHRINK", "CONTAIN", "EXCEPTION"]);
 const EXCEPTION_REASONS = new Set(["integrity", "security", "public_compatibility", "urgent_hotfix"]);
 
@@ -187,7 +191,7 @@ function requiredDeclarationReasons(declaration) {
   for (const field of ["id", "spt_path", "responsibility", "owner", "changelog_marker", "architecture_marker"]) {
     if (!nonEmptyString(declaration?.[field])) reasons.push(`DECLARATION_FIELD_REQUIRED:${field}`);
   }
-  if (declaration?.owner !== EXPECTED_OWNER) reasons.push("DECLARATION_OWNER_INVALID");
+  if (!CAMPING_OWNERS.has(declaration?.owner ?? "")) reasons.push("DECLARATION_OWNER_INVALID");
   if (!/^\.agents\/PLAN-TASKS\/[A-Za-z0-9._-]+\.md$/.test(declaration?.spt_path ?? "")) {
     reasons.push("DECLARATION_SPT_PATH_INVALID");
   }
@@ -214,7 +218,7 @@ function openDebt(history) {
 
 function failureAction() {
   return {
-    owner: "$refactoring-fowler-rich",
+    owner: EXPECTED_OWNER,
     action: "Move policy/validation/projection outside FlowEngine, pay the open debt with SHRINK, or document a bounded EXCEPTION with causal RED. Update the architecture ledger and CHANGELOG, then rerun npm run check:flow-engine.",
     when: "before review or commit of the diff that touches src/flow-engine.ts"
   };
@@ -314,7 +318,7 @@ export function evaluateFlowEngineChange({ baseSource, headSource, declaration, 
       !declaration?.debt
       || !nonEmptyString(declaration.debt.id)
       || declaration.debt.status !== "open"
-      || declaration.debt.owner !== EXPECTED_OWNER
+      || !CAMPING_OWNERS.has(declaration.debt.owner ?? "")
       || !nonEmptyString(declaration.debt.when)
       || declaration.debt.responsibility !== declaration.responsibility
       || declaration.debt.payment_scope !== "any_verified_shrink"
@@ -350,7 +354,7 @@ export function evaluateFlowEngineChange({ baseSource, headSource, declaration, 
     requested_mode: mode,
     flow_engine_changed: true,
     responsibility: declaration?.responsibility ?? null,
-    owner: declaration?.owner ?? "$refactoring-fowler-rich",
+    owner: declaration?.owner ?? EXPECTED_OWNER,
     destination_module: declaration?.destination_module ?? null,
     consumers: declaration?.consumers ?? [],
     evidence: declaration?.evidence ?? [],
@@ -408,7 +412,7 @@ function validateBootstrapRecords({ cwd, records, manifest, headBlob }) {
   const architecture = readFileSync(path.join(cwd, ARCHITECTURE_PATH), "utf8");
   const changelog = unreleasedSection(readFileSync(path.join(cwd, "CHANGELOG.md"), "utf8"));
   const add = (record, reason) => reasons.push(`BOOTSTRAP_RECORD_INVALID:${record?.id ?? "unknown"}:${reason}`);
-  if (manifest.contract !== "dex.flow-engine.evolution-ledger.v1" || manifest.target !== TARGET_PATH || manifest.owner !== EXPECTED_OWNER) {
+  if (manifest.contract !== "dex.flow-engine.evolution-ledger.v1" || manifest.target !== TARGET_PATH || !CAMPING_OWNERS.has(manifest.owner ?? "")) {
     reasons.push("LEDGER_BOOTSTRAP_CONTRACT_INVALID");
   }
   if (records.length === 0 || records.at(-1)?.head_blob !== headBlob) reasons.push("LEDGER_BOOTSTRAP_HEAD_MISMATCH");
@@ -656,7 +660,7 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
 
   if (receipt.flow_engine_changed && !declaration) receipt.reasons.push("MATCHING_DECLARATION_REQUIRED");
   if (receipt.flow_engine_changed && declaration) {
-    if (manifest.contract !== "dex.flow-engine.evolution-ledger.v1" || manifest.target !== TARGET_PATH || manifest.owner !== EXPECTED_OWNER) {
+    if (manifest.contract !== "dex.flow-engine.evolution-ledger.v1" || manifest.target !== TARGET_PATH || !CAMPING_OWNERS.has(manifest.owner ?? "")) {
       receipt.reasons.push("LEDGER_CONTRACT_INVALID");
     }
     const duplicateIds = records.filter((entry) => entry.id === declaration.id).length;

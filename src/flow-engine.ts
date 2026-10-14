@@ -112,6 +112,8 @@ import {
   validateRecallConsumptionReferences,
   type RecallConsumptionInput
 } from "./memory/recall-consumption-contract.js";
+import { assertGovernedTag } from "./memory/governed-tag.js";
+import { requireV2PromotionMetadata } from "./memory/mining-policy.js";
 
 export {
   boundedRecallErrorReferences,
@@ -122,7 +124,6 @@ export {
 
 const DEFAULT_SCOPE: Scope = { in: [], out: [] };
 const MEMORY_MINING_BLOCKED_VERDICT_REASON = "memory_mining_blocked_verdict";
-const MEMORY_V2_TAG_PATTERN = /^#[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)+$/;
 const USER_PROFILE_POINTER = "$env:USERPROFILE";
 export const WORK_PROGRESS_MAX_RUNNING_EVENTS = 100;
 
@@ -2198,9 +2199,7 @@ export class FlowEngine {
     }
     for (const tag of input.tags ?? []) {
       requireText(tag, "tags");
-      if (!MEMORY_V2_TAG_PATTERN.test(tag)) {
-        throw new Error(`MEMORY_CANDIDATE_PROMOTION_TAG_INVALID: ${tag}`);
-      }
+      assertGovernedTag(tag, `MEMORY_CANDIDATE_PROMOTION_TAG_INVALID: ${tag}`);
     }
     if (input.action === "park") {
       requireText(input.when, "when");
@@ -7885,95 +7884,6 @@ function memoryCandidateLookup(candidates: Array<Record<string, unknown>>): Map<
 
 function hasV2CandidateIdentity(candidate: Record<string, unknown>): boolean {
   return typeof candidate.candidate_id === "string" && candidate.candidate_id.trim().length > 0;
-}
-
-function requireV2PromotionMetadata(
-  candidate: Record<string, unknown>,
-  explicit: {
-    tags?: string[];
-    density?: "light" | "deep";
-    owner_skill?: string;
-  } = {}
-): {
-  tags: string[];
-  density: "light" | "deep";
-  theme?: string;
-  owner_skill?: string;
-} {
-  const hasExplicitMetadata = explicit.tags !== undefined
-    || explicit.density !== undefined
-    || explicit.owner_skill !== undefined;
-  const persistedTags = Array.isArray(candidate.tags)
-    ? candidate.tags.filter((tag): tag is string => typeof tag === "string" && tag.trim().length > 0)
-    : [];
-  const route = candidate.route && typeof candidate.route === "object"
-    ? candidate.route as Record<string, unknown>
-    : undefined;
-  const persistedDensity = candidate.density === "deep" || route?.target === "L3" ? "deep"
-    : candidate.density === "light" || route?.target === "L2" ? "light"
-      : undefined;
-  const persistedOwnerSkill = typeof candidate.owner_skill === "string" && candidate.owner_skill.trim()
-    ? candidate.owner_skill.trim()
-    : typeof route?.owner_skill === "string" && route.owner_skill.trim()
-      ? route.owner_skill.trim()
-      : undefined;
-  const destinations = Array.isArray(candidate.destinations) ? candidate.destinations : [];
-  const themeDestination = destinations.find((destination) =>
-    destination && typeof destination === "object" && (destination as Record<string, unknown>).scope === "theme"
-  ) as Record<string, unknown> | undefined;
-  const persistedTheme = typeof themeDestination?.theme === "string" && themeDestination.theme.trim()
-    ? themeDestination.theme.trim()
-    : undefined;
-  const persistedComplete = persistedTags.length > 0
-    && persistedDensity !== undefined
-    && (persistedDensity !== "deep" || Boolean(persistedOwnerSkill));
-
-  if (hasExplicitMetadata && candidate.classification_status !== "unresolved") {
-    if (!persistedComplete) {
-      throw new Error("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED: classified V2 candidate metadata is incomplete");
-    }
-    const explicitTags = explicit.tags === undefined
-      ? undefined
-      : unique(explicit.tags.map((tag) => tag.trim()).filter(Boolean));
-    const tagsConflict = explicitTags !== undefined
-      && JSON.stringify([...explicitTags].sort()) !== JSON.stringify([...persistedTags].sort());
-    const densityConflict = explicit.density !== undefined && explicit.density !== persistedDensity;
-    const ownerConflict = explicit.owner_skill !== undefined
-      && explicit.owner_skill.trim() !== (persistedOwnerSkill ?? "");
-    if (tagsConflict || densityConflict || ownerConflict) {
-      throw new Error("MEMORY_CANDIDATE_PROMOTION_METADATA_CONFLICT: explicit metadata differs from the classified V2 candidate");
-    }
-    return {
-      tags: persistedTags,
-      density: persistedDensity!,
-      ...(persistedTheme ? { theme: persistedTheme } : {}),
-      ...(persistedOwnerSkill ? { owner_skill: persistedOwnerSkill } : {})
-    };
-  }
-  if (hasExplicitMetadata) {
-    const tags = unique((explicit.tags ?? []).map((tag) => tag.trim()).filter(Boolean));
-    const ownerSkill = explicit.owner_skill?.trim();
-    if (tags.length === 0 || !explicit.density || (explicit.density === "deep" && !ownerSkill)) {
-      throw new Error("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED: unresolved V2 promotion requires explicit tags, density and owner_skill for L3");
-    }
-    if (tags.some((tag) => !MEMORY_V2_TAG_PATTERN.test(tag))) {
-      throw new Error("MEMORY_CANDIDATE_PROMOTION_TAG_INVALID: promotion tags must use governed nested kebab-case");
-    }
-    return {
-      tags,
-      density: explicit.density,
-      ...(ownerSkill ? { owner_skill: ownerSkill } : {})
-    };
-  }
-  if (!persistedComplete) {
-    throw new Error("MEMORY_CANDIDATE_PROMOTION_METADATA_REQUIRED: V2 promotion requires tags, density and owner_skill for L3");
-  }
-  return {
-    tags: persistedTags,
-    density: persistedDensity!,
-    ...(persistedTheme ? { theme: persistedTheme } : {}),
-    ...(persistedOwnerSkill ? { owner_skill: persistedOwnerSkill } : {})
-  };
 }
 
 function requireV2CandidateDestinations(candidate: Record<string, unknown>): DexMemoriaV2Destination[] {

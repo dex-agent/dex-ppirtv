@@ -67,6 +67,36 @@ describe("flow-engine responsibility balance", () => {
     expect(result.metrics.decision_points.delta).toBeLessThanOrEqual(0);
   });
 
+  it("accepts the current camping owner $oraculo-refatoracao alongside the legacy owner", () => {
+    const baseSource = `
+      export class FlowEngine {
+        legacyPolicy(value: boolean) { if (value) return "yes"; return "no"; }
+        run(value: boolean) { return this.legacyPolicy(value); }
+      }
+    `;
+    const headSource = `
+      import { goalFiscalPolicy } from "./goal/goal-fiscal-policy.js";
+      export class FlowEngine { run(value: boolean) { return goalFiscalPolicy(value); } }
+    `;
+    const shrinkScenario = (owner: string) => evaluateFlowEngineChange({
+      baseSource,
+      headSource,
+      declaration: {
+        ...baseDeclaration,
+        owner,
+        mode: "SHRINK",
+        removed_symbols: ["legacyPolicy"],
+        symbol_mappings: { legacyPolicy: "goalFiscalPolicy" },
+        same_responsibility: true,
+        behavior_preserved_by: ["tests/goal-fiscal-policy.test.ts"]
+      }
+    });
+
+    expect(shrinkScenario("$oraculo-refatoracao").status).toBe("PASS");
+    expect(shrinkScenario("$refactoring-fowler-rich").status).toBe("PASS");
+    expect(shrinkScenario("$owner-desconhecido").reasons).toContain("DECLARATION_OWNER_INVALID");
+  });
+
   it("rejects line compression that removes no responsibility", () => {
     const baseSource = `
       export class FlowEngine {

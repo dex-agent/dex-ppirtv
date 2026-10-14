@@ -1,7 +1,7 @@
 {
   "contract": "dex.flow-engine.evolution-ledger.v1",
   "target": "src/flow-engine.ts",
-  "owner": "$refactoring-fowler-rich",
+  "owner": "$oraculo-refatoracao",
   "changelog_owner": "$projeto-manter-changelog",
   "records": [
     {
@@ -104,6 +104,37 @@
       "red_base_blob": "9fbdcd7224d97275b5c94ecfa3aad45be975615a",
       "red_observed_failure": "Without the guard, goal_advance returned advanced=true and status=complete immediately after goal_verdict.",
       "red_command": "npm.cmd run build; npm.cmd test -- --run tests/mcp.test.ts -t keeps goal_verdict_required over MCP when validation only has provided verdict text"
+    },
+    {
+      "id": "FE-2026-10-13-GOVERNED-TAG-CONTRACT",
+      "date": "2026-10-13",
+      "mode": "SHRINK",
+      "base_blob": "de7bf7c1276f91070a6d72ef887bdf4af412db00",
+      "head_blob": "9a405fdc5265f1394bff958f9760d39d9449c3ea",
+      "spt_path": ".agents/PLAN-TASKS/2026-10-13-estabilizar-working-tree-ppirtv.md",
+      "responsibility": "Resolve and validate V2 promotion metadata (tags, density, owner_skill) for memory candidates.",
+      "owner": "$oraculo-refatoracao",
+      "destination_module": "src/memory/mining-policy.ts",
+      "consumers": ["src/flow-engine.ts", "src/server.ts"],
+      "evidence": [
+        "tests/flow-engine-dex-memoria-v2.test.ts",
+        "tests/dex-memoria-v2-adapter.test.ts",
+        "tests/mcp.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/flow-engine-dex-memoria-v2.test.ts": "rejects malformed governed tags at both engine validation layers before any write"
+      },
+      "changelog_marker": "contrato de tag governada agora vive em um unico helper",
+      "architecture_marker": "FE-2026-10-13-GOVERNED-TAG-CONTRACT",
+      "removed_symbols": ["requireV2PromotionMetadata"],
+      "symbol_mappings": { "requireV2PromotionMetadata": "requireV2PromotionMetadata" },
+      "same_responsibility": true,
+      "behavior_preserved_by": [
+        "tests/flow-engine-dex-memoria-v2.test.ts",
+        "tests/dex-memoria-v2-adapter.test.ts",
+        "tests/mcp.test.ts"
+      ],
+      "pays_debt_id": "FE-DEBT-001"
     }
   ]
 }

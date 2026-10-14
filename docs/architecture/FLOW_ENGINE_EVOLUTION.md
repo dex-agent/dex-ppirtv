@@ -106,7 +106,7 @@ Minimal `SHRINK` example:
   "head_blob": "<git blob after>",
   "spt_path": ".agents/PLAN-TASKS/<trilho>.md",
   "responsibility": "One responsibility that moved",
-  "owner": "$refactoring-fowler-rich",
+  "owner": "$oraculo-refatoracao",
   "destination_module": "src/<cohesive-module>.ts",
   "consumers": ["src/server.ts"],
   "evidence": ["tests/<causal-test>.test.ts"],
@@ -159,11 +159,13 @@ git hash-object src/flow-engine.ts
 | `FE-2026-08-01-RECALL-CONSUMPTION` | `SHRINK` | recall reference normalization/validation | `src/memory/recall-consumption-contract.ts` | responsibility removed from facade |
 | `FE-2026-08-02-SPT-PATH-DIAGNOSTICS` | `CONTAIN` | actionable `spt_path` diagnostics | `src/spt-path-diagnostics.ts` | new behavior contained; `FE-DEBT-001` open |
 | `FE-2026-08-11-POST-VERDICT-MINING-GATE` | `EXCEPTION` | prevent terminal completion before post-verdict mining | `FlowEngine` terminal glue | bounded integrity guard with causal MCP RED |
+| `FE-2026-10-13-GOVERNED-TAG-CONTRACT` | `SHRINK` | V2 promotion metadata policy (incl. governed tag assertion) | `src/memory/mining-policy.ts` | responsibility removed from facade; pays `FE-DEBT-001` |
 
-`FE-2026-08-11-POST-VERDICT-MINING-GATE` expires on the next diff that touches
-`src/flow-engine.ts`. That visit must remove or relocate the guard through a
-safe seam or renew authority through a new causal Trilho; this record does not
-pay `FE-DEBT-001`.
+`FE-2026-10-13-GOVERNED-TAG-CONTRACT` pays `FE-DEBT-001` through a verified
+cohesive seam (the fiscal accepts `payment_scope: any_verified_shrink`). The
+2026-10-13 visit did not touch the post-verdict mining guard: that integrity
+seam remains parked for its own causal Trilho (owner
+`$oraculo-refatoracao`, `.agents/ESTACIONAMENTO.md`).
 
 ## Safe seam sequence
 
@@ -185,8 +187,9 @@ active SPT selects exactly one seam.
 
 ## Ownership and maintenance
 
-- Architecture/extraction owner: `$refactoring-fowler-rich` with
-  `$clean-code`.
+- Architecture/extraction owner: `$oraculo-refatoracao` with `$clean-code`
+  (since 2026-10-14 by owner decision; the fiscal also accepts the legacy
+  `$refactoring-fowler-rich` so the immutable ledger history keeps replaying).
 - Changelog owner: `$projeto-manter-changelog`.
 - Fiscal script: `scripts/validate-flow-engine-boundary.mjs`; product/CI
   maintainer surface, input Git refs/worktree, output

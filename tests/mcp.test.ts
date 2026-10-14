@@ -221,6 +221,28 @@ describe("PPIRTV MCP stdio server", () => {
     expect(errorText).not.toContain("invalid-flat-tag");
   });
 
+  it.each([
+    ["mm_memory_mining", { flow_id: "flow_synthetic", v2_tags: ["#TemaNaoAninhado"] }],
+    ["mm_memory_candidate_resolve", {
+      flow_id: "flow_synthetic",
+      candidate_ids: ["candidate_synthetic"],
+      action: "promote",
+      target_scope: "projeto",
+      density: "light",
+      tags: ["#tema/Nao-Maiscula"],
+      rationale: "Input sintético deve falhar no refine da tag governada."
+    }]
+  ])("%s rejects malformed governed tag with the shared refine message over MCP stdio", async (name, args) => {
+    await connectClient();
+
+    const rejected = await client!.callTool({ name, arguments: args });
+
+    expect((rejected as { isError?: boolean }).isError).toBe(true);
+    const errorText = ((rejected as { content?: Array<{ text?: string }> }).content?.[0]?.text) ?? "";
+    expect(errorText).toContain("Input validation error");
+    expect(errorText).toContain("invalid governed nested tag");
+  });
+
   it("enforces the v3 execution boundary through the public MCP default route", async () => {
     await connectClient({}, { injectLegacyV2Recovery: false });
     const objective = "Provar fronteira publica SPT v3";
@@ -1765,7 +1787,12 @@ describe("PPIRTV MCP stdio server", () => {
     expect(sensitive).toMatchObject({ code: "SENSITIVE_CONTENT_BLOCKED", recoverable: false });
     expect(third).toMatchObject({ recorded: true, progress_event: { current: 3, percent: 75 } });
     expect(completed).toMatchObject({ recorded: true, progress_event: { current: 4, percent: 100, status: "completed" } });
-    expect(JSON.stringify(completed).length).toBeLessThan(5120);
+    // Lean-bound guard, not an exact-size contract: flow_id embeds the server
+    // PID, whose width varies per machine/run (4-6 digits, echoed in more than
+    // one field). 5120 broke at 5122 with a 5-digit PID (pre-existing on HEAD,
+    // proven by stash probe 2026-10-13), so the budget leaves identifier-width
+    // headroom while still failing unbounded growth.
+    expect(JSON.stringify(completed).length).toBeLessThan(5500);
 
     const status = resultOf(await client!.callTool({ name: "goal_status", arguments: { flow_id: flowId } }));
     const checklist = resultOf(await client!.callTool({ name: "checklist_render", arguments: { flow_id: flowId } }));

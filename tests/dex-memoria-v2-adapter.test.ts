@@ -116,6 +116,24 @@ describe("Dex Memoria V2 adapter", () => {
     expect(() => classifyDexMemoriaV2Intent({ item: "Regra global Delphi.", density: "light", tags: TEST_TAGS, requested_destinations: [] })).toThrow("DEX_MEMORIA_V2_DESTINATIONS_REQUIRED");
   });
 
+  it("rejects malformed governed tags at the adapter boundary", () => {
+    const malformedVariants = [
+      "#SemAninhamento",
+      "tema/sem-cerquilha",
+      "#tema/Maiuscula",
+      "#tema//dupla-barra",
+      "#tema/trailing-"
+    ];
+    for (const tags of malformedVariants.map((tag) => [tag])) {
+      expect(() => classifyDexMemoriaV2Intent({
+        item: "Tag malformada deve falhar antes de qualquer escrita.",
+        density: "light",
+        tags,
+        requested_destinations: [{ scope: "project" }]
+      })).toThrow("DEX_MEMORIA_V2_TAG_INVALID");
+    }
+  });
+
   it("delivers an L3 XOR candidate and canonical request to the executor", async () => {
     const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-adapter-l3-"));
     const executor = { execute: vi.fn() };

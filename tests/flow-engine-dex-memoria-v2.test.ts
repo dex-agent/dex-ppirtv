@@ -89,6 +89,41 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
     ]));
   });
 
+  it("rejects malformed governed tags at both engine validation layers before any write", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-promote-tag-invalid-"));
+    const store = configuredStore();
+    const executor = { execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => committedReceipt(input.operation_request, input.candidate, false)) };
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const flow = await engine.createFlow({ goal: "Tag malformada não pode ser promovida" });
+    flow.gold_mining = [
+      "Memória local deste projeto: validar receipts antes de declarar pronto.",
+      "Conhecimento operacional que ainda precisa de destino humano."
+    ];
+    await store.saveFlow(flow);
+
+    const initial = await engine.mineMemory({ flow_id: flow.flow_id, write_policy: "auto_write" }) as any;
+    const unresolved = initial.candidates.find((candidate: any) => candidate.classification_reason === "destinations_required");
+    expect(unresolved).toBeDefined();
+
+    await expect(engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [unresolved.candidate_id],
+      action: "promote",
+      tags: ["#TemaNaoAninhado"],
+      rationale: "Tag malformada deve falhar na validacao de entrada."
+    } as any)).rejects.toThrow("MEMORY_CANDIDATE_PROMOTION_TAG_INVALID");
+
+    await expect(engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [unresolved.candidate_id],
+      action: "promote",
+      target_scope: "projeto",
+      density: "light",
+      tags: ["#tema/Maiuscula"],
+      rationale: "Promocao explicita com tag malformada deve falhar antes da escrita."
+    } as any)).rejects.toThrow("MEMORY_CANDIDATE_PROMOTION_TAG_INVALID");
+  });
+
   it("promotes ordinary unresolved candidates through the public contract without hiding L3 metadata", async () => {
     tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-public-promote-"));
     const executedOperationIds = new Set<string>();

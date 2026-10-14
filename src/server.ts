@@ -22,6 +22,7 @@ import {
   WorkProgressContractError
 } from "./flow-engine.js";
 import { GoalIdempotencyDuplicateBindingsError } from "./goal-ledger-recovery.js";
+import { isGovernedTag } from "./memory/index.js";
 import { scrubSecretLikeText } from "./security/secret-redaction.js";
 import { PpirtvStore } from "./store.js";
 import { resolveMemoryWriterConfigFromEnv } from "./config.js";
@@ -633,7 +634,7 @@ function registerTools(
         ])).min(1).max(2).optional(),
         v2_density: z.enum(["light", "deep"]).optional(),
         v2_owner_skill: z.string().trim().min(1).optional(),
-        v2_tags: z.array(z.string().regex(/^#[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)+$/)).min(1).optional()
+        v2_tags: z.array(z.string().trim().min(1).refine((tag) => isGovernedTag(tag), "invalid governed nested tag")).min(1).optional()
       }
     },
     async (args) => toolResponse(() => engine.mineMemory(args))
@@ -654,7 +655,7 @@ function registerTools(
         theme: z.string().optional(),
         density: z.enum(["light", "deep"]).optional(),
         owner_skill: z.string().trim().min(1).optional(),
-        tags: z.array(z.string().regex(/^#[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)+$/)).min(1).optional()
+        tags: z.array(z.string().trim().min(1).refine((tag) => isGovernedTag(tag), "invalid governed nested tag")).min(1).optional()
       }
     },
     async (args) => toolResponse(() => engine.resolveMemoryCandidates(args))

@@ -2,6 +2,7 @@ export * from "./memory-types.js";
 export * from "./memory-store.js";
 export * from "./memory-recall.js";
 export * from "./memory-v2-layout.js";
+export * from "./governed-tag.js";
 export * from "./memory-writer.js";
 export * from "./dex-memoria-v2-adapter.js";
 export * from "./memory-hooks.js";

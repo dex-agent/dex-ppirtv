@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import type { BigIntStats } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
+import { isGovernedTag } from "./governed-tag.js";
 import { scrubSecretLikeText } from "../security/secret-redaction.js";
 
 const CANONICAL_CLI_TIMEOUT_MS = 30_000;
@@ -660,7 +661,7 @@ function validateTags(tags: string[]): string[] {
     throw new Error("DEX_MEMORIA_V2_TAGS_REQUIRED_UNIQUE");
   }
   for (const tag of tags) {
-    if (typeof tag !== "string" || !/^#[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)+$/.test(tag)) {
+    if (typeof tag !== "string" || !isGovernedTag(tag)) {
       throw new Error("DEX_MEMORIA_V2_TAG_INVALID");
     }
   }
