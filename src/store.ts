@@ -201,7 +201,7 @@ export class PpirtvStore {
       }
       try {
         await writeFile(lockPath, `${JSON.stringify(lockRecord)}\n`, { flag: "wx" });
-        acquiredIdentity = fileIdentity(await lstat(lockPath, { bigint: true }));
+        acquiredIdentity = fileIdentity(await lstat(lockPath, { bigint: true }), lockPath);
         break;
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
@@ -229,7 +229,7 @@ export class PpirtvStore {
         }
         let staleIdentity: string;
         try {
-          staleIdentity = fileIdentity(await lstat(lockPath, { bigint: true }));
+          staleIdentity = fileIdentity(await lstat(lockPath, { bigint: true }), lockPath);
         } catch (identityError) {
           if ((identityError as NodeJS.ErrnoException).code === "ENOENT") {
             continue;
@@ -467,8 +467,8 @@ async function readStableFlowLock(lockPath: string, flowId: string): Promise<{ r
   const before = await lstat(lockPath, { bigint: true });
   const bytes = await readFile(lockPath, "utf8");
   const after = await lstat(lockPath, { bigint: true });
-  const identity = fileIdentity(before);
-  if (identity !== fileIdentity(after)) {
+  const identity = fileIdentity(before, lockPath);
+  if (identity !== fileIdentity(after, lockPath)) {
     throw Object.assign(
       new Error(`MEETING_LOCK_IDENTITY_CHANGED: ${flowId}`),
       { code: "MEETING_LOCK_IDENTITY_CHANGED" }
@@ -490,11 +490,19 @@ async function readStableFlowLock(lockPath: string, flowId: string): Promise<{ r
   return { record: record as MeetingLockRecord, identity };
 }
 
-function fileIdentity(info: { dev: bigint; ino: bigint }): string {
-  // Size and mtime can settle asynchronously on Windows immediately after a
-  // write. Device + inode identify the directory entry without turning normal
-  // metadata propagation into a false replacement signal. The random owner
-  // token still proves logical ownership before cleanup.
+// Size and mtime can settle asynchronously on Windows immediately after a
+// write. Device + inode identify the directory entry without turning normal
+// metadata propagation into a false replacement signal. The random owner
+// token still proves logical ownership before cleanup.
+// VBOX-STABLE (2026-10-09, repaired 2026-10-13): on VirtualBox shared folders
+// (\\VBoxSvr) the inode is unstable between lstat calls, so dev:ino produces
+// false MEETING_LOCK_IDENTITY_CHANGED. There — and only there — use just the
+// stable device number; everywhere else dev:ino keeps detecting file
+// replacement, and the random owner token still proves logical ownership.
+export function fileIdentity(info: { dev: bigint; ino: bigint }, lockPath: string): string {
+  if (/\\\\vboxsvr/i.test(lockPath)) {
+    return `dev:${info.dev}`;
+  }
   return `${info.dev}:${info.ino}`;
 }
 
