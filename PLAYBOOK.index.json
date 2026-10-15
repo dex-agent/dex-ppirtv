@@ -1,0 +1,93 @@
+{
+  "schema": "project.playbook.index.v1",
+  "generated_by": "tools/playbook/generate-playbook.py",
+  "authority": "derived_projection",
+  "repo_name": "dex-PPIRTV",
+  "sources_revision": "sha256:11c14be715c23d2cd6d78ec22954e8f16775abe4c3c03f8465c7acd9dc96c68c",
+  "sent_revision": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "rules": [
+    {
+      "seal": "pb-bec7ea45",
+      "locator": "PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL",
+      "title": "Regras locais",
+      "gatilho": "Formato de ciclo: `Unreleased` ate decisao explicita de versao; gatilhos:",
+      "extrato": "- Manter `CHANGELOG.md` atualizado. Owner: `$projeto-manter-changelog`.",
+      "rotas": [],
+      "fonte": "AGENTS.md#L26-L158"
+    },
+    {
+      "seal": "pb-79ccf994",
+      "locator": "PPIRTV-CHATO-LIVE-PREFLIGHT",
+      "title": "Ordens diretas do Comandante Owner o $chato 🗣️",
+      "gatilho": "2. $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamento da $estacionamento ao lado da $garimpeiro e tudo que for achado MEMORÁVEL...",
+      "extrato": "### Mandatory live preflight — `PPIRTV-CHATO-LIVE-PREFLIGHT`",
+      "rotas": [
+        "Mantenha $garimpeiro e $estacionamento ativos durante todo...",
+        "$chato 🗣️ quero que o $dex-memoria v2 fique no estacionamen...",
+        "Ative o fluxo visual PPIRTV com checklist visual dinâmico u...",
+        "Sempre finalize o trabalho analisando \"com lentes dos espec..."
+      ],
+      "fonte": "AGENTS.md#L201-L261"
+    },
+    {
+      "seal": "pb-a3f52a04",
+      "locator": "PPIRTV-GIT-CONSOLIDACAO-SELETIVA-MAIN",
+      "title": "Dex Agent Local",
+      "gatilho": "- Antes de qualquer consolidacao Git deste repositorio, recupere o gatilho",
+      "extrato": "- Projeto: `dex-PPIRTV`",
+      "rotas": [],
+      "fonte": "AGENTS.md#L262-L306"
+    }
+  ],
+  "mesa": {
+    "status": "",
+    "escopo": "",
+    "governance_version": "",
+    "secoes": [],
+    "total_derived": 0
+  },
+  "runbook": [],
+  "nao_decodificadas": [
+    {
+      "titulo": "Organizacao De Artefatos E Scripts",
+      "ancora": "AGENTS.md#L159"
+    },
+    {
+      "titulo": "Validacao minima",
+      "ancora": "AGENTS.md#L188"
+    },
+    {
+      "titulo": "Graphify local",
+      "ancora": "AGENTS.md#L307"
+    },
+    {
+      "titulo": "Bootstrap (toda janela nova, nesta ordem)",
+      "ancora": "AGENTS.md#L340"
+    },
+    {
+      "titulo": "Indexação (doutrina da casa)",
+      "ancora": "AGENTS.md#L358"
+    },
+    {
+      "titulo": "Envio a terceiros",
+      "ancora": "AGENTS.md#L365"
+    }
+  ],
+  "fontes": [
+    {
+      "caminho": "AGENTS.md",
+      "sha256": "7c607f0f10a840335253fc46e29212aaff164170c4b8940cdcd2719f55b15acd",
+      "enviado": false
+    },
+    {
+      "caminho": ".agents/napkin.md",
+      "sha256": "903447510a1a196ff16b7a52a51d619bd7cb4095807b99c2d7b652b08b419b56",
+      "enviado": false
+    },
+    {
+      "caminho": ".agents/PLAN-TASKS/ACTIVE.md",
+      "sha256": "37d749831babef743529b6220b86b9bb44190c974a986798fa0e9194d00dff65",
+      "enviado": false
+    }
+  ]
+}

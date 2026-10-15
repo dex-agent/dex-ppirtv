@@ -1,0 +1,5 @@
+#!/bin/sh
+# PLAYBOOK drift gate - blocks any commit while the projection is stale.
+# Design: arena-zcode champion run-20261005-124942-s973103; owner GO 2026-10-05.
+# Covers untracked local sources too (.agents/napkin.md) via sources_revision.
+python -B tools/playbook/generate-playbook.py --repo . --check

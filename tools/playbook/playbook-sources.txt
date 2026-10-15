@@ -1,0 +1,4 @@
+# fontes da projecao PLAYBOOK (1 por linha; dex-playbook-entrada)
+AGENTS.md
+.agents/napkin.md
+.agents/PLAN-TASKS/ACTIVE.md
