@@ -216,8 +216,8 @@ describe("PPIRTV MCP stdio server", () => {
 
     expect((rejected as { isError?: boolean }).isError).toBe(true);
     const errorText = ((rejected as { content?: Array<{ text?: string }> }).content?.[0]?.text) ?? "";
-    expect(errorText).toContain("Input validation error");
-    expect(errorText).toContain("\"tags\"");
+    expect(errorText).toContain("PPIRTV_INPUT_INVALID");
+    expect(errorText).toContain("\"field\":\"tags.0\"");
     expect(errorText).not.toContain("invalid-flat-tag");
   });
 
@@ -239,7 +239,7 @@ describe("PPIRTV MCP stdio server", () => {
 
     expect((rejected as { isError?: boolean }).isError).toBe(true);
     const errorText = ((rejected as { content?: Array<{ text?: string }> }).content?.[0]?.text) ?? "";
-    expect(errorText).toContain("Input validation error");
+    expect(errorText).toContain("PPIRTV_INPUT_INVALID");
     expect(errorText).toContain("invalid governed nested tag");
   });
 

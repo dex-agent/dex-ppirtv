@@ -513,8 +513,104 @@ describe("flow-engine responsibility balance", () => {
     expect(JSON.parse(ledgerOnly.output).reasons).toContain("LEDGER_CHANGE_REQUIRES_TARGET_CHANGE");
     expect(result.exitCode).toBe(1);
     expect(receipt.reasons).toContain("LEDGER_HISTORY_MUTATED");
-    expect(receipt.reasons).toContain("LEDGER_REQUIRES_SINGLE_APPENDED_RECORD");
+    expect(receipt.reasons).toContain("LEDGER_REQUIRES_APPENDED_RECORDS_COVERING_DIFF");
     expect(receipt.reasons).toContain("CHANGELOG_MARKER_MUST_BE_NEW");
+  });
+
+  it("accepts a covered ledger chain when the accumulated origin-main..HEAD diff spans several classified visits", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "flow-engine-chain-"));
+    tempRoots.push(root);
+    for (const directory of ["src", "tests", "docs/architecture", ".agents/PLAN-TASKS"]) {
+      await mkdir(path.join(root, directory), { recursive: true });
+    }
+    const v0 = "export class FlowEngine {\n  legacyPolicy() { return true; }\n  run() { return this.legacyPolicy(); }\n}\n";
+    const v1 = "import { policy } from \"./policy.js\";\nexport class FlowEngine {\n  legacyPolicy() { return true; }\n  run() { return policy(); }\n}\n";
+    const v2 = "import { policy } from \"./policy.js\";\nexport class FlowEngine {\n  run() { return policy(); }\n}\n";
+    await writeFile(path.join(root, "src", "flow-engine.ts"), v0);
+    await writeFile(path.join(root, "src", "policy.ts"), "export const policy = () => true;\n");
+    await writeFile(path.join(root, "src", "server.ts"), "import { policy } from './policy.js';\nexport const server = policy;\n");
+    await writeFile(path.join(root, "tests", "policy.test.ts"), "test('policy', () => {});\n");
+    await writeFile(path.join(root, "tests", "flow-engine-boundary.test.ts"), "it('flow-engine responsibility balance', () => {});\n");
+    await writeFile(path.join(root, ".agents", "PLAN-TASKS", "fixture.md"), "# Fixture SPT\n");
+    await writeFile(path.join(root, "docs", "architecture", "FLOW_ENGINE_EVOLUTION.md"), "# Architecture\n");
+    await writeFile(path.join(root, "CHANGELOG.md"), "# Changelog\n");
+    const gitIn = (args: string[]) => execFileSync("git", args, { cwd: root });
+    gitIn(["init"]);
+    gitIn(["config", "user.email", "fixture@example.invalid"]);
+    gitIn(["config", "user.name", "Fixture"]);
+    gitIn(["add", "."]);
+    gitIn(["commit", "-m", "baseline"]);
+    gitIn(["update-ref", "refs/remotes/origin/main", execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim()]);
+    const blobAtRef = (ref: string) => execFileSync("git", ["rev-parse", `${ref}:src/flow-engine.ts`], { cwd: root, encoding: "utf8" }).trim();
+
+    // Visit 1: CONTAIN (glue only) opening a payable debt.
+    await writeFile(path.join(root, "src", "flow-engine.ts"), v1);
+    const record1 = {
+      ...baseDeclaration,
+      id: "chain-visit-1",
+      mode: "CONTAIN",
+      base_blob: blobAtRef("HEAD"),
+      head_blob: execFileSync("git", ["hash-object", "src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim(),
+      destination_module: "src/policy.ts",
+      glue_only: true,
+      debt: { id: "FE-DEBT-CHAIN", status: "open", owner: "$refactoring-fowler-rich", when: "next target diff", responsibility: "goal fiscal policy", payment_scope: "any_verified_shrink" }
+    };
+    await writeFile(path.join(root, "CHANGELOG.md"), `# Changelog\n\n## [Unreleased]\n${record1.changelog_marker}\n`);
+    await writeFile(path.join(root, "docs", "architecture", "FLOW_ENGINE_EVOLUTION.md"), `# Architecture\n${record1.architecture_marker}\n`);
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), JSON.stringify({
+      contract: "dex.flow-engine.evolution-ledger.v1",
+      target: "src/flow-engine.ts",
+      owner: "$refactoring-fowler-rich",
+      records: [record1]
+    }));
+    gitIn(["add", "."]);
+    gitIn(["commit", "-m", "visit 1"]);
+
+    // Visit 2: SHRINK paying the debt and chaining from visit 1's head blob.
+    await writeFile(path.join(root, "src", "flow-engine.ts"), v2);
+    const record2 = {
+      ...baseDeclaration,
+      id: "chain-visit-2",
+      mode: "SHRINK",
+      base_blob: blobAtRef("HEAD"),
+      head_blob: execFileSync("git", ["hash-object", "src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim(),
+      destination_module: "src/policy.ts",
+      removed_symbols: ["legacyPolicy"],
+      symbol_mappings: { legacyPolicy: "policy" },
+      same_responsibility: true,
+      behavior_preserved_by: ["tests/policy.test.ts"],
+      pays_debt_id: "FE-DEBT-CHAIN"
+    };
+    await writeFile(path.join(root, "CHANGELOG.md"), `# Changelog\n\n## [Unreleased]\n${record1.changelog_marker}\n${record2.changelog_marker}\n`);
+    await writeFile(path.join(root, "docs", "architecture", "FLOW_ENGINE_EVOLUTION.md"), `# Architecture\n${record1.architecture_marker}\n${record2.architecture_marker}\n`);
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), JSON.stringify({
+      contract: "dex.flow-engine.evolution-ledger.v1",
+      target: "src/flow-engine.ts",
+      owner: "$refactoring-fowler-rich",
+      records: [record1, record2]
+    }));
+    gitIn(["add", "."]);
+    gitIn(["commit", "-m", "visit 2"]);
+
+    // Clean tree, HEAD ahead of origin/main: the accumulated diff has no single
+    // (base_blob, head_blob) pair — only the covered chain can prove it.
+    const accumulated = runBoundaryCli({ cwd: root, argv: [] });
+    const receipt = JSON.parse(accumulated.output);
+    expect(accumulated.exitCode).toBe(0);
+    expect(receipt).toMatchObject({ status: "PASS", declaration_id: "chain-visit-2" });
+    expect(receipt.ledger_chain).toMatchObject({ status: "PASS", records: ["chain-visit-1", "chain-visit-2"] });
+
+    // A broken link in the middle must fall back to MATCHING_DECLARATION_REQUIRED.
+    const broken = JSON.parse(JSON.stringify([record1, record2]));
+    broken[1].base_blob = "0".repeat(40);
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), JSON.stringify({
+      contract: "dex.flow-engine.evolution-ledger.v1",
+      target: "src/flow-engine.ts",
+      owner: "$refactoring-fowler-rich",
+      records: broken
+    }));
+    const brokenRun = runBoundaryCli({ cwd: root, argv: ["--base", "origin/main"] });
+    expect(JSON.parse(brokenRun.output).reasons).toContain("MATCHING_DECLARATION_REQUIRED");
   });
 
   it("rejects a forged first ledger bootstrap", async () => {

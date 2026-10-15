@@ -75,7 +75,7 @@ Exemplo real da captura: agente enviou `suggested_cooperators` como **string JSO
 }
 ```
 
-Schemas de tool continuam estritos (zod); `.describe()` nos campos ensina no lado do cliente; a validação server-side devolve o envelope acima.
+Schemas de tool continuam estritos (zod) e `.describe()` nos campos quentes ensina no lado do cliente via `tools/list`. O fio server-side é real desde a fase 2A (2026-10-15): a validação de input roda no SDK (`McpServer.validateToolInput`, zod ANTES do handler) e o override `installTeachingInputValidation` (src/server.ts) transforma a falha de validação em `McpError(InvalidParams)` cuja message carrega `PPIRTV_INPUT_INVALID: {code, tool, message, input_issues:[{field, received_type, expected_type, example}], next_required_action:{type:"fix_input_fields", tool, reason}}`. Na fronteira do cliente (SDK atual) isso chega como tool result `isError:true` com text `MCP error -32602: PPIRTV_INPUT_INVALID: {...}` — legível para o agente executor sem arqueologia. Exemplo genérico de tipo usa placeholder `<string>`/`<number>` (substitua; não envie literal). O override é feature-detected: se o método sumir em upgrade do SDK, o servidor volta ao comportamento original (message crua do zod) e o teste de fronteira `tests/server-boundary.test.ts` pinta RED avisando a casa.
 
 ## Exemplo P1 do inventário: diagnóstico em cascata (fora do corte, estacionado)
 

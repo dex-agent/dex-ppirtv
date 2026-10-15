@@ -86,15 +86,72 @@ function expandPattern(source) {
 const routedCodes = new Set(patternSources.flatMap(expandPattern));
 const missing = requiredFamilies.filter((family) => !routedCodes.has(family));
 
+// ---- Gate de sequencia (fase 2A): sequencia ENSINADA x schema VIVO ----
+// Duas testemunhas independentes: os steps saem das funcoes reais de
+// dist/error-envelope.js; os schemas saem do tools/list do servidor real.
+async function sequenceGate() {
+  const { pathToFileURL } = await import("node:url");
+  const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+  const { StdioClientTransport, getDefaultEnvironment } = await import("@modelcontextprotocol/sdk/client/stdio.js");
+  const envelopeModule = await import(pathToFileURL(path.join(repoRoot, "dist", "error-envelope.js")).href);
+  const client = new Client({ name: "audit-sequence-gate", version: "1.0.0" });
+  const userProfile = process.env.USERPROFILE ?? process.env.HOME;
+  await client.connect(new StdioClientTransport({
+    command: process.execPath,
+    args: [path.join(repoRoot, "dist", "index.js")],
+    cwd: repoRoot,
+    env: {
+      ...getDefaultEnvironment(),
+      PPIRTV_HOME: path.join(repoRoot, ".ppirtv"),
+      PPIRTV_WORKSPACE: repoRoot,
+      PPIRTV_PRINCIPLES_PATH: path.join(userProfile, ".agents", "memories", "principles", "operational-contract.json")
+    }
+  }));
+  const listed = await client.listTools();
+  const schemasByTool = {};
+  let stepsValidated = 0;
+  const sequenceErrors = [];
+  const branches = [
+    "PPIRTV_FISCAL_BLOCKED: attempt_regress_count, attempts_insufficient_before_positive_verdict; attempt_count=0, regress_count=0, max=3, meetings=0; required_cooperation=",
+    "PPIRTV_FISCAL_BLOCKED: attempt_regress_count, attempt_regress_limit_reached; attempt_count=0, regress_count=4, max=3, meetings=2; required_cooperation=",
+    "PPIRTV_FISCAL_BLOCKED: required_cooperation, review_required; attempt_count=0, regress_count=0, max=3, meetings=1; required_cooperation=chato|questionador"
+  ];
+  try {
+    for (const tool of listed.tools ?? []) {
+      schemasByTool[tool.name] = {
+        required: tool.inputSchema?.required ?? [],
+        properties: tool.inputSchema?.properties ?? {}
+      };
+    }
+    for (const branch of branches) {
+      const action = envelopeModule.fiscalBlockedAction(branch, "flow_audit_sequence_probe");
+      for (const step of action.required_tool_sequence ?? []) {
+        if (!step.args) continue;
+        stepsValidated += 1;
+        const errors = envelopeModule.validateSequenceSteps([step], schemasByTool);
+        for (const error of errors) sequenceErrors.push({ branch: branch.slice(0, 60), ...error });
+      }
+    }
+  } finally {
+    await client.close();
+  }
+  return { stepsValidated, sequenceErrors };
+}
+
+const sequence = await sequenceGate();
+
 const report = {
   schema: "ppirtv.error-envelope.audit.v1",
   contract: "docs/contracts/MCP_TOOL_ERROR_ENVELOPE_CONTRACT.md",
   required_families: requiredFamilies.length,
   codigos_sem_next_required_action: missing.length,
   missing,
+  steps_validados_contra_schema_vivo: sequence.stepsValidated,
+  sequencias_invalidas: sequence.sequenceErrors.length,
+  sequence_errors: sequence.sequenceErrors,
   read_only: true,
   gate: strict ? "strict" : "report"
 };
 
 console.log(JSON.stringify(report, null, 2));
-if (strict && missing.length > 0) process.exit(1);
+if (strict && (missing.length > 0 || sequence.sequenceErrors.length > 0)) process.exit(1);

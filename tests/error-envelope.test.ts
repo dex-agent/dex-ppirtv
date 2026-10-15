@@ -4,7 +4,9 @@ import {
   fiscalBlockedAction,
   inputShapeEnvelope,
   normalizeFiscalBlockedMessage,
-  unblockFor
+  unblockFor,
+  validateSequenceSteps,
+  type SequenceSchemaIndex
 } from "../src/error-envelope.js";
 import { parseSptDocument } from "../src/spt-contract.js";
 
@@ -167,5 +169,78 @@ describe("error envelope contract (PPIRTV-ERRO-QUE-ENSINA-ENVELOPE)", () => {
     const hint = result.errors.find((error) => error.includes("scope.include"));
     expect(hint).toBeTruthy();
     expect(String(hint)).toContain("quote");
+  });
+});
+
+describe("sequence oracle validates taught steps against live schemas", () => {
+  const schemas: SequenceSchemaIndex = {
+    goal_meeting_open: {
+      required: ["flow_id", "question"],
+      properties: {
+        flow_id: { type: "string" },
+        question: { type: "string" },
+        type: { type: "string", enum: ["divergent", "convergent", "transversal", "decision"] },
+        suggested_cooperators: { type: "array" }
+      }
+    },
+    goal_meeting_close: {
+      required: ["flow_id", "meeting_id", "decision"],
+      properties: {
+        flow_id: { type: "string" },
+        meeting_id: { type: "string" },
+        decision: { type: "string" }
+      }
+    },
+    goal_verdict: {
+      required: ["flow_id", "status", "rationale", "next_step"],
+      properties: {
+        flow_id: { type: "string" },
+        status: { type: "string", enum: ["pronto", "pronto_com_ressalvas", "nao_pronto", "bloqueado"] },
+        rationale: { type: "string" },
+        meeting_id: { type: "string" },
+        next_step: { type: "string" }
+      }
+    }
+  };
+
+  it("accepts the taught meeting sequence when every required field and enum matches the live schema", () => {
+    const action = fiscalBlockedAction(
+      "PPIRTV_FISCAL_BLOCKED: required_cooperation, review_required; attempt_count=0, regress_count=0, max=3, meetings=1; required_cooperation=chato|questionador"
+    );
+    const errors = validateSequenceSteps(action.required_tool_sequence ?? [], schemas);
+    expect(errors).toEqual([]);
+  });
+
+  it("rejects the historic decisao regression: invalid enum value in taught args", () => {
+    const regression = fiscalBlockedAction(
+      "PPIRTV_FISCAL_BLOCKED: required_cooperation, review_required; attempt_count=0, regress_count=0, max=3, meetings=1; required_cooperation=chato"
+    );
+    const steps = (regression.required_tool_sequence ?? []).map((step) =>
+      step.tool === "goal_meeting_open" ? { ...step, args: { ...step.args, type: "decisao" } } : step
+    );
+    const errors = validateSequenceSteps(steps, schemas);
+    expect(errors.some((error) => error.problem.includes("fora do enum vivo"))).toBe(true);
+  });
+
+  it("rejects taught steps missing required fields of the live schema", () => {
+    const action = fiscalBlockedAction(
+      "PPIRTV_FISCAL_BLOCKED: required_cooperation; attempt_count=0, regress_count=0, max=3, meetings=1"
+    );
+    const stripped = (action.required_tool_sequence ?? []).map((step) => {
+      if (step.tool !== "goal_verdict") return step;
+      const args = { ...step.args };
+      delete args.rationale;
+      return { ...step, args };
+    });
+    const errors = validateSequenceSteps(stripped, schemas);
+    expect(errors.some((error) => error.problem.includes("rationale"))).toBe(true);
+  });
+
+  it("treats placeholder args as substitution obligations, not literal values", () => {
+    const errors = validateSequenceSteps(
+      [{ order: 2, tool: "goal_meeting_close", args: { flow_id: "f1", meeting_id: "<meeting_id retornado por goal_meeting_open>", decision: "ok" } }],
+      schemas
+    );
+    expect(errors).toEqual([]);
   });
 });

@@ -292,7 +292,7 @@ function exampleFor(expected: string, field: string): unknown {
     return FIELD_EXAMPLES[field];
   }
   if (expected.includes("string")) {
-    return "";
+    return "<string>";
   }
   if (expected.includes("boolean")) {
     return true;
@@ -332,5 +332,93 @@ export const INPUT_FIELD_DESCRIPTIONS = {
   decision: "Texto da decisao que fecha a reuniao (string nao vazia).",
   meeting_id: "ID da reuniao fechada, retornado por goal_meeting_close.",
   auto_classify: "Boolean — classificar candidatos de memoria automaticamente.",
-  auto_write: "Boolean — gravar memoraveis fortes automaticamente no padrao dex-memoria."
+  write_policy: "Enum 'auto_write' | 'classify_only' (default 'auto_write') — gravar memoraveis fortes direto ou apenas classificar."
 } as const;
+
+/**
+ * Oracle de sequencia (fase 2A): valida os steps ENSINADOS contra o schema
+ * vivo de tools/list. Duas testemunhas — a sequencia sai da funcao que emite
+ * a mensagem real; o schema sai do servidor real. O oracle nunca deriva o
+ * esperado do proprio codigo gerador da mensagem.
+ */
+export type SequenceSchemaIndex = Record<string, { required?: string[]; properties?: Record<string, unknown> }>;
+
+export type SequenceValidationError = {
+  step: number;
+  tool: string;
+  problem: string;
+};
+
+function isPlaceholder(value: unknown): boolean {
+  return typeof value === "string" && value.trim().startsWith("<") && value.trim().endsWith(">");
+}
+
+function typeMatches(value: unknown, property: Record<string, unknown> | undefined): boolean {
+  if (!property || typeof property.type !== "string") {
+    return true;
+  }
+  const expected = property.type;
+  if (isPlaceholder(value)) {
+    return true;
+  }
+  if (expected === "string") return typeof value === "string";
+  if (expected === "number") return typeof value === "number";
+  if (expected === "boolean") return typeof value === "boolean";
+  if (expected === "array") return Array.isArray(value);
+  if (expected === "object") return typeof value === "object" && value !== null && !Array.isArray(value);
+  return true;
+}
+
+export function validateSequenceSteps(
+  steps: EnvelopeStep[],
+  schemasByTool: SequenceSchemaIndex
+): SequenceValidationError[] {
+  const errors: SequenceValidationError[] = [];
+  for (const step of steps) {
+    const schema = schemasByTool[step.tool];
+    if (!schema) {
+      errors.push({ step: step.order, tool: step.tool, problem: "tool ausente no tools/list (schema vivo)" });
+      continue;
+    }
+    const args = step.args ?? {};
+    for (const requiredField of schema.required ?? []) {
+      if (!(requiredField in args)) {
+        errors.push({
+          step: step.order,
+          tool: step.tool,
+          problem: `campo obrigatorio "${requiredField}" ausente nos args ensinados`
+        });
+      }
+    }
+    for (const [field, value] of Object.entries(args)) {
+      const property = (schema.properties?.[field] ?? undefined) as Record<string, unknown> | undefined;
+      if (!property && schema.properties) {
+        errors.push({
+          step: step.order,
+          tool: step.tool,
+          problem: `campo "${field}" nao existe no schema vivo da tool`
+        });
+        continue;
+      }
+      if (isPlaceholder(value)) {
+        continue;
+      }
+      if (!typeMatches(value, property)) {
+        errors.push({
+          step: step.order,
+          tool: step.tool,
+          problem: `campo "${field}" com tipo ${typeof value} mas schema exige ${String(property?.type)}`
+        });
+      }
+      const enumValues = Array.isArray(property?.enum) ? (property.enum as unknown[]) : null;
+      if (enumValues && !isPlaceholder(value) && !enumValues.includes(value)) {
+        errors.push({
+          step: step.order,
+          tool: step.tool,
+          problem: `campo "${field}" com valor ${JSON.stringify(value)} fora do enum vivo ${JSON.stringify(enumValues)}`
+        });
+      }
+    }
+  }
+  return errors;
+}

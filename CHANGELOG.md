@@ -10,6 +10,29 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
+- Fase 2A do envelope que ensina (Trilho 2026-10-15 `envelope-fase2-a`, flow
+  `flow_20261015160535398_2663_0001`): (1) oracle de sequencia no
+  `scripts/audit-error-envelope.mjs` valida os steps ensinados pelas mensagens
+  fiscais contra o `inputSchema` vivo de `tools/list` (duas testemunhas
+  independentes; `--strict` exit 0; o RED historico do enum `decisao` virou
+  teste permanente no vitest); (2) o fio real do erro de input na fronteira —
+  override feature-detected de `McpServer.validateToolInput` em
+  `src/server.ts` transforma a falha de validacao zod no envelope
+  `PPIRTV_INPUT_INVALID` com `field/received_type/expected_type/example` e
+  `next_required_action` (antes o SDK devolvia a message crua), com teste de
+  fronteira spawn real (`tests/server-boundary.test.ts`) que pinta RED se o
+  override sumir em upgrade do SDK; (3) o contrato do envelope agora documenta
+  o fio real em vez de prometer validacao server-side inexistente e os campos
+  quentes `cooperators`, `active_credits` e `write_policy` ganharam
+  `.describe()` no `tools/list`; (4) fiscal camping reconhece cadeia coberta
+  no diff acumulado `origin-main..HEAD` (`scripts/validate-flow-engine-boundary.mjs`):
+  sufixo contiguo do ledger conectando `base_blob` a `head_blob` com
+  diff-replay por janela + markers por record + ultimo record integral — a
+  janela local commit->push deixa de ficar vermelha sem causa no codigo
+  (reason renomeado `LEDGER_REQUIRES_APPENDED_RECORDS_COVERING_DIFF`;
+  teste e2e com fixture origin/main). Bateria: 34 suites / 609 testes verdes,
+  `npm run check` exit 0, `flow-engine.ts` intocado.
+
 - Erro que ensina (Trilho 2026-10-15 `erro-que-ensina`): a
   mensagem fiscal bloqueada agora ensina split, numeros e rota de destravamento
   — `attempt_regress_count` e acompanhado dos codigos desambiguados

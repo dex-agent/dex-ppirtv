@@ -630,10 +630,43 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
   }
 
   const records = Array.isArray(manifest.records) ? manifest.records : [];
-  const declaration = records.find((entry) => entry.base_blob === baseBlob && entry.head_blob === headBlob);
+  let declaration = records.find((entry) => entry.base_blob === baseBlob && entry.head_blob === headBlob);
+  // Diff acumulado (ex.: origin-main..HEAD com varios commits locais ainda nao
+  // pushed): nenhum par unico cobre a janela, mas um sufixo contiguo do ledger
+  // pode conectar baseBlob ate headBlob elo a elo. Sem isso, toda janela local
+  // commit->push fica vermelha sem causa no codigo.
+  let chainRecords = null;
+  if (!declaration && baseBlob !== headBlob) {
+    const chainStart = records.findIndex((entry, index) => {
+      if (entry?.base_blob !== baseBlob) return false;
+      for (let link = index; link < records.length - 1; link += 1) {
+        if (records[link]?.head_blob !== records[link + 1]?.base_blob) return false;
+      }
+      return records.at(-1)?.head_blob === headBlob;
+    });
+    if (chainStart >= 0) {
+      chainRecords = records.slice(chainStart);
+      declaration = chainRecords.at(-1);
+    }
+  }
   const history = declaration ? records.slice(0, records.indexOf(declaration)) : records;
   const flowEngineChanged = comparison.source === "ledger-worktree" ? false : baseBlob !== headBlob;
-  const receipt = evaluateFlowEngineChange({ baseSource, headSource, declaration, history, flowEngineChanged });
+  // Na cadeia coberta, cada janela carrega suas proprias metricas: o evaluate
+  // principal aplica a declaracao do ULTIMO record sobre a janela DELE (blobs do
+  // ledger), nunca sobre o diff acumulado inteiro.
+  const chainHeadSource = chainRecords
+    ? git(["cat-file", "-p", chainRecords.at(-1).head_blob], cwd)
+    : headSource;
+  const chainBaseSource = chainRecords
+    ? git(["cat-file", "-p", chainRecords.at(-1).base_blob], cwd)
+    : baseSource;
+  const receipt = evaluateFlowEngineChange({
+    baseSource: chainBaseSource,
+    headSource: chainHeadSource,
+    declaration,
+    history,
+    flowEngineChanged
+  });
   Object.assign(receipt, {
     comparison,
     base_blob: baseBlob,
@@ -641,6 +674,13 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
     target: TARGET_PATH,
     declaration_id: declaration?.id ?? null
   });
+  if (chainRecords) {
+    receipt.ledger_chain = {
+      status: "PENDING",
+      records: chainRecords.map((entry) => entry?.id ?? "unknown"),
+      coverage: "diff_replay+markers+last_record_full"
+    };
+  }
 
   if (!receipt.flow_engine_changed) {
     const baseManifest = readOptionalAt(cwd, comparison.base, args.manifest);
@@ -672,8 +712,9 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
         const baseRecords = JSON.parse(baseManifestText).records ?? [];
         const preservedPrefix = JSON.stringify(records.slice(0, baseRecords.length)) === JSON.stringify(baseRecords);
         if (!preservedPrefix) receipt.reasons.push("LEDGER_HISTORY_MUTATED");
-        if (records.length !== baseRecords.length + 1 || records.at(-1) !== declaration) {
-          receipt.reasons.push("LEDGER_REQUIRES_SINGLE_APPENDED_RECORD");
+        const appendedCount = chainRecords?.length ?? 1;
+        if (records.length !== baseRecords.length + appendedCount || records.at(-1) !== declaration) {
+          receipt.reasons.push("LEDGER_REQUIRES_APPENDED_RECORDS_COVERING_DIFF");
         }
         const previousHeadBlob = baseRecords.at(-1)?.head_blob;
         if (previousHeadBlob && previousHeadBlob !== baseBlob) receipt.reasons.push("LEDGER_TARGET_CHAIN_BROKEN");
@@ -697,6 +738,28 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
       : readFileSync(path.join(cwd, ARCHITECTURE_PATH), "utf8");
     if (!headArchitecture.includes(declaration.architecture_marker)) receipt.reasons.push("ARCHITECTURE_MARKER_REQUIRED");
     if (governedAppend && baseArchitecture.includes(declaration.architecture_marker)) receipt.reasons.push("ARCHITECTURE_MARKER_MUST_BE_NEW");
+
+    if (chainRecords && chainRecords.length > 1) {
+      for (const record of chainRecords) {
+        const replay = evaluateFlowEngineChange({
+          baseSource: git(["cat-file", "-p", record.base_blob], cwd),
+          headSource: git(["cat-file", "-p", record.head_blob], cwd),
+          declaration: record,
+          history: records.slice(0, records.indexOf(record)),
+          flowEngineChanged: true
+        });
+        for (const reason of replay.reasons) receipt.reasons.push(`CHAIN_REPLAY:${record.id}:${reason}`);
+        if (!unreleased.includes(record.changelog_marker)) {
+          receipt.reasons.push(`CHAIN_CHANGELOG_MARKER_REQUIRED:${record.changelog_marker}`);
+        }
+        if (!headArchitecture.includes(record.architecture_marker)) {
+          receipt.reasons.push(`CHAIN_ARCHITECTURE_MARKER_REQUIRED:${record.architecture_marker}`);
+        }
+      }
+      receipt.ledger_chain.status = receipt.reasons.length === 0 ? "PASS" : "FAIL";
+    } else if (receipt.ledger_chain) {
+      receipt.ledger_chain.status = receipt.reasons.length === 0 ? "PASS" : "FAIL";
+    }
 
     if (
       (declaration.mode !== "EXCEPTION" || nonEmptyString(declaration.destination_module))

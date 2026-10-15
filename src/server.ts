@@ -1,5 +1,6 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import path from "node:path";
 import { PROMPT_NAMES, RESOURCE_URIS, TOOL_NAMES, gatesTemplate, mcpReference, meetingsTemplate, promptText, resourceText } from "./catalogs.js";
@@ -33,6 +34,7 @@ import {
   INPUT_FIELD_DESCRIPTIONS,
   advanceGatesPending,
   fiscalBlockedAction,
+  inputShapeEnvelope,
   normalizeFiscalBlockedMessage,
   unblockFor
 } from "./error-envelope.js";
@@ -65,7 +67,79 @@ export function createPpirtvServer(options: { storeRoot?: string; env?: NodeJS.P
   registerTools(server, engine, store, memoryWriter, runtimeEnv);
   registerResources(server, engine);
   registerPrompts(server);
+  installTeachingInputValidation(server);
   return server;
+}
+
+/**
+ * Fio do envelope de input na fronteira (fase 2A). O SDK valida o zod ANTES
+ * do handler e devolve -32602 com dump cru; este override substitui a mensagem
+ * crua pelo envelope ensinante (field/received_type/expected_type/example +
+ * next_required_action) SEM degradar o inputSchema do tools/list. Feature
+ * detect: se o metodo ou o zod sumirem em upgrade do SDK, cai no comportamento
+ * original (e o teste de fronteira pinta RED avisando a casa).
+ */
+type SafeParseOutcome = {
+  success: boolean;
+  data?: unknown;
+  error?: { issues: Array<{ path: PropertyKey[]; code: string; expected?: unknown; received?: unknown; message?: string }> };
+};
+
+type InputValidator = (tool: unknown, args: unknown, toolName: string) => Promise<unknown>;
+
+// O SDK valida o input com zod ANTES do handler (mcp.js validateToolInput) e
+// devolve a message crua do zod como text — sem campo, sem exemplo, sem rota.
+// Este override substitui essa mensagem pelo envelope que ensina. Feature
+// detect: se o metodo sumir em upgrade do SDK, cai no comportamento original
+// (e o teste de fronteira pinta RED avisando a casa).
+function installTeachingInputValidation(server: McpServer): void {
+  const receiver = server as unknown as { validateToolInput?: InputValidator };
+  const original = receiver.validateToolInput?.bind(server);
+  if (typeof original !== "function") {
+    return;
+  }
+  receiver.validateToolInput = async (tool, args, toolName) => {
+    try {
+      const schema = (tool as { inputSchema?: unknown }).inputSchema;
+      let parsed: SafeParseOutcome | null = null;
+      if (schema && typeof (schema as { safeParse?: unknown }).safeParse === "function") {
+        parsed = (schema as { safeParse: (value: unknown) => SafeParseOutcome }).safeParse(args);
+      } else if (schema && typeof schema === "object") {
+        parsed = z.object(schema as Record<string, z.ZodType>).safeParse(args) as SafeParseOutcome;
+      }
+      if (!parsed) {
+        return await original(tool, args, toolName);
+      }
+      if (parsed.success) {
+        return parsed.data ?? args;
+      }
+      const issues = (parsed.error?.issues ?? []).map((issue) => ({
+        path: issue.path,
+        expected: issue.expected === undefined ? issue.code : String(issue.expected),
+        received: issue.received === undefined ? "undefined" : String(issue.received),
+        message: issue.message
+      }));
+      const envelopes = inputShapeEnvelope(issues);
+      const payload = {
+        code: "PPIRTV_INPUT_INVALID",
+        tool: toolName,
+        message: `Invalid arguments for tool ${toolName}: ${issues.map((issue) => `${String(issue.path.join("."))}: ${issue.message}`).join("; ")}`,
+        input_issues: envelopes,
+        next_required_action: {
+          type: "fix_input_fields",
+          tool: toolName,
+          reason: "corrija os campos listados (field/received_type/expected_type/example) e reenvie a chamada"
+        }
+      };
+      throw new McpError(ErrorCode.InvalidParams, `PPIRTV_INPUT_INVALID: ${JSON.stringify(payload)}`);
+    } catch (error) {
+      if (error instanceof McpError) {
+        throw error;
+      }
+      // zod de shape invalido ou surprise: fallback ao comportamento original
+      return await original(tool, args, toolName);
+    }
+  };
 }
 
 export async function runStdioServer(): Promise<void> {
@@ -348,8 +422,8 @@ function registerTools(
         rollback_plan: z.string().optional(),
         parking_lot: z.array(z.string()).optional(),
         gold_mining: z.array(z.string()).optional(),
-        cooperators: z.array(cooperatorSchema).optional(),
-        active_credits: z.array(z.string()).optional()
+        cooperators: z.array(cooperatorSchema).optional().describe(INPUT_FIELD_DESCRIPTIONS.cooperators),
+        active_credits: z.array(z.string()).optional().describe(INPUT_FIELD_DESCRIPTIONS.active_credits)
       }
     },
     async (args) => toolResponse(() => engine.recordMeeting(args))
@@ -369,8 +443,8 @@ function registerTools(
         note: z.string().optional(),
         parking_lot: z.array(z.string()).optional(),
         gold_mining: z.array(z.string()).optional(),
-        cooperators: z.array(cooperatorSchema).optional(),
-        active_credits: z.array(z.string()).optional()
+        cooperators: z.array(cooperatorSchema).optional().describe(INPUT_FIELD_DESCRIPTIONS.cooperators),
+        active_credits: z.array(z.string()).optional().describe(INPUT_FIELD_DESCRIPTIONS.active_credits)
       }
     },
     async (args) => toolResponse(() => engine.attachEvidence(args))
@@ -402,8 +476,8 @@ function registerTools(
         residual_risks: z.array(z.string()).optional(),
         parking_lot: z.array(z.string()).optional(),
         gold_mining: z.array(z.string()).optional(),
-        cooperators: z.array(cooperatorSchema).optional(),
-        active_credits: z.array(z.string()).optional(),
+        cooperators: z.array(cooperatorSchema).optional().describe(INPUT_FIELD_DESCRIPTIONS.cooperators),
+        active_credits: z.array(z.string()).optional().describe(INPUT_FIELD_DESCRIPTIONS.active_credits),
         meeting_ids: z.array(z.string().min(1)).optional(),
         next_step: z.string().min(1)
       }
@@ -659,8 +733,8 @@ function registerTools(
         rollback_plan: z.string().optional(),
         parking_lot: z.array(z.string()).optional(),
         gold_mining: z.array(z.string()).optional(),
-        cooperators: z.array(cooperatorSchema).optional(),
-        active_credits: z.array(z.string()).optional()
+        cooperators: z.array(cooperatorSchema).optional().describe(INPUT_FIELD_DESCRIPTIONS.cooperators),
+        active_credits: z.array(z.string()).optional().describe(INPUT_FIELD_DESCRIPTIONS.active_credits)
       }
     },
     async (args) => toolResponse(() => engine.goalMeetingClose(args), { flow_id: args.flow_id, tool: "goal_meeting_close" })
@@ -674,7 +748,7 @@ function registerTools(
       inputSchema: {
         flow_id: z.string().min(1),
         auto_classify: z.boolean().default(true).describe(INPUT_FIELD_DESCRIPTIONS.auto_classify),
-        write_policy: z.enum(MEMORY_WRITE_POLICIES).default("auto_write"),
+        write_policy: z.enum(MEMORY_WRITE_POLICIES).default("auto_write").describe(INPUT_FIELD_DESCRIPTIONS.write_policy),
         v2_destinations: z.array(z.union([
           z.object({ scope: z.literal("project") }),
           z.object({ scope: z.literal("global") }),
