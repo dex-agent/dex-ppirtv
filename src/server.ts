@@ -1281,6 +1281,29 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
       next_required_action: unblock.action
     };
   }
+  // ENOENT de path de flow: o filesystem vaza "no such file" cru e o
+  // consumidor fica sem saber se errou o ID ou o workspace. Match especifico
+  // de flows/flow_*.json para nao capturar ENOENT de outros artifacts.
+  if ((error as NodeJS.ErrnoException)?.code === "ENOENT" && /[\\/]flows[\\/]flow_[^\\/"]+\.json/i.test(message)) {
+    const flowIdMatch = /[\\/]flows[\\/](flow_[^\\/"]+)\.json/i.exec(message);
+    return {
+      ...base,
+      message: `nenhum flow com ID ${flowIdMatch?.[1] ?? "solicitado"} existe no runtime conectado`,
+      code: "FLOW_NOT_FOUND",
+      recoverable: true,
+      details: {
+        ...base.details,
+        flow_id: flowIdMatch?.[1] ?? null,
+        hint: "nenhum flow com esse ID existe no runtime conectado"
+      },
+      next_required_action: {
+        type: "inspect_active_flows",
+        tool: "goal_status",
+        args: { detail: "full" },
+        rule: "confira o flow ativo deste workspace com goal_status detail=full (ou liste com flow_status) antes de reenviar; se o ID veio de outro workspace, conecte o runtime certo; se o flow ainda nao existe, crie-o com goal_start ou flow_create"
+      }
+    };
+  }
   return {
     ...base,
     code: "PPIRTV_TOOL_ERROR",

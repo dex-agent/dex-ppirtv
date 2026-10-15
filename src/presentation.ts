@@ -1,4 +1,5 @@
 import { DEFAULT_BACK_TO, type Cooperator, type DisplayEnvelope, type Flow, type AnyPhase, type Phase, type PresentationEnvelope } from "./domain.js";
+import { reviewEvidenceDiagnostics } from "./gate-resolution.js";
 
 const PHASE_META: Record<Phase, { label: string; emoji: string; owner: string; ownerEmoji: string }> = {
   pensamentos: { label: "Pensamentos", emoji: "🧠", owner: "Rita Reuniao + Quele Questiona", ownerEmoji: "🗣️" },
@@ -69,6 +70,12 @@ export function presentFlow(flow: Flow): Flow & PresentationEnvelope {
 }
 
 export function presentGate<T extends GateLike & Record<string, unknown>>(value: T, flow?: Flow): Presentable<T> {
+  const missing = Array.isArray(value.missing) ? (value.missing as string[]) : [];
+  // Escopo movel: quando o gate de revisao bloqueia, a review anexada pode ter
+  // sido invalidada por changed_files declarado DEPOIS dela — recalculamos o
+  // diagnostico contra o escopo AUTORIZADO ATUAL para o agente descobrir why.
+  const reviewGateBlocked = missing.some((item) => item === "review_evidence_coherent" || item === "diff_reviewed" || item === "barata_scan" || item === "regression_risks" || item === "review_required");
+  const latestReview = flow?.evidence?.filter((evidence) => evidence.kind === "code_review" || evidence.kind === "review").at(-1);
   return {
     ...value,
     ...presentationFor({
@@ -81,7 +88,10 @@ export function presentGate<T extends GateLike & Record<string, unknown>>(value:
       gold_mining: value.gold_mining ?? flow?.gold_mining,
       cooperators: value.cooperators ?? flow?.cooperators,
       active_credits: value.active_credits ?? flow?.active_credits
-    })
+    }),
+    ...(reviewGateBlocked && flow && latestReview
+      ? { review_evidence_diagnostics: reviewEvidenceDiagnostics(flow, latestReview) }
+      : {})
   };
 }
 

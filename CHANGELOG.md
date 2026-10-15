@@ -10,6 +10,35 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
+- Trilho B do validador que ensina (2026-10-15 `validador-que-ensina`, flow
+  `flow_20261015172738769_2700_0001`, veredito positivo): quatro defeitos de
+  ensino corrigidos fora do monolito. (R-01) a cascata do `spt_validate` morreu
+  — `SPT_CONTRACT_INVALID` (causa raiz de semantica/schema) agora vem ANTES de
+  `SPT_CONTRACT_WORKSPACE_MISMATCH`/`OBJECTIVE_MISMATCH` em
+  `src/spt-path-diagnostics.ts`, porque workspace/objective so sao avaliaveis
+  com contrato valido (antes: semantica quebrada gerava WORKSPACE_MISMATCH
+  falso via `contract=null` cascateando o check); (R-02) precedencia
+  existencial — `spt_exists`/`spt_is_file` antes de `spt_under_plan_tasks` no
+  validador e no `ppirtv_trace` (`src/provenance-trace.ts`), entao path
+  inexistente fora de PLAN-TASKS recebe `SPT_PATH_NOT_FOUND` em vez da
+  afirmacao falsa "The SPT exists outside"; (R-03) branch `FLOW_NOT_FOUND` no
+  `classifyToolError` (`src/server.ts`): ENOENT de `flows/flow_*.json` vira
+  envelope com `flow_id`, hint e `next_required_action` apontando
+  `goal_status detail=full` — ENOENT cru sobrevive apenas em
+  `details.original_error`; (R-04) `presentGate` (`src/presentation.ts`)
+  anexa `review_evidence_diagnostics` recalculado quando o gate de revisao
+  bloqueia com review anexada — o escopo movel por `changed_files` fica
+  visivel (`scope_reference_not_authorized`) sem tocar o engine. Suíte nova
+  `tests/spt-validator-teaching.test.ts` (7 testes) + regressao do teste
+  antigo de trace que codificava o bug (expectativa atualizada para
+  `spt_path_missing`). Bateria 616/616 (35 suites); `src/flow-engine.ts`
+  intocado. Re-medição do baseline fase 2 com agente virgem
+  (`.agents/AUDITORIAS/2026-10-15-fase2-remedicao-baseline.json`): o envelope
+  sustentou a jornada black-box inteira (74 chamadas, zero leitura de
+  src/docs, `required_tool_sequence` executado sem arqueologia); novo achado
+  estacionado `EST-20261015-FINGERPRINT-NAO-EXPOSTO` (P1: fingerprint do
+  review_required nao exposto de forma enxuta).
+
 - Fase 2A do envelope que ensina (Trilho 2026-10-15 `envelope-fase2-a`, flow
   `flow_20261015160535398_2663_0001`): (1) oracle de sequencia no
   `scripts/audit-error-envelope.mjs` valida os steps ensinados pelas mensagens

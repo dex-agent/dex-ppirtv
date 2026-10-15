@@ -57,16 +57,8 @@ export function validationSptPathDiagnostic(input: ValidationDiagnosticInput): S
       "Resend the path from the same workspace reported by runtime_probe."
     );
   }
-  if (!checks.spt_under_plan_tasks) {
-    return diagnostic(
-      "SPT_PATH_OUTSIDE_PLAN_TASKS",
-      "sprinter",
-      "spt_path",
-      "The SPT exists outside the canonical .agents/PLAN-TASKS directory.",
-      "spt_validate",
-      "The sprinter/document owner must create or move the SPT into .agents/PLAN-TASKS; then the executor must validate it again."
-    );
-  }
+  // Precedencia: afirmacoes sobre o arquivo so valem se o arquivo existir —
+  // um path inexistente fora de PLAN-TASKS e NOT_FOUND, nunca "exists outside".
   if (!checks.spt_exists) {
     return diagnostic(
       "SPT_PATH_NOT_FOUND",
@@ -87,6 +79,35 @@ export function validationSptPathDiagnostic(input: ValidationDiagnosticInput): S
       "Resend the exact SPT file path produced by sprinter."
     );
   }
+  if (!checks.spt_under_plan_tasks) {
+    return diagnostic(
+      "SPT_PATH_OUTSIDE_PLAN_TASKS",
+      "sprinter",
+      "spt_path",
+      "The SPT exists outside the canonical .agents/PLAN-TASKS directory.",
+      "spt_validate",
+      "The sprinter/document owner must create or move the SPT into .agents/PLAN-TASKS; then the executor must validate it again."
+    );
+  }
+  // Cascata: workspace/objective so sao avaliaveis com contrato VALIDO — a
+  // causa raiz (semantica/schema) vem antes, nunca o sintoma de workspace.
+  if (
+    !checks.spt_frontmatter_present
+    || !checks.spt_frontmatter_closed
+    || !checks.spt_yaml_valid
+    || !checks.spt_schema_valid
+    || !checks.spt_semantics_valid
+    || input.contractErrors.length > 0
+  ) {
+    return diagnostic(
+      "SPT_CONTRACT_INVALID",
+      "sprinter",
+      "spt_path",
+      "The SPT document does not satisfy the canonical contract.",
+      "spt_validate",
+      "The sprinter/document owner must correct the reported contract fields; then the executor must validate it again."
+    );
+  }
   if (!checks.spt_workspace_matches) {
     return diagnostic(
       "SPT_CONTRACT_WORKSPACE_MISMATCH",
@@ -105,23 +126,6 @@ export function validationSptPathDiagnostic(input: ValidationDiagnosticInput): S
       "The SPT objective differs from the goal_start request.",
       "spt_validate",
       "The sprinter/document owner must reconcile the literal objective; then the executor must validate it again."
-    );
-  }
-  if (
-    !checks.spt_frontmatter_present
-    || !checks.spt_frontmatter_closed
-    || !checks.spt_yaml_valid
-    || !checks.spt_schema_valid
-    || !checks.spt_semantics_valid
-    || input.contractErrors.length > 0
-  ) {
-    return diagnostic(
-      "SPT_CONTRACT_INVALID",
-      "sprinter",
-      "spt_path",
-      "The SPT document does not satisfy the canonical contract.",
-      "spt_validate",
-      "The sprinter/document owner must correct the reported contract fields; then the executor must validate it again."
     );
   }
   return null;

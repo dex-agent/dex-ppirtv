@@ -180,7 +180,9 @@ describe("PPIRTV provenance trace", () => {
     expect(receipts.map((receipt) => receipt.matches[0]?.binding_integrity)).toEqual([
       expect.objectContaining({ status: "coherent", reason_code: null }),
       expect.objectContaining({ status: "legacy", reason_code: "legacy_binding_without_explicit_identity" }),
-      expect.objectContaining({ status: "unverifiable", reason_code: "spt_path_outside_plan_tasks" }),
+      // Trilho B: o fixture aponta para arquivo INEXISTENTE fora de
+      // PLAN-TASKS — a verdade e NOT_FOUND, nunca "exists outside".
+      expect.objectContaining({ status: "unverifiable", reason_code: "spt_path_missing" }),
       expect.objectContaining({ status: "not_applicable", reason_code: "goal_binding_absent" })
     ]);
     expect(after).toEqual(before);

@@ -200,11 +200,13 @@ async function classifyFlow(store: PpirtvStore, flow: Flow, projectRoot: string)
   if (!sptPath) {
     return unresolved(flow, null, null, flowRole, "goal_binding_spt_path_missing");
   }
-  if (!insidePlanTasks(projectRoot, sptPath)) {
-    return unresolved(flow, null, sptPath, flowRole, "spt_path_outside_plan_tasks");
-  }
+  // Precedencia: arquivo inexistente e NOT_FOUND mesmo fora de PLAN-TASKS —
+  // "outside plan tasks" so e verdade quando o arquivo existe.
   if (!(await store.pathExists(sptPath))) {
     return unresolved(flow, null, sptPath, flowRole, "spt_path_missing");
+  }
+  if (!insidePlanTasks(projectRoot, sptPath)) {
+    return unresolved(flow, null, sptPath, flowRole, "spt_path_outside_plan_tasks");
   }
   let parsedGoalId: string;
   let currentFingerprint: string;
@@ -333,12 +335,12 @@ async function addSptSelectorDiagnostics(
   warnings: string[]
 ): Promise<void> {
   const sptPath = path.resolve(projectRoot, selectorValue);
-  if (!insidePlanTasks(projectRoot, sptPath)) {
-    warnings.push("spt_path_outside_plan_tasks");
-    return;
-  }
   if (!(await store.pathExists(sptPath))) {
     warnings.push("spt_path_missing");
+    return;
+  }
+  if (!insidePlanTasks(projectRoot, sptPath)) {
+    warnings.push("spt_path_outside_plan_tasks");
     return;
   }
   if (matches.length > 0) {
