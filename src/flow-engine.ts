@@ -89,6 +89,7 @@ import { PpirtvStore, type RuntimeLayoutStatus } from "./store.js";
 import { profileFor, type GateRequirement } from "./phase-profile.js";
 import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured, sameRuntimePath } from "./config.js";
 import { fingerprintSptContract, parseSptDocument, sha256SptDocument } from "./spt-contract.js";
+import { fiscalStateSegment } from "./error-envelope.js";
 import {
   missingValidationDiagnostic,
   runtimeWorkspaceMismatchDiagnostic,
@@ -2726,7 +2727,7 @@ export class FlowEngine {
         const meetingRetryHint = missingForVerdict.includes("meeting_id")
           ? `; missing_for_verdict=${missingForVerdict.join("|")}; eligible_meeting_ids=${eligibleMeetingIds.join("|")}`
           : "";
-        throw new Error(`PPIRTV_FISCAL_BLOCKED: ${fiscal.blocking_reasons.join(", ")}; required_cooperation=${fiscal.required_cooperation.map((item) => item.name).join("|")}${meetingRetryHint}`);
+        throw new Error(`PPIRTV_FISCAL_BLOCKED: ${fiscal.blocking_reasons.join(", ")}; ${fiscalStateSegment(countHistory(fiscalFlow, "verdict_recorded"), countRegressions(fiscalFlow), FISCAL_CONFIG.maxRegressions, meetings.length)}; required_cooperation=${fiscal.required_cooperation.map((item) => item.name).join("|")}${meetingRetryHint}`);
       }
     }
     let effectiveStatus = input.status;
@@ -5004,9 +5005,9 @@ function evaluateFiscalPolicy(flow: Flow, input: FiscalVerdictInput = {}): Fisca
     blockingReasons.push("librarian_status");
   }
   if (recurringRisk(input) && regressLimitReached(flow, input)) {
-    blockingReasons.push("attempt_regress_count");
+    blockingReasons.push("attempt_regress_count", "attempt_regress_limit_reached");
   } else if (recurringRisk(input) && !hasEnoughAttempts(flow, input)) {
-    blockingReasons.push("attempt_regress_count");
+    blockingReasons.push("attempt_regress_count", "attempts_insufficient_before_positive_verdict");
   }
   if (requiredCooperationRequired(flow, input, blockingReasons)) {
     blockingReasons.unshift("required_cooperation");

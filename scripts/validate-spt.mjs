@@ -87,6 +87,17 @@ try {
       }
     })
   );
+  const proofSkeletons = Array.isArray(validation.proof_skeletons)
+    ? validation.proof_skeletons.map((skeleton) => ({
+        task_id: skeleton.task_id,
+        evidence_requirement_id: skeleton.evidence_requirement_id,
+        proves: skeleton.proves,
+        method: skeleton.method,
+        expectation: skeleton.expectation,
+        observed_value_type: skeleton.observed_value_type,
+        declarative_payload: skeleton.declarative_payload
+      }))
+    : [];
   const report = {
     mcp: "dex_ppirtv stdio direct",
     server: {
@@ -103,6 +114,7 @@ try {
       runtime_layout_status: runtimeProbe.runtime_layout_status,
       memory_writer_profile: runtimeProbe.memory_writer_runtime?.profile
     },
+    proof_skeletons: proofSkeletons,
     spt_validate: validation
   };
   console.log(JSON.stringify(report, null, 2));

@@ -52,6 +52,11 @@ state under `.agents/` is outside the public documentation boundary.
 - [MCP tool effects contract](contracts/MCP_TOOL_EFFECTS_CONTRACT.md) —
   truthful annotations for all public tools, fail-closed catalog rules and the
   boundary between dex-PPIRTV and headless host approval.
+- [MCP error envelope contract](contracts/MCP_TOOL_ERROR_ENVELOPE_CONTRACT.md) —
+  every error crossing the MCP boundary teaches the unblock path (disambiguated
+  code, state numbers, literal tool sequence with live-schema args, no empty
+  fields, input-shape envelopes); includes the 2026-10-15 inventory of 151
+  throw sites / ~80 codes and the `attempt_regress_count` split.
 
 ## Architecture
 

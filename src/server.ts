@@ -28,6 +28,14 @@ import { PpirtvStore } from "./store.js";
 import { resolveMemoryWriterConfigFromEnv } from "./config.js";
 import { PPIRTV_TRACE_SELECTOR_KEYS, tracePpirtvArtifact } from "./provenance-trace.js";
 import { SptPathContractError } from "./spt-path-diagnostics.js";
+import { addDeclarativeEvidence, buildProofSkeletons, declarativeDefaults } from "./spt-declarative-proof.js";
+import {
+  INPUT_FIELD_DESCRIPTIONS,
+  advanceGatesPending,
+  fiscalBlockedAction,
+  normalizeFiscalBlockedMessage,
+  unblockFor
+} from "./error-envelope.js";
 import { registerPpirtvTool } from "./mcp/tool-effects.js";
 import { inspectRuntimeLayoutReadOnly } from "./mcp/runtime-layout.js";
 
@@ -131,6 +139,26 @@ function registerTools(
       producer: z.string().min(1),
       timestamp: z.string().datetime({ offset: true }),
       limits: z.array(z.string().min(1)).min(1)
+    })
+    .strict();
+
+  const declarativeProofSchema = z
+    .object({
+      task_id: z.string().min(1),
+      evidence_requirement_id: z.string().min(1),
+      observed_value: z.union([
+        z.string(),
+        z.number(),
+        z.boolean(),
+        z.record(z.unknown()),
+        z.array(z.unknown()),
+        z.null()
+      ]),
+      paths: z.array(z.string().min(1)).min(1).max(64),
+      command: z.string().min(1).optional(),
+      environment: z.string().min(1).optional(),
+      producer: z.string().min(1).optional(),
+      limits: z.array(z.string().min(1)).min(1).optional()
     })
     .strict();
 
@@ -306,7 +334,7 @@ function registerTools(
     {
       description: "Record structured meeting outputs.",
       inputSchema: {
-        meeting_id: z.string().min(1),
+        meeting_id: z.string().min(1).describe(INPUT_FIELD_DESCRIPTIONS.meeting_id),
         questions: z.array(z.string()).optional(),
         hypotheses: z.array(z.string()).optional(),
         alternatives: z.array(z.string()).optional(),
@@ -414,7 +442,12 @@ function registerTools(
         objective: z.string().optional()
       }
     },
-    async (args) => toolResponse(() => engine.validateSpt(args))
+    async (args) => toolResponse(async () => {
+      const result = await engine.validateSpt(args);
+      return result.valid && result.traceability
+        ? { ...result, proof_skeletons: buildProofSkeletons(result.traceability) }
+        : result;
+    })
   );
 
   registerPpirtvTool(
@@ -520,7 +553,22 @@ function registerTools(
         detail: z.enum(["lean", "compact", "full"]).optional()
       }
     },
-    async (args) => toolResponse(() => engine.goalAdvance(args), args)
+    async (args) =>
+      toolResponse(async () => {
+        const result = (await engine.goalAdvance(args)) as Record<string, unknown> | null;
+        if (result && result.blocked === true) {
+          const missing = Array.isArray(result.missing)
+            ? (result.missing as unknown[])
+            : Array.isArray(result.before_missing)
+              ? (result.before_missing as unknown[])
+              : [];
+          Object.assign(result, advanceGatesPending(
+            missing.filter((item): item is string => typeof item === "string"),
+            typeof result.phase === "string" ? result.phase : null
+          ));
+        }
+        return result;
+      }, args)
   );
 
   registerPpirtvTool(
@@ -558,7 +606,7 @@ function registerTools(
         participants_required: z.array(z.string()).optional(),
         created_by: z.string().optional(),
         evidence_ids: z.array(z.string()).optional(),
-        suggested_cooperators: z.array(cooperatorSchema).optional()
+        suggested_cooperators: z.array(cooperatorSchema).optional().describe(INPUT_FIELD_DESCRIPTIONS.suggested_cooperators)
       }
     },
     async (args) => toolResponse(() => engine.goalMeetingOpen(args))
@@ -598,7 +646,7 @@ function registerTools(
         hypotheses: z.array(z.string()).optional(),
         alternatives: z.array(z.string()).optional(),
         decisions: z.array(z.string()).optional(),
-        decision: z.string().min(1),
+        decision: z.string().min(1).describe(INPUT_FIELD_DESCRIPTIONS.decision),
         next_required_action: z.record(z.unknown()).nullable().optional(),
         satisfies_blockers: z.array(z.string()).optional(),
         evidence_ids: z.array(z.string()).optional(),
@@ -625,7 +673,7 @@ function registerTools(
       description: "Classify and automatically write valid GOAL memory candidates, reporting every action. The ordinary call needs only flow_id when the human learning text states project/local, global/cross-project, both, or a recognizable theme; v2_* fields are advanced overrides.",
       inputSchema: {
         flow_id: z.string().min(1),
-        auto_classify: z.boolean().default(true),
+        auto_classify: z.boolean().default(true).describe(INPUT_FIELD_DESCRIPTIONS.auto_classify),
         write_policy: z.enum(MEMORY_WRITE_POLICIES).default("auto_write"),
         v2_destinations: z.array(z.union([
           z.object({ scope: z.literal("project") }),
@@ -679,7 +727,7 @@ function registerTools(
     server,
     "evidence_add",
     {
-      description: "Add traceable evidence without recording secret-like payloads. The operation can replace the implementation fingerprint used by review-coherence gates, so tools/list classifies its maximum effect as state-changing. For SPT v3, criterion_proof binds the observed value to one task, requirement, criterion and evidence requirement; expected/operator are derived from the bound SPT and cannot be supplied by the caller. In criterion_proof, environment is a root sibling of revision_set; each strict revision_set item accepts only workspace, optional head, and paths. A structured code_review attestation must cite the exact implementation_fingerprint observed by the reviewer; when reviewed_implementation_fingerprint is supplied, kind must be code_review or review and satisfies must contain diff_reviewed, barata_scan, or regression_risks, otherwise the request fails with REVIEW_ATTESTATION_CLAIMS_REQUIRED. The server rejects stale snapshots and verdict text alone never satisfies review_required. Status receipt defaults to lean; use detail:'full' only for a complete diagnostic.",
+      description: "Add traceable evidence without recording secret-like payloads. The operation can replace the implementation fingerprint used by review-coherence gates, so tools/list classifies its maximum effect as state-changing. For SPT v3, criterion_proof binds the observed value to one task, requirement, criterion and evidence requirement; expected/operator are derived from the bound SPT and cannot be supplied by the caller. Preferred lighter route: declarative_proof sends only task_id, evidence_requirement_id, the crude observed_value the expectation kind requires and relative paths; the server derives requirement/criterion, hashes the revision_set, stamps the ISO timestamp, applies overridable environment/producer/limits defaults and expands one declaration into one passed-or-failed criterion_proof per criterion in evidence_requirement.proves (see proof_skeletons in spt_validate for ready payloads). declarative_proof and criterion_proof are mutually exclusive. In criterion_proof, environment is a root sibling of revision_set; each strict revision_set item accepts only workspace, optional head, and paths. A structured code_review attestation must cite the exact implementation_fingerprint observed by the reviewer; when reviewed_implementation_fingerprint is supplied, kind must be code_review or review and satisfies must contain diff_reviewed, barata_scan, or regression_risks, otherwise the request fails with REVIEW_ATTESTATION_CLAIMS_REQUIRED. The server rejects stale snapshots and verdict text alone never satisfies review_required. Status receipt defaults to lean; use detail:'full' only for a complete diagnostic.",
       inputSchema: {
         flow_id: z.string().min(1),
         kind: z.string().default("goal_evidence"),
@@ -690,13 +738,23 @@ function registerTools(
         satisfies: z.array(z.string()).optional(),
         observed_result: z.record(z.unknown()).optional(),
         criterion_proof: criterionProofSchema.optional(),
+        declarative_proof: declarativeProofSchema.optional(),
         scope_classification: z.enum(["target", "declared_dependency", "outside"]).optional(),
         scope_reference: z.string().optional(),
         reviewed_implementation_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional(),
         detail: z.enum(["lean", "compact", "full"]).optional()
       }
     },
-    async (args) => toolResponse(() => engine.addGoalEvidence(args), args)
+    async (args) => toolResponse(async () => {
+      const declarative = args.declarative_proof;
+      if (declarative) {
+        if (args.criterion_proof) {
+          throw new Error("SPT_V3_DECLARATIVE_INVALID: mutual_exclusion: send either criterion_proof or declarative_proof, not both");
+        }
+        return addDeclarativeEvidence(engine, engine, { ...args, declarative_proof: declarative }, declarativeDefaults());
+      }
+      return engine.addGoalEvidence(args);
+    }, args)
   );
 
   registerPpirtvTool(
@@ -882,7 +940,7 @@ function toolErrorResult(error: unknown, errorContext?: ToolErrorContext) {
 
 function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
   const rawMessage = error instanceof Error ? error.message : String(error);
-  const message = scrubSecretLikeText(rawMessage);
+  const message = normalizeFiscalBlockedMessage(scrubSecretLikeText(rawMessage));
   const base = {
     message,
     details: { original_error: message },
@@ -1077,7 +1135,10 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
       ...base,
       code: "PPIRTV_FISCAL_BLOCKED",
       recoverable: true,
-      next_required_action: { type: "resolve_fiscal_blockers", tool: "goal_status" }
+      next_required_action: fiscalBlockedAction(
+        message,
+        typeof errorContext?.flow_id === "string" && errorContext.flow_id.length > 0 ? errorContext.flow_id : undefined
+      )
     };
   }
   if (/MEETING_NOT_CLOSED/i.test(message)) {
@@ -1135,6 +1196,15 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
       code: "SENSITIVE_CONTENT_BLOCKED",
       recoverable: false,
       next_required_action: null
+    };
+  }
+  const unblock = unblockFor(message);
+  if (unblock) {
+    return {
+      ...base,
+      code: unblock.code,
+      recoverable: true,
+      next_required_action: unblock.action
     };
   }
   return {

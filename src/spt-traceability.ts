@@ -7,6 +7,7 @@ import type {
   CriterionProof,
   CriterionProofInput,
   Evidence,
+  EvidenceRevision,
   SptEvidenceExpectation,
   SptV3Contract,
   SptV3Traceability
@@ -149,7 +150,27 @@ async function staleRevisionPaths(proof: CriterionProof, authorizedWorkspace: st
   return stale;
 }
 
-async function revisionPathMatches(workspace: string, relativePath: string, expectedSha256: string): Promise<boolean> {
+export async function buildEvidenceRevision(
+  authorizedWorkspace: string,
+  paths: string[]
+): Promise<EvidenceRevision> {
+  if (!paths.length) throw proofError("revision_paths_required", authorizedWorkspace);
+  const entries: EvidenceRevision["paths"] = [];
+  for (const relativePath of paths) {
+    let resolved: string;
+    try {
+      resolved = await resolveWorkspaceFilePath(authorizedWorkspace, relativePath);
+    } catch (error) {
+      if (isMissingPathError(error)) throw proofError("revision_path_missing", relativePath);
+      throw error;
+    }
+    if (!(await stat(resolved)).isFile()) throw proofError("revision_path_not_a_file", relativePath);
+    entries.push({ path: relativePath, sha256: await sha256File(resolved) });
+  }
+  return { workspace: authorizedWorkspace, paths: entries };
+}
+
+async function resolveWorkspaceFilePath(workspace: string, relativePath: string): Promise<string> {
   if (path.isAbsolute(relativePath)) {
     throw proofError("revision_path_must_be_relative", relativePath);
   }
@@ -159,12 +180,22 @@ async function revisionPathMatches(workspace: string, relativePath: string, expe
   const workspaceRoot = await realpath(path.resolve(workspace));
   const candidate = path.resolve(workspaceRoot, relativePath);
   assertInsideWorkspace(workspaceRoot, candidate, relativePath);
+  const resolved = await realpath(candidate);
+  assertInsideWorkspace(workspaceRoot, resolved, relativePath);
+  return resolved;
+}
+
+async function revisionPathMatches(workspace: string, relativePath: string, expectedSha256: string): Promise<boolean> {
+  let resolved: string;
   try {
-    const resolved = await realpath(candidate);
-    assertInsideWorkspace(workspaceRoot, resolved, relativePath);
+    resolved = await resolveWorkspaceFilePath(workspace, relativePath);
+  } catch (error) {
+    if (isMissingPathError(error)) return false;
+    throw error;
+  }
+  try {
     if (!(await stat(resolved)).isFile()) return false;
-    const actualSha256 = await sha256File(resolved);
-    return actualSha256 === expectedSha256;
+    return (await sha256File(resolved)) === expectedSha256;
   } catch (error) {
     if (isMissingPathError(error)) return false;
     throw error;

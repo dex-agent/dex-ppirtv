@@ -4947,8 +4947,9 @@ describe("PPIRTV flow engine", () => {
   it("T10 blocks material recurring risk without enough attempts, regressions or meetings", async () => {
     const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-fiscal-t10", "Tentativas insuficientes");
 
-    await expect(
-      engine.goalVerdict({
+    let fiscalMessage = "";
+    try {
+      await engine.goalVerdict({
         flow_id: flowId,
         status: "pronto_com_ressalvas",
         rationale: "Erro recorrente ainda sem resolucao suficiente.",
@@ -4957,8 +4958,12 @@ describe("PPIRTV flow engine", () => {
         attempt_count: 1,
         regress_count: 0,
         next_step: "arquivar"
-      })
-    ).rejects.toThrow(/attempt_regress_count/i);
+      });
+    } catch (error) {
+      fiscalMessage = error instanceof Error ? error.message : String(error);
+    }
+    expect(fiscalMessage).toMatch(/attempt_regress_count, attempts_insufficient_before_positive_verdict/);
+    expect(fiscalMessage).toMatch(/attempt_count=\d+, regress_count=\d+, max=\d+, meetings=\d+/);
   });
 
   it("T10a accepts Recorrentes V2 as a legitimate domain name without a recurring failure signal", async () => {

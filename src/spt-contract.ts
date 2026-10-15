@@ -172,7 +172,10 @@ export function parseSptDocument(input: string): SptParseResult {
       decoded.checks,
       ...parsed.error.issues.map((issue) => {
         const issuePath = issue.path.length > 0 ? issue.path.join(".") : "contract";
-        return `${prefix}.${issuePath}: ${issue.message}`;
+        const quoteHint = /expected string, received object/i.test(issue.message)
+          ? " (hint: quote list items containing ': ' — a 'text: more' item becomes a YAML mapping)"
+          : "";
+        return `${prefix}.${issuePath}: ${issue.message}${quoteHint}`;
       })
     );
   }

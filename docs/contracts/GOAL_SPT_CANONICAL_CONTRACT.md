@@ -233,6 +233,56 @@ persistencia transacional.
 permanece nao pronto ou nao avaliavel. Review e teste geram receipts
 independentes; `validador-pronto` apenas os consolida.
 
+### Rota declarativa com autenticacao server-side
+
+`evidence_add` aceita uma alternativa ao `criterion_proof` manual: o campo
+`declarative_proof`. Em vez de montar a prova inteira, o agente executor declara
+o minimo e o servidor autentica e completa o resto:
+
+```json
+{
+  "flow_id": "<flow_id>",
+  "title": "bateria verde",
+  "declarative_proof": {
+    "task_id": "T1",
+    "evidence_requirement_id": "ER-T1-UNIT",
+    "observed_value": 0,
+    "paths": ["tests/spt-declarative-proof.test.ts"],
+    "command": "npx vitest run tests/spt-declarative-proof.test.ts"
+  }
+}
+```
+
+Contrato da rota declarativa:
+
+- `observed_value` continua sendo o valor cru que o expectation exige (numero
+  inteiro do exit code, booleano, numero finito, texto ou objeto
+  `{left_sha256, right_sha256}`). Tipo incompativel falha largo com
+  `SPT_V3_DECLARATIVE_OBSERVED_TYPE` ensinando o tipo esperado; nunca avalia
+  `passed=false` em silencio.
+- O servidor deriva `requirement_id` e `criterion_id` do SPT vinculado, computa
+  o `revision_set` com SHA-256 dos `paths` no momento do attach, carimba o
+  `timestamp` do servidor e aplica `environment`/`producer`/`limits` com
+  defaults sobrescriveis. `command`, quando informado, entra em `limits` como
+  proveniencia.
+- Uma declaracao expande para um `criterion_proof` completo por criterio listado
+  em `evidence_requirement.proves`; o receipt agregado devolve `evidence_ids`,
+  o resultado por criterio e `all_passed`. Cada prova passa pelos mesmos gates
+  de `qualifyCriterionProof` e re-hash de staleness do veredito.
+- `declarative_proof` e `criterion_proof` sao mutuamente exclusivos
+  (`SPT_V3_DECLARATIVE_INVALID: mutual_exclusion`).
+- Paths seguem as mesmas regras de seguranca do `revision_set` manual
+  (relativo, nao sensivel, dentro do workspace autorizado); path ausente falha
+  loud (`revision_path_missing`).
+- `spt_validate` de um SPT v3 valido emite `proof_skeletons` por
+  `evidence_requirement` — payload declarativo pronto com o tipo cru
+  documentado — e `scripts/validate-spt.mjs` os expoe na saida local. Skeleton
+  nao substitui a prova: e descoberta de formato.
+
+A rota declarativa nao enfraquece validacao: quem decide `passed` continua
+sendo o expectation do SPT avaliado pelo servidor, e a prova expandida sofre os
+mesmos gates de revision currency e coerencia de veredito.
+
 ## Trilho/SPT v2 legado e legivel
 
 Um Trilho canonico e um arquivo Markdown salvo em:

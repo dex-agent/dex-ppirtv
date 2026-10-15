@@ -10,6 +10,47 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
+- Erro que ensina (Trilho 2026-10-15 `erro-que-ensina`): a
+  mensagem fiscal bloqueada agora ensina split, numeros e rota de destravamento
+  — `attempt_regress_count` e acompanhado dos codigos desambiguados
+  `attempt_regress_limit_reached`/`attempts_insufficient_before_positive_verdict`
+  com `attempt_count/regress_count/max/meetings` no blocker, o envelope
+  `src/error-envelope.ts` projeta `next_required_action` com sequencia literal
+  (`goal_meeting_open(suggested_cooperators=...) -> goal_meeting_close ->
+  goal_verdict(meeting_id)`) no lugar da rota circular `goal_status`, segmentos
+  `required_cooperation=` vazios sao omitidos na superficie MCP, familias de
+  codigo sem tradutor ganham rota de destravamento, `goal_advance` blocked
+  expoe `gates_pending`, erros de input ensinam
+  `field/received_type/expected_type/example` e o parse de SPT anexa hint de
+  quote para itens YAML com dois-pontos. Contrato:
+  `docs/contracts/MCP_TOOL_ERROR_ENVELOPE_CONTRACT.md`.
+- Correcao da bateria adversarial (2026-10-15, 11 revisores + kimi CLI): a
+  sequencia literal ensinada usava `type: "decisao"` (valor invalido no enum
+  `MEETING_TYPES`; correto: `"decision"`) e omitia campos obrigatorios
+  (`meeting_id` no `goal_meeting_close`; `status`/`rationale`/`next_step` no
+  `goal_verdict`) — copiar a sequencia ao pe da letra quebrava no schema vivo.
+  Corrigido em `src/error-envelope.ts` (meetingSequence); 602 testes verdes,
+  audit `codigos_sem_next_required_action=0`. Dividas honestas da bateria
+  estacionadas: envelope de input sem call site na fronteira (SDK valida antes
+  do handler), cascata hint x workspace-mismatch, precedencia S05 e familia
+  MEETING_LOCK sem regra UNBLOCK.
+- Rota declarativa com autenticacao server-side no `evidence_add`
+  (Trilho 2026-10-14 `evidencia-declarativa-server-side`): o campo opcional
+  `declarative_proof` recebe `{task_id, evidence_requirement_id,
+  observed_value, paths}` e o servidor deriva requirement/criterion do SPT
+  vinculado, computa o `revision_set` com SHA-256 dos paths, carimba o
+  timestamp do servidor, aplica defaults sobrescriveis de
+  environment/producer/limits e expande para um `criterion_proof` completo por
+  criterio em `evidence_requirement.proves` (modulo novo
+  `src/spt-declarative-proof.ts`; `src/flow-engine.ts` intocado e continua
+  validando cada prova). Tipo de `observed_value` incompativel com o
+  expectation falha largo com `SPT_V3_DECLARATIVE_OBSERVED_TYPE` ensinando o
+  tipo cru esperado; `declarative_proof` e `criterion_proof` sao mutuamente
+  exclusivos. `spt_validate` de SPT v3 valido agora emite `proof_skeletons`
+  por evidence_requirement e `scripts/validate-spt.mjs` os expoe, para o
+  agente nao adivinhar o payload de prova. Contrato canônico atualizado
+  (docs/contracts + copia global, `npm run audit:canonical` verde).
+
 - O contrato de tag governada agora vive em um unico helper
   `src/memory/governed-tag.ts`: o padrao aninhado `#tema/assunto` e a assercao
   de rejeicao deixam de existir em quatro copias independentes (schemas MCP,

@@ -66,6 +66,11 @@ stable public documentation.
 - [MCP tool effects contract](docs/contracts/MCP_TOOL_EFFECTS_CONTRACT.md)
   explains the truthful annotations published for all 32 tools, the headless
   approval boundary and actionable recovery when a host cancels a call.
+- [MCP error envelope contract](docs/contracts/MCP_TOOL_ERROR_ENVELOPE_CONTRACT.md)
+  requires every error crossing the MCP boundary to teach the unblock path:
+  disambiguated code, state numbers, literal `required_tool_sequence` with
+  args checked against live schemas, no empty fields, and input-shape
+  envelopes (`field`/`received_type`/`expected_type`/`example`).
 
 The live MCP `tools/list` schema is authoritative for invoking tools. Stable
 documents explain workflow and invariants; they do not replace dynamic schemas.
