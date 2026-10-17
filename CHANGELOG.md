@@ -10,6 +10,28 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
+- Review gate a prova de loop (2026-10-17 `review-gate-loop-proof`, SPT
+  `.agents/PLAN-TASKS/2026-10-17-review-gate-loop-proof.md`): o
+  fiscal de loop conta retry de review invalida e snippet de review_required ensina a forma completa
+  — evidencia de review invalida carrega `review_valid: false` no evento
+  `evidence_attached` e deixa de resetar a janela do `loop_monitor`
+  (`src/flow-engine.ts`, EXCEPTION `FE-2026-10-17-REVIEW-LOOP-FISCAL-SANE`,
+  validade computada em `src/gate-resolution.ts`); o snippet de
+  `required_tool_sequence` lista TODOS os `changed_files` em
+  `reviewed_targets`, expoe `reviewed_implementation_fingerprint` e
+  `operator_must_replace` completo; e o wire do `evidence_add`
+  (`src/server.ts`) rejeita `observed_result` aninhado com
+  `PPIRTV_INPUT_INVALID` ensinando campo, recebido e esperado (incidente
+  2026-10-17: ~60 retries invalidas em ~2h). Caracterizacao do comportamento
+  preservado em `tests/loop-monitor-preserved.test.ts`; ciclo do incidente
+  escalando em `tests/loop-monitor-escalation.test.ts`; snippet em
+  `tests/review-snippet.test.ts`; wire em `tests/evidence-add-review-wire.test.ts`;
+  diagnostico de forma em `tests/review-diagnostics-shape.test.ts`. Prova
+  black-box com receipt
+  `.agents/AUDITORIAS/EVIDENCIAS/2026-10-17-review-gate-loop-proof-replay.json`
+  (nested morre no wire; snippet lista todos os changed_files; ciclo invalido
+  acumula `loop_monitor.count` e ativa escalonamento). Suite integral:
+  40 files, 630 passed | 4 skipped.
 - Trilho B do validador que ensina (2026-10-15 `validador-que-ensina`, flow
   `flow_20261015172738769_2700_0001`, veredito positivo): quatro defeitos de
   ensino corrigidos fora do monolito. (R-01) a cascata do `spt_validate` morreu

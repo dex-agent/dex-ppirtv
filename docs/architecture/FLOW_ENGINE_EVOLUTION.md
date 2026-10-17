@@ -161,6 +161,17 @@ git hash-object src/flow-engine.ts
 | `FE-2026-08-11-POST-VERDICT-MINING-GATE` | `EXCEPTION` | prevent terminal completion before post-verdict mining | `FlowEngine` terminal glue | bounded integrity guard with causal MCP RED |
 | `FE-2026-10-13-GOVERNED-TAG-CONTRACT` | `SHRINK` | V2 promotion metadata policy (incl. governed tag assertion) | `src/memory/mining-policy.ts` | responsibility removed from facade; pays `FE-DEBT-001` |
 | `FE-2026-10-15-FISCAL-BLOCK-TEACHING-MESSAGE` | `CONTAIN` | actionable fiscal-block teaching messages (split codes, state numbers, unblock route) | `src/error-envelope.ts` | glue-only message enrichment (delta 0); `FE-DEBT-002` open |
+| `FE-2026-10-17-REVIEW-LOOP-FISCAL-SANE` | `EXCEPTION` | stamp review validity on `evidence_attached`, gate loop-monitor reset on it, truthful review snippet | `src/gate-resolution.ts` | bounded integrity hotfix with causal RED (incident 2026-10-17, ~60 invalid retries); expires next diff that touches `src/flow-engine.ts` |
+
+`FE-2026-10-17-REVIEW-LOOP-FISCAL-SANE` is a bounded integrity hotfix: the
+incident of 2026-10-17 proved that an invalid review evidence resets the
+loop-monitor window as false progress (count stayed 0 across ~60 identical
+retries, escalation 6/8/9 unreachable). The validity computation lives in
+`src/gate-resolution.ts` (`reviewEvidenceValidity`); the facade only stamps
+the value on the event (`review_valid`, absent for non-review kinds —
+retrocompatible: legacy events without the field keep resetting) and gates
+`isLoopResetEvent` on `review_valid !== false`. The review snippet now lists
+all `changed_files`. Pays no debt; `FE-DEBT-002` remains open.
 
 `FE-2026-10-15-FISCAL-BLOCK-TEACHING-MESSAGE` pays no debt: the visit only
 enriched the fiscal-block throw string with state numbers and split blocker

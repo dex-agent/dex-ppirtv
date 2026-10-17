@@ -24,6 +24,11 @@ export type ReviewEvidenceDiagnostics = {
   reasons: string[];
   scope_reference: string | null;
   authorized_scope: string[];
+  // SPT review-gate-loop-proof (T-4): classificacao aditiva — shape do
+  // observed_result (nested = chaves de review dentro de objetos) vs conteudo
+  // (flat mas incompleto). Reasons existentes permanecem intactos.
+  observed_result_shape: "flat" | "nested" | "missing";
+  shape_guidance: string | null;
 };
 
 const EXPLICIT_EVIDENCE_REQUIREMENTS = new Set([
@@ -117,6 +122,16 @@ export function isStructuredReviewEvidence(flow: Flow, evidence: Evidence): bool
   );
 }
 
+// SPT review-gate-loop-proof (T-3): validade de evidencia de review para o
+// evento evidence_attached — undefined para kinds nao-review (campo some do
+// JSON persistido e o evento continua resetando, retrocompativel).
+export function reviewEvidenceValidity(flow: Flow, evidence: Evidence): boolean | undefined {
+  if (evidence.kind !== "code_review" && evidence.kind !== "review") {
+    return undefined;
+  }
+  return reviewEvidenceDiagnostics(flow, evidence).valid;
+}
+
 export function reviewEvidenceDiagnostics(flow: Flow, evidence: Evidence): ReviewEvidenceDiagnostics {
   const reasons: string[] = [];
   const result = evidence.observed_result;
@@ -147,12 +162,25 @@ export function reviewEvidenceDiagnostics(flow: Flow, evidence: Evidence): Revie
     if (!stringArray(result.findings)) reasons.push("findings_array_required");
     if (!stringArray(result.regression_risks)) reasons.push("regression_risks_array_required");
   }
+  const nestedReviewKeys = [result?.diff_reviewed, result?.barata_scan].some(
+    (value) => value !== null && typeof value === "object"
+  );
+  const observedResultShape: ReviewEvidenceDiagnostics["observed_result_shape"] = !result
+    ? "missing"
+    : nestedReviewKeys
+      ? "nested"
+      : "flat";
+  const shapeGuidance = nestedReviewKeys
+    ? "observed_result has review keys nested inside objects — send diff_reviewed and barata_scan as flat top-level booleans (true) and reviewed_targets/searched_patterns/findings/regression_risks as flat top-level arrays (this nested shape caused the 2026-10-17 retry loop)"
+    : null;
   return {
     valid: reasons.length === 0,
     owner: "evidence_add",
     reasons,
     scope_reference: scopeReference,
-    authorized_scope: authorizedReviewScope(flow)
+    authorized_scope: authorizedReviewScope(flow),
+    observed_result_shape: observedResultShape,
+    shape_guidance: shapeGuidance
   };
 }
 

@@ -42,7 +42,7 @@ import {
   type WorkProgressStatus,
   type WorkProgressSummary
 } from "./domain.js";
-import { isStructuredReviewEvidence, resolveGateRequirements, reviewEvidenceDiagnostics, type GateRequirementResolution } from "./gate-resolution.js";
+import { isStructuredReviewEvidence, resolveGateRequirements, reviewEvidenceDiagnostics, reviewEvidenceValidity, type GateRequirementResolution } from "./gate-resolution.js";
 import {
   assertLegacyFlowCanReceiveFirstGoalBinding,
   ensureLedgerTransitionRecorded,
@@ -3785,7 +3785,17 @@ export class FlowEngine {
     flow.active_credits = unique([...flow.active_credits, ...evidence.active_credits]);
     flow.evidence.push(evidence);
     flow.updated_at = now;
-    flow.history.push({ at: now, type: "evidence_attached", data: { evidence_id: evidence.evidence_id, title: evidence.title } });
+    // SPT review-gate-loop-proof (T-3): review carrega validade no evento;
+    // congelamento semantico (estado do momento), kinds nao-review = undefined.
+    flow.history.push({
+      at: now,
+      type: "evidence_attached",
+      data: {
+        evidence_id: evidence.evidence_id,
+        title: evidence.title,
+        review_valid: reviewEvidenceValidity(flow, evidence as Evidence)
+      }
+    });
     await this.store.saveEvidence(evidence);
     await this.store.saveFlow(flow);
     await this.ledger(flow.flow_id, "evidence_attached", { evidence_id: evidence.evidence_id, kind: evidence.kind, title: evidence.title, uri: evidence.uri });
@@ -6873,6 +6883,10 @@ function cooperatorSkillResolution(workspace: string, skill: string, role: strin
 
 function reviewRequiredSequence(flow: Flow): Array<Record<string, unknown>> {
   const scopeReference = flow.changed_files[0] ?? flow.scope.in[0] ?? "<required:exact scope.in or changed_files reference>";
+  const reviewedTargets = [...flow.changed_files];
+  if (reviewedTargets.length === 0) {
+    reviewedTargets.push(scopeReference);
+  }
   return [
     {
       order: 1,
@@ -6883,11 +6897,11 @@ function reviewRequiredSequence(flow: Flow): Array<Record<string, unknown>> {
         kind: "code_review",
         title: "Revisao adversarial do SPT / artefatos finais",
         content:
-          "Escopo revisado: <arquivos/artefatos>. Achados: <lista real>. Riscos: <risco residual>. Decisao: <bloquear/liberar com ressalva>.",
+          "Escopo revisado: <required:arquivos/artefatos revisados>. Achados: <required:lista real de achados>. Riscos: <required:risco residual>. Decisao: <required:bloquear ou liberar com ressalva>.",
         satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
         observed_result: {
           diff_reviewed: true,
-          reviewed_targets: [scopeReference],
+          reviewed_targets: reviewedTargets,
           barata_scan: true,
           searched_patterns: ["<required:padroes ou consumidores vizinhos realmente pesquisados>"],
           findings: [],
@@ -6895,7 +6909,14 @@ function reviewRequiredSequence(flow: Flow): Array<Record<string, unknown>> {
         },
         scope_classification: "target",
         scope_reference: scopeReference,
-        operator_must_replace: ["content", "observed_result.searched_patterns", "observed_result.findings", "observed_result.regression_risks"]
+        reviewed_implementation_fingerprint: "<required:copie de goal_status.implementation_fingerprint>",
+        operator_must_replace: [
+          "content",
+          "observed_result.reviewed_targets",
+          "observed_result.searched_patterns",
+          "observed_result.findings",
+          "observed_result.regression_risks"
+        ]
       },
       capture: "review_evidence_id"
     },
@@ -7127,7 +7148,14 @@ function isLoopResetEvent(event: Flow["history"][number], signature: string, res
   if (resetOnPassedGate && event.type === "gate_checked" && event.data.status === "passed") {
     return true;
   }
-  return ["evidence_attached", "meeting_closed", "memory_mined", "phase_advanced", "verdict_recorded", "flow_completed", "flow_archived"].includes(event.type);
+  if (event.type === "evidence_attached") {
+    // SPT review-gate-loop-proof (T-3): evidencia de review INVALIDA nao e
+    // progresso — nao reseta a janela (o ciclico do incidente 2026-10-17
+    // anestesiava o fiscal com ~60 resets). Eventos antigos sem o campo e
+    // kinds nao-review (campo ausente) continuam resetando (retrocompativel).
+    return event.data.review_valid !== false;
+  }
+  return ["meeting_closed", "memory_mined", "phase_advanced", "verdict_recorded", "flow_completed", "flow_archived"].includes(event.type);
 }
 
 function loopEscalationFor(count: number): LoopMonitor["escalation"] {

@@ -182,6 +182,39 @@
         "responsibility": "Project actionable fiscal-block teaching messages (split codes, state numbers, unblock route).",
         "payment_scope": "any_verified_shrink"
       }
+    },
+    {
+      "id": "FE-2026-10-17-REVIEW-LOOP-FISCAL-SANE",
+      "date": "2026-10-17",
+      "mode": "EXCEPTION",
+      "base_blob": "9ebcd3d49042cc3a0eddce849b12a527e3f3ff21",
+      "head_blob": "b4a88d1a47915b22a5484ba0ad512051c0fb1c13",
+      "spt_path": ".agents/PLAN-TASKS/2026-10-17-review-gate-loop-proof.md",
+      "responsibility": "Stamp review evidence validity on evidence_attached events, gate the loop-monitor window reset on that validity, and project the truthful review_required snippet (all changed files, fingerprint, operator_must_replace).",
+      "owner": "$oraculo-refatoracao",
+      "destination_module": "src/gate-resolution.ts",
+      "consumers": [
+        "src/presentation.ts",
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/loop-monitor-escalation.test.ts",
+        "tests/review-snippet.test.ts",
+        "tests/loop-monitor-preserved.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/loop-monitor-escalation.test.ts": "7 ciclos de review invalida + re-checagem bloqueada levam count a >= 6 com escalonamento research_subagent",
+        "tests/loop-monitor-preserved.test.ts": "evidence_attached de kind NAO-review reseta a janela do loop_monitor"
+      },
+      "changelog_marker": "fiscal de loop conta retry de review invalida e snippet de review_required ensina a forma completa",
+      "architecture_marker": "FE-2026-10-17-REVIEW-LOOP-FISCAL-SANE",
+      "exception_reason": "integrity",
+      "rollback": "reverter o diff (git restore src/flow-engine.ts src/gate-resolution.ts); sem migracao — eventos antigos sem review_valid continuam resetando e o wire volta a aceitar a forma aninhada",
+      "expires": "next diff that touches src/flow-engine.ts",
+      "red_evidence": "tests/loop-monitor-escalation.test.ts::7 ciclos de review invalida + re-checagem bloqueada levam count a >= 6 com escalonamento research_subagent",
+      "red_base_blob": "9ebcd3d49042cc3a0eddce849b12a527e3f3ff21",
+      "red_observed_failure": "count < 6 apos 7 ciclos de evidence_add de review invalida intercalada com re-checagem bloqueada (evidence_attached invalida resetava a janela como progresso falso); escalonamento 6/8/9 inalcancavel — incidente real 2026-10-17 com ~60 retries",
+      "red_command": "npx vitest run tests/loop-monitor-escalation.test.ts -t \"7 ciclos de review invalida + re-checagem bloqueada levam count a >= 6 com escalonamento research_subagent\""
     }
   ]
 }
