@@ -521,7 +521,9 @@
         "base": "HEAD",
         "head": "WORKTREE",
         "source": "worktree"
-      }
+      },
+      "commit": "9a96e922c03c74c765f19a440d88c4e938cbb2ec",
+      "parent_commit": "57479f9cc07651ed6c2b87420937565e8a4c89c5"
     }
   ]
 }
