@@ -43,7 +43,7 @@ corte (não é ausência).
 > migram para `src/spt-path-diagnostics.ts`. Critério de aceite = replay do
 > transcript real do consumidor: `tests/consumer-replay-jumper.test.ts` 4/4
 > (RED provado antes do fix) + `tests/input-unwrap.test.ts` 9/9;
-> `npm run check:flow-engine` PASS modo SHRINK. Selado no commit `9a96e92`
+> `npm run check:flow-engine` PASS modo SHRINK. Prova estendida aos três modos de `detail` (lean default, compact e full) no mesmo flow sujo. Selado no commit `9a96e92`
 > (blobs conferidos: base `c01421a` → head `cb629ce`).
 
 ## Reavaliação 2026-10-18 — fronteira de input nunca bloqueante (unwrap + ressalvas)

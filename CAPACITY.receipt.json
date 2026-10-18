@@ -4,7 +4,7 @@
   "fotografia_id": "2026-10-18-9a96e92-input-nunca-bloqueante-f2-replay",
   "head": "9a96e92",
   "tree_hash": null,
-  "generated_at": "2026-10-18T20:07:33.000000+00:00",
+  "generated_at": "2026-10-18T20:18:13.000000+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -23,7 +23,7 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 704,
+    "passed": 705,
     "failed": 0,
     "skipped": 4,
     "files": 54

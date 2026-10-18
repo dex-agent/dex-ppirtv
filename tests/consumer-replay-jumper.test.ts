@@ -141,6 +141,23 @@ describe("replay do transcript do consumidor (wire MCP, flow velho sujo)", () =>
     expect(resultText(result)).not.toContain("PPIRTV_INPUT_INVALID");
   });
 
+  it("os TRES modos de detail respondem no flow sujo (lean default, compact e full)", async () => {
+    // lean e o default e nunca passou pelo strictPathArray, mas roda o
+    // fingerprint (o crash do path sujo); compact/full sao o caminho do
+    // checkGate onde o provided persistido era rejogado cru. Os tres tem
+    // que RESPONDER no flow velho do consumidor.
+    const lean = await call("goal_status", { flow_id: flowId });
+    expect(lean.isError, resultText(lean)).not.toBe(true);
+    const compact = await call("goal_status", { flow_id: flowId, detail: "compact" });
+    expect(compact.isError, resultText(compact)).not.toBe(true);
+    const full = await call("goal_status", { flow_id: flowId, detail: "full" });
+    expect(full.isError, resultText(full)).not.toBe(true);
+    for (const result of [lean, compact, full]) {
+      expect(resultText(result)).not.toContain("PPIRTV_INPUT_INVALID");
+      expect(resultText(result)).not.toContain("is not a function");
+    }
+  });
+
   it("evidence_add com arrays embrulhados chega flat no dominio: aceito SEM ressalva de shape", async () => {
     // Rota ensinada pelo proprio envelope (contrato de substancia R3): o
     // fingerprint vivo vem do goal_status full — que agora RESPONDE no flow
