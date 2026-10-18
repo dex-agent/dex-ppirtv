@@ -10,6 +10,23 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Alterado
 
+- Fronteira de input nunca bloqueante (2026-10-18, laudo do consumidor na
+  máquina jumper + diretiva do dono): o artefato de serialização de cliente
+  `{"value": X}` (objeto de uma chave `"value"`, medido 2026-10-17 e
+  2026-10-18 com o consumidor preso em 14 retries) é desembrulhado em UM
+  ponto (`installTeachingInputValidation`) para TODAS as tools e campos de
+  topo; nas seis chaves de review o par de domínio
+  `src/review-input.ts` (92 linhas, extraído do monolito `src/server.ts`,
+  −83 linhas) desembrulha e o validador existente passa a gerar
+  `review_input_ressalvas` no receipt (campo/recebido/esperado/referência
+  para corrigir a serialização do chamador) em vez de rejeitar com
+  `PPIRTV_INPUT_INVALID`. O gate de veredito continua fail-closed no
+  substancial. Desenho lapidado com ponytail + chato + jev-gate-principios
+  (VERIFICAR→corrigido: sair do meio, barata vizinha em outras tools,
+  limite sem evidência). Provas: `tests/review-input.test.ts` 3/3,
+  `tests/evidence-add-review-wire.test.ts` 5/5 RED-first (rejeição antiga
+  provada contra dist anterior), `tests/mcp-tool-describe.test.ts` com
+  frases literais; suíte 691 passed | 4 skipped.
 - Contratos de corroboração documentados no help vivo (2026-10-18): as
   descriptions de `goal_start` e `goal_verdict` no `tools/list` agora
   ensinam `git_head_base` congelado, corroboração `git diff base..HEAD`,

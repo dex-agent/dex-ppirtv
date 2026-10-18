@@ -3,7 +3,7 @@
   "generated_by": "tools/playbook/generate-playbook.py",
   "authority": "derived_projection",
   "repo_name": "dex-PPIRTV",
-  "sources_revision": "sha256:edfa237ea15be3ccb2e741af0f5b32513a4b1018c5b88a72767fb58fc8456bbf",
+  "sources_revision": "sha256:32a86d3f5b92cbb2697eacfba9aae13366f6533288804903f69f8574f192a8f8",
   "sent_revision": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "rules": [
     {
@@ -46,6 +46,20 @@
       "extrato": "- Projeto: `dex-PPIRTV`",
       "rotas": [],
       "fonte": "AGENTS.md#L274-L318"
+    },
+    {
+      "seal": "pb-d9149819",
+      "locator": "PENDENTES-LEDGER",
+      "title": "Leitura obrigatoria (bootstrap)",
+      "gatilho": "5. `.agents/PENDENTES.md` — ledger de pendências append-only (schema `dex.pendencias.v2`; gatilho `PENDENTES-LEDGER`)",
+      "extrato": "1. `AGENTS.md`",
+      "rotas": [
+        "`AGENTS.md`",
+        "`.agents/ACTIVE.md`",
+        "`.agents/HANDOFF.md`",
+        "`.agents/PLAN-TASKS/ACTIVE.md`"
+      ],
+      "fonte": "AGENTS.md#L397-L404"
     }
   ],
   "mesa": {
@@ -81,7 +95,7 @@
   "fontes": [
     {
       "caminho": "AGENTS.md",
-      "sha256": "6ee3476e889928369aafeb88fb40a5475b0f6c53c7f668b8119c6871e726d64c",
+      "sha256": "f2f924fd3bd038da82d363fd122696b5894d5d10372be59851e76a2d4a808cea",
       "enviado": false
     },
     {
@@ -91,7 +105,7 @@
     },
     {
       "caminho": ".agents/PLAN-TASKS/ACTIVE.md",
-      "sha256": "e41894ae431458f252d3892baf45ae9f93fccd695006c8df4e2e21b81b1ab2c8",
+      "sha256": "4330a85fbbdc3562f4c4fcc225c7491e49daf401d28e50cb06d1f9b57b1b4d50",
       "enviado": false
     }
   ]

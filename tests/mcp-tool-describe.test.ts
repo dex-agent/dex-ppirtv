@@ -20,6 +20,9 @@ describe("call-mcp-tool describe/schema/usage", () => {
     expect(parsed.ok).toBe(true);
     expect(parsed.tool).toBe("evidence_add");
     expect(parsed.description).toContain("six review keys FLAT");
+    expect(parsed.description).toContain("review_input_ressalvas");
+    expect(parsed.description).toContain("unwrapped automatically at the input boundary");
+    expect(parsed.description).toContain("NEVER rejects the call");
     expect(parsed.input_schema.type).toBe("object");
     expect(parsed.input_schema.required).toContain("flow_id");
     expect(parsed.result).toBeUndefined();

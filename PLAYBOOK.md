@@ -4,7 +4,7 @@ description: "Regras de decisao e procedimentos deste projeto - projecao gerada 
 type: playbook
 generated_by: "tools/playbook/generate-playbook.py"
 authority: derived_projection
-sources_revision: "sha256:edfa237ea15be3ccb2e741af0f5b32513a4b1018c5b88a72767fb58fc8456bbf"
+sources_revision: "sha256:32a86d3f5b92cbb2697eacfba9aae13366f6533288804903f69f8574f192a8f8"
 sent_revision: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 do_not_edit: true
 ---
@@ -58,6 +58,19 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 - Fonte: `AGENTS.md#L274-L318`
 - Selo: `pb-4d6a7afc`
 
+### Leitura obrigatoria (bootstrap)
+
+- Localizador: `PENDENTES-LEDGER`
+- Gatilho: 5. `.agents/PENDENTES.md` — ledger de pendências append-only (schema `dex.pendencias.v2`; gatilho `PENDENTES-LEDGER`)
+- Extrato: 1. `AGENTS.md`
+- Rotas (nomes, na ordem):
+  - `AGENTS.md`
+  - `.agents/ACTIVE.md`
+  - `.agents/HANDOFF.md`
+  - `.agents/PLAN-TASKS/ACTIVE.md`
+- Fonte: `AGENTS.md#L397-L404`
+- Selo: `pb-d9149819`
+
 ## Runbook <-> Playbook (procedimentos)
 
 - (napkin ausente nesta copia)
@@ -70,9 +83,9 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 | caminho | sha256 | Enviado? |
 | --- | --- | --- |
-| `AGENTS.md` | `6ee3476e889928369aafeb88fb40a5475b0f6c53c7f668b8119c6871e726d64c` | nao |
+| `AGENTS.md` | `f2f924fd3bd038da82d363fd122696b5894d5d10372be59851e76a2d4a808cea` | nao |
 | `.agents/napkin.md` | `e54020462ff836a9b393a403f14d3a30afe78b121d92a095fc1e97d9571f0d94` | nao |
-| `.agents/PLAN-TASKS/ACTIVE.md` | `e41894ae431458f252d3892baf45ae9f93fccd695006c8df4e2e21b81b1ab2c8` | nao |
+| `.agents/PLAN-TASKS/ACTIVE.md` | `4330a85fbbdc3562f4c4fcc225c7491e49daf401d28e50cb06d1f9b57b1b4d50` | nao |
 
 ## Superficie enviada vs local
 

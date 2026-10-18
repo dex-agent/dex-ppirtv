@@ -23,6 +23,23 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-18 — fronteira de input nunca bloqueante (unwrap + ressalvas)
+
+> Diretiva do dono: problema vai ocorrer com 100% de certeza; quando ocorrer,
+> é identificado e NUNCA bloqueante — ressalva com referência do local.
+> Implementado no desenho mínimo (ponytail + chato + jev-gate-principios):
+> (1) `unwrapClientValueWrappers` (12 linhas) no override de
+> `validateToolInput` — o artefato de cliente `{"value": X}` é desembrulhado
+> em UM ponto para TODAS as tools e campos de topo (laudo consumidor jumper:
+> 14 retries); (2) `src/review-input.ts` (92 linhas, extraído do monolito,
+> −83 em `src/server.ts`): unwrap de domínio nas 6 chaves de review +
+> validador que agora gera `review_input_ressalvas` no receipt em vez de
+> `PPIRTV_INPUT_INVALID` bloqueante; o gate de veredito segue fail-closed no
+> substancial. Provas: `tests/review-input.test.ts` 3/3,
+> `tests/evidence-add-review-wire.test.ts` 5/5 (RED provado contra dist
+> antigo), `tests/mcp-tool-describe.test.ts` com frases literais do novo
+> contrato; suíte 691 passed | 4 skipped.
+
 ## Reavaliação 2026-10-18 — contratos de corroboração documentados no help vivo
 
 > `goal_start` e `goal_verdict` descriptions agora ensinam `git_head_base`

@@ -1,10 +1,10 @@
 {
   "schema": "dex.capacity.snapshot.v1",
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
-  "fotografia_id": "2026-10-18-worktree-680bf6f-help-contracts-documentados",
-  "head": "6fb2dae56313d2f02b1fb4f3190a69eecbe72460",
+  "fotografia_id": "2026-10-18-worktree-488dd3b-input-nunca-bloqueante",
+  "head": "488dd3b",
   "tree_hash": null,
-  "generated_at": "2026-10-18T17:20:00.000000+00:00",
+  "generated_at": "2026-10-18T19:05:00.000000+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -23,7 +23,7 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 686,
+    "passed": 691,
     "skipped": 4,
     "files": 51
   },
@@ -544,8 +544,9 @@
       "behavior": "O entrypoint detecta flags, le tools/list e imprime descricao/schema/usage/exemplo sem iniciar stdio nem chamar a tool; sem tool imprime help e falha com exit 1",
       "oracle": "tests/tool-cli-entrypoint.test.ts 4/4 + tests/mcp-tool-describe.test.ts 3/3",
       "evidence": [
-        "--describe/--schema/--usage + tests/mcp-tool-describe.test.ts 4/4 (asserts documentais de git_head_base/diff base..HEAD/resolution route)",
-        "--describe/--schema/--usage + tests/mcp-tool-describe.test.ts 3/3"
+        "tests/tool-cli-entrypoint.test.ts 4/4",
+        "tests/mcp-tool-describe.test.ts 4/4 (frases do contrato nunca-bloqueante)",
+        "tests/evidence-add-review-wire.test.ts 5/5; tests/review-input.test.ts 3/3"
       ],
       "state": "comprovada",
       "limits": [

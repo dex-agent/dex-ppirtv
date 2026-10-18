@@ -40,6 +40,7 @@ import {
 } from "./error-envelope.js";
 import { registerPpirtvTool } from "./mcp/tool-effects.js";
 import { inspectRuntimeLayoutReadOnly } from "./mcp/runtime-layout.js";
+import { reviewObservedResultIssues, unwrapReviewValueWrappers } from "./review-input.js";
 
 const ANY_PHASES = [...PHASES, ...COMPACT_PHASES] as const;
 
@@ -92,6 +93,22 @@ type InputValidator = (tool: unknown, args: unknown, toolName: string) => Promis
 // Este override substitui essa mensagem pelo envelope que ensina. Feature
 // detect: se o metodo sumir em upgrade do SDK, cai no comportamento original
 // (e o teste de fronteira pinta RED avisando a casa).
+// Unwrap do artefato de cliente {"value": X} (laudo 2026-10-18, consumidor
+// na maquina jumper): geradores de tool-call de clientes reais embalam
+// valores em objetos de chave unica "value" (medido 2026-10-17 e
+// 2026-10-18). Um ponto so, no override de validacao — vale para TODAS as
+// tools e todos os campos de topo, antes do zod.
+function unwrapClientValueWrappers(args: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(args)) {
+    const wrapped =
+      value !== null && typeof value === "object" && !Array.isArray(value) &&
+      Object.keys(value).length === 1 && "value" in value;
+    result[key] = wrapped ? (value as { value: unknown }).value : value;
+  }
+  return result;
+}
+
 function installTeachingInputValidation(server: McpServer): void {
   const receiver = server as unknown as { validateToolInput?: InputValidator };
   const original = receiver.validateToolInput?.bind(server);
@@ -100,18 +117,19 @@ function installTeachingInputValidation(server: McpServer): void {
   }
   receiver.validateToolInput = async (tool, args, toolName) => {
     try {
+      const unwrapped = unwrapClientValueWrappers(args as Record<string, unknown>);
       const schema = (tool as { inputSchema?: unknown }).inputSchema;
       let parsed: SafeParseOutcome | null = null;
       if (schema && typeof (schema as { safeParse?: unknown }).safeParse === "function") {
-        parsed = (schema as { safeParse: (value: unknown) => SafeParseOutcome }).safeParse(args);
+        parsed = (schema as { safeParse: (value: unknown) => SafeParseOutcome }).safeParse(unwrapped);
       } else if (schema && typeof schema === "object") {
-        parsed = z.object(schema as Record<string, z.ZodType>).safeParse(args) as SafeParseOutcome;
+        parsed = z.object(schema as Record<string, z.ZodType>).safeParse(unwrapped) as SafeParseOutcome;
       }
       if (!parsed) {
-        return await original(tool, args, toolName);
+        return await original(tool, unwrapped, toolName);
       }
       if (parsed.success) {
-        return parsed.data ?? args;
+        return parsed.data ?? unwrapped;
       }
       const issues = (parsed.error?.issues ?? []).map((issue) => ({
         path: issue.path,
@@ -142,78 +160,9 @@ function installTeachingInputValidation(server: McpServer): void {
   };
 }
 
-// SPT review-gate-loop-proof (T-1): wire do review. A forma aninhada de
-// observed_result e o payload exato do loop de 2026-10-17 (~60 retries) —
-// morre no prologo do handler, antes de gravar evidencia ou emitir evento.
-// A validacao NAO vive no inputSchema porque schema refinado (ZodEffects)
-// degrada o JSON publicado no tools/list (properties: {}), regredindo o
-// contrato de descoberta; o raw shape preserva o schema publicado.
-function reviewObservedResultWirePayload(
-  toolName: string,
-  args: Record<string, unknown>
-): string | null {
-  if (args.criterion_proof || args.declarative_proof) {
-    return null;
-  }
-  const claims = Array.isArray(args.satisfies) ? args.satisfies.map(String) : [];
-  if (!claims.some((claim) => claim === "diff_reviewed" || claim === "barata_scan" || claim === "regression_risks")) {
-    return null;
-  }
-  const observed = args.observed_result as Record<string, unknown> | undefined;
-  const flatTeaching =
-    "review evidence requires six flat keys at the top level of observed_result: diff_reviewed (boolean true), barata_scan (boolean true), reviewed_targets (string[] of all changed files), searched_patterns (non-empty string[]), findings (string[]), regression_risks (string[]) — nesting any of them inside objects is the exact shape that caused the 2026-10-17 retry loop";
-  const describe = (input: unknown): string => {
-    if (input === undefined) return "undefined";
-    if (input === null) return "null";
-    if (Array.isArray(input)) return "array";
-    return typeof input;
-  };
-  const issues: Array<{ path: PropertyKey[]; expected: string; received: string; message: string }> = [];
-  const issue = (field: string, received: unknown, expected: string): void => {
-    issues.push({
-      path: field ? ["observed_result", field] : ["observed_result"],
-      expected,
-      received: describe(received),
-      message: `send observed_result${field ? `.${field}` : ""} as ${expected}; received ${describe(received)} — ${flatTeaching}`
-    });
-  };
-  if (!observed || typeof observed !== "object" || Array.isArray(observed)) {
-    issue("", observed, "object with the six flat review keys");
-  } else {
-    if (observed.diff_reviewed !== true) issue("diff_reviewed", observed.diff_reviewed, "boolean true");
-    if (observed.barata_scan !== true) issue("barata_scan", observed.barata_scan, "boolean true");
-    const stringArrayField = (field: string, allowEmpty: boolean): void => {
-      const raw = observed[field];
-      const invalid =
-        !Array.isArray(raw) ||
-        raw.some((item) => typeof item !== "string" || item.trim() === "") ||
-        (!allowEmpty && raw.length === 0);
-      if (invalid) {
-        issue(field, raw, `string[]${allowEmpty ? "" : " (non-empty)"}`);
-      }
-    };
-    stringArrayField("reviewed_targets", false);
-    stringArrayField("searched_patterns", false);
-    stringArrayField("findings", true);
-    stringArrayField("regression_risks", true);
-  }
-  if (issues.length === 0) {
-    return null;
-  }
-  const envelopes = inputShapeEnvelope(issues);
-  const payload = {
-    code: "PPIRTV_INPUT_INVALID",
-    tool: toolName,
-    message: `Invalid arguments for tool ${toolName}: ${issues.map((item) => `${item.path.join(".")}: ${item.message}`).join("; ")}`,
-    input_issues: envelopes,
-    next_required_action: {
-      type: "fix_input_fields",
-      tool: toolName,
-      reason: "corrija os campos listados (field/received_type/expected_type/example) e reenvie a chamada"
-    }
-  };
-  return `PPIRTV_INPUT_INVALID: ${JSON.stringify(payload)}`;
-}
+// Fronteira de input de review (normalizacao do artefato de cliente +
+// validacao estrita ensinante) mora em src/review-input.ts desde 2026-10-18
+// (metodo arvore; extraida do monolito com a suite wire como rede).
 
 export async function runStdioServer(): Promise<void> {
   const server = createPpirtvServer();
@@ -874,7 +823,7 @@ function registerTools(
     server,
     "evidence_add",
     {
-      description: "Add traceable evidence without recording secret-like payloads. The operation can replace the implementation fingerprint used by review-coherence gates, so tools/list classifies its maximum effect as state-changing. For SPT v3, criterion_proof binds the observed value to one task, requirement, criterion and evidence requirement; expected/operator are derived from the bound SPT and cannot be supplied by the caller. Preferred lighter route: declarative_proof sends only task_id, evidence_requirement_id, the crude observed_value the expectation kind requires and relative paths; the server derives requirement/criterion, hashes the revision_set, stamps the ISO timestamp, applies overridable environment/producer/limits defaults and expands one declaration into one passed-or-failed criterion_proof per criterion in evidence_requirement.proves (see proof_skeletons in spt_validate for ready payloads). declarative_proof and criterion_proof are mutually exclusive. In criterion_proof, environment is a root sibling of revision_set; each strict revision_set item accepts only workspace, optional head, and paths. A structured code_review attestation must cite the exact implementation_fingerprint observed by the reviewer; when reviewed_implementation_fingerprint is supplied, kind must be code_review or review and satisfies must contain diff_reviewed, barata_scan, or regression_risks, otherwise the request fails with REVIEW_ATTESTATION_CLAIMS_REQUIRED. When satisfies claims diff_reviewed, barata_scan or regression_risks, observed_result must carry the six review keys FLAT at the top level (diff_reviewed: true, barata_scan: true, reviewed_targets: string[] covering all changed files, searched_patterns: string[], findings: string[], regression_risks: string[]); nested shapes are rejected at input with PPIRTV_INPUT_INVALID. The server rejects stale snapshots and verdict text alone never satisfies review_required. Status receipt defaults to lean; use detail:'full' only for a complete diagnostic.",
+      description: "Add traceable evidence without recording secret-like payloads. The operation can replace the implementation fingerprint used by review-coherence gates, so tools/list classifies its maximum effect as state-changing. For SPT v3, criterion_proof binds the observed value to one task, requirement, criterion and evidence requirement; expected/operator are derived from the bound SPT and cannot be supplied by the caller. Preferred lighter route: declarative_proof sends only task_id, evidence_requirement_id, the crude observed_value the expectation kind requires and relative paths; the server derives requirement/criterion, hashes the revision_set, stamps the ISO timestamp, applies overridable environment/producer/limits defaults and expands one declaration into one passed-or-failed criterion_proof per criterion in evidence_requirement.proves (see proof_skeletons in spt_validate for ready payloads). declarative_proof and criterion_proof are mutually exclusive. In criterion_proof, environment is a root sibling of revision_set; each strict revision_set item accepts only workspace, optional head, and paths. A structured code_review attestation must cite the exact implementation_fingerprint observed by the reviewer; when reviewed_implementation_fingerprint is supplied, kind must be code_review or review and satisfies must contain diff_reviewed, barata_scan, or regression_risks, otherwise the request fails with REVIEW_ATTESTATION_CLAIMS_REQUIRED. When satisfies claims diff_reviewed, barata_scan or regression_risks, observed_result must carry the six review keys FLAT at the top level (diff_reviewed: true, barata_scan: true, reviewed_targets: string[] covering all changed files, searched_patterns: string[], findings: string[], regression_risks: string[]); single-key {\"value\": X} wrappers are unwrapped automatically at the input boundary for every tool, and any remaining shape issue NEVER rejects the call — the receipt returns review_input_ressalvas (field, received, expected and a per-field reference to fix the caller serialization). The verdict gate still requires the substantive review keys, so unrecoverable input surfaces as review_required with the field-level diagnostic instead of an input loop. The server rejects stale snapshots and verdict text alone never satisfies review_required. Status receipt defaults to lean; use detail:'full' only for a complete diagnostic.",
       inputSchema: {
         flow_id: z.string().min(1),
         kind: z.string().default("goal_evidence"),
@@ -893,10 +842,13 @@ function registerTools(
       },
     },
     async (args) => toolResponse(async () => {
-      const reviewWireError = reviewObservedResultWirePayload("evidence_add", args as unknown as Record<string, unknown>);
-      if (reviewWireError) {
-        throw new McpError(ErrorCode.InvalidParams, reviewWireError);
-      }
+      // Diretiva do dono (2026-10-18): erro de forma de input de review
+      // NUNCA e bloqueante — o artefato {"value": X} e desembrulhado e as
+      // issues restantes viram ressalvas do receipt com a referencia do
+      // campo para o chamador arrumar a serializacao.
+      const observedResult = (args as { observed_result?: Record<string, unknown> }).observed_result;
+      const unwrappedKeys = unwrapReviewValueWrappers(observedResult);
+      const reviewIssues = reviewObservedResultIssues(args as unknown as Record<string, unknown>);
       const declarative = args.declarative_proof;
       if (declarative) {
         if (args.criterion_proof) {
@@ -904,7 +856,15 @@ function registerTools(
         }
         return addDeclarativeEvidence(engine, engine, { ...args, declarative_proof: declarative }, declarativeDefaults());
       }
-      return engine.addGoalEvidence(args);
+      const evidenceReceipt = await engine.addGoalEvidence(args);
+      if (evidenceReceipt && typeof evidenceReceipt === "object" && (reviewIssues.length > 0 || unwrappedKeys.length > 0)) {
+        return {
+          ...evidenceReceipt,
+          ...(unwrappedKeys.length > 0 ? { review_input_unwrapped: unwrappedKeys } : {}),
+          ...(reviewIssues.length > 0 ? { review_input_ressalvas: reviewIssues } : {})
+        };
+      }
+      return evidenceReceipt;
     }, args)
   );
 

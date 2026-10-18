@@ -47,7 +47,7 @@ describe("evidence_add review wire rejeita shape aninhado no input (T-1)", () =>
     rmSync(tempWorkspace, { recursive: true, force: true });
   });
 
-  it("rejeita na entrada o observed_result aninhado (forma do incidente) ensinando campo, recebido e esperado", async () => {
+  it("ACEITA com ressalva o shape aninhado do incidente 2026-10-17 (erro de forma nunca bloqueante — diretiva do dono)", async () => {
     const response = await callEvidenceAdd(client, {
       flow_id: "flow_wire_probe_inexistente",
       kind: "code_review",
@@ -62,13 +62,17 @@ describe("evidence_add review wire rejeita shape aninhado no input (T-1)", () =>
       scope_classification: "target",
       scope_reference: "a.php"
     });
-    expect(response.isError).toBe(true);
     const text = response.content?.[0]?.text ?? "";
-    expect(text).toContain("PPIRTV_INPUT_INVALID");
-    expect(text).toContain("diff_reviewed");
-    expect(text.toLowerCase()).toContain("boolean");
-    expect(text.toLowerCase()).toContain("object");
-    expect(text.toLowerCase()).toContain("flat");
+    expect(text).not.toContain("PPIRTV_INPUT_INVALID");
+  }, 60_000);
+
+  it("ponto unico: wrapper {\"value\": X} em campo tipado de OUTRA tool passa da validacao de entrada", async () => {
+    const response = await client.callTool({
+      name: "goal_status",
+      arguments: { flow_id: { value: "flow_wire_probe_inexistente" } }
+    }) as CallResult;
+    const text = response.content?.[0]?.text ?? "";
+    expect(text).not.toContain("PPIRTV_INPUT_INVALID");
   }, 60_000);
 
   it("aceita na entrada o observed_result flat correto (segue ao handler; sem PPIRTV_INPUT_INVALID)", async () => {
@@ -84,6 +88,27 @@ describe("evidence_add review wire rejeita shape aninhado no input (T-1)", () =>
         searched_patterns: ["padrao"],
         findings: ["F1: achado"],
         regression_risks: ["R1: risco"]
+      },
+      scope_classification: "target",
+      scope_reference: "a.php"
+    });
+    const text = response.content?.[0]?.text ?? "";
+    expect(text).not.toContain("PPIRTV_INPUT_INVALID");
+  }, 60_000);
+
+  it("normaliza o artefato de cliente {\"value\": X} de chave unica nas seis chaves (laudo 2026-10-18) sem PPIRTV_INPUT_INVALID", async () => {
+    const response = await callEvidenceAdd(client, {
+      flow_id: "flow_wire_probe_inexistente",
+      kind: "code_review",
+      title: "Revisao estruturada",
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      observed_result: {
+        diff_reviewed: { value: true },
+        barata_scan: { value: true },
+        reviewed_targets: { value: ["a.php", "tests/a.test.php"] },
+        searched_patterns: { value: ["padrao"] },
+        findings: { value: ["F1: achado"] },
+        regression_risks: { value: ["R1: risco"] }
       },
       scope_classification: "target",
       scope_reference: "a.php"
