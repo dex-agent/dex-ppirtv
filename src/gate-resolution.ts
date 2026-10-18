@@ -1,5 +1,5 @@
 import type { Evidence, Flow, GateRecord } from "./domain.js";
-import type { GateRequirement } from "./phase-profile.js";
+import { REQUIREMENT_KINDS_BY_KEY, type GateRequirement, type GateRequirementKind } from "./phase-profile.js";
 import { normalizeReviewPath } from "./review-snapshot.js";
 
 export type GateRequirementResolution = {
@@ -45,20 +45,20 @@ const EXPLICIT_EVIDENCE_REQUIREMENTS = new Set([
 const REVIEW_KINDS = new Set(["code_review", "review"]);
 const TEST_KINDS = new Set(["test", "test_log", "test_run"]);
 
-// SPT gate-integrity-hardening (T-3, laudo F3): catalogo centralizado de
-// extensoes de codigo. O fast-track "mechanical" so e honrado quando nenhum
-// arquivo de codigo aparece em changed_files; codigo real exige o ciclo
-// fiscal completo (review estruturada corroborada).
-export const CODE_FILE_EXTENSIONS: readonly string[] = [
-  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
-  ".py", ".go", ".rs", ".java", ".cs", ".kt", ".swift", ".dart",
-  ".c", ".h", ".cpp", ".hpp", ".php", ".rb", ".sql", ".sh", ".ps1"
-];
+// SPT gate-integrity-hardening-2 (R6, laudo de revalidacao 2026-10-18):
+// allowlist invertida — so e documental o que termina em extensao documental
+// explícita. Path sem extensao (scripts/deploy, Makefile, Dockerfile,
+// Procfile, Justfile) e codigo por padrao: o fast-track mechanical nunca e
+// concedido por buraco de allowlist.
+export const DOCUMENT_FILE_EXTENSIONS: readonly string[] = [".md", ".txt", ".rst", ".adoc"];
+
+export function isDocumentalFile(file: string): boolean {
+  const normalized = file.toLowerCase();
+  return DOCUMENT_FILE_EXTENSIONS.some((extension) => normalized.endsWith(extension));
+}
 
 export function changedFilesContainCode(changedFiles: readonly string[]): boolean {
-  return changedFiles.some((file) =>
-    CODE_FILE_EXTENSIONS.some((extension) => file.toLowerCase().endsWith(extension))
-  );
+  return changedFiles.some((file) => !isDocumentalFile(file));
 }
 
 export function resolveGateRequirements(input: GateResolutionInput): GateRequirementResolution[] {
@@ -72,8 +72,7 @@ export function resolveGateRequirements(input: GateResolutionInput): GateRequire
       : [requirement.source];
     const sourceSatisfied = requirementSatisfiedBySource(
       input.flow,
-      requirement.key,
-      requirement.source,
+      requirement,
       provided,
       input.canonicalVerdictRequired === true
     );
@@ -208,49 +207,80 @@ export function reviewEvidenceDiagnostics(flow: Flow, evidence: Evidence): Revie
   };
 }
 
+// SPT gate-integrity-hardening-2 (R2/R10, laudo de revalidacao 2026-10-18):
+// nenhuma source interpreta prova por "truthy". source=flow exige o valor do
+// tipo contratado no flow OU um provided do MESMO tipo (listas nao vazias de
+// textos nao vazios, texto nao vazio/negativo, boolean true). Chave sem kind
+// conhecido falha fechada.
+function valueSatisfiesKind(value: unknown, kind: GateRequirementKind): boolean {
+  switch (kind) {
+    case "boolean":
+      return value === true;
+    case "non_empty_string": {
+      if (typeof value !== "string") return false;
+      const normalized = value.trim().toLowerCase();
+      return normalized.length > 0 && !NEGATIVE_STRING_MARKERS.has(normalized);
+    }
+    case "string_array":
+      return stringArray(value) && value.every((item) => item.trim().length > 0);
+    case "non_empty_string_array":
+      return stringArray(value) && value.length > 0 && value.every((item) => item.trim().length > 0);
+  }
+}
+
+const FLOW_REQUIREMENT_FIELDS: Record<string, keyof Flow | "scope_in" | "scope_out"> = {
+  goal: "goal",
+  context: "context",
+  risks: "risks",
+  uncertainties: "uncertainties",
+  scope_in: "scope_in",
+  scope_out: "scope_out",
+  tasks: "tasks",
+  expected_evidence: "expected_evidence",
+  done_criteria: "done_criteria",
+  changed_files: "changed_files"
+};
+
+function flowRequirementValue(flow: Flow, key: string): unknown {
+  if (key === "scope_in") return flow.scope.in;
+  if (key === "scope_out") return flow.scope.out;
+  return flow[key as keyof Flow];
+}
+
 function requirementSatisfiedBySource(
   flow: Flow,
-  key: string,
-  source: GateRequirement["source"],
+  requirement: GateRequirement,
   provided: Record<string, unknown>,
   canonicalVerdictRequired: boolean
 ): boolean {
-  if (source === "provided") {
-    return providedRequirementSatisfied(key, provided[key]);
+  const key = requirement.key;
+  const kind = requirement.kind ?? REQUIREMENT_KINDS_BY_KEY[key];
+  if (kind === undefined) {
+    // R10: requisito sem tipo contratado falha fechado (configuracao do
+    // perfil precisa tipar a chave antes de poder passar).
+    return false;
   }
-  if (source === "evidence") {
+  if (requirement.source === "provided") {
+    return valueSatisfiesKind(provided[key], kind);
+  }
+  if (requirement.source === "evidence") {
     // SPT gate-integrity-f4f5f6 (T-3, laudo F6): existencia de evidencia nao
     // e prova — exige evidencia relevante para o contrato da fase
-    // (satisfies cobrindo expected_evidence OU receipt de teste valido).
+    // (satisfies cobrindo expected_evidence, receipt de teste valido OU,
+    // desde o hardening-2 (R5), criterion_proof SPT v3 aprovado).
     return genericEvidenceSatisfied(flow);
   }
-  if (source === "verdict") {
-    return canonicalVerdictRequired ? false : flow.verdicts.length > 0 || truthy(provided[key]);
+  if (requirement.source === "verdict") {
+    if (canonicalVerdictRequired) return false;
+    return flow.verdicts.length > 0 || valueSatisfiesKind(provided[key], kind);
   }
-  switch (key) {
-    case "goal":
-      return truthy(flow.goal);
-    case "context":
-      return truthy(flow.context) || truthy(provided.context);
-    case "risks":
-      return flow.risks.length > 0 || truthy(provided.risks);
-    case "uncertainties":
-      return flow.uncertainties.length > 0 || truthy(provided.uncertainties);
-    case "scope_in":
-      return flow.scope.in.length > 0 || truthy(provided.scope_in);
-    case "scope_out":
-      return flow.scope.out.length > 0 || truthy(provided.scope_out);
-    case "tasks":
-      return flow.tasks.length > 0 || truthy(provided.tasks);
-    case "expected_evidence":
-      return flow.expected_evidence.length > 0 || truthy(provided.expected_evidence);
-    case "done_criteria":
-      return flow.done_criteria.length > 0 || truthy(provided.done_criteria);
-    case "changed_files":
-      return flow.changed_files.length > 0 || truthy(provided.changed_files);
-    default:
-      return truthy(provided[key]);
+  if (requirement.source === "flow") {
+    const field = FLOW_REQUIREMENT_FIELDS[key];
+    if (field === undefined) return false;
+    return valueSatisfiesKind(flowRequirementValue(flow, key), kind)
+      || valueSatisfiesKind(provided[key], kind);
   }
+  return false;
 }
 
 function nonNegativeInteger(value: unknown): value is number {
@@ -262,6 +292,10 @@ function genericEvidenceSatisfied(flow: Flow): boolean {
   return flow.evidence.some((evidence) =>
     (evidence.satisfies ?? []).some((item) => flow.expected_evidence.includes(item))
     || isTestReceipt(evidence)
+    // SPT gate-integrity-hardening-2 (R5, laudo de revalidacao): a rota
+    // declarativa SPT v3 grava criterion_proof na evidencia; uma prova
+    // aprovada e evidencia relevante — nao exige receipt manual nem satisfies.
+    || evidence.criterion_proof?.passed === true
   );
 }
 
@@ -271,18 +305,59 @@ function genericEvidenceSatisfied(flow: Flow): boolean {
 // sem snapshot nao sao reutilizados em flows com arquivos (fail-closed).
 const DOWNSTREAM_REVIEW_PHASES = new Set(["revisao", "teste", "validacao"]);
 
-export function gateSnapshotMatches(gate: GateRecord, changedFiles: string[]): boolean {
-  return arraysSetEqual(gate.changed_files_snapshot ?? [], changedFiles);
+// SPT gate-integrity-hardening-2 (R3): fases cuja validade de gate depende da
+// moeda de conteudo revisado (paths E fingerprint).
+export function reviewCurrencyAppliesToPhase(phase: string): boolean {
+  return DOWNSTREAM_REVIEW_PHASES.has(phase);
+}
+
+// SPT gate-integrity-hardening-2 (R3, laudo de revalidacao): o gate e valido
+// para o CONTEUDO revisado — paths E fingerprint. Gate sem fingerprint gravado
+// (legado) nao e reusavel quando o flow tem fingerprint atual (fail-closed).
+export function gateSnapshotMatches(
+  gate: GateRecord,
+  changedFiles: string[],
+  currentFingerprint?: string | null
+): boolean {
+  if (!arraysSetEqual(gate.changed_files_snapshot ?? [], changedFiles)) {
+    return false;
+  }
+  if (currentFingerprint === undefined) {
+    return true;
+  }
+  return (gate.implementation_fingerprint ?? null) === (currentFingerprint ?? null);
+}
+
+// SPT gate-integrity-hardening-2 (R6 da regua da casa): decisao de reuse de
+// gate salvo vivia duplicada em dois sites do monolito; unificada aqui.
+export function savedGateReusable(
+  savedGate: GateRecord | undefined,
+  changedFiles: string[],
+  currentFingerprint: string | null | undefined,
+  opts: { providedPresent: boolean; needsCanonicalVerdict: boolean }
+): savedGate is GateRecord {
+  return Boolean(
+    savedGate
+    && !opts.providedPresent
+    && savedGate.status === "passed"
+    && gateSnapshotMatches(savedGate, changedFiles, currentFingerprint ?? null)
+    && !opts.needsCanonicalVerdict
+  );
 }
 
 export function invalidateStaleDownstreamGates(
   gates: Record<string, GateRecord>,
-  changedFiles: string[]
+  changedFiles: string[],
+  currentFingerprint?: string | null
 ): number {
   let dropped = 0;
   for (const phase of Object.keys(gates)) {
     const gate = gates[phase];
-    if (gate.status === "passed" && DOWNSTREAM_REVIEW_PHASES.has(phase) && !gateSnapshotMatches(gate, changedFiles)) {
+    if (
+      gate.status === "passed"
+      && DOWNSTREAM_REVIEW_PHASES.has(phase)
+      && !gateSnapshotMatches(gate, changedFiles, currentFingerprint)
+    ) {
       delete gates[phase];
       dropped += 1;
     }
@@ -458,7 +533,9 @@ const NEGATIVE_STRING_MARKERS = new Set(["false", "no", "nao", "não", "null", "
 export function providedRequirementSatisfied(key: string, value: unknown): boolean {
   const kind = PROVIDED_REQUIREMENT_KINDS[key];
   if (!kind) {
-    return truthy(value);
+    // SPT gate-integrity-hardening-2 (R10): chave sem tipo contratado falha
+    // fechada — interpretar "truthy" aqui reabriria o buraco que o F1 fechou.
+    return false;
   }
   switch (kind) {
     case "boolean":

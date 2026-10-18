@@ -111,7 +111,8 @@
       "red_evidence": "tests/mcp.test.ts::keeps goal_verdict_required over MCP when validation only has provided verdict text",
       "red_base_blob": "9fbdcd7224d97275b5c94ecfa3aad45be975615a",
       "red_observed_failure": "Without the guard, goal_advance returned advanced=true and status=complete immediately after goal_verdict.",
-      "red_command": "npm.cmd run build; npm.cmd test -- --run tests/mcp.test.ts -t keeps goal_verdict_required over MCP when validation only has provided verdict text"
+      "red_command": "npm.cmd run build; npm.cmd test -- --run tests/mcp.test.ts -t keeps goal_verdict_required over MCP when validation only has provided verdict text",
+      "commit": "bdf6e71a934201558d06cc338d746125322a81e5"
     },
     {
       "id": "FE-2026-10-13-GOVERNED-TAG-CONTRACT",
@@ -149,7 +150,8 @@
         "tests/dex-memoria-v2-adapter.test.ts",
         "tests/mcp.test.ts"
       ],
-      "pays_debt_id": "FE-DEBT-001"
+      "pays_debt_id": "FE-DEBT-001",
+      "commit": "7eae7796697a64fd1a1411581b704f73b50e774a"
     },
     {
       "id": "FE-2026-10-15-FISCAL-BLOCK-TEACHING-MESSAGE",
@@ -181,7 +183,8 @@
         "when": "next diff that touches src/flow-engine.ts for fiscal policy projection",
         "responsibility": "Project actionable fiscal-block teaching messages (split codes, state numbers, unblock route).",
         "payment_scope": "any_verified_shrink"
-      }
+      },
+      "commit": "66ac042cdc5cac65a1c3c90e255b21e26200769b"
     },
     {
       "id": "FE-2026-10-17-REVIEW-LOOP-FISCAL-SANE",
@@ -214,7 +217,8 @@
       "red_evidence": "tests/loop-monitor-escalation.test.ts::7 ciclos de review invalida + re-checagem bloqueada levam count a >= 6 com escalonamento research_subagent",
       "red_base_blob": "9ebcd3d49042cc3a0eddce849b12a527e3f3ff21",
       "red_observed_failure": "count < 6 apos 7 ciclos de evidence_add de review invalida intercalada com re-checagem bloqueada (evidence_attached invalida resetava a janela como progresso falso); escalonamento 6/8/9 inalcancavel — incidente real 2026-10-17 com ~60 retries",
-      "red_command": "npx vitest run tests/loop-monitor-escalation.test.ts -t \"7 ciclos de review invalida + re-checagem bloqueada levam count a >= 6 com escalonamento research_subagent\""
+      "red_command": "npx vitest run tests/loop-monitor-escalation.test.ts -t \"7 ciclos de review invalida + re-checagem bloqueada levam count a >= 6 com escalonamento research_subagent\"",
+      "commit": "3db23bb7fc65edd84dd3203f8a4239439b2438d5"
     },
     {
       "id": "FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES",
@@ -253,7 +257,8 @@
         "tests/gate-integrity-hardening.test.ts::doc-only mantem fast-track do mechanical (nao-regressao)",
         "tests/engine.test.ts::T-MC-S compact flow runs end-to-end",
         "RED log .agents/AUDITORIAS/EVIDENCIAS/2026-10-17-gate-integrity-red.log (7 failed no base, 11 passed no head)"
-      ]
+      ],
+      "commit": "067d9754959131d0b3bc0974f123e9dc6c34f2af"
     },
     {
       "id": "FE-2026-10-18-GATE-INTEGRITY-F4F5F6",
@@ -293,7 +298,8 @@
         "tests/gate-integrity-f4f5f6.test.ts::nao-regressao: gate passed com snapshot identico continua reutilizavel",
         "tests/gate-integrity-f4f5f6.test.ts::goal_start rejeita envelope com segredo no objective antes de criar o flow",
         "tests/engine.test.ts (198 passed) e suite completa 649 passed | 4 skipped apos a adaptacao declarada"
-      ]
+      ],
+      "commit": "695b4398faebf8daad3561c26e804d92d6088947"
     },
     {
       "id": "FE-2026-10-18-MEMORY-GATE-LOOP-SHRINK",
@@ -356,7 +362,37 @@
       ],
       "red_evidence": "tests/memory-gate-loop.test.ts::re-mining identico apos veredito positivo registra evento novo e o advance terminal avanca",
       "red_command": "npx vitest run tests/memory-gate-loop.test.ts -t \"re-mining identico apos veredito positivo registra evento novo e o advance terminal avanca\"",
-      "notes": "Pays no debt: FE-DEBT-002 was already paid by FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES. Plain house-rule SHRINK for SPT memory-gate-loop-solubility (decisao A): history is 100% append-only (one memory_mined event per attempt), idempotency lives only in the V2 ledger keyed by reconciliation id, and the loop monitor resets only on a distinct reconciliation id (duplicate mining is not progress)."
+      "notes": "Pays no debt: FE-DEBT-002 was already paid by FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES. Plain house-rule SHRINK for SPT memory-gate-loop-solubility (decisao A): history is 100% append-only (one memory_mined event per attempt), idempotency lives only in the V2 ledger keyed by reconciliation id, and the loop monitor resets only on a distinct reconciliation id (duplicate mining is not progress).",
+      "commit": "598ae5d9b6912c368dec1f29d9285165d0ce6eff"
+    },
+    {
+      "id": "FE-2026-10-18-GATE-INTEGRITY-HARDENING-2",
+      "date": "2026-10-18",
+      "mode": "EXCEPTION",
+      "base_blob": "2350a756cc391b205d7b15b415c90f99a5bfc9ed",
+      "head_blob": "1604c9068263c501b0e36e1a0a5eb4defa957f86",
+      "spt_path": ".agents/PLAN-TASKS/2026-10-18-gate-integrity-hardening-2.md",
+      "responsibility": "Fail-closed guards for the 2026-10-18 revalidation laudo (R1-R10): phase-return direction, typed gate proof, review currency by implementation fingerprint, contract-SPT secret choke point, declarative criterion proof, inverted documental allowlist and preflight shape diagnostics live in the gate-resolution/phase-profile/secret-redaction SSOTs; the facade keeps only guard calls.",
+      "owner": "$oraculo-refatoracao",
+      "destination_module": "src/gate-resolution.ts",
+      "exception_reason": "integrity",
+      "rollback": "revert this commit to remove the guards; the RED battery at red_base_blob reproduces every fail-open probe",
+      "expires": "next diff that touches src/flow-engine.ts",
+      "red_evidence": "tests/gate-integrity-revalidation.test.ts::R2/C-2: requisitos source=flow rejeitam [], 'false', 0 e {} como prova (sem fallback truthy)",
+      "red_base_blob": "2350a756cc391b205d7b15b415c90f99a5bfc9ed",
+      "red_observed_failure": "10 failed | 2 passed na bateria em 598ae5d (log .agents/AUDITORIAS/EVIDENCIAS/2026-10-18-hardening2-red.log)",
+      "red_command": "npx vitest run tests/gate-integrity-revalidation.test.ts -t \"R2/C-2: requisitos source=flow rejeitam [], 'false', 0 e {} como prova (sem fallback truthy)\"",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/gate-integrity-revalidation.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/gate-integrity-revalidation.test.ts": "R3/C-3: mudanca de conteudo same-path (fingerprint muda, paths iguais) bloqueia o reuse e o avanco"
+      },
+      "changelog_marker": "Revalidacao gate-integrity fecha os residuos F1-F6 (R1-R10)",
+      "architecture_marker": "FE-2026-10-18-GATE-INTEGRITY-HARDENING-2"
     }
   ]
 }

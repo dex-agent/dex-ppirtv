@@ -407,6 +407,62 @@ function unreleasedSection(content) {
   return content.slice(start, next < 0 ? content.length : next);
 }
 
+// SPT gate-integrity-hardening-2 (R7): diff de manifest limitado a selagem de
+// commit. Records precisam ser os mesmos (mesma ordem, mesmos ids, resto
+// identico); cada commit selado precisa apontar para o head_blob do record.
+function evaluateCommitSealDiff({ cwd, baseManifest, headManifest }) {
+  const reasons = [];
+  let baseRecords = null;
+  let headRecords = null;
+  try {
+    baseRecords = JSON.parse(baseManifest).records ?? null;
+    headRecords = JSON.parse(headManifest).records ?? null;
+  } catch {
+    return { ok: false, reasons: ["COMMIT_SEAL_MANIFEST_UNREADABLE"] };
+  }
+  if (!Array.isArray(baseRecords) || !Array.isArray(headRecords) || baseRecords.length !== headRecords.length) {
+    return { ok: false, reasons: ["COMMIT_SEAL_SHAPE_CHANGED"] };
+  }
+  const sealedIds = [];
+  for (let index = 0; index < headRecords.length; index += 1) {
+    const before = baseRecords[index];
+    const after = headRecords[index];
+    if (!before || !after || before.id !== after.id) {
+      return { ok: false, reasons: ["COMMIT_SEAL_SHAPE_CHANGED"] };
+    }
+    const beforeCopy = { ...before };
+    const afterCopy = { ...after };
+    delete beforeCopy.commit;
+    delete beforeCopy.parent_commit;
+    delete afterCopy.commit;
+    delete afterCopy.parent_commit;
+    if (JSON.stringify(beforeCopy) !== JSON.stringify(afterCopy)) {
+      reasons.push(`COMMIT_SEAL_RECORD_CHANGED:${after.id}`);
+      continue;
+    }
+    if (before.commit === after.commit && before.parent_commit === after.parent_commit) {
+      continue;
+    }
+    if (!nonEmptyString(after.commit)) {
+      reasons.push(`COMMIT_SEAL_COMMIT_MISSING:${after.id}`);
+      continue;
+    }
+    try {
+      const sealedBlob = git(["rev-parse", `${after.commit}:${TARGET_PATH}`], cwd);
+      if (sealedBlob !== after.head_blob) {
+        reasons.push(`COMMIT_SEAL_BLOB_MISMATCH:${after.id}`);
+        continue;
+      }
+    } catch {
+      reasons.push(`COMMIT_SEAL_COMMIT_NOT_FOUND:${after.id}`);
+      continue;
+    }
+    sealedIds.push(after.id);
+  }
+  if (sealedIds.length === 0) reasons.push("COMMIT_SEAL_NOTHING_SEALED");
+  return { ok: reasons.length === 0, reasons, sealedIds };
+}
+
 function validateBootstrapRecords({ cwd, records, manifest, headBlob }) {
   const reasons = [];
   const architecture = readFileSync(path.join(cwd, ARCHITECTURE_PATH), "utf8");
@@ -694,7 +750,21 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
         sealed_after_commit: true
       };
     } else if (baseManifest !== headManifest) {
-      receipt.reasons.push("LEDGER_CHANGE_REQUIRES_TARGET_CHANGE");
+      // SPT gate-integrity-hardening-2 (R7): selar `commit` so e possivel
+      // DEPOIS do commit existir (sha nao existe antes). Um diff de ledger que
+      // APENAS adiciona/atualiza `commit`/`parent_commit` em records existentes
+      // — com blob do commit conferindo contra o head_blob do proprio record —
+      // e selagem pos-commit legitima, nao mutacao silenciosa do ledger.
+      const seal = evaluateCommitSealDiff({ cwd, baseManifest, headManifest });
+      if (seal.ok) {
+        receipt.ledger_commit_seal = {
+          status: "PASS",
+          sealed_records: seal.sealedIds,
+          sealed_after_commit: true
+        };
+      } else {
+        receipt.reasons.push("LEDGER_CHANGE_REQUIRES_TARGET_CHANGE", ...seal.reasons);
+      }
     }
   }
 
@@ -710,8 +780,34 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
     if (baseManifestText) {
       try {
         const baseRecords = JSON.parse(baseManifestText).records ?? [];
-        const preservedPrefix = JSON.stringify(records.slice(0, baseRecords.length)) === JSON.stringify(baseRecords);
+        // SPT gate-integrity-hardening-2 (R7): o prefixo e imutavel EXCETO pela
+        // selagem pos-commit de `commit`/`parent_commit` (o sha so existe
+        // depois do commit). Selagem mentirosa (blob do commit != head_blob do
+        // record) continua reprovando.
+        const stripSeal = (record) => {
+          const copy = { ...record };
+          delete copy.commit;
+          delete copy.parent_commit;
+          return copy;
+        };
+        const preservedPrefix = baseRecords.every((before, index) => {
+          const after = records[index];
+          return Boolean(after) && after.id === before.id
+            && JSON.stringify(stripSeal(after)) === JSON.stringify(stripSeal(before));
+        });
         if (!preservedPrefix) receipt.reasons.push("LEDGER_HISTORY_MUTATED");
+        for (let index = 0; index < baseRecords.length; index += 1) {
+          const after = records[index];
+          if (after.commit && after.commit !== baseRecords[index].commit) {
+            try {
+              if (git(["rev-parse", `${after.commit}:${TARGET_PATH}`], cwd) !== after.head_blob) {
+                receipt.reasons.push(`LEDGER_PREFIX_COMMIT_SEAL_MISMATCH:${after.id}`);
+              }
+            } catch {
+              receipt.reasons.push(`LEDGER_PREFIX_COMMIT_SEAL_MISMATCH:${after.id}`);
+            }
+          }
+        }
         const appendedCount = chainRecords?.length ?? 1;
         if (records.length !== baseRecords.length + appendedCount || records.at(-1) !== declaration) {
           receipt.reasons.push("LEDGER_REQUIRES_APPENDED_RECORDS_COVERING_DIFF");
@@ -825,7 +921,10 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
         }
       }
       if (declaration.mode === "EXCEPTION") {
-        if (declaration.red_base_blob !== baseBlob) receipt.reasons.push("EXCEPTION_RED_BASE_BLOB_MISMATCH");
+        // SPT gate-integrity-hardening-2 (R7): o RED e conferido contra a base
+        // do PROPRIO registro — em cadeia cumulativa o ultimo registro nao
+        // comeca na base da janela, e exigir isso reprovava EXCEPTION valido.
+        if (declaration.red_base_blob !== declaration.base_blob) receipt.reasons.push("EXCEPTION_RED_BASE_BLOB_MISMATCH");
         if (!declaration.red_command?.includes(redPath) || !declaration.red_command?.includes(redSelector)) {
           receipt.reasons.push("EXCEPTION_RED_COMMAND_MISMATCH");
         }

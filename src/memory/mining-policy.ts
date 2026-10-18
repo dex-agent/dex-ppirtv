@@ -370,14 +370,9 @@ export function memoryCandidateLedgerData(candidate: MemoryCandidate): Record<st
   };
 }
 
-export function assertNoSecretLikeText(value: string | undefined, field: string): void {
-  if (!value) {
-    return;
-  }
-  if (SECRET_LIKE_PATTERN.test(value)) {
-    throw new Error(`${field} appears to contain a secret-like value and cannot be recorded`);
-  }
-}
+// SPT gate-integrity-hardening-2 (R4): o assert migrou para o SSOT
+// security/secret-redaction.ts; reexport mantem consumidores estaveis.
+export { assertNoSecretLikeText } from "../security/secret-redaction.js";
 
 export function redactSecretLikeText(value: string): string {
   return SECRET_LIKE_PATTERN.test(value) ? "[redacted]" : value;

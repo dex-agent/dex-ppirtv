@@ -85,3 +85,40 @@ export function scrubSecretLike<T>(value: T, redactions?: Set<string>): T {
   }
   return value;
 }
+
+// SPT gate-integrity-hardening-2 (R4, laudo de revalidacao 2026-10-18):
+// guardas de rejeicao centralizadas no SSOT de segredo. Antes disso o
+// assertNoSecretLikePayload vivia no monolito flow-engine e as tools legadas
+// (gate_check/flow_advance) nao passavam por ele; assertNoSecretLikeText
+// vivia em memory/mining-policy (casa incoerente).
+
+export function assertNoSecretLikeText(value: string | undefined, field: string): void {
+  if (!value) {
+    return;
+  }
+  if (SECRET_LIKE_PATTERN.test(value)) {
+    throw new Error(`${field} appears to contain a secret-like value and cannot be recorded`);
+  }
+}
+
+export function assertNoSecretLikeItems(values: string[], field: string): void {
+  for (const value of values) {
+    assertNoSecretLikeText(value, field);
+  }
+}
+
+export function assertNoSecretLikePayload(value: unknown, field: string): void {
+  if (typeof value === "string") {
+    assertNoSecretLikeText(value, field);
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => assertNoSecretLikePayload(item, `${field}[${index}]`));
+    return;
+  }
+  if (value && typeof value === "object") {
+    for (const [key, nested] of Object.entries(value)) {
+      assertNoSecretLikePayload(nested, `${field}.${key}`);
+    }
+  }
+}

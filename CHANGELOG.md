@@ -10,6 +10,34 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
+- Revalidacao gate-integrity fecha os residuos F1-F6 (R1-R10) (2026-10-18
+  `gate-integrity-hardening-2`, SPT
+  `.agents/PLAN-TASKS/2026-10-18-gate-integrity-hardening-2.md`, laudo
+  `.agents/REVIEWS/2026-10-18-laudo-gate-integrity-hardening-2.md`):
+  (R1) `flow_return`/`goal_regress` nao avancam — destino posterior a fase
+  atual rejeita com `PPIRTV_PHASE_RETURN_MUST_GO_BACK` antes de mutar
+  (retorno para a propia fase segue legal: e o gatilho de regresso fiscal);
+  (R2) requisito `source=flow` so e satisfeito pelo TIPO contratado
+  (`GateRequirementKind` no perfil; `[]`/`"false"`/`0`/`{}` nunca valem) e
+  chave provided desconhecida falha fechada; (R3) `GateRecord` grava
+  `implementation_fingerprint` e o recheck de revisao/teste/validacao julga a
+  review contra o conteudo ATUAL (`reviewCurrencyAppliesToPhase`) — mudanca
+  same-path bloqueia o reuse; (R4) os risks do CONTRATO SPT passam pelo guard
+  central no choke point `validateSpt` (goal_start e tool publica);
+  (R5) `criterion_proof.passed` aprovado satisfaz o requisito generico de
+  evidence (rota declarativa documentada no quickstart); (R6) allowlist
+  invertida — so extensao documental explicita e doc; `scripts/deploy`,
+  `Makefile`, `Dockerfile` e sem extensao sao codigo e exigem review no
+  veredito mechanical; (R8) o diagnostico
+  `field`/`received`/`expected` prometido chega ao consumidor no
+  `goal_gate_preflight.required`. RED causal (10 failed | 2 passed em
+  598ae5d) em
+  `.agents/AUDITORIAS/EVIDENCIAS/2026-10-18-hardening2-red.log`; bateria em
+  `tests/gate-integrity-revalidation.test.ts` (13 testes); suite completa 666
+  passed | 4 skipped. Guards de segredo consolidados no SSOT
+  `src/security/secret-redaction.ts` (EXCEPTION
+  `FE-2026-10-18-GATE-INTEGRITY-HARDENING-2`, +12 linhas nao-vazias, 2 simbolos saem da fachada).
+
 - Loop de mineracao pos-veredito deixa de ser insolvel (history append-only por tentativa; SHRINK MGL) (2026-10-18
   `memory-gate-loop-solubility`, SPT
   `.agents/PLAN-TASKS/2026-10-18-memory-gate-loop-solubility.md`): (decisao A)
@@ -37,7 +65,12 @@ escopo, evidencias e lacunas quando existirem.
   generico `evidence` exige evidencia relevante (`satisfies` cobrindo
   `expected_evidence` OU receipt de teste com `passed`/`failed`/`exit_code`),
   nao a existencia de qualquer evidencia. Replay black-box dos cenarios C/D e
-  bateria em `tests/gate-integrity-f4f5f6.test.ts` (8 testes).
+  bateria em `tests/gate-integrity-f4f5f6.test.ts` (8 testes). Rebaixado em
+  2026-10-18: a revalidacao
+  (`.agents/REVIEWS/2026-10-18-laudo-gate-integrity-fix-revalidation.md`)
+  achou residuos de F1/F3/F4/F5 so fechados pelo `gate-integrity-hardening-2`
+  abaixo — o fechamento original valia pelos cenarios C/D testados, nao pelos
+  residuos.
 
 - Gates de prova tipados, retorno cross-profile e mechanical com codigo falham fechado (2026-10-18
   `gate-integrity-hardening`, SPT

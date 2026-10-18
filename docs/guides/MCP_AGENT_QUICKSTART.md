@@ -170,6 +170,32 @@ Important nesting rules:
   `paths`.
 - A strict path item accepts only `path` and `sha256`.
 
+## Declarative route (`declarative_proof`)
+
+For SPT v3 you do not need to hand-write one evidence item per criterion. A
+single `evidence_add` call with a top-level `declarative_proof` expands
+server-side into one `criterion_proof` per target listed in the SPT's
+`evidence_requirements[].proves`:
+
+```json
+{
+  "declarative_proof": {
+    "task_id": "A-01",
+    "evidence_requirement_id": "ER-01",
+    "observed_value": 0,
+    "paths": ["src/example.ts"]
+  }
+}
+```
+
+`observed_value` is compared against the requirement's expectation (for
+`command_exit` expectations it is the exit code; for `boolean_assertion` a
+boolean), and every `paths` entry must exist. An approved `criterion_proof`
+(`passed: true`) also satisfies the generic `evidence` gate requirement of
+the review phase, so the declarative route replaces manual `satisfies`
+lists for SPT-bound criteria (gate-integrity-hardening-2, R5). The verdict
+must still cite every expanded evidence id.
+
 ## Structured review evidence
 
 When `reviewed_implementation_fingerprint` is supplied:

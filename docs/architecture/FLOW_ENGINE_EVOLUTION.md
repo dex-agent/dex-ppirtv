@@ -165,6 +165,7 @@ git hash-object src/flow-engine.ts
 | `FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES` | `SHRINK` | phase-transition policy (`phaseAdvanceAllowed`) extracted to the profile SSOT; mechanical fast-track and cross-profile return fail closed | `src/phase-profile.ts` | pays `FE-DEBT-002`; laudo 2026-10-17 F1/F2/F3 closed with causal RED |
 | `FE-2026-10-18-GATE-INTEGRITY-F4F5F6` | `EXCEPTION` | secret-like rejection at the three entrypoints, stale-gate snapshot invalidation and snapshot-checked reuse | `src/gate-resolution.ts` | bounded integrity guard (laudo F4/F5) with causal RED; expires next diff that touches `src/flow-engine.ts` |
 | `FE-2026-10-18-MEMORY-GATE-LOOP-SHRINK` | `SHRINK` | memory-mining policy predicates and loop-window math (append-only history, reconciliation-id guard) | `src/memory/mining-policy.ts` | 12 symbols leave the facade (-142 nonblank); pays no debt (`FE-DEBT-002` already paid by TYPED-PHASES); SPT memory-gate-loop-solubility, decisao A |
+| `FE-2026-10-18-GATE-INTEGRITY-HARDENING-2` | `EXCEPTION` | fail-closed guards for the revalidation laudo (R1-R10: return direction, typed proof, review currency, secret choke points, declarative proof, inverted documental allowlist, preflight diagnostics) | `src/gate-resolution.ts` + `src/security/secret-redaction.ts` | causal RED (10/2) in `.agents/AUDITORIAS/EVIDENCIAS/2026-10-18-hardening2-red.log`; +12 nonblank, 2 symbols out (secret asserts to SSOT); SPT gate-integrity-hardening-2 |
 
 `FE-2026-10-18-MEMORY-GATE-LOOP-SHRINK` removes the last in-facade mining
 policy cluster: twelve predicates and helpers (`noMemoryWasPromoted`,
@@ -200,7 +201,7 @@ snapshot-checked `shouldReuseSavedGate`. All policy lives in
 F5 scenario D (`gate revisao passed + novo arquivo em changed_files
 bloqueia o avanço sem nova revisao`) plus F4/F6 REDs in
 `.agents/AUDITORIAS/EVIDENCIAS/2026-10-18-gate-integrity-f4f5f6-red.log`.
-Pays no debt; `FE-DEBT-002` remains open.
+Pays no debt — `FE-DEBT-002` was later paid by `FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES`(stale claim fixed by hardening-2 on 2026-10-18).
 
 `FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES` pays `FE-DEBT-002` through a
 verified cohesive seam: phase-transition policy
@@ -225,7 +226,7 @@ retries, escalation 6/8/9 unreachable). The validity computation lives in
 the value on the event (`review_valid`, absent for non-review kinds —
 retrocompatible: legacy events without the field keep resetting) and gates
 `isLoopResetEvent` on `review_valid !== false`. The review snippet now lists
-all `changed_files`. Pays no debt; `FE-DEBT-002` remains open.
+Pays no debt — `FE-DEBT-002` was later paid by `FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES`(stale claim fixed by hardening-2 on 2026-10-18).
 
 `FE-2026-10-15-FISCAL-BLOCK-TEACHING-MESSAGE` pays no debt: the visit only
 enriched the fiscal-block throw string with state numbers and split blocker
@@ -239,10 +240,30 @@ cohesive seam (the fiscal accepts `payment_scope: any_verified_shrink`). The
 seam remains parked for its own causal Trilho (owner
 `$oraculo-refatoracao`, `.agents/ESTACIONAMENTO.md`).
 
+`FE-2026-10-18-GATE-INTEGRITY-HARDENING-2` (EXCEPTION, integrity) adds the
+fail-closed guards demanded by the revalidation laudo of 2026-10-18:
+`assertPhaseTransitionDirection` blocks forward `flow_return`/`goal_regress`
+(`src/phase-profile.ts` SSOT), gate requirements carry `kind` and unknown or
+mistyped proof fails closed, `GateRecord` stamps and rechecks
+`implementation_fingerprint` for review-currency phases
+(`reviewCurrencyAppliesToPhase`), contract-SPT risks pass the central secret
+guard at the `validateSpt` choke point, approved `criterion_proof` satisfies
+the generic evidence requirement, the documental allowlist is inverted
+(extensionless build files are code), and `goal_gate_preflight` exposes the
+promised `field`/`received`/`expected` diagnostic. All policy lives in
+`src/gate-resolution.ts`, `src/phase-profile.ts` and
+`src/security/secret-redaction.ts`; the facade keeps only guard calls
+(+12 nonblank; the two local secret asserts moved to the redaction SSOT).
+Causal RED: 10 failed / 2 passed at `598ae5d`
+(`.agents/AUDITORIAS/EVIDENCIAS/2026-10-18-hardening2-red.log`), battery
+`tests/gate-integrity-revalidation.test.ts` (13 tests), full suite 666
+passed / 4 skipped. Expires: next diff that touches `src/flow-engine.ts`.
+
 ## Safe seam sequence
 
-The next target edit must prefer paying `FE-DEBT-001` with one of these small
-seams, after fresh mapping and causal baseline:
+No debt is currently open (`FE-DEBT-001` was paid by `FE-2026-10-13-GOVERNED-TAG-CONTRACT`; `FE-DEBT-002` by
+`FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES`). The sequence below is a candidate map for future extractions,
+selected one seam at a time by the active SPT, after fresh mapping and causal baseline:
 
 1. work-progress contract;
 2. pipeline-input contract;

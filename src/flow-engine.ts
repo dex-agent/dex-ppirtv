@@ -42,14 +42,14 @@ import {
   type WorkProgressStatus,
   type WorkProgressSummary
 } from "./domain.js";
-import { changedFilesContainCode, gateSnapshotMatches, invalidateStaleDownstreamGates, isStructuredReviewEvidence, resolveGateRequirements, reviewEvidenceDiagnostics, reviewEvidenceValidity, type GateRequirementResolution } from "./gate-resolution.js";
+import { changedFilesContainCode, invalidateStaleDownstreamGates, isStructuredReviewEvidence, providedRequirementDiagnostic, resolveGateRequirements, reviewCurrencyAppliesToPhase, reviewEvidenceDiagnostics, reviewEvidenceValidity, savedGateReusable, type GateRequirementResolution } from "./gate-resolution.js";
+import { assertNoSecretLikeItems, assertNoSecretLikePayload, assertNoSecretLikeText } from "./security/secret-redaction.js";
 import {
   assertLegacyFlowCanReceiveFirstGoalBinding,
   ensureLedgerTransitionRecorded,
   GoalIdempotencyDuplicateBindingsError
 } from "./goal-ledger-recovery.js";
 import {
-  assertNoSecretLikeText,
   classifyDexMemoriaV2MiningCandidate,
   classifyMemoryCandidate,
   classifyDexMemoriaV2Intent,
@@ -86,7 +86,7 @@ import {
   type PrincipleChecklistItem
 } from "./principles.js";
 import { PpirtvStore, type RuntimeLayoutStatus } from "./store.js";
-import { assertPhaseInProfile, nextPhaseOrThrow, phaseAdvanceAllowed, profileFor, type GateRequirement } from "./phase-profile.js";
+import { assertPhaseInProfile, assertPhaseTransitionDirection, nextPhaseOrThrow, phaseAdvanceAllowed, profileFor, type GateRequirement } from "./phase-profile.js";
 import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured, sameRuntimePath } from "./config.js";
 import { fingerprintSptContract, parseSptDocument, sha256SptDocument } from "./spt-contract.js";
 import { fiscalStateSegment } from "./error-envelope.js";
@@ -449,6 +449,9 @@ export class FlowEngine {
 
     const parsedSpt = parseSptDocument(text);
     const contract = parsedSpt.contract;
+    // SPT gate-integrity-hardening-2 (R4): risks do CONTRATO (validation.risks
+    // so carrega avisos do validador) passam pelo guard central no choke point.
+    assertNoSecretLikeItems(contract?.risks ?? [], "spt.risks");
     const contractLabel = contract?.version === 3 || parsedSpt.errors.some((error) => error.startsWith("spt_v3."))
       ? "spt_v3"
       : "spt_v2";
@@ -1228,7 +1231,11 @@ export class FlowEngine {
       required: snapshot.requirements.map((item) => ({
         key: item.key,
         label: item.label,
-        accepted_sources: item.accepted_sources
+        accepted_sources: item.accepted_sources,
+        // SPT gate-integrity-hardening-2 (R8): diagnostico de shape no gate bloqueado.
+        ...(providedRequirementDiagnostic(item.key, effectiveProvided[item.key]) && !item.satisfied
+          ? { diagnostic: providedRequirementDiagnostic(item.key, effectiveProvided[item.key]) }
+          : {})
       })),
       already_satisfied: snapshot.requirements.filter((item) => item.satisfied).map((item) => item.key),
       missing: snapshot.missing,
@@ -1284,12 +1291,16 @@ export class FlowEngine {
       flow.phase,
       (flow.gates[flow.phase]?.provided ?? {}) as Record<string, unknown>
     );
-    const savedGate = flow.gates[flow.phase];
-    const shouldReuseSavedGate =
-      !input.provided &&
-      savedGate?.status === "passed" &&
-      gateSnapshotMatches(savedGate as GateRecord, flow.changed_files) &&
-      !officialGoalNeedsCanonicalVerdict(flow);
+    // SPT gate-integrity-hardening-2 (R3): fingerprint atual decide o reuse —
+    // conteudo mudado no mesmo path nao reusa gate stale.
+    const reuseFlow = await this.flowWithCurrentImplementationFingerprint(flow);
+    const savedGate = reuseFlow.gates[reuseFlow.phase];
+    const shouldReuseSavedGate = savedGateReusable(
+      savedGate,
+      reuseFlow.changed_files,
+      reuseFlow.implementation_fingerprint ?? null,
+      { providedPresent: Boolean(input.provided), needsCanonicalVerdict: officialGoalNeedsCanonicalVerdict(reuseFlow) }
+    );
     const providedForGate =
       !input.provided && savedGate?.status === "passed" && officialGoalNeedsCanonicalVerdict(flow)
         ? savedGate.provided
@@ -2860,6 +2871,10 @@ export class FlowEngine {
     if (input.persist ?? true) {
       assertFlowAcceptsMutation(flow);
     }
+    // SPT gate-integrity-hardening-2 (R4): guard central no SSOT — cobre
+    // gate_check/flow_advance legados e goal_gate_check/goal_advance antes de
+    // qualquer merge ou persistencia de provided.
+    assertNoSecretLikePayload(input.provided ?? {}, "provided");
     const phase = input.phase ?? flow.phase;
     assertPhase(phase);
     const provided = input.provided ?? {};
@@ -2887,7 +2902,9 @@ export class FlowEngine {
       changedFiles === flow.changed_files && deletedFiles === flow.deleted_files
         ? flow
         : { ...flow, changed_files: changedFiles, deleted_files: deletedFiles };
-    if (phase === "implementacao") {
+    // SPT gate-integrity-hardening-2 (R3): recheck de revisao/teste/validacao
+    // julga a review contra o conteudo ATUAL (paths E fingerprint).
+    if (phase === "implementacao" || reviewCurrencyAppliesToPhase(phase)) {
       flowForResolution = await this.flowWithCurrentImplementationFingerprint(flowForResolution);
     }
     const profile = profileFor(flow.mode);
@@ -2908,8 +2925,10 @@ export class FlowEngine {
     if (input.persist ?? true) {
       flow.changed_files = changedFiles;
       flow.deleted_files = deletedFiles;
-      invalidateStaleDownstreamGates(flow.gates, flow.changed_files);
       flow.implementation_fingerprint = flowForResolution.implementation_fingerprint;
+      // SPT gate-integrity-hardening-2 (R3): invalidacao downstream considera
+      // paths E fingerprint — gate de conteudo antigo cai mesmo com path igual.
+      invalidateStaleDownstreamGates(flow.gates, flow.changed_files, flow.implementation_fingerprint ?? null);
       flow.gates[phase] = record;
       flow.status = status === "blocked" ? "blocked" : flow.status === "blocked" ? "active" : flow.status;
       flow.updated_at = record.checked_at;
@@ -3021,6 +3040,9 @@ export class FlowEngine {
     if (flow.status === "archived") {
       throw new Error(`Flow ${flow.flow_id} is archived`);
     }
+    // SPT gate-integrity-hardening-2 (R4): flow_advance legado rejeita
+    // segredo no provided antes de qualquer persistencia.
+    assertNoSecretLikePayload(input.provided ?? {}, "provided");
     const completedEvent = [...flow.history].reverse().find((event) => event.type === "flow_completed");
     if (completedEvent) {
       await ensureLedgerTransitionRecorded(this.store, flow, {
@@ -3041,12 +3063,16 @@ export class FlowEngine {
         back_to: null
       }, flow);
     }
-    const savedGate = flow.gates[flow.phase];
-    const shouldReuseSavedGate =
-      !input.provided &&
-      savedGate?.status === "passed" &&
-      gateSnapshotMatches(savedGate as GateRecord, flow.changed_files) &&
-      !officialGoalNeedsCanonicalVerdict(flow);
+    // SPT gate-integrity-hardening-2 (R3): mesma decisao central do site do
+    // goalAdvance — dedup da regra de reuse (regua da casa R6).
+    const reuseFlow = await this.flowWithCurrentImplementationFingerprint(flow);
+    const savedGate = reuseFlow.gates[reuseFlow.phase];
+    const shouldReuseSavedGate = savedGateReusable(
+      savedGate,
+      reuseFlow.changed_files,
+      reuseFlow.implementation_fingerprint ?? null,
+      { providedPresent: Boolean(input.provided), needsCanonicalVerdict: officialGoalNeedsCanonicalVerdict(reuseFlow) }
+    );
     const providedForGate =
       !input.provided && savedGate?.status === "passed" && officialGoalNeedsCanonicalVerdict(flow)
         ? savedGate.provided
@@ -3340,6 +3366,9 @@ export class FlowEngine {
     assertFlowAcceptsMutation(flow);
     assertPhaseInProfile(flow.mode, input.to);
     const from = flow.phase;
+    // SPT gate-integrity-hardening-2 (R1): retorno so volta — destino
+    // posterior ou igual e erro tipado antes de qualquer mutacao.
+    assertPhaseTransitionDirection(flow.mode, from, input.to);
     const now = nowIso();
     flow.phase = input.to;
     flow.status = "active";
@@ -3385,6 +3414,7 @@ export class FlowEngine {
       evidence_ids?: string[];
   }): Promise<Meeting & PresentationEnvelope> {
     requireText(input.question, "question");
+    assertNoSecretLikePayload(input, "openMeeting");
     return this.store.withFlowLock(input.flow_id, () => this.openMeetingUnlocked(input));
   }
 
@@ -3477,6 +3507,7 @@ export class FlowEngine {
     evidence_ids?: string[];
   }): Promise<Meeting & PresentationEnvelope> {
     const meeting = await this.store.loadMeeting(input.meeting_id);
+    assertNoSecretLikePayload(input, "addMeetingTurn");
     return this.store.withFlowLock(meeting.flow_id, () => this.addMeetingTurnUnlocked(input));
   }
 
@@ -3528,6 +3559,7 @@ export class FlowEngine {
 
   async recordMeeting(input: Partial<Meeting> & { meeting_id: string }): Promise<Meeting & PresentationEnvelope> {
     const meeting = await this.store.loadMeeting(input.meeting_id);
+    assertNoSecretLikePayload(input, "recordMeeting");
     return this.store.withFlowLock(meeting.flow_id, () => this.recordMeetingUnlocked(input));
   }
 
@@ -3843,12 +3875,12 @@ export class FlowEngine {
     const checklistRequirements = checklistProfile.gateRequirements[flow.phase] ?? [];
     const items = checklistRequirements.map((requirement) => ({
       label: requirement.label,
-      checked: hasRequirement(flow, requirement.key, requirement.source, flow.gates[flow.phase]?.provided ?? {})
+      checked: hasRequirement(flow, requirement, flow.gates[flow.phase]?.provided ?? {})
     }));
     const fiscal = evaluateFiscalPolicy(flow);
     const persistedFiscal = latestFiscalBlock(flow);
     const phaseBlockers = checklistRequirements
-      .filter((requirement) => !hasRequirement(flow, requirement.key, requirement.source, flow.gates[flow.phase]?.provided ?? {}))
+      .filter((requirement) => !hasRequirement(flow, requirement, flow.gates[flow.phase]?.provided ?? {}))
       .map((requirement) => requirement.key);
     if (needsReviewCoherence(flow, flow.phase, flow.gates[flow.phase]?.provided ?? {})) {
       phaseBlockers.push("review_evidence_coherent");
@@ -4934,28 +4966,6 @@ function nextGoalStep(flow: Flow, gate: GateRecord): string {
   return gate.next;
 }
 
-function assertNoSecretLikePayload(value: unknown, field: string): void {
-  if (typeof value === "string") {
-    assertNoSecretLikeText(value, field);
-    return;
-  }
-  if (Array.isArray(value)) {
-    value.forEach((item, index) => assertNoSecretLikePayload(item, `${field}[${index}]`));
-    return;
-  }
-  if (value && typeof value === "object") {
-    for (const [key, nested] of Object.entries(value)) {
-      assertNoSecretLikePayload(nested, `${field}.${key}`);
-    }
-  }
-}
-
-function assertNoSecretLikeItems(values: string[], field: string): void {
-  for (const value of values) {
-    assertNoSecretLikeText(value, field);
-  }
-}
-
 function parsedValidationItems(validation: SptValidationResult): string[] {
   return [...validation.tasks, ...validation.expected_evidence, ...validation.done_criteria];
 }
@@ -4984,10 +4994,10 @@ async function scanTrashWithoutGarimpoGate(root: string, store: PpirtvStore): Pr
   ];
 }
 
-function hasRequirement(flow: Flow, key: string, source: GateRequirement["source"], provided: Record<string, unknown>): boolean {
+function hasRequirement(flow: Flow, requirement: GateRequirement, provided: Record<string, unknown>): boolean {
   return resolveGateRequirements({
     flow,
-    requirements: [{ key, label: key, source }],
+    requirements: [requirement],
     provided,
     canonicalVerdictRequired: officialGoalNeedsCanonicalVerdict(flow)
   })[0]?.satisfied === true;
