@@ -392,7 +392,8 @@
         "tests/gate-integrity-revalidation.test.ts": "R3/C-3: mudanca de conteudo same-path (fingerprint muda, paths iguais) bloqueia o reuse e o avanco"
       },
       "changelog_marker": "Revalidacao gate-integrity fecha os residuos F1-F6 (R1-R10)",
-      "architecture_marker": "FE-2026-10-18-GATE-INTEGRITY-HARDENING-2"
+      "architecture_marker": "FE-2026-10-18-GATE-INTEGRITY-HARDENING-2",
+      "commit": "76e9c94d3f69a513e1d15a07bba2d1942575b875"
     }
   ]
 }
