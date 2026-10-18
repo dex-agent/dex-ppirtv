@@ -23,6 +23,17 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-18 — contratos de corroboração documentados no help vivo
+
+> `goal_start` e `goal_verdict` descriptions agora ensinam `git_head_base`
+> congelado, `git diff base..HEAD`, fail-closed em base órfã e a rota de
+> resolução de `review_required` (evidence_add com as 6 flat keys). Fonte
+> única: `tools/list` — `--help/--schema/--usage/--describe/--list` do
+> entrypoint e do harness herdam a mesma description (OCP: um ponto de
+> escrita, todos os canais). Prova documental:
+> `tests/mcp-tool-describe.test.ts` 4/4 (novo assert de frases);
+> probes ao vivo nos 5 modos; suíte 686 passed | 4 skipped.
+
 ## Reavaliação 2026-10-18 — corroboration por commit (NOVO-1/NOVO-2) + SHRINK FE-DEBT-003
 
 > `goal_start` congela `git_head_base`; `goal_verdict` corrobora COMMITS via

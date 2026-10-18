@@ -10,6 +10,12 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Alterado
 
+- Contratos de corroboração documentados no help vivo (2026-10-18): as
+  descriptions de `goal_start` e `goal_verdict` no `tools/list` agora
+  ensinam `git_head_base` congelado, corroboração `git diff base..HEAD`,
+  fail-closed em base órfã e a rota de resolução de `review_required`;
+  `--help/--schema/--usage/--describe/--list` herdam da mesma fonte.
+  `tests/mcp-tool-describe.test.ts` 4/4 com asserts documentais.
 - Corroboration Git por commit no verdict (NOVO-1/NOVO-2) + SHRINK FE-DEBT-003 pago (2026-10-18): `goal_start` congela `git_head_base` e `goal_verdict` corrobora commits via `git diff base..HEAD` (fail-closed em base orfa exige review); runtime `.git/`/`.ppirtv/`/`.agents/` sai do ruido de corroboration; `flowWithCurrentImplementationFingerprint` deixa o monolito (`src/review-snapshot.ts`). `tests/git-corroboration-commits.test.ts` 4/4 RED-first.
 
 ### Adicionado

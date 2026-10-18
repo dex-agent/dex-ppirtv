@@ -47,4 +47,20 @@ describe("call-mcp-tool describe/schema/usage", () => {
     expect(parsed.ok).toBe(false);
     expect(parsed.error).toBe("TOOL_NOT_FOUND");
   });
+
+  it("documents git commit corroboration and the review_required resolution route", () => {
+    const start = run(["--describe", "goal_start"]);
+    expect(start.status).toBe(0);
+    const startDoc = JSON.parse(start.stdout);
+    expect(startDoc.description).toContain("freezes git_head_base");
+    expect(startDoc.description).toContain("no commit baseline");
+
+    const verdict = run(["--usage", "goal_verdict"]);
+    expect(verdict.status).toBe(0);
+    expect(verdict.stdout).toContain("git diff git_head_base..HEAD");
+    expect(verdict.stdout).toContain(".ppirtv/");
+    expect(verdict.stdout).toContain("fail closed");
+    expect(verdict.stdout).toContain("Resolution route");
+    expect(verdict.stdout).toContain("six flat review keys");
+  });
 });
