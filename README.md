@@ -47,6 +47,10 @@ stable public documentation.
 
 ## Documentation for agents
 
+- [CAPACITY.md](CAPACITY.md) — capability map of this repository (static
+  photograph of commit `947fdb4`, 2026-10-18): 32 capabilities with honest
+  status (17 proven live, 9 partial, 1 unproven); regenerate with the
+  `dex-mapa-capacidades` skill, do not hand-edit verdicts.
 - [`docs/INDEX.md`](docs/INDEX.md) is the public documentation map.
 - [MCP quickstart for agents](docs/guides/MCP_AGENT_QUICKSTART.md) explains the
   minimum GOAL flow, `tools/list` as machine-readable help, evidence, FAQ and
