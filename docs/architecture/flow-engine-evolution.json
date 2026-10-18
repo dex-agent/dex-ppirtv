@@ -394,6 +394,43 @@
       "changelog_marker": "Revalidacao gate-integrity fecha os residuos F1-F6 (R1-R10)",
       "architecture_marker": "FE-2026-10-18-GATE-INTEGRITY-HARDENING-2",
       "commit": "76e9c94d3f69a513e1d15a07bba2d1942575b875"
+    },
+    {
+      "id": "FE-2026-10-18-GATE-INTEGRITY-HARDENING-3",
+      "date": "2026-10-18",
+      "mode": "CONTAIN",
+      "base_blob": "1604c9068263c501b0e36e1a0a5eb4defa957f86",
+      "head_blob": "2d26f846ab49cb08c9cd77e4965b576368f1dea8",
+      "spt_path": ".agents/PLAN-TASKS/2026-10-18-gate-integrity-hardening-3.md",
+      "responsibility": "Bounded integrity guards for the hardening-3 re-review: strict changed_files/deleted_files paths, current structured review on stale same-path review gates, and Git-diff corroboration of changed_files at verdict time; policy lives in gate-resolution/review-snapshot, the facade keeps guard calls.",
+      "owner": "$oraculo-refatoracao",
+      "destination_module": "src/gate-resolution.ts",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/gate-integrity-hardening-3.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/gate-integrity-hardening-3.test.ts": "R2 strict changed_files rejects scalar/object/empty and does not advance"
+      },
+      "changelog_marker": "Gate integrity hardening-3: changed_files estrito, review currency e corroboracao Git",
+      "architecture_marker": "FE-2026-10-18-GATE-INTEGRITY-HARDENING-3",
+      "glue_only": true,
+      "rollback": "revert this worktree diff and delete tests/gate-integrity-hardening-3.test.ts; the RED probes at .agents/AUDITORIAS/EVIDENCIAS/2026-10-18-hardening3-red.log reproduce the fail-open behavior.",
+      "notes": "CONTAIN: behavior lives in gate-resolution.ts (strictPathArray/mergePathFacts/reviewCurrencyMissing) and review-snapshot.ts (gitChangedFiles/withGitCorroboratedChangedFiles); the facade only calls/adapts. Commit and post-commit sealing pendentes.",
+      "behavior_preserved_by": [
+        "tests/gate-integrity-hardening-3.test.ts::R3 review currency: claims-only same-path blocks; structured review current passes",
+        "tests/gate-integrity-hardening-3.test.ts::R6 Git corroboration: code changed but declared as doc is review_required"
+      ],
+      "debt": {
+        "id": "FE-DEBT-003",
+        "status": "open",
+        "owner": "$oraculo-refatoracao",
+        "when": "next diff that touches src/flow-engine.ts and can extract the remaining path/review/Git guard glue to a collaborator",
+        "responsibility": "Bounded integrity guards for the hardening-3 re-review: strict changed_files/deleted_files paths, current structured review on stale same-path review gates, and Git-diff corroboration of changed_files at verdict time; policy lives in gate-resolution/review-snapshot, the facade keeps guard calls.",
+        "payment_scope": "any_verified_shrink"
+      }
     }
   ]
 }

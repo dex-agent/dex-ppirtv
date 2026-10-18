@@ -23,6 +23,30 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-18 — hardening-3 + gate de commit
+
+> Reavaliação do worktree sobre a fotografia `947fdb4`. Não substitui a
+> fotografia histórica; registra o delta observado e as limitações antes do
+> próximo commit.
+
+| Capacidade | Delta observado | Evidência |
+|---|---|---|
+| CAP-02 gates tipados | `changed_files`/`deleted_files` agora rejeitam escalar/objeto antes do merge; `[]` bloqueia | probe A/A2, teste R2, suíte 671 |
+| CAP-08 invalidação same-path | gate de revisão stale exige `review_current` e review estruturada atual; claims-only não reabre | probe B, teste R3 |
+| CAP-11 mechanical documental | veredito corrobora `changed_files` contra o diff Git real; sem `.git` a limitação é declarada | teste R6 Git; probe G no-Git documentado |
+| CAP-16 fiscal camping | visita CONTAIN PASS; `FE-DEBT-003` aberto para extrair a cola restante | `npm run check:flow-engine` PASS |
+| CAP-17 selagem pós-commit | `598ae5d` per-commit continua FAIL por selagem em `76e9c94`; exceção documentada | replay per-commit/cumulativo |
+| CAP-33 gate de capacidades | novo `npm run check:capacity` + hook pre-commit bloqueiam commit com arquivos de capacidade sem reavaliação | script e hook desta visita |
+
+**Evidência do corte:** `npm run check` 671 passed | 4 skipped; build verde;
+`check:flow-engine` PASS CONTAIN; `tests/gate-integrity-hardening-3.test.ts`
+4/4; `tests/capacity-gate.test.ts` 1/1; `npm run check:capacity` PASS; probes
+A/A2/B/C/D/E/F/G. **Limitações:** R5 permanece decisão documentada
+(evidence genérico aceita `criterion_proof`; review stale é contido por R3);
+R7 per-commit é exceção documentada; sem `.git` não há corroboração de diff.
+`FE-DEBT-003` aberto. A pendência P0
+`PPIRTV-GATE-INTEGRITY-REVALIDATION-2026-10-18` continua **aberta**.
+
 ## Matriz de capacidades
 
 | ID | Capacidade | Estado | Oráculo que decidiu |
@@ -59,6 +83,7 @@ corte (não é ausência).
 | CAP-30 | PLAYBOOK projeção externa + hook anti-drift | **comprovada** | Hook FRESCO nos commits do corte |
 | CAP-31 | Versioning/snapshot de produto | **não comprovada** | Estritamente documental; sem decisão de versão no corte |
 | CAP-32 | Dex Agent Telegram (áudio/proativo) | **comprovada** | Receipts reais messageId 879/880 (print não exercitado) |
+| CAP-33 | Gate de reavaliação de capacidades antes de commit | **comprovada** | `npm run check:capacity` + hook pre-commit desta visita |
 
 ## Mapa relacional estático
 

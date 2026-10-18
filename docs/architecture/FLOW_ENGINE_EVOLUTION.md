@@ -166,6 +166,7 @@ git hash-object src/flow-engine.ts
 | `FE-2026-10-18-GATE-INTEGRITY-F4F5F6` | `EXCEPTION` | secret-like rejection at the three entrypoints, stale-gate snapshot invalidation and snapshot-checked reuse | `src/gate-resolution.ts` | bounded integrity guard (laudo F4/F5) with causal RED; expires next diff that touches `src/flow-engine.ts` |
 | `FE-2026-10-18-MEMORY-GATE-LOOP-SHRINK` | `SHRINK` | memory-mining policy predicates and loop-window math (append-only history, reconciliation-id guard) | `src/memory/mining-policy.ts` | 12 symbols leave the facade (-142 nonblank); pays no debt (`FE-DEBT-002` already paid by TYPED-PHASES); SPT memory-gate-loop-solubility, decisao A |
 | `FE-2026-10-18-GATE-INTEGRITY-HARDENING-2` | `EXCEPTION` | fail-closed guards for the revalidation laudo (R1-R10: return direction, typed proof, review currency, secret choke points, declarative proof, inverted documental allowlist, preflight diagnostics) | `src/gate-resolution.ts` + `src/security/secret-redaction.ts` | causal RED (10/2) in `.agents/AUDITORIAS/EVIDENCIAS/2026-10-18-hardening2-red.log`; +12 nonblank, 2 symbols out (secret asserts to SSOT); SPT gate-integrity-hardening-2 |
+| `FE-2026-10-18-GATE-INTEGRITY-HARDENING-3` | `EXCEPTION` | strict changed_files/deleted_files paths, current structured review on stale same-path review gates, and Git-diff corroboration at verdict | `src/gate-resolution.ts` + `src/review-snapshot.ts` | bounded integrity guard; RED probes A/A2/B/G; SPT gate-integrity-hardening-3; expires next diff that touches `src/flow-engine.ts` |
 
 `FE-2026-10-18-MEMORY-GATE-LOOP-SHRINK` removes the last in-facade mining
 policy cluster: twelve predicates and helpers (`noMemoryWasPromoted`,
@@ -259,10 +260,29 @@ Causal RED: 10 failed / 2 passed at `598ae5d`
 `tests/gate-integrity-revalidation.test.ts` (13 tests), full suite 666
 passed / 4 skipped. Expires: next diff that touches `src/flow-engine.ts`.
 
+
+### Hardening-3 (2026-10-18)
+
+FE-2026-10-18-GATE-INTEGRITY-HARDENING-3 is a bounded CONTAIN with
+FE-DEBT-003 open. Policy moved to the SSOTs: strictPathArray /
+mergePathFacts / reviewCurrencyMissing in src/gate-resolution.ts and
+gitChangedFiles / withGitCorroboratedChangedFiles in
+src/review-snapshot.ts. The facade keeps only call/result glue. RED probes
+A/A2/B/G at .agents/AUDITORIAS/EVIDENCIAS/2026-10-18-hardening3-red.log;
+battery tests/gate-integrity-hardening-3.test.ts covers R2/R3/R6. R5 remains
+a documented decision: generic evidence still accepts a passed
+criterion_proof; the review gate content binding is enforced by R3, not by
+a phase-specific proof filter. A future contract can add that filter. R7 has
+a documented post-commit seal exception: 598ae5d per-commit replay fails
+because its record commit was added in 76e9c94; the cumulative replay and
+76e9c94/947fdb4 replays PASS.
+
 ## Safe seam sequence
 
-No debt is currently open (`FE-DEBT-001` was paid by `FE-2026-10-13-GOVERNED-TAG-CONTRACT`; `FE-DEBT-002` by
-`FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES`). The sequence below is a candidate map for future extractions,
+`FE-DEBT-001` was paid by `FE-2026-10-13-GOVERNED-TAG-CONTRACT`; `FE-DEBT-002` by
+`FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES`. `FE-DEBT-003` is open (CONTAIN
+`FE-2026-10-18-GATE-INTEGRITY-HARDENING-3`): extract the remaining path/review/Git
+guard glue from the facade when a safe seam exists. The sequence below is a candidate map for future extractions,
 selected one seam at a time by the active SPT, after fresh mapping and causal baseline:
 
 1. work-progress contract;

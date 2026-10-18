@@ -42,7 +42,7 @@ import {
   type WorkProgressStatus,
   type WorkProgressSummary
 } from "./domain.js";
-import { changedFilesContainCode, invalidateStaleDownstreamGates, isStructuredReviewEvidence, providedRequirementDiagnostic, resolveGateRequirements, reviewCurrencyAppliesToPhase, reviewEvidenceDiagnostics, reviewEvidenceValidity, savedGateReusable, type GateRequirementResolution } from "./gate-resolution.js";
+import { changedFilesContainCode, invalidateStaleDownstreamGates, isStructuredReviewEvidence, mergePathFacts, providedRequirementDiagnostic, resolveGateRequirements, reviewCurrencyAppliesToPhase, reviewCurrencyMissing, reviewEvidenceDiagnostics, reviewEvidenceValidity, savedGateReusable, strictPathArray, type GateRequirementResolution } from "./gate-resolution.js";
 import { assertNoSecretLikeItems, assertNoSecretLikePayload, assertNoSecretLikeText } from "./security/secret-redaction.js";
 import {
   assertLegacyFlowCanReceiveFirstGoalBinding,
@@ -106,7 +106,7 @@ import {
   taskProjection,
   traceabilityFromContract
 } from "./spt-traceability.js";
-import { fingerprintReviewedImplementation, normalizeReviewPath } from "./review-snapshot.js";
+import { fingerprintReviewedImplementation, normalizeReviewPath, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
 import {
   normalizeRecallConsumptionInput,
   sameRecallReferences,
@@ -398,13 +398,9 @@ export class FlowEngine {
     flow.tasks = facts.tasks ?? flow.tasks;
     flow.done_criteria = facts.done_criteria ?? flow.done_criteria;
     flow.expected_evidence = facts.expected_evidence ?? flow.expected_evidence;
-    flow.changed_files = facts.changed_files ?? flow.changed_files;
-    flow.changed_files = unique([...flow.changed_files, ...stringArray((facts as Record<string, unknown>).changed_files)]);
-    if (Object.prototype.hasOwnProperty.call(facts, "deleted_files")) {
-      flow.deleted_files = unique(stringArray((facts as Record<string, unknown>).deleted_files));
-    } else {
-      flow.deleted_files = flow.deleted_files ?? [];
-    }
+    const pathFacts = mergePathFacts(flow.changed_files, facts as Record<string, unknown>, flow.deleted_files);
+    flow.changed_files = pathFacts.changed_files;
+    flow.deleted_files = pathFacts.deleted_files;
     assertDeletedFilesBelongToChangedFiles(flow.changed_files, flow.deleted_files);
     // Laudo F5: mudanca de changed_files invalida gates downstream passados.
     invalidateStaleDownstreamGates(flow.gates, flow.changed_files);
@@ -2718,7 +2714,10 @@ export class FlowEngine {
         );
       }
     }
-    const fiscalFlow = await this.flowWithCurrentImplementationFingerprint(await this.store.loadFlow(input.flow_id));
+    let fiscalFlow = await this.flowWithCurrentImplementationFingerprint(await this.store.loadFlow(input.flow_id));
+    // SPT gate-integrity-hardening-3 (R6): o diff Git entra como colaborador;
+    // sem .git o flow permanece como esta e a limitacao fica documentada.
+    fiscalFlow = await withGitCorroboratedChangedFiles(fiscalFlow);
     const memoryMining: Record<string, unknown> | null = positiveVerdict && hasMemoryMiningRun(fiscalFlow) ? (fiscalFlow.memory_mining ?? null) : null;
     if (positiveVerdict && memoryMining?.blocked_verdict === true) {
       await this.persistMemoryMiningVerdictBlock(fiscalFlow, memoryMining, input);
@@ -2887,11 +2886,11 @@ export class FlowEngine {
     const persistedProvided = (flow.gates[phase]?.provided ?? {}) as Record<string, unknown>;
     const effectiveProvided: Record<string, unknown> = { ...persistedProvided, ...provided };
     const changedFiles = phase === "implementacao"
-      ? unique([...flow.changed_files, ...stringArray(effectiveProvided.changed_files)])
+      ? unique([...flow.changed_files, ...strictPathArray(effectiveProvided.changed_files, "provided.changed_files")])
       : flow.changed_files;
     const deletedFiles = phase === "implementacao"
       ? Object.prototype.hasOwnProperty.call(provided, "deleted_files")
-        ? unique(stringArray(provided.deleted_files))
+        ? unique(strictPathArray(provided.deleted_files, "provided.deleted_files"))
         : (flow.deleted_files ?? [])
       : (flow.deleted_files ?? []);
     assertDeletedFilesBelongToChangedFiles(changedFiles, deletedFiles);
@@ -2909,7 +2908,12 @@ export class FlowEngine {
     }
     const profile = profileFor(flow.mode);
     const snapshot = this.resolveGateSnapshot(flowForResolution, phase, effectiveProvided);
-    const missing = snapshot.missing;
+    // SPT gate-integrity-hardening-3 (R3): se o gate de revisao ja estava
+    // passed e o fingerprint mudou, claims/test receipt nao bastam — exige
+    // review estruturada que ainda cubra o conteudo atual.
+    const priorGate = flow.gates[phase];
+    const reviewMissing = reviewCurrencyMissing(phase, priorGate, flowForResolution);
+    const missing = unique([...snapshot.missing, ...reviewMissing]);
     const status = missing.length === 0 ? "passed" : "blocked";
     const record: GateRecord = {
       phase,

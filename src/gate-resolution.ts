@@ -61,6 +61,24 @@ export function changedFilesContainCode(changedFiles: readonly string[]): boolea
   return changedFiles.some((file) => !isDocumentalFile(file));
 }
 
+// SPT gate-integrity-hardening-3 (R2): contrato estrito de paths. O
+// stringArray legado do monolito converte escalar/objeto em lista e deixa o
+// valor passar antes do gate tipado; este helper falha antes do merge.
+export function strictPathArray(value: unknown, field = "changed_files"): string[] {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) {
+    throw new Error(`PPIRTV_INPUT_INVALID: ${field} must be an array of non-empty relative paths`);
+  }
+  const paths: string[] = [];
+  for (const item of value) {
+    if (typeof item !== "string" || item.trim().length === 0) {
+      throw new Error(`PPIRTV_INPUT_INVALID: ${field} must contain only non-empty string paths`);
+    }
+    paths.push(item);
+  }
+  return paths;
+}
+
 export function resolveGateRequirements(input: GateResolutionInput): GateRequirementResolution[] {
   const provided = input.provided ?? {};
   return input.requirements.map((requirement) => {
@@ -143,6 +161,12 @@ export function isStructuredReviewEvidence(flow: Flow, evidence: Evidence): bool
     evidenceSatisfiesRequirement(flow, evidence, "regression_risks") &&
     reviewEvidenceRemainsCurrent(flow, evidence)
   );
+}
+
+// SPT gate-integrity-hardening-3 (R3): review estruturada que ainda cobre o
+// implementation_fingerprint atual. Claims-only/test receipt nao contam.
+export function hasCurrentStructuredReview(flow: Flow): boolean {
+  return flow.evidence.some((evidence) => isStructuredReviewEvidence(flow, evidence));
 }
 
 // SPT review-gate-loop-proof (T-3): validade de evidencia de review para o
@@ -281,6 +305,33 @@ function requirementSatisfiedBySource(
       || valueSatisfiesKind(provided[key], kind);
   }
   return false;
+}
+
+
+
+// SPT gate-integrity-hardening-3 (R2): fatos de paths com contrato estrito.
+export function mergePathFacts(
+  currentChanged: string[],
+  facts: Record<string, unknown>,
+  currentDeleted: string[] | undefined
+): { changed_files: string[]; deleted_files: string[] } {
+  const changed = Object.prototype.hasOwnProperty.call(facts, "changed_files")
+    ? uniqueStrings(strictPathArray(facts.changed_files, "changed_files"))
+    : currentChanged;
+  const deleted = Object.prototype.hasOwnProperty.call(facts, "deleted_files")
+    ? uniqueStrings(strictPathArray(facts.deleted_files, "deleted_files"))
+    : (currentDeleted ?? []);
+  return { changed_files: changed, deleted_files: deleted };
+}
+
+// SPT gate-integrity-hardening-3 (R3): missing de review quando o gate de
+// revisao ficou stale same-path e nao ha review estruturada atual.
+export function reviewCurrencyMissing(phase: string, priorGate: GateRecord | undefined, flow: Flow): string[] {
+  if (phase !== "revisao" || priorGate === undefined) return [];
+  const fingerprintChanged = (priorGate.implementation_fingerprint ?? null) !== (flow.implementation_fingerprint ?? null);
+  const alreadyFlagged = (priorGate.missing ?? []).includes("review_current");
+  if (!fingerprintChanged && !alreadyFlagged) return [];
+  return hasCurrentStructuredReview(flow) ? [] : ["review_current"];
 }
 
 function nonNegativeInteger(value: unknown): value is number {

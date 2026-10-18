@@ -196,6 +196,18 @@ the review phase, so the declarative route replaces manual `satisfies`
 lists for SPT-bound criteria (gate-integrity-hardening-2, R5). The verdict
 must still cite every expanded evidence id.
 
+Hardening-3 guard (2026-10-18): `changed_files`/`deleted_files` are strict
+arrays of non-empty relative paths; a scalar/object is rejected before the
+gate. If a review gate was already passed and the implementation fingerprint
+changes on the same path, the gate returns `review_current` and requires a
+fresh structured `code_review`/`review` evidence with the current
+`reviewed_implementation_fingerprint`; claims and a test receipt alone no
+longer re-open it. At verdict time, a Git workspace corroborates
+`changed_files` with the real `git status` diff, so code changed but declared
+as a doc is `review_required`. Workspaces without `.git` keep the declared
+list and the no-Git limitation is explicit; mechanical fast-track should be
+used only with a corroborable diff.
+
 ## Structured review evidence
 
 When `reviewed_implementation_fingerprint` is supplied:

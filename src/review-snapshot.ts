@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
+import { execFile } from "node:child_process";
 import { lstat, readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
+import type { Flow } from "./domain.js";
+
+const execFileAsync = promisify(execFile);
 
 const REVIEW_SNAPSHOT_SCHEMA = "ppirtv.review-snapshot.v2";
 
@@ -77,6 +82,54 @@ export async function fingerprintReviewedImplementation(
     schema: REVIEW_SNAPSHOT_SCHEMA,
     entries
   }), "utf8").digest("hex")}`;
+}
+
+
+
+// SPT gate-integrity-hardening-3 (R6): diff real do workspace quando ele e um
+// repositorio Git. Retorna null quando nao ha .git ou o comando falha; nesse
+// caso o chamador mantem a declaracao de changed_files e registra a limitacao.
+export async function gitChangedFiles(workspace: string): Promise<string[] | null> {
+  const workspaceRoot = path.resolve(workspace);
+  try {
+    await stat(path.join(workspaceRoot, ".git"));
+  } catch (error) {
+    if (isMissingPathError(error)) return null;
+    return null;
+  }
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", workspaceRoot, "status", "--porcelain", "--untracked-files=all"],
+      { windowsHide: true, maxBuffer: 4 * 1024 * 1024 }
+    );
+    const files = stdout
+      .split(/\r?\n/)
+      .map((line) => line.slice(3).trim())
+      .filter(Boolean)
+      .flatMap((line) => {
+        const renamed = line.split(" -> ");
+        return renamed.length === 2 ? [renamed[1]] : [line];
+      })
+      .map((file) => normalizeReviewPath(file))
+      .filter((file) => file.length > 0 && !file.startsWith(".git/"));
+    return [...new Set(files)];
+  } catch {
+    return null;
+  }
+}
+
+
+
+// SPT gate-integrity-hardening-3 (R6): aplica o diff Git ao flow antes da
+// decisao fiscal; o chamador nao ganha decisao propria.
+export async function withGitCorroboratedChangedFiles(flow: Flow): Promise<Flow> {
+  const workspace = flow.goal_binding?.envelope.workspace;
+  if (!workspace) return flow;
+  const actual = await gitChangedFiles(workspace);
+  if (!actual || actual.length === 0) return flow;
+  const merged = [...new Set([...flow.changed_files, ...actual])];
+  return merged.length === flow.changed_files.length ? flow : { ...flow, changed_files: merged };
 }
 
 function assertReviewSnapshotPathIsNotSensitive(relativePath: string): void {

@@ -10,6 +10,22 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
+- Gate integrity hardening-3: changed_files estrito, review currency e corroboracao Git (2026-10-18
+  `gate-integrity-hardening-3`, SPT
+  `.agents/PLAN-TASKS/2026-10-18-gate-integrity-hardening-3.md`): R2 valida
+  `changed_files`/`deleted_files` como array estrito de paths no SSOT; R3 exige
+  review estruturada atual quando o gate de revisao ficou stale same-path; R6
+  corrobora `changed_files` contra o diff Git real no veredito; SPT e laudo de
+  re-review referenciados. Suite 671 passed | 4 skipped; build/audit e camping
+  CONTAIN PASS; FE-DEBT-003 aberto para extrair a cola restante da fachada.
+  R5 fica como decisao documentada: evidence generico aceita criterion_proof
+  aprovado; o gate de revisao stale e contido por R3 (review estruturada
+  atual), nao por um filtro de fase. R7: 598ae5d per-commit continua FAIL
+  porque o commit do record foi selado em 76e9c94; replay cumulativo PASS e
+  a excecao fica documentada. Novo gate PPIRTV-CAPACITY-COMMIT-GATE:
+  `npm run check:capacity` + hook pre-commit exigem CAPACITY.md staged com
+  `## Reavaliação` em todo commit; teste `tests/capacity-gate.test.ts` 1/1.
+  Pendencia P0 nao consumida.
 - Revalidacao gate-integrity fecha os residuos F1-F6 (R1-R10) (2026-10-18
   `gate-integrity-hardening-2`, SPT
   `.agents/PLAN-TASKS/2026-10-18-gate-integrity-hardening-2.md`, laudo
