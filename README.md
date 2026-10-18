@@ -82,9 +82,17 @@ documents explain workflow and invariants; they do not replace dynamic schemas.
 For a read-only shell view of one live tool, without invoking it:
 
 ```bash
+node dist/index.js --describe evidence_add
+node dist/index.js --schema evidence_add
+node dist/index.js --usage evidence_add
+```
+
+The actual server entrypoint supports these flags after `npm run build`; it
+does not start the stdio server for them. The workspace harness remains
+available:
+
+```bash
 node scripts/call-mcp-tool.mjs --workspace . --describe evidence_add
-node scripts/call-mcp-tool.mjs --workspace . --schema evidence_add
-node scripts/call-mcp-tool.mjs --workspace . --usage evidence_add
 ```
 
 `--describe` prints the live description, input schema, annotations and an

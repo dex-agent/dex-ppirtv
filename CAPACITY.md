@@ -25,24 +25,33 @@ corte (não é ausência).
 
 ## Reavaliação 2026-10-18 — hardening-3 + gate de commit
 
+> Recibo canônico machine-readable: [CAPACITY.receipt.json](CAPACITY.receipt.json)
+> (`dex.capacity.snapshot.v1`). A matriz abaixo é a vista humana; o gate lê o
+> recibo e exige ambos staged antes do commit.
+
 > Reavaliação do worktree sobre a fotografia `947fdb4`. Não substitui a
 > fotografia histórica; registra o delta observado e as limitações antes do
 > próximo commit.
 
 | Capacidade | Delta observado | Evidência |
 |---|---|---|
-| CAP-02 gates tipados | `changed_files`/`deleted_files` agora rejeitam escalar/objeto antes do merge; `[]` bloqueia | probe A/A2, teste R2, suíte 671 |
+| CAP-02 gates tipados | `changed_files`/`deleted_files` agora rejeitam escalar/objeto antes do merge; `[]` bloqueia | probe A/A2, teste R2, suíte 679 |
 | CAP-08 invalidação same-path | gate de revisão stale exige `review_current` e review estruturada atual; claims-only não reabre | probe B, teste R3 |
 | CAP-11 mechanical documental | veredito corrobora `changed_files` contra o diff Git real; sem `.git` a limitação é declarada | teste R6 Git; probe G no-Git documentado |
 | CAP-16 fiscal camping | visita CONTAIN PASS; `FE-DEBT-003` aberto para extrair a cola restante | `npm run check:flow-engine` PASS |
 | CAP-17 selagem pós-commit | `598ae5d` per-commit continua FAIL por selagem em `76e9c94`; exceção documentada | replay per-commit/cumulativo |
-| CAP-33 gate de capacidades | novo `npm run check:capacity` + hook pre-commit bloqueiam commit com arquivos de capacidade sem reavaliação | script e hook desta visita |
-| CAP-34 help/schema/usage por tool | `--describe/--schema/--usage` no harness listam a tool sem invocá-la | `tests/mcp-tool-describe.test.ts` 3/3 |
+| CAP-07 scaffold de review | server boundary remove `[object Object]`/nao-string de `reviewed_targets`/`scope_reference` e cai para placeholder | `tests/server-review-scaffold.test.ts` 2/2 |
+| CAP-33 gate de capacidades | `CAPACITY.receipt.json` é a fonte canônica; hook bloqueia commit sem receipt + vista humana staged | `tests/capacity-gate.test.ts` 1/1 + `tests/capacity-receipt.test.ts` 1/1 |
+| CAP-34 help/schema/usage por tool | `--describe/--schema/--usage` funcionam no `dist/index.js` e no harness; sem tool falham com help, sem hang | `tests/tool-cli-entrypoint.test.ts` 4/4 + `tests/mcp-tool-describe.test.ts` 3/3 |
 
-**Evidência do corte:** `npm run check` 674 passed | 4 skipped; build verde;
+**Evidência do corte:** `npm run check` 681 passed | 4 skipped; build verde;
 `check:flow-engine` PASS CONTAIN; `tests/gate-integrity-hardening-3.test.ts`
 4/4; `tests/capacity-gate.test.ts` 1/1; `tests/mcp-tool-describe.test.ts`
-3/3; `npm run check:capacity` PASS; probes A/A2/B/C/D/E/F/G. **Limitações:** R5 permanece decisão documentada
+3/3; `tests/tool-cli-entrypoint.test.ts` 4/4; `tests/server-review-scaffold.test.ts`
+2/2; `tests/capacity-receipt.test.ts` 1/1;
+`npm run check:capacity` PASS;
+probes A/A2/B/C/D/E/F/G. A matriz completa herda o espelho 947fdb4; o delta
+revalidou CAP-02/08/11/16/17/33/34. **Limitações:** R5 permanece decisão documentada
 (evidence genérico aceita `criterion_proof`; review stale é contido por R3);
 R7 per-commit é exceção documentada; sem `.git` não há corroboração de diff.
 `FE-DEBT-003` aberto. A pendência P0
@@ -85,7 +94,7 @@ R7 per-commit é exceção documentada; sem `.git` não há corroboração de di
 | CAP-31 | Versioning/snapshot de produto | **não comprovada** | Estritamente documental; sem decisão de versão no corte |
 | CAP-32 | Dex Agent Telegram (áudio/proativo) | **comprovada** | Receipts reais messageId 879/880 (print não exercitado) |
 | CAP-33 | Gate de reavaliação de capacidades antes de commit | **comprovada** | `npm run check:capacity` + hook pre-commit desta visita |
-| CAP-34 | Help/schema/usage read-only por tool MCP | **comprovada** | `--describe/--schema/--usage` + `tests/mcp-tool-describe.test.ts` |
+| CAP-34 | Help/schema/usage read-only por tool MCP (entrypoint + harness) | **comprovada** | `dist/index.js --describe/--schema/--usage` + `tests/tool-cli-entrypoint.test.ts` 4/4 |
 
 ## Mapa relacional estático
 

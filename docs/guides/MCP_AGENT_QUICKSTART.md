@@ -242,13 +242,22 @@ FAQ and troubleshooting:
 ### Is there an `evidence_add --help` command?
 
 There is no per-tool CLI subcommand. Call MCP `tools/list`; its live schema and
-description are authoritative. From a shell with the repo checked out, use the
-read-only harness instead of reading source:
+description are authoritative. After `npm run build`, ask the actual server
+entrypoint without starting the stdio server:
+
+```bash
+node dist/index.js --describe evidence_add
+node dist/index.js --schema evidence_add
+node dist/index.js --usage evidence_add
+node dist/index.js --list
+```
+
+Without a tool name, `--describe/--schema/--usage` print help and exit 1
+(they do not hang waiting on stdio). The harness remains available for a
+workspace-scoped call:
 
 ```bash
 node scripts/call-mcp-tool.mjs --workspace . --describe evidence_add
-node scripts/call-mcp-tool.mjs --workspace . --schema evidence_add
-node scripts/call-mcp-tool.mjs --workspace . --usage evidence_add
 ```
 
 `--describe` prints name, description, input schema, annotations and an

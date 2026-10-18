@@ -10,11 +10,24 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
-- Help/schema/usage read-only por tool MCP (2026-10-18): `call-mcp-tool.mjs
-  --describe/--schema/--usage` le `tools/list` e imprime descricao, JSON Schema
-  e usage sem invocar a tool; quickstart ganhou o wire flat de review e o FAQ
-  deixou de mandar o agente ao codigo-fonte. `tests/mcp-tool-describe.test.ts`
-  3/3; suite 674 passed | 4 skipped.
+- CAPACITY com recibo canonico `dex.capacity.snapshot.v1` (2026-10-18):
+  `CAPACITY.receipt.json` passa a ser a fonte machine-readable do gate;
+  `CAPACITY.md` fica como vista humana validada por
+  `tests/capacity-receipt.test.ts`. O gate le o recibo, nao a tabela Markdown.
+- Entrypoint help (2026-10-18): `dist/index.js` e `dist/launcher.js`
+  aceitam `--describe/--schema/--usage/--list/--help` sem iniciar o stdio;
+  sem tool imprimem help e falham com exit 1, sem hang.
+  `tests/tool-cli-entrypoint.test.ts` 4/4.
+- Review scaffold boundary (2026-10-18): `goal_status` remove alvos
+  `[object Object]`/nao-string de `reviewed_targets` e `scope_reference`,
+  caindo para placeholder explicito em vez de ensinar payload invalido.
+  `tests/server-review-scaffold.test.ts` 2/2.
+
+- Help/schema/usage read-only por tool MCP (2026-10-18): `dist/index.js` e
+  `call-mcp-tool.mjs` com `--describe/--schema/--usage` leem `tools/list` e
+  imprimem descricao, JSON Schema e usage sem invocar a tool; quickstart ganhou
+  o wire flat de review e o FAQ deixou de mandar o agente ao codigo-fonte.
+  `tests/mcp-tool-describe.test.ts` 3/3; suite 681 passed | 4 skipped.
 - Gate integrity hardening-3: changed_files estrito, review currency e corroboracao Git (2026-10-18
   `gate-integrity-hardening-3`, SPT
   `.agents/PLAN-TASKS/2026-10-18-gate-integrity-hardening-3.md`): R2 valida

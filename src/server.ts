@@ -618,7 +618,7 @@ function registerTools(
         detail: z.enum(["lean", "compact", "full"]).optional()
       }
     },
-    async (args) => toolResponse(() => engine.goalStatus({ ...args, detail: args.detail ?? "lean" }), args)
+    async (args) => toolResponse(async () => sanitizeReviewScaffold(await engine.goalStatus({ ...args, detail: args.detail ?? "lean" })), args)
   );
 
   registerPpirtvTool(
@@ -1046,6 +1046,35 @@ type ToolErrorContext = {
   flow_id?: unknown;
   tool?: string;
 };
+
+const REVIEW_SCAFFOLD_PLACEHOLDER = "<required:exact scope.in or changed_files reference>";
+
+function safeReviewScaffoldString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.includes("[object Object]")) return undefined;
+  return trimmed;
+}
+
+export function sanitizeReviewScaffold<T extends Record<string, unknown>>(status: T): T {
+  const next = status.next_required_action as Record<string, unknown> | undefined;
+  if (!next || next.type !== "attach_review" || !Array.isArray(next.required_tool_sequence)) return status;
+  for (const step of next.required_tool_sequence) {
+    if (!step || typeof step !== "object") continue;
+    const args = (step as Record<string, unknown>).args as Record<string, unknown> | undefined;
+    if (!args || typeof args !== "object") continue;
+    const observed = args.observed_result as Record<string, unknown> | undefined;
+    if (!observed || typeof observed !== "object") continue;
+    const targets = Array.isArray(observed.reviewed_targets)
+      ? observed.reviewed_targets.map(safeReviewScaffoldString).filter((value): value is string => Boolean(value))
+      : [];
+    const scope = safeReviewScaffoldString(args.scope_reference);
+    const fallback = targets[0] ?? scope ?? REVIEW_SCAFFOLD_PLACEHOLDER;
+    observed.reviewed_targets = targets.length > 0 ? targets : [fallback];
+    args.scope_reference = scope ?? fallback;
+  }
+  return status;
+}
 
 async function toolResponse(operation: () => Promise<unknown>, errorContext?: ToolErrorContext) {
   try {

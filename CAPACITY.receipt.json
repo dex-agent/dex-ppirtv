@@ -1,0 +1,566 @@
+{
+  "schema": "dex.capacity.snapshot.v1",
+  "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
+  "fotografia_id": "2026-10-18-worktree-6fb2dae-hardening-3-help",
+  "head": "6fb2dae56313d2f02b1fb4f3190a69eecbe72460",
+  "tree_hash": null,
+  "generated_at": "2026-10-18T15:35:43.605882+00:00",
+  "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
+  "escopo": [
+    "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
+  ],
+  "fora_de_escopo": [
+    "Skill registry global",
+    "projetos consumidores",
+    "vNext nao decidido"
+  ],
+  "fontes_vivas": [
+    "dist/index.js",
+    "dist/launcher.js",
+    "src/",
+    "tests/",
+    "docs/guides/MCP_AGENT_QUICKSTART.md",
+    "CAPACITY.md"
+  ],
+  "suite": {
+    "passed": 681,
+    "skipped": 4,
+    "files": 50
+  },
+  "tools_count": 32,
+  "capabilities": [
+    {
+      "id": "CAP-01",
+      "capability": "goal_start com SPT v3 (binding, idempotency_key, revalidação)",
+      "owner": "flow-engine",
+      "consumer": "Agente MCP",
+      "trigger": "`goal_start` com spt_path+objective",
+      "behavior": "Flow oficial criado/reusado; SPT revalidado; risks do contrato passam pelo guard de segredo",
+      "oracle": "Cerimônia H2 flow `flow_20261018122122542_2900_0001` + bateria R4",
+      "evidence": [
+        "goal_start vivo hoje; probe `spt.risks` rejeitou segredo ao vivo"
+      ],
+      "state": "comprovada",
+      "limits": []
+    },
+    {
+      "id": "CAP-02",
+      "capability": "Gates de fase tipados fail-closed (R2/R10)",
+      "owner": "gate-resolution + phase-profile",
+      "consumer": "Agente MCP",
+      "trigger": "`goal_gate_check`/`goal_advance` com provided",
+      "behavior": "changed_files/deleted_files estritos; []/\"false\"/0/{} nao valem; chave provided desconhecida falha fechada",
+      "oracle": "tests/gate-integrity-revalidation.test.ts 13/13 + tests/gate-integrity-hardening-3.test.ts 4/4",
+      "evidence": [
+        "Bateria R2/R10; strict paths no hardening-3; suite 675"
+      ],
+      "state": "comprovada",
+      "limits": [
+        "Provas de gate exercitam engine; host MCP externo nao foi conectado neste corte"
+      ]
+    },
+    {
+      "id": "CAP-03",
+      "capability": "Diagnóstico de shape no preflight (R8)",
+      "owner": "gate-resolution + flow-engine",
+      "consumer": "Agente MCP",
+      "trigger": "`goal_gate_preflight` com valor recusado",
+      "behavior": "`required[].diagnostic {field, received, expected}` no retorno",
+      "oracle": "Teste R8 + probe runtime dist",
+      "evidence": [
+        "Preflight vivo devolveu `diff_reviewed: received \"string \\\"false\\\"\" / expected \"boolean true\"`"
+      ],
+      "state": "comprovada",
+      "limits": []
+    },
+    {
+      "id": "CAP-04",
+      "capability": "Retorno sem salto para frente (R1)",
+      "owner": "phase-profile",
+      "consumer": "Agente MCP / fiscal",
+      "trigger": "`flow_return`/`goal_regress`",
+      "behavior": "Destino posterior rejeita `PPIRTV_PHASE_RETURN_MUST_GO_BACK`; mesma fase segue legal (regresso fiscal)",
+      "oracle": "Bateria R1 + T-HARD-P1/T24/T26 legados verdes",
+      "evidence": [
+        "Suíte engine 198/198"
+      ],
+      "state": "comprovada",
+      "limits": []
+    },
+    {
+      "id": "CAP-05",
+      "capability": "Veredito canônico com cobertura de critérios",
+      "owner": "flow-engine",
+      "consumer": "Agente MCP",
+      "trigger": "`goal_verdict` status+evidence_ids",
+      "behavior": "Veredito sem citar TODAS as expansões reprova `SPT_V3_CRITERION_COVERAGE_REQUIRED`",
+      "oracle": "Jornada viva: 1ª tentativa H2 reprovada (C-2,C-4,C-6), 2ª com 20 ids passou",
+      "evidence": [
+        "Veredito `vrd_20261018133409430_2943_0001`"
+      ],
+      "state": "comprovada",
+      "limits": []
+    },
+    {
+      "id": "CAP-06",
+      "capability": "Rota declarativa `declarative_proof` 1→N",
+      "owner": "spt-declarative-proof",
+      "consumer": "Agente MCP",
+      "trigger": "`evidence_add` com declarative_proof",
+      "behavior": "Expande server-side em criterion_proofs por `proves`; aprovado satisfaz gate de evidence",
+      "oracle": "20 criterion_proofs criados hoje; quickstart §Declarative route",
+      "evidence": [
+        "Flow H2 com 20 expansões passed"
+      ],
+      "state": "comprovada",
+      "limits": []
+    },
+    {
+      "id": "CAP-07",
+      "capability": "Review estrutural com fingerprint + cobertura integral",
+      "owner": "gate-resolution",
+      "consumer": "Revisor (agente)",
+      "trigger": "`evidence_add` kind code_review",
+      "behavior": "Review parcial (5/11 alvos) rejeitada `changed_files_not_fully_reviewed`; integral+fingerprint passa",
+      "oracle": "Jornada viva H2 (evd 2911 rejeitada → evd 2936 aceita)",
+      "evidence": [
+        "Gate revisao passed",
+        "tests/server-review-scaffold.test.ts 2/2: server boundary removes [object Object] from review scaffold"
+      ],
+      "state": "comprovada",
+      "limits": []
+    },
+    {
+      "id": "CAP-08",
+      "capability": "Invalidação de gates por fingerprint same-path (R3)",
+      "owner": "gate-resolution",
+      "consumer": "Fiscal do fluxo",
+      "trigger": "Conteúdo muda em path existente",
+      "behavior": "Recheck de revisão/teste/validação recalcula fingerprint; reuse stale bloqueado",
+      "oracle": "tests/gate-integrity-revalidation.test.ts R3 + tests/gate-integrity-hardening-3.test.ts",
+      "evidence": [
+        "Probe B: same-path bloqueia; review estruturada atual passa"
+      ],
+      "state": "comprovada",
+      "limits": []
+    },
+    {
+      "id": "CAP-09",
+      "capability": "Fluxo manual legado sem goal_binding",
+      "owner": "flow-engine",
+      "consumer": "Sessões legadas",
+      "trigger": "`flow_create`/`gate_check`/`advance`",
+      "behavior": "Compatibilidade preservada (provided verdict como status-text aceito)",
+      "oracle": "`tests/goal-fiscal.test.ts` legacy verde",
+      "evidence": [
+        "Suíte 666"
+      ],
+      "state": "comprovada",
+      "limits": [
+        "Nível suíte; sem jornada viva nova no corte"
+      ]
+    },
+    {
+      "id": "CAP-10",
+      "capability": "Segredo rejeitado antes de persistir",
+      "owner": "security/secret-redaction",
+      "consumer": "Agente MCP / dono",
+      "trigger": "Payload secret-like em provided/SPT/risks",
+      "behavior": "Erro tipado antes de escrever; flow JSON limpo",
+      "oracle": "Bateria R4 (gate_check/advance/goal_start) + probe runtime",
+      "evidence": [
+        "Flow H2 JSON sem token sintético"
+      ],
+      "state": "comprovada",
+      "limits": [
+        "Padrões de segredo conhecidos; não é promessa de anti-exfiltração geral"
+      ]
+    },
+    {
+      "id": "CAP-11",
+      "capability": "Fast-track mechanical so para diff documental (R6, allowlist + Git)",
+      "owner": "gate-resolution",
+      "consumer": "Fiscal do veredito",
+      "trigger": "Veredito mechanical com changed_files",
+      "behavior": "Extensionless = codigo; veredito cruza changed_files com git status real; sem .git a limitacao e declarada",
+      "oracle": "tests/gate-integrity-hardening-3.test.ts R6 + tests/gate-integrity-revalidation.test.ts",
+      "evidence": [
+        "Probe G no-Git documentado; teste R6 Git exige review"
+      ],
+      "state": "comprovada",
+      "limits": [
+        "Sem .git nao ha corroboracao de diff real; declarado no quickstart"
+      ]
+    },
+    {
+      "id": "CAP-12",
+      "capability": "Mineração append-only + idempotência no ledger",
+      "owner": "memory/mining-policy",
+      "consumer": "Agente MCP",
+      "trigger": "`mm_memory_mining`",
+      "behavior": "Cada tentativa anexa `memory_mined`; dedup só por reconciliation id",
+      "oracle": "3 eventos no flow H2 (pré+pós-veredito idêntico anexou)",
+      "evidence": [
+        "History do flow H2"
+      ],
+      "state": "comprovada",
+      "limits": []
+    },
+    {
+      "id": "CAP-13",
+      "capability": "Resolução de candidatos de memória",
+      "owner": "flow-engine",
+      "consumer": "Garimpeiro",
+      "trigger": "`mm_memory_candidate_resolve`",
+      "behavior": "Descarte/promoção com rationale persistido",
+      "oracle": "Recibo MGL 2026-10-18 (candidato duplicado descartado) + suíte",
+      "evidence": [
+        "`.agents/AUDITORIAS/EVIDENCIAS/` MGL"
+      ],
+      "state": "comprovada",
+      "limits": [
+        "Jornada viva foi no corte MGL (hoje, antes deste commit)"
+      ]
+    },
+    {
+      "id": "CAP-14",
+      "capability": "Integração dex-memoria V2 (writer)",
+      "owner": "dex-memoria adapter",
+      "consumer": "Sistema de memória da casa",
+      "trigger": "remember/mining com writer V2",
+      "behavior": "Receipt `COMMITTED` por rota",
+      "oracle": "2 gravadas hoje via CLI (bed6b977, 702baa76)",
+      "evidence": [
+        "Tema ppirtv L1+L2 confirmados por rg"
+      ],
+      "state": "comprovada",
+      "limits": []
+    },
+    {
+      "id": "CAP-15",
+      "capability": "Seletor de memória (bin + probe)",
+      "owner": "memory-selector",
+      "consumer": "Dono/instalação",
+      "trigger": "`npm run memory-selector`",
+      "behavior": "Seleção de writer/destino",
+      "oracle": "`tests/e2e` 12 passed + bins presentes",
+      "evidence": [
+        "e2e verde no corte"
+      ],
+      "state": "parcial",
+      "limits": [
+        "Sem jornada de consumidor viva neste corte (oracle é suíte e2e)"
+      ]
+    },
+    {
+      "id": "CAP-16",
+      "capability": "Fiscal camping (SHRINK/CONTAIN/EXCEPTION + ledger + markers)",
+      "owner": "validate-flow-engine-boundary",
+      "consumer": "Oráculo-refatoração",
+      "trigger": "Diff que toca flow-engine",
+      "behavior": "Record obrigatorio; CONTAIN desta visita PASS; replay por janela; markers exigidos; FE-DEBT-003 aberto",
+      "oracle": "Replays PASS hoje (visit + cumulative) + EXCEPTION H2 aceita",
+      "evidence": [
+        "check:flow-engine PASS CONTAIN; record FE-2026-10-18-GATE-INTEGRITY-HARDENING-3"
+      ],
+      "state": "comprovada",
+      "limits": [
+        "FE-DEBT-003 aberto: extrair a cola restante da fachada"
+      ]
+    },
+    {
+      "id": "CAP-17",
+      "capability": "Selagem pós-commit de records (R7)",
+      "owner": "validate-flow-engine-boundary",
+      "consumer": "Oráculo-refatoração",
+      "trigger": "Diff de ledger só-commit pós commit",
+      "behavior": "`ledger_commit_seal: PASS`; selagem mentirosa reprova",
+      "oracle": "Probe adversarial ao vivo (FAIL `LEDGER_PREFIX_COMMIT_SEAL_MISMATCH`; restaurado PASS) + H2 selado em 947fdb4",
+      "evidence": [
+        "10 records selados"
+      ],
+      "state": "comprovada",
+      "limits": [
+        "Replay per-commit 598ae5d e excecao documentada; record foi selado em 947fdb4"
+      ]
+    },
+    {
+      "id": "CAP-18",
+      "capability": "Replay cumulativo em cadeia",
+      "owner": "validate-flow-engine-boundary",
+      "consumer": "CI/sessão",
+      "trigger": "`--base 5e7d5df --head HEAD`",
+      "behavior": "Cadeia de records valida elo a elo",
+      "oracle": "PASS hoje com cadeia de 4 records",
+      "evidence": [
+        "Receipt cumulative"
+      ],
+      "state": "comprovada",
+      "limits": [
+        "RED em cadeia conferido contra a base do próprio record (corrigido neste corte)"
+      ]
+    },
+    {
+      "id": "CAP-19",
+      "capability": "Servidor direto stdio (dist/index.js)",
+      "owner": "server.ts",
+      "consumer": "Agente MCP local",
+      "trigger": "Inicializar MCP",
+      "behavior": "32 tools com schemas vivos",
+      "oracle": "`tools/list` real hoje (receipt hardening2-tools-list)",
+      "evidence": [
+        "32 tools"
+      ],
+      "state": "comprovada",
+      "limits": []
+    },
+    {
+      "id": "CAP-20",
+      "capability": "Launcher global com contrato workspace+cwd",
+      "owner": "dist/launcher.js",
+      "consumer": "Projeto consumidor",
+      "trigger": "Instalação global / PPIRTV_WORKSPACE",
+      "behavior": "Sem sinal de workspace falha rápido com erro tipado; com `--workspace`+`cwd` serve a superfície",
+      "oracle": "Dois oracles ao vivo hoje (erro tipado; smoke ok=true)",
+      "evidence": [
+        "Receipt mapa-launcher-smoke"
+      ],
+      "state": "comprovada",
+      "limits": [
+        "Multi-root (PPIRTV_WORKSPACE_ROOTS) não exercitado ao vivo no corte"
+      ]
+    },
+    {
+      "id": "CAP-21",
+      "capability": "runtime_probe (root, runtime, writer)",
+      "owner": "server.ts",
+      "consumer": "Toda sessão MCP",
+      "trigger": "Chamada inicial",
+      "behavior": "project_root/memory writer reportados",
+      "oracle": "Presente em todos os harness calls hoje",
+      "evidence": [
+        "Receipts"
+      ],
+      "state": "comprovada",
+      "limits": []
+    },
+    {
+      "id": "CAP-22",
+      "capability": "ppirtv_trace / arqueologia evolutiva",
+      "owner": "flow-engine",
+      "consumer": "Revisão/handoff",
+      "trigger": "`ppirtv_trace`",
+      "behavior": "Traço cronológico de evolução",
+      "oracle": "Suíte cobre o traço",
+      "evidence": [
+        "tests verdes"
+      ],
+      "state": "parcial",
+      "limits": [
+        "Sem jornada viva de consumidor neste corte"
+      ]
+    },
+    {
+      "id": "CAP-23",
+      "capability": "spt_validate standalone",
+      "owner": "flow-engine",
+      "consumer": "Agente pequeno",
+      "trigger": "`spt_validate`",
+      "behavior": "Valida SPT v3 com diagnósticos",
+      "oracle": "Suíte dedicada verde",
+      "evidence": [
+        "666"
+      ],
+      "state": "parcial",
+      "limits": [
+        "goal_start revalida internamente (jornada viva), chamada standalone não ocorreu hoje"
+      ]
+    },
+    {
+      "id": "CAP-24",
+      "capability": "Reuniões/cooperação (open/add-turn/close, required_cooperation)",
+      "owner": "flow-engine",
+      "consumer": "Decisores",
+      "trigger": "`goal_meeting_*`",
+      "behavior": "Ata e cooperadores registrados no flow",
+      "oracle": "Suíte de meetings verde",
+      "evidence": [
+        "666"
+      ],
+      "state": "parcial",
+      "limits": [
+        "Sem reunião viva neste corte"
+      ]
+    },
+    {
+      "id": "CAP-25",
+      "capability": "hygiene_scan / lixeira com manifesto",
+      "owner": "flow-engine",
+      "consumer": "Casa (higiene)",
+      "trigger": "`hygiene_scan`",
+      "behavior": "Achados + destino lixeira",
+      "oracle": "Suíte hygiene verde",
+      "evidence": [
+        "666"
+      ],
+      "state": "parcial",
+      "limits": [
+        "Sem scan vivo hoje"
+      ]
+    },
+    {
+      "id": "CAP-26",
+      "capability": "mm_pipeline_run PRONTO (orquestração)",
+      "owner": "flow-engine",
+      "consumer": "Agente em lote",
+      "trigger": "`mm_pipeline_run`",
+      "behavior": "Orquestração declarativa de flows",
+      "oracle": "Suíte pipeline verde",
+      "evidence": [
+        "666"
+      ],
+      "state": "parcial",
+      "limits": [
+        "Orquestração em lote não usada hoje (missão single-flow)"
+      ]
+    },
+    {
+      "id": "CAP-27",
+      "capability": "ppirtv_checkout (receipt final)",
+      "owner": "flow-engine",
+      "consumer": "Agente MCP",
+      "trigger": "`ppirtv_checkout`",
+      "behavior": "Recibo de fechamento com when verificável",
+      "oracle": "Suíte checkout verde",
+      "evidence": [
+        "666"
+      ],
+      "state": "parcial",
+      "limits": [
+        "Fechamento de hoje usou goal_status; checkout não chamado ao vivo"
+      ]
+    },
+    {
+      "id": "CAP-28",
+      "capability": "checklist_render (fluxo visual PPIRTV)",
+      "owner": "server.ts",
+      "consumer": "Sessão visual",
+      "trigger": "`checklist_render`",
+      "behavior": "Checklist visual por fase",
+      "oracle": "Tool viva no tools/list",
+      "evidence": [
+        "32 tools"
+      ],
+      "state": "parcial",
+      "limits": [
+        "Sem render vivo hoje; suíte não dedica arquivo próprio"
+      ]
+    },
+    {
+      "id": "CAP-29",
+      "capability": "Documentação publicada achável",
+      "owner": "docs/",
+      "consumer": "Agente/dono",
+      "trigger": "Descoberta por INDEX/README",
+      "behavior": "Guia/contratos com link direto + INDEX",
+      "oracle": "Estrutural: docs/INDEX 27 entradas + rotas AGENTS",
+      "evidence": [
+        "rg das rotas atuais"
+      ],
+      "state": "parcial",
+      "limits": [
+        "Link-checker não executado neste corte"
+      ]
+    },
+    {
+      "id": "CAP-30",
+      "capability": "PLAYBOOK projeção externa + hook anti-drift",
+      "owner": "tools/playbook",
+      "consumer": "Destinatário externo",
+      "trigger": "commit / regen",
+      "behavior": "`--check` bloqueia commit com projeção stale",
+      "oracle": "Hook rodou FRESCO nos 2 commits de hoje (bloqueou nada porque regen foi antes)",
+      "evidence": [
+        "Commits 76e9c94/947fdb4"
+      ],
+      "state": "comprovada",
+      "limits": []
+    },
+    {
+      "id": "CAP-31",
+      "capability": "Versioning/snapshot de produto",
+      "owner": "docs/contracts",
+      "consumer": "Dono",
+      "trigger": "Decisão de versão",
+      "behavior": "Contrato de versão + snapshot datado",
+      "oracle": "Apenas documental",
+      "evidence": [
+        "docs existem"
+      ],
+      "state": "não comprovada",
+      "limits": [
+        "Sem decisão/uso de versão neste corte"
+      ]
+    },
+    {
+      "id": "CAP-32",
+      "capability": "Dex Agent Telegram (áudio/proativo)",
+      "owner": "skills/dex-agent (local)",
+      "consumer": "Dono",
+      "trigger": "Pedido de áudio/print",
+      "behavior": "Voice note entregue no chat solicitante",
+      "oracle": "Receipts reais messageId 879 e 880 hoje",
+      "evidence": [
+        "Telegram API message_id"
+      ],
+      "state": "comprovada",
+      "limits": [
+        "Print e fila de startup não exercitados neste corte"
+      ]
+    },
+    {
+      "id": "CAP-33",
+      "capability": "Gate de reavaliacao de capacidades antes de commit",
+      "owner": "$oraculo-refatoracao",
+      "consumer": "Owner do commit / CI",
+      "trigger": "git commit com CAPACITY.md e CAPACITY.receipt.json",
+      "behavior": "Hook roda check:capacity; bloqueia commit sem receipt e reavaliacao staged",
+      "oracle": "tests/capacity-gate.test.ts + hook pre-commit",
+      "evidence": [
+        "CAPACITY GATE PASS 34 capacidades; teste 1/1"
+      ],
+      "state": "comprovada",
+      "limits": [
+        "O gate valida contrato e registro; nao julga a semantica da reavaliacao; --no-verify contorna hook local"
+      ]
+    },
+    {
+      "id": "CAP-34",
+      "capability": "Help/schema/usage read-only por tool MCP no entrypoint e no harness",
+      "owner": "$oraculo-refatoracao",
+      "consumer": "Agente em terminal sem MCP / host MCP",
+      "trigger": "node dist/index.js --describe|--schema|--usage <tool> (ou --list)",
+      "behavior": "O entrypoint detecta flags, le tools/list e imprime descricao/schema/usage/exemplo sem iniciar stdio nem chamar a tool; sem tool imprime help e falha com exit 1",
+      "oracle": "tests/tool-cli-entrypoint.test.ts 4/4 + tests/mcp-tool-describe.test.ts 3/3",
+      "evidence": [
+        "node dist/index.js --describe evidence_add devolve seis chaves flat, sem result/runtime_probe",
+        "node dist/index.js --describe (sem tool) imprime help e exit 1, sem hang",
+        "dist/launcher.js aceita as mesmas flags"
+      ],
+      "state": "comprovada",
+      "limits": [
+        "Exige npm run build antes do comando",
+        "--usage e generico derivado do schema",
+        "Nao corrige cliente que dobra boolean/array em objeto; o wire continua fail-closed"
+      ]
+    }
+  ],
+  "limits": [
+    "Fotografia de worktree sobre o HEAD 6fb2dae; nova medicao exige novo pedido.",
+    "Gate valida contrato/registro; verdade semantica permanece com owner/oracle.",
+    "R5 permanece decisao documentada; CAP-17 tem excecao per-commit 598ae5d.",
+    "Sem .git nao ha corroboracao de diff real para changed_files.",
+    "4 testes skipped nao foram investigados.",
+    "Matriz completa herdada do espelho 947fdb4; o delta deste corte revalidou CAP-02/08/11/16/17/33/34 e a suite 675. As demais linhas permanecem com a evidencia do corte anterior."
+  ]
+}

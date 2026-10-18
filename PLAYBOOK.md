@@ -4,7 +4,7 @@ description: "Regras de decisao e procedimentos deste projeto - projecao gerada 
 type: playbook
 generated_by: "tools/playbook/generate-playbook.py"
 authority: derived_projection
-sources_revision: "sha256:85622a8738518ff28259b95edf6c39bd4b16800bfb7567103e58d952e0a86ac4"
+sources_revision: "sha256:edfa237ea15be3ccb2e741af0f5b32513a4b1018c5b88a72767fb58fc8456bbf"
 sent_revision: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 do_not_edit: true
 ---
@@ -34,8 +34,8 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 - Localizador: `PPIRTV-CAPACITY-COMMIT-GATE`
 - Gatilho: ndeclarado
 - Extrato: ```powershell
-- Fonte: `AGENTS.md#L188-L208`
-- Selo: `pb-e0535bab`
+- Fonte: `AGENTS.md#L188-L210`
+- Selo: `pb-728eb73e`
 
 ### Ordens diretas do Comandante Owner o $chato 🗣️
 
@@ -47,16 +47,16 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
   - $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamen...
   - Ative o fluxo visual PPIRTV com checklist visual dinâmico u...
   - Sempre finalize o trabalho analisando "com lentes dos espec...
-- Fonte: `AGENTS.md#L209-L271`
-- Selo: `pb-6255a0ea`
+- Fonte: `AGENTS.md#L211-L273`
+- Selo: `pb-aed86578`
 
 ### Dex Agent Local
 
 - Localizador: `PPIRTV-GIT-CONSOLIDACAO-SELETIVA-MAIN`
 - Gatilho: - Antes de qualquer consolidacao Git deste repositorio, recupere o gatilho
 - Extrato: - Projeto: `dex-PPIRTV`
-- Fonte: `AGENTS.md#L272-L316`
-- Selo: `pb-90a8ee46`
+- Fonte: `AGENTS.md#L274-L318`
+- Selo: `pb-4d6a7afc`
 
 ## Runbook <-> Playbook (procedimentos)
 
@@ -70,7 +70,7 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 | caminho | sha256 | Enviado? |
 | --- | --- | --- |
-| `AGENTS.md` | `3a6eeddfb17950416806c18c7889c3b544eef8adb8d652e71d530d03782e1b60` | nao |
+| `AGENTS.md` | `6ee3476e889928369aafeb88fb40a5475b0f6c53c7f668b8119c6871e726d64c` | nao |
 | `.agents/napkin.md` | `e54020462ff836a9b393a403f14d3a30afe78b121d92a095fc1e97d9571f0d94` | nao |
 | `.agents/PLAN-TASKS/ACTIVE.md` | `e41894ae431458f252d3892baf45ae9f93fccd695006c8df4e2e21b81b1ab2c8` | nao |
 
@@ -83,7 +83,7 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 ## Secoes nao decodificadas
 
 - Organizacao De Artefatos E Scripts -> `AGENTS.md#L159` (sem token de localizador)
-- Graphify local -> `AGENTS.md#L317` (sem token de localizador)
-- Bootstrap (toda janela nova, nesta ordem) -> `AGENTS.md#L350` (sem token de localizador)
-- Indexação (doutrina da casa) -> `AGENTS.md#L368` (sem token de localizador)
-- Envio a terceiros -> `AGENTS.md#L375` (sem token de localizador)
+- Graphify local -> `AGENTS.md#L319` (sem token de localizador)
+- Bootstrap (toda janela nova, nesta ordem) -> `AGENTS.md#L352` (sem token de localizador)
+- Indexação (doutrina da casa) -> `AGENTS.md#L370` (sem token de localizador)
+- Envio a terceiros -> `AGENTS.md#L377` (sem token de localizador)

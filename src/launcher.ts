@@ -5,6 +5,12 @@ import { resolveLauncherWorkspace } from "./config.js";
 import { applyLauncherWorkspaceEnvironment } from "./launcher-environment.js";
 
 async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+  if (args.some((arg) => ["--help", "-h", "--describe", "--schema", "--usage", "--list"].includes(arg))) {
+    const { runToolCli } = await import("./tool-cli.js");
+    process.exitCode = await runToolCli(args);
+    return;
+  }
   const installRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const configuredWorkspace = process.env.PPIRTV_WORKSPACE?.trim()
     ? resolveLauncherWorkspace({ argv: [], cwd: process.cwd(), env: process.env, installRoot }).workspace
