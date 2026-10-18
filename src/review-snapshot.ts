@@ -86,6 +86,21 @@ export async function fingerprintReviewedImplementation(
 
 
 
+// SPT gate-integrity-hardening-3 (R6/NOVO-2): prefixos de runtime local do
+// executor — nunca sao produto do workspace e nao podem contaminar a
+// corroboration (.ppirtv/ vivo travava vereditos doc-only legitimos;
+// .agents/ carrega SPT/receipts do proprio executor). Declaracao explicita
+// em changed_files continua valendo: o filtro so remove o ruido automatico.
+const GIT_CORROBORATION_EXCLUDED_PREFIXES = [".git/", ".ppirtv/", ".agents/"];
+
+function filterCorroborationFiles(files: string[]): string[] {
+  const filtered = files
+    .map((file) => normalizeReviewPath(file))
+    .filter((file) => file.length > 0 && !GIT_CORROBORATION_EXCLUDED_PREFIXES.some((prefix) => file.startsWith(prefix)));
+  return [...new Set(filtered)];
+}
+
+
 // SPT gate-integrity-hardening-3 (R6): diff real do workspace quando ele e um
 // repositorio Git. Retorna null quando nao ha .git ou o comando falha; nesse
 // caso o chamador mantem a declaracao de changed_files e registra a limitacao.
@@ -110,26 +125,96 @@ export async function gitChangedFiles(workspace: string): Promise<string[] | nul
       .flatMap((line) => {
         const renamed = line.split(" -> ");
         return renamed.length === 2 ? [renamed[1]] : [line];
-      })
-      .map((file) => normalizeReviewPath(file))
-      .filter((file) => file.length > 0 && !file.startsWith(".git/"));
-    return [...new Set(files)];
+      });
+    return filterCorroborationFiles(files);
   } catch {
     return null;
   }
 }
 
+export async function gitHeadAt(workspace: string): Promise<string | null> {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", path.resolve(workspace), "rev-parse", "HEAD"],
+      { windowsHide: true, maxBuffer: 1024 * 1024 }
+    );
+    const head = stdout.trim();
+    return head.length > 0 ? head : null;
+  } catch {
+    return null;
+  }
+}
 
+// SPT gate-integrity-hardening-3 (R6/NOVO-1): arquivos mudados por COMMITS
+// feitos apos a base congelada no goal_start — fecha a janela
+// commit-then-verdict que o `git status` (worktree limpo) nao enxerga.
+// { files: null, diverged: true } = houve commits que o diff nao consegue
+// inspecionar (base orfa por rebase/reset): o verdict fail-close exigindo
+// review. Retorno null = sem base congelada (flow antigo ou sem .git).
+export type GitCommittedFiles = { files: string[] | null; diverged: boolean };
+
+export async function gitCommittedFilesSince(workspace: string, base?: string): Promise<GitCommittedFiles | null> {
+  if (!base) return null;
+  const head = await gitHeadAt(workspace);
+  if (!head || head === base) return { files: [], diverged: false };
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", path.resolve(workspace), "diff", "--name-only", `${base}..HEAD`],
+      { windowsHide: true, maxBuffer: 4 * 1024 * 1024 }
+    );
+    const files = filterCorroborationFiles(stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean));
+    return { files, diverged: false };
+  } catch {
+    return { files: null, diverged: true };
+  }
+}
+
+
+
+// SPT gate-integrity-hardening-3 (R6/NOVO-1): congelar o head Git do
+// workspace no primeiro binding do flow; o verdict corrobora commits
+// posteriores via diff base..HEAD. Idempotente em reuse — a base do inicio
+// original e a referencia fiscal.
+export async function freezeGitHeadBase(flow: Flow, workspace?: string): Promise<void> {
+  if (!workspace || flow.git_head_base) return;
+  flow.git_head_base = (await gitHeadAt(workspace)) ?? undefined;
+}
+
+// Extraida do monolito (SHRINK, pagamento FE-DEBT-003): fingerprint de
+// implementacao corrente para o conjunto corrente de changed_files.
+export async function withCurrentImplementationFingerprint(flow: Flow): Promise<Flow> {
+  const workspace = flow.goal_binding?.envelope.workspace;
+  if (!workspace || flow.status === "complete" || flow.status === "archived") {
+    return flow;
+  }
+  const implementationFingerprint = await fingerprintReviewedImplementation(
+    workspace,
+    flow.changed_files,
+    process.platform,
+    { allowedMissingFiles: flow.deleted_files ?? [] }
+  );
+  return implementationFingerprint === flow.implementation_fingerprint
+    ? flow
+    : { ...flow, implementation_fingerprint: implementationFingerprint };
+}
 
 // SPT gate-integrity-hardening-3 (R6): aplica o diff Git ao flow antes da
 // decisao fiscal; o chamador nao ganha decisao propria.
 export async function withGitCorroboratedChangedFiles(flow: Flow): Promise<Flow> {
   const workspace = flow.goal_binding?.envelope.workspace;
   if (!workspace) return flow;
-  const actual = await gitChangedFiles(workspace);
-  if (!actual || actual.length === 0) return flow;
-  const merged = [...new Set([...flow.changed_files, ...actual])];
-  return merged.length === flow.changed_files.length ? flow : { ...flow, changed_files: merged };
+  const [statusFiles, committed] = await Promise.all([
+    gitChangedFiles(workspace),
+    gitCommittedFilesSince(workspace, flow.git_head_base)
+  ]);
+  const merged = [...new Set([...flow.changed_files, ...(statusFiles ?? []), ...(committed?.files ?? [])])];
+  const unresolved = committed?.diverged === true;
+  if (merged.length === flow.changed_files.length && unresolved === (flow.git_unresolved_commits === true)) {
+    return flow;
+  }
+  return { ...flow, changed_files: merged, git_unresolved_commits: unresolved || undefined };
 }
 
 function assertReviewSnapshotPathIsNotSensitive(relativePath: string): void {

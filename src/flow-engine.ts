@@ -106,7 +106,7 @@ import {
   taskProjection,
   traceabilityFromContract
 } from "./spt-traceability.js";
-import { fingerprintReviewedImplementation, normalizeReviewPath, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
+import { fingerprintReviewedImplementation, freezeGitHeadBase, normalizeReviewPath, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
 import {
   normalizeRecallConsumptionInput,
   sameRecallReferences,
@@ -693,6 +693,7 @@ export class FlowEngine {
       flow.spt_contract_version = validation.contract_version ?? undefined;
       flow.spt_traceability = validation.traceability;
     }
+    await freezeGitHeadBase(flow, boundEnvelope.workspace);
     assertNoSecretLikeItems(parsedValidationItems(validation), "spt_validation");
     flow.tasks = unique([...flow.tasks, ...validation.tasks]);
     flow.done_criteria = unique([...flow.done_criteria, ...validation.done_criteria]);
@@ -782,7 +783,7 @@ export class FlowEngine {
 
   async goalStatus(input: { flow_id?: string; idempotency_key?: string; detail?: "lean" | "compact" | "full" }): Promise<Record<string, unknown>> {
     let flow = await this.resolveGoalFlow(input);
-    flow = await this.flowWithCurrentImplementationFingerprint(flow);
+    flow = await withCurrentImplementationFingerprint(flow);
     const detail = input.detail === "lean" ? "lean" : input.detail === "compact" ? "compact" : "full";
     // DT-04 (pragmatic/chato): detail "lean" retorna apenas nucleo do status
     // (fase, status, blockers, next_step, display, aliases) sem montar
@@ -1289,7 +1290,7 @@ export class FlowEngine {
     );
     // SPT gate-integrity-hardening-2 (R3): fingerprint atual decide o reuse —
     // conteudo mudado no mesmo path nao reusa gate stale.
-    const reuseFlow = await this.flowWithCurrentImplementationFingerprint(flow);
+    const reuseFlow = await withCurrentImplementationFingerprint(flow);
     const savedGate = reuseFlow.gates[reuseFlow.phase];
     const shouldReuseSavedGate = savedGateReusable(
       savedGate,
@@ -2714,7 +2715,7 @@ export class FlowEngine {
         );
       }
     }
-    let fiscalFlow = await this.flowWithCurrentImplementationFingerprint(await this.store.loadFlow(input.flow_id));
+    let fiscalFlow = await withCurrentImplementationFingerprint(await this.store.loadFlow(input.flow_id));
     // SPT gate-integrity-hardening-3 (R6): o diff Git entra como colaborador;
     // sem .git o flow permanece como esta e a limitacao fica documentada.
     fiscalFlow = await withGitCorroboratedChangedFiles(fiscalFlow);
@@ -2904,7 +2905,7 @@ export class FlowEngine {
     // SPT gate-integrity-hardening-2 (R3): recheck de revisao/teste/validacao
     // julga a review contra o conteudo ATUAL (paths E fingerprint).
     if (phase === "implementacao" || reviewCurrencyAppliesToPhase(phase)) {
-      flowForResolution = await this.flowWithCurrentImplementationFingerprint(flowForResolution);
+      flowForResolution = await withCurrentImplementationFingerprint(flowForResolution);
     }
     const profile = profileFor(flow.mode);
     const snapshot = this.resolveGateSnapshot(flowForResolution, phase, effectiveProvided);
@@ -2946,22 +2947,6 @@ export class FlowEngine {
       presented.loop_monitor = loopMonitor;
     }
     return presented;
-  }
-
-  private async flowWithCurrentImplementationFingerprint(flow: Flow): Promise<Flow> {
-    const workspace = flow.goal_binding?.envelope.workspace;
-    if (!workspace || flow.status === "complete" || flow.status === "archived") {
-      return flow;
-    }
-    const implementationFingerprint = await fingerprintReviewedImplementation(
-      workspace,
-      flow.changed_files,
-      process.platform,
-      { allowedMissingFiles: flow.deleted_files ?? [] }
-    );
-    return implementationFingerprint === flow.implementation_fingerprint
-      ? flow
-      : { ...flow, implementation_fingerprint: implementationFingerprint };
   }
 
   private resolveGateSnapshot(
@@ -3069,7 +3054,7 @@ export class FlowEngine {
     }
     // SPT gate-integrity-hardening-2 (R3): mesma decisao central do site do
     // goalAdvance — dedup da regra de reuse (regua da casa R6).
-    const reuseFlow = await this.flowWithCurrentImplementationFingerprint(flow);
+    const reuseFlow = await withCurrentImplementationFingerprint(flow);
     const savedGate = reuseFlow.gates[reuseFlow.phase];
     const shouldReuseSavedGate = savedGateReusable(
       savedGate,
@@ -3101,7 +3086,7 @@ export class FlowEngine {
       }
       return presented;
     }
-    const fresh = await this.flowWithCurrentImplementationFingerprint(await this.store.loadFlow(flow.flow_id));
+    const fresh = await withCurrentImplementationFingerprint(await this.store.loadFlow(flow.flow_id));
     const from = fresh.phase;
     // Patch B (modo compact wire-up): proxima fase segundo o perfil do flow.
     const to = nextPhaseOrThrow(fresh.mode, from);
@@ -3756,7 +3741,7 @@ export class FlowEngine {
     active_credits?: string[];
   }): Promise<Evidence & PresentationEnvelope> {
     requireText(input.title, "title");
-    const flow = await this.flowWithCurrentImplementationFingerprint(await this.store.loadFlow(input.flow_id));
+    const flow = await withCurrentImplementationFingerprint(await this.store.loadFlow(input.flow_id));
     assertFlowAcceptsMutation(flow);
     const reviewAttestation = structuredReviewAttestationRequested(input);
     if (input.reviewed_implementation_fingerprint !== undefined && !reviewAttestation) {
@@ -4054,7 +4039,7 @@ export class FlowEngine {
     meeting_ids?: string[];
     next_step: string;
   }, options: { allowOfficialGoal?: boolean } = {}): Promise<Verdict & PresentationEnvelope> {
-    const flow = await this.flowWithCurrentImplementationFingerprint(await this.store.loadFlow(input.flow_id));
+    const flow = await withCurrentImplementationFingerprint(await this.store.loadFlow(input.flow_id));
     assertFlowAcceptsMutation(flow);
     if (flow.goal_binding && options.allowOfficialGoal !== true) {
       throw new Error("OFFICIAL_GOAL_REQUIRES_GOAL_VERDICT: verdict_record is legacy/advisory; use goal_verdict");
@@ -5144,6 +5129,10 @@ function fiscalMateriality(flow: Flow, input: FiscalVerdictInput): boolean {
   if (!flow.goal_binding) {
     return false;
   }
+  // NOVO-1 fail-closed: commits divergentes ininspecionaveis (base Git orfa)
+  // sao materia fiscal por si — o fast-track mechanical nao pode afirmar
+  // doc-only sem conseguir inspecionar o diff.
+  const unresolvedGitDivergence = flow.git_unresolved_commits === true;
   const material = () =>
     input.status === "pronto_com_ressalvas" ||
     materialRiskText(fiscalText(flow, input)) ||
@@ -5154,7 +5143,7 @@ function fiscalMateriality(flow: Flow, input: FiscalVerdictInput): boolean {
     latestLibrarianStatus(flow)?.status === "failed";
   // Fast-track: mechanical risk (text/doc/refs updates) skips fiscal material.
   if (flow.goal_binding.envelope.risk_level === "mechanical") {
-    return changedFilesContainCode(flow.changed_files) && material();
+    return (unresolvedGitDivergence || changedFilesContainCode(flow.changed_files)) && material();
   }
   return material();
 }
@@ -5304,13 +5293,16 @@ function reviewStatusForPostWrite(validation: MemoryPostWriteValidation, written
 }
 
 function codeReviewRequired(flow: Flow, input: FiscalVerdictInput): boolean {
+  // NOVO-1 fail-closed: commits divergentes que o diff nao consegue
+  // inspecionar (base orfa) sempre exigem review.
+  const unresolvedGitDivergence = flow.git_unresolved_commits === true;
   const baseCodeReviewRequired = () =>
     flow.changed_files.length > 0 || /(codigo|código|mudanca de codigo|mudança de código|diff|review|revisor)/i.test(fiscalText(flow, input));
   // Fast-track: mechanical risk (text/doc updates) does not require code review.
   if (flow.goal_binding?.envelope.risk_level === "mechanical") {
-    return changedFilesContainCode(flow.changed_files) && baseCodeReviewRequired();
+    return (unresolvedGitDivergence || changedFilesContainCode(flow.changed_files)) && baseCodeReviewRequired();
   }
-  return baseCodeReviewRequired();
+  return unresolvedGitDivergence || baseCodeReviewRequired();
 }
 
 function hasReviewEvidence(flow: Flow, input: FiscalVerdictInput): boolean {

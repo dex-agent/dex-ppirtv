@@ -431,6 +431,48 @@
         "responsibility": "Bounded integrity guards for the hardening-3 re-review: strict changed_files/deleted_files paths, current structured review on stale same-path review gates, and Git-diff corroboration of changed_files at verdict time; policy lives in gate-resolution/review-snapshot, the facade keeps guard calls.",
         "payment_scope": "any_verified_shrink"
       }
+    },
+    {
+      "id": "FE-2026-10-18-GIT-CORROBORATION-COMMITS-SHRINK",
+      "base_blob": "2d26f846ab49cb08c9cd77e4965b576368f1dea8",
+      "head_blob": "c01421a6c7ff2d4e08a49e19bb99e2730c230858",
+      "comparison": {
+        "base": "HEAD",
+        "head": "WORKTREE",
+        "source": "worktree"
+      },
+      "mode": "SHRINK",
+      "spt_path": ".agents/PLAN-TASKS/2026-10-18-gate-integrity-hardening-3.md",
+      "responsibility": "Fingerprint de implementacao corrente sobre o conjunto corrente de changed_files no verdict; o monolito mantem apenas a chamada de cola. Esta visita tambem fecha os residuos NOVO-1 (commit-then-verdict: base Git congelada no primeiro goal_start + diff base..HEAD no verdict + fail-closed em divergencia orfa) e NOVO-2 (prefixos de runtime .git/.ppirtv/.agents fora da corroboration), com a logica Git inteira em src/review-snapshot.ts.",
+      "owner": "$oraculo-refatoracao",
+      "changelog_marker": "Corroboration Git por commit no verdict (NOVO-1/NOVO-2) + SHRINK FE-DEBT-003 pago",
+      "architecture_marker": "FE-2026-10-18-GIT-CORROBORATION-COMMITS-SHRINK",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/git-corroboration-commits.test.ts",
+        "tests/gate-integrity-hardening-3.test.ts"
+      ],
+      "removed_symbols": [
+        "flowWithCurrentImplementationFingerprint"
+      ],
+      "symbol_mappings": {
+        "flowWithCurrentImplementationFingerprint": "withCurrentImplementationFingerprint"
+      },
+      "same_responsibility": true,
+      "behavior_preserved_by": [
+        "tests/git-corroboration-commits.test.ts::NOVO-1 commit-then-verdict de codigo nao passa de doc-only",
+        "tests/git-corroboration-commits.test.ts::NOVO-1 legitimo: commit doc-only aceito",
+        "tests/git-corroboration-commits.test.ts::NOVO-2: runtime .ppirtv/ nao conta como code",
+        "tests/git-corroboration-commits.test.ts::NOVO-1 fail-closed: base Git orfa exige review"
+      ],
+      "pays_debt_id": "FE-DEBT-003",
+      "destination_module": "src/review-snapshot.ts",
+      "evidence_selectors": {
+        "tests/git-corroboration-commits.test.ts": "NOVO-1: commit-then-verdict de codigo nao passa de doc-only (worktree limpo)"
+      },
+      "red_evidence": "tests/git-corroboration-commits.test.ts::NOVO-1: commit-then-verdict de codigo nao passa de doc-only (worktree limpo)"
     }
   ]
 }

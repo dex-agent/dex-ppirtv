@@ -8,6 +8,10 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+### Alterado
+
+- Corroboration Git por commit no verdict (NOVO-1/NOVO-2) + SHRINK FE-DEBT-003 pago (2026-10-18): `goal_start` congela `git_head_base` e `goal_verdict` corrobora commits via `git diff base..HEAD` (fail-closed em base orfa exige review); runtime `.git/`/`.ppirtv/`/`.agents/` sai do ruido de corroboration; `flowWithCurrentImplementationFingerprint` deixa o monolito (`src/review-snapshot.ts`). `tests/git-corroboration-commits.test.ts` 4/4 RED-first.
+
 ### Adicionado
 
 - CAPACITY com recibo canonico `dex.capacity.snapshot.v1` (2026-10-18):

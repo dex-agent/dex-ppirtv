@@ -23,6 +23,19 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-18 — corroboration por commit (NOVO-1/NOVO-2) + SHRINK FE-DEBT-003
+
+> `goal_start` congela `git_head_base`; `goal_verdict` corrobora COMMITS via
+> `git diff base..HEAD` (fail-closed em base orfa exige review) e runtime
+> `.git/`/`.ppirtv/`/`.agents/` sai do ruído de corroboration.
+> `flowWithCurrentImplementationFingerprint` deixa o monolito (SHRINK paga
+> `FE-DEBT-003`; camping PASS SHRINK). RED-first:
+> `tests/git-corroboration-commits.test.ts` 4/4 (burla commit-then-verdict
+> NOVO-1 reprovada; doc-only legítimo NOVO-2 aceito; base orfa fail-closed);
+> probes MCP H3 3/3 (laudo adendo 3); suíte 685 passed | 4 skipped.
+> Limitação declarada: flow iniciado SEM git não tem baseline — corroboração
+> por commit só existe quando o repo preexiste ao primeiro binding.
+
 ## Reavaliação 2026-10-18 — hardening-3 + gate de commit
 
 > Recibo canônico machine-readable: [CAPACITY.receipt.json](CAPACITY.receipt.json)
@@ -37,7 +50,7 @@ corte (não é ausência).
 |---|---|---|
 | CAP-02 gates tipados | `changed_files`/`deleted_files` agora rejeitam escalar/objeto antes do merge; `[]` bloqueia | probe A/A2, teste R2, suíte 679 |
 | CAP-08 invalidação same-path | gate de revisão stale exige `review_current` e review estruturada atual; claims-only não reabre | probe B, teste R3 |
-| CAP-11 mechanical documental | veredito corrobora `changed_files` contra o diff Git real; sem `.git` a limitação é declarada | teste R6 Git; probe G no-Git documentado |
+| CAP-11 mechanical documental | veredito corrobora `changed_files` contra o diff Git real E commits via `git diff base..HEAD` (base congelada no primeiro `goal_start`; base orfa fail-closed); sem `.git` no start a limitação é declarada | tests/git-corroboration-commits.test.ts 4/4; probes H3 3/3 |
 | CAP-16 fiscal camping | visita CONTAIN PASS; `FE-DEBT-003` aberto para extrair a cola restante | `npm run check:flow-engine` PASS |
 | CAP-17 selagem pós-commit | `598ae5d` per-commit continua FAIL por selagem em `76e9c94`; exceção documentada | replay per-commit/cumulativo |
 | CAP-07 scaffold de review | server boundary remove `[object Object]`/nao-string de `reviewed_targets`/`scope_reference` e cai para placeholder | `tests/server-review-scaffold.test.ts` 2/2 |

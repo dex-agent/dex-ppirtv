@@ -603,6 +603,10 @@ export type Flow = {
   changed_files: string[];
   deleted_files?: string[];
   implementation_fingerprint?: string;
+  // Head Git congelado no primeiro goal_start; o verdict corrobora commits
+  // posteriores via diff base..HEAD e fail-close se a base virar orfa.
+  git_head_base?: string;
+  git_unresolved_commits?: boolean;
   decisions: string[];
   parking_lot: string[];
   gold_mining: string[];

@@ -1,10 +1,10 @@
 {
   "schema": "dex.capacity.snapshot.v1",
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
-  "fotografia_id": "2026-10-18-worktree-6fb2dae-hardening-3-help",
+  "fotografia_id": "2026-10-18-worktree-cc95ed5-git-corroboration-commits",
   "head": "6fb2dae56313d2f02b1fb4f3190a69eecbe72460",
   "tree_hash": null,
-  "generated_at": "2026-10-18T15:35:43.605882+00:00",
+  "generated_at": "2026-10-18T16:45:00.000000+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -23,9 +23,9 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 681,
+    "passed": 685,
     "skipped": 4,
-    "files": 50
+    "files": 51
   },
   "tools_count": 32,
   "capabilities": [
@@ -182,10 +182,11 @@
       "owner": "gate-resolution",
       "consumer": "Fiscal do veredito",
       "trigger": "Veredito mechanical com changed_files",
-      "behavior": "Extensionless = codigo; veredito cruza changed_files com git status real; sem .git a limitacao e declarada",
+      "behavior": "Extensionless = codigo; veredito cruza changed_files com git status real E commits via git diff base..HEAD (base congelada no primeiro goal_start; base orfa fail-closed exige review); runtime .git/.ppirtv/.agents fora da corroboration; sem .git no start a limitacao e declarada",
       "oracle": "tests/gate-integrity-hardening-3.test.ts R6 + tests/gate-integrity-revalidation.test.ts",
       "evidence": [
-        "Probe G no-Git documentado; teste R6 Git exige review"
+        "tests/git-corroboration-commits.test.ts 4/4 RED-first; probes MCP H3 3/3 (laudo adendo 3)",
+        "teste R6 Git; probe G no-Git documentado"
       ],
       "state": "comprovada",
       "limits": [
