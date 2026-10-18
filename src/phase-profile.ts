@@ -188,3 +188,40 @@ const PROFILES: Record<string, PhaseProfile> = {
 export function profileFor(mode?: string): PhaseProfile {
   return PROFILES[mode ?? "full"] ?? FULL_PROFILE;
 }
+
+// SPT gate-integrity-hardening (T-3, laudo F2): politica de transicao de fase
+// vive aqui (SSOT de perfil), nao no motor. Fase desconhecida falha fechado —
+// undefined NAO e fase terminal.
+export function nextPhaseOrThrow(mode: string | undefined, from: string): AnyPhase | null {
+  const nextPhase = profileFor(mode).nextPhase[from] as AnyPhase | null | undefined;
+  if (nextPhase === undefined) {
+    throw new Error(
+      `PPIRTV_UNKNOWN_PHASE_TRANSITION: fase "${from}" nao tem transicao definida no perfil "${mode ?? "full"}"`
+    );
+  }
+  return nextPhase;
+}
+
+export function assertPhaseInProfile(mode: string | undefined, to: AnyPhase): void {
+  const profile = profileFor(mode);
+  if (!profile.phases.includes(to)) {
+    throw new Error(
+      `PPIRTV_INVALID_PHASE_FOR_PROFILE: fase "${to}" nao pertence ao perfil "${mode ?? "full"}" (fases validas: ${profile.phases.join(", ")})`
+    );
+  }
+}
+
+export function phaseAdvanceAllowed(
+  flow: { status?: string; mode?: string; phase: string },
+  phaseBlockers: string[],
+  closureBlockers: string[] = []
+): boolean {
+  if (flow.status === "complete" || flow.status === "archived" || phaseBlockers.length > 0) {
+    return false;
+  }
+  const nextPhase = profileFor(flow.mode).nextPhase[flow.phase];
+  if (nextPhase === undefined) {
+    return false;
+  }
+  return nextPhase !== null || closureBlockers.length === 0;
+}

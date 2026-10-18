@@ -10,6 +10,31 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
+- Gates de prova tipados, retorno cross-profile e mechanical com codigo falham fechado (2026-10-18
+  `gate-integrity-hardening`, SPT
+  `.agents/PLAN-TASKS/2026-10-17-gate-integrity-hardening.md`, laudo
+  `.agents/REVIEWS/2026-10-17-laudo-gate-integrity-hardening.md`): (F1) requisitos
+  `provided` agora tem tipo contratado em `src/gate-resolution.ts` —
+  `implementation_done`/`diff_reviewed`/`barata_scan`/`test_executed`/
+  `memoria_viva_reconciled` exigem boolean `true`, `next_step` texto nao vazio,
+  `residual_risks` lista de textos (lista vazia valida) e `regression_risks`
+  ao menos um texto (strings `"false"`/`"no"`, `[]`, `{}`, `0` nao valem mais
+  como prova; diagnostico `field`/`received`/`expected` no gate bloqueado);
+  (F3) fast-track `mechanical` so e honrado sem arquivo de codigo em
+  `changed_files` (`CODE_FILE_EXTENSIONS` + `changedFilesContainCode`
+  centralizados em `src/gate-resolution.ts`) — codigo auto-declarado mechanical
+  exige review estruturada no veredito; (F2) `flow_return` cross-profile
+  rejeita com `PPIRTV_INVALID_PHASE_FOR_PROFILE` antes de persistir,
+  transicao de fase desconhecida lanca `PPIRTV_UNKNOWN_PHASE_TRANSITION` e
+  `phaseAdvanceAllowed` falha fechado em fase fora do perfil
+  (`src/flow-engine.ts`, EXCEPTION `FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES`);
+  `goal_advance` (`src/server.ts`) ensina os tipos no contrato da tool.
+  RED preservado em
+  `.agents/AUDITORIAS/EVIDENCIAS/2026-10-17-gate-integrity-red.log`
+  (7 failed | 4 passed); bateria em `tests/gate-integrity-hardening.test.ts`
+  (11 tests: tabela requisito x valor, cenario A compact mechanical, cenario B
+  cross-profile, F3 codigo x doc-only, nao-regressoes). Suite integral: 41
+  files, 641 passed | 4 skipped.
 - Review gate a prova de loop (2026-10-17 `review-gate-loop-proof`, SPT
   `.agents/PLAN-TASKS/2026-10-17-review-gate-loop-proof.md`): o
   fiscal de loop conta retry de review invalida e snippet de review_required ensina a forma completa

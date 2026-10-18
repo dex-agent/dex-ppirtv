@@ -9,6 +9,10 @@ export type GateRequirementResolution = {
   satisfied: boolean;
   satisfied_by: GateRequirement["source"] | "evidence" | null;
   evidence_ids: string[];
+  // SPT gate-integrity-hardening (T-2): quando o requisito e tipado
+  // (source=provided) e nao foi satisfeito, o diagnostico nomeia campo,
+  // valor recebido e tipo esperado. Opcional para nao quebrar consumidores.
+  diagnostic?: ProvidedRequirementDiagnostic | null;
 };
 
 export type GateResolutionInput = {
@@ -41,6 +45,22 @@ const EXPLICIT_EVIDENCE_REQUIREMENTS = new Set([
 const REVIEW_KINDS = new Set(["code_review", "review"]);
 const TEST_KINDS = new Set(["test", "test_log", "test_run"]);
 
+// SPT gate-integrity-hardening (T-3, laudo F3): catalogo centralizado de
+// extensoes de codigo. O fast-track "mechanical" so e honrado quando nenhum
+// arquivo de codigo aparece em changed_files; codigo real exige o ciclo
+// fiscal completo (review estruturada corroborada).
+export const CODE_FILE_EXTENSIONS: readonly string[] = [
+  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
+  ".py", ".go", ".rs", ".java", ".cs", ".kt", ".swift", ".dart",
+  ".c", ".h", ".cpp", ".hpp", ".php", ".rb", ".sql", ".sh", ".ps1"
+];
+
+export function changedFilesContainCode(changedFiles: readonly string[]): boolean {
+  return changedFiles.some((file) =>
+    CODE_FILE_EXTENSIONS.some((extension) => file.toLowerCase().endsWith(extension))
+  );
+}
+
 export function resolveGateRequirements(input: GateResolutionInput): GateRequirementResolution[] {
   const provided = input.provided ?? {};
   return input.requirements.map((requirement) => {
@@ -58,13 +78,17 @@ export function resolveGateRequirements(input: GateResolutionInput): GateRequire
       input.canonicalVerdictRequired === true
     );
     const satisfiedBy = sourceSatisfied ? requirement.source : evidenceIds.length > 0 ? "evidence" : null;
+    const diagnostic = satisfiedBy === null
+      ? providedRequirementDiagnostic(requirement.key, provided[requirement.key])
+      : null;
     return {
       key: requirement.key,
       label: requirement.label,
       accepted_sources: acceptedSources,
       satisfied: satisfiedBy !== null,
       satisfied_by: satisfiedBy,
-      evidence_ids: evidenceIds
+      evidence_ids: evidenceIds,
+      ...(diagnostic ? { diagnostic } : {})
     };
   });
 }
@@ -192,7 +216,7 @@ function requirementSatisfiedBySource(
   canonicalVerdictRequired: boolean
 ): boolean {
   if (source === "provided") {
-    return truthy(provided[key]);
+    return providedRequirementSatisfied(key, provided[key]);
   }
   if (source === "evidence") {
     return flow.evidence.length > 0 || truthy(provided[key]);
@@ -348,6 +372,83 @@ function truthy(value: unknown): boolean {
   if (Array.isArray(value)) return true;
   if (typeof value === "string") return value.trim().length > 0;
   return Boolean(value);
+}
+
+// SPT gate-integrity-hardening (T-2, laudo F1): requisito de source=provided
+// tem tipo contratado. O mapa substitui a interpretacao "truthy" que aceitava
+// "false", "no", [] e {} como prova de execucao (divergencia gate-resolution
+// x flow-engine medida no laudo de 2026-10-17).
+export type ProvidedRequirementKind =
+  | "boolean"
+  | "non_empty_string"
+  | "string_array"
+  | "non_empty_string_array";
+
+export const PROVIDED_REQUIREMENT_KINDS: Record<string, ProvidedRequirementKind> = {
+  implementation_done: "boolean",
+  diff_reviewed: "boolean",
+  barata_scan: "boolean",
+  test_executed: "boolean",
+  memoria_viva_reconciled: "boolean",
+  next_step: "non_empty_string",
+  residual_risks: "string_array",
+  regression_risks: "non_empty_string_array"
+};
+
+const NEGATIVE_STRING_MARKERS = new Set(["false", "no", "nao", "não", "null", "undefined", "0", "off"]);
+
+export function providedRequirementSatisfied(key: string, value: unknown): boolean {
+  const kind = PROVIDED_REQUIREMENT_KINDS[key];
+  if (!kind) {
+    return truthy(value);
+  }
+  switch (kind) {
+    case "boolean":
+      return value === true;
+    case "non_empty_string": {
+      if (typeof value !== "string") return false;
+      const normalized = value.trim().toLowerCase();
+      return normalized.length > 0 && !NEGATIVE_STRING_MARKERS.has(normalized);
+    }
+    case "string_array":
+      return stringArray(value) && value.every((item) => item.trim().length > 0);
+    case "non_empty_string_array":
+      return stringArray(value) && value.length > 0 && value.every((item) => item.trim().length > 0);
+  }
+}
+
+// Diagnostico de shape para gate bloqueado por tipo: nomeia campo, valor
+// recebido e tipo esperado (o erro deixa de ser apenas "faltando").
+export type ProvidedRequirementDiagnostic = {
+  field: string;
+  received: string;
+  expected: string;
+};
+
+export function providedRequirementDiagnostic(
+  key: string,
+  value: unknown
+): ProvidedRequirementDiagnostic | null {
+  const kind = PROVIDED_REQUIREMENT_KINDS[key];
+  if (!kind) {
+    return null;
+  }
+  const expected = kind === "boolean"
+    ? "boolean true"
+    : kind === "non_empty_string"
+      ? "texto nao vazio (negativos como \"false\"/\"no\" nao contam)"
+      : kind === "string_array"
+        ? "lista de textos (lista vazia e valida)"
+        : "lista com pelo menos um texto nao vazio";
+  return { field: key, received: describeProvidedValue(value), expected };
+}
+
+function describeProvidedValue(value: unknown): string {
+  if (value === null) return "null";
+  if (value === undefined) return "undefined";
+  if (Array.isArray(value)) return `array(${value.length})`;
+  if (typeof value === "string") return `string "${value.slice(0, 40)}"`;
+  return `${typeof value} ${String(value).slice(0, 40)}`;
 }
 
 function uniqueSources(values: GateRequirementResolution["accepted_sources"]): GateRequirementResolution["accepted_sources"] {

@@ -215,6 +215,45 @@
       "red_base_blob": "9ebcd3d49042cc3a0eddce849b12a527e3f3ff21",
       "red_observed_failure": "count < 6 apos 7 ciclos de evidence_add de review invalida intercalada com re-checagem bloqueada (evidence_attached invalida resetava a janela como progresso falso); escalonamento 6/8/9 inalcancavel — incidente real 2026-10-17 com ~60 retries",
       "red_command": "npx vitest run tests/loop-monitor-escalation.test.ts -t \"7 ciclos de review invalida + re-checagem bloqueada levam count a >= 6 com escalonamento research_subagent\""
+    },
+    {
+      "id": "FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES",
+      "date": "2026-10-18",
+      "mode": "SHRINK",
+      "base_blob": "b4a88d1a47915b22a5484ba0ad512051c0fb1c13",
+      "head_blob": "2fdc7720afdbcb86cbdbcf02103287c61b6a82fe",
+      "spt_path": ".agents/PLAN-TASKS/2026-10-17-gate-integrity-hardening.md",
+      "responsibility": "Phase-transition policy (phaseAdvanceAllowed) extracted to the phase-profile SSOT; mechanical fast-track and cross-profile return fail closed.",
+      "owner": "$oraculo-refatoracao",
+      "destination_module": "src/phase-profile.ts",
+      "consumers": [
+        "src/flow-engine.ts",
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/gate-integrity-hardening.test.ts",
+        "tests/engine.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/gate-integrity-hardening.test.ts": "veredito bloqueia (review_required) quando changed_files contem src/a.ts",
+        "tests/engine.test.ts": "T-MC-S compact flow runs end-to-end concepcao->implementacao->revisao->validacao with verdict (smoke)"
+      },
+      "changelog_marker": "Gates de prova tipados, retorno cross-profile e mechanical com codigo falham fechado",
+      "architecture_marker": "FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES",
+      "pays_debt_id": "FE-DEBT-002",
+      "removed_symbols": [
+        "phaseAdvanceAllowed"
+      ],
+      "symbol_mappings": {
+        "phaseAdvanceAllowed": "phaseAdvanceAllowed"
+      },
+      "same_responsibility": true,
+      "behavior_preserved_by": [
+        "tests/gate-integrity-hardening.test.ts::flow_return para fase full em flow compacto rejeita com erro tipado e preserva phase",
+        "tests/gate-integrity-hardening.test.ts::doc-only mantem fast-track do mechanical (nao-regressao)",
+        "tests/engine.test.ts::T-MC-S compact flow runs end-to-end",
+        "RED log .agents/AUDITORIAS/EVIDENCIAS/2026-10-17-gate-integrity-red.log (7 failed no base, 11 passed no head)"
+      ]
     }
   ]
 }

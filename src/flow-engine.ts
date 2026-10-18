@@ -42,7 +42,7 @@ import {
   type WorkProgressStatus,
   type WorkProgressSummary
 } from "./domain.js";
-import { isStructuredReviewEvidence, resolveGateRequirements, reviewEvidenceDiagnostics, reviewEvidenceValidity, type GateRequirementResolution } from "./gate-resolution.js";
+import { changedFilesContainCode, isStructuredReviewEvidence, resolveGateRequirements, reviewEvidenceDiagnostics, reviewEvidenceValidity, type GateRequirementResolution } from "./gate-resolution.js";
 import {
   assertLegacyFlowCanReceiveFirstGoalBinding,
   ensureLedgerTransitionRecorded,
@@ -86,7 +86,7 @@ import {
   type PrincipleChecklistItem
 } from "./principles.js";
 import { PpirtvStore, type RuntimeLayoutStatus } from "./store.js";
-import { profileFor, type GateRequirement } from "./phase-profile.js";
+import { assertPhaseInProfile, nextPhaseOrThrow, phaseAdvanceAllowed, profileFor, type GateRequirement } from "./phase-profile.js";
 import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured, sameRuntimePath } from "./config.js";
 import { fingerprintSptContract, parseSptDocument, sha256SptDocument } from "./spt-contract.js";
 import { fiscalStateSegment } from "./error-envelope.js";
@@ -3069,7 +3069,7 @@ export class FlowEngine {
     const fresh = await this.flowWithCurrentImplementationFingerprint(await this.store.loadFlow(flow.flow_id));
     const from = fresh.phase;
     // Patch B (modo compact wire-up): proxima fase segundo o perfil do flow.
-    const to = profileFor(fresh.mode).nextPhase[from] as AnyPhase | null;
+    const to = nextPhaseOrThrow(fresh.mode, from);
     const now = nowIso();
     if (to === null) {
       if (fresh.goal_binding) {
@@ -3333,6 +3333,7 @@ export class FlowEngine {
     requireText(input.reason, "reason");
     const flow = await this.store.loadFlow(input.flow_id);
     assertFlowAcceptsMutation(flow);
+    assertPhaseInProfile(flow.mode, input.to);
     const from = flow.phase;
     const now = nowIso();
     flow.phase = input.to;
@@ -4792,12 +4793,7 @@ function effectiveFlowStatus(flow: Flow, blockers: string[]): Flow["status"] {
   return blockers.length > 0 ? "blocked" : "active";
 }
 
-function phaseAdvanceAllowed(flow: Flow, phaseBlockers: string[], closureBlockers: string[] = []): boolean {
-  if (flow.status === "complete" || flow.status === "archived" || phaseBlockers.length > 0) {
-    return false;
-  }
-  return profileFor(flow.mode).nextPhase[flow.phase] !== null || closureBlockers.length === 0;
-}
+// phaseAdvanceAllowed vive em src/phase-profile.ts (FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES).
 
 function closureBlockersFor(flow: Flow, meetings: Meeting[]): string[] {
   const fiscal = evaluateFiscalPolicy(flow);
@@ -5128,20 +5124,19 @@ function fiscalMateriality(flow: Flow, input: FiscalVerdictInput): boolean {
   if (!flow.goal_binding) {
     return false;
   }
-  // Fast-track: mechanical risk (text/doc/refs updates) skips fiscal material
-  if (flow.goal_binding.envelope.risk_level === "mechanical") {
-    return false;
-  }
-  const text = fiscalText(flow, input);
-  return (
+  const material = () =>
     input.status === "pronto_com_ressalvas" ||
-    materialRiskText(text) ||
+    materialRiskText(fiscalText(flow, input)) ||
     memoryRequiredByFlow(flow, input) ||
     codeReviewRequired(flow, input) ||
     hasHygieneBlocking(flow) ||
     recurringRisk(input) ||
-    latestLibrarianStatus(flow)?.status === "failed"
-  );
+    latestLibrarianStatus(flow)?.status === "failed";
+  // Fast-track: mechanical risk (text/doc/refs updates) skips fiscal material.
+  if (flow.goal_binding.envelope.risk_level === "mechanical") {
+    return changedFilesContainCode(flow.changed_files) && material();
+  }
+  return material();
 }
 
 function fiscalText(flow: Flow, input: FiscalVerdictInput): string {
@@ -5384,11 +5379,13 @@ function reviewStatusForPostWrite(validation: MemoryPostWriteValidation, written
 }
 
 function codeReviewRequired(flow: Flow, input: FiscalVerdictInput): boolean {
-  // Fast-track: mechanical risk (text/doc updates) does not require code review
+  const baseCodeReviewRequired = () =>
+    flow.changed_files.length > 0 || /(codigo|código|mudanca de codigo|mudança de código|diff|review|revisor)/i.test(fiscalText(flow, input));
+  // Fast-track: mechanical risk (text/doc updates) does not require code review.
   if (flow.goal_binding?.envelope.risk_level === "mechanical") {
-    return false;
+    return changedFilesContainCode(flow.changed_files) && baseCodeReviewRequired();
   }
-  return flow.changed_files.length > 0 || /(codigo|código|mudanca de codigo|mudança de código|diff|review|revisor)/i.test(fiscalText(flow, input));
+  return baseCodeReviewRequired();
 }
 
 function hasReviewEvidence(flow: Flow, input: FiscalVerdictInput): boolean {

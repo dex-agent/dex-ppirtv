@@ -686,7 +686,7 @@ function registerTools(
     server,
     "goal_advance",
     {
-      description: "Advance an official GOAL flow only after a real persisted gate passes. During implementation, declare intentional removals in both provided.changed_files and provided.deleted_files; an absent changed file without deleted_files fails closed. Status receipt defaults to lean; recall_consumption can explicitly confirm cited recall references.",
+      description: "Advance an official GOAL flow only after a real persisted gate passes. During implementation, declare intentional removals in both provided.changed_files and provided.deleted_files; an absent changed file without deleted_files fails closed. provided values are type-checked per requirement: implementation_done, diff_reviewed, barata_scan, test_executed and memoria_viva_reconciled require boolean true (strings like \"false\"/\"no\", numbers, objects and arrays are rejected); next_step requires non-empty text; residual_risks accepts a string list (empty list is valid); regression_risks requires at least one non-empty entry. Status receipt defaults to lean; recall_consumption can explicitly confirm cited recall references.",
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),

@@ -4787,9 +4787,11 @@ describe("PPIRTV flow engine", () => {
     expect(flow.phase).toBe("implementacao");
 
     // Implementacao -> Revisao
+    // SPT gate-integrity-hardening (T-3): fast-track mechanical so vale sem
+    // arquivo de codigo em changed_files; o smoke doc-only mantem a rota.
     await engine.goalAdvance({
       flow_id: flowId,
-      provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] }
+      provided: { implementation_done: true, changed_files: ["docs/smoke-compact.md"] }
     });
     flow = await engine.store.loadFlow(flowId);
     expect(flow.phase).toBe("revisao");

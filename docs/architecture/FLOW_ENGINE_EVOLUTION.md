@@ -157,11 +157,27 @@ git hash-object src/flow-engine.ts
 | Record | Mode | Responsibility | Destination | Result |
 | --- | --- | --- | --- | --- |
 | `FE-2026-08-01-RECALL-CONSUMPTION` | `SHRINK` | recall reference normalization/validation | `src/memory/recall-consumption-contract.ts` | responsibility removed from facade |
-| `FE-2026-08-02-SPT-PATH-DIAGNOSTICS` | `CONTAIN` | actionable `spt_path` diagnostics | `src/spt-path-diagnostics.ts` | new behavior contained; `FE-DEBT-001` open |
+| `FE-2026-08-02-SPT-PATH-DIAGNOSTICS` | `CONTAIN` | actionable `spt_path` diagnostics | `src/spt-path-diagnostics.ts` | new behavior contained; `FE-DEBT-001` later paid by `FE-2026-10-13-GOVERNED-TAG-CONTRACT` |
 | `FE-2026-08-11-POST-VERDICT-MINING-GATE` | `EXCEPTION` | prevent terminal completion before post-verdict mining | `FlowEngine` terminal glue | bounded integrity guard with causal MCP RED |
 | `FE-2026-10-13-GOVERNED-TAG-CONTRACT` | `SHRINK` | V2 promotion metadata policy (incl. governed tag assertion) | `src/memory/mining-policy.ts` | responsibility removed from facade; pays `FE-DEBT-001` |
 | `FE-2026-10-15-FISCAL-BLOCK-TEACHING-MESSAGE` | `CONTAIN` | actionable fiscal-block teaching messages (split codes, state numbers, unblock route) | `src/error-envelope.ts` | glue-only message enrichment (delta 0); `FE-DEBT-002` open |
 | `FE-2026-10-17-REVIEW-LOOP-FISCAL-SANE` | `EXCEPTION` | stamp review validity on `evidence_attached`, gate loop-monitor reset on it, truthful review snippet | `src/gate-resolution.ts` | bounded integrity hotfix with causal RED (incident 2026-10-17, ~60 invalid retries); expires next diff that touches `src/flow-engine.ts` |
+| `FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES` | `SHRINK` | phase-transition policy (`phaseAdvanceAllowed`) extracted to the profile SSOT; mechanical fast-track and cross-profile return fail closed | `src/phase-profile.ts` | pays `FE-DEBT-002`; laudo 2026-10-17 F1/F2/F3 closed with causal RED |
+
+`FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES` pays `FE-DEBT-002` through a
+verified cohesive seam: phase-transition policy
+(`phaseAdvanceAllowed`, plus `nextPhaseOrThrow` and `assertPhaseInProfile`)
+now lives in `src/phase-profile.ts`, the declared SSOT for phase policy.
+The mechanical fast-tracks in the facade consult the centralized
+`changedFilesContainCode` catalog (`src/gate-resolution.ts`), so a
+self-declared `mechanical` risk with code files keeps the full fiscal cycle
+(laudo F3); cross-profile returns throw
+`PPIRTV_INVALID_PHASE_FOR_PROFILE` before any mutation, unknown transitions
+throw `PPIRTV_UNKNOWN_PHASE_TRANSITION`, and unknown phases never count as
+terminal (laudo F2). Typed proof requirements (`PROVIDED_REQUIREMENT_KINDS`)
+close laudo F1 in `src/gate-resolution.ts`. RED log and bateria live in
+`tests/gate-integrity-hardening.test.ts` and
+`.agents/AUDITORIAS/EVIDENCIAS/2026-10-17-gate-integrity-red.log`.
 
 `FE-2026-10-17-REVIEW-LOOP-FISCAL-SANE` is a bounded integrity hotfix: the
 incident of 2026-10-17 proved that an invalid review evidence resets the
