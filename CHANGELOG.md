@@ -10,6 +10,11 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
+- Help/schema/usage read-only por tool MCP (2026-10-18): `call-mcp-tool.mjs
+  --describe/--schema/--usage` le `tools/list` e imprime descricao, JSON Schema
+  e usage sem invocar a tool; quickstart ganhou o wire flat de review e o FAQ
+  deixou de mandar o agente ao codigo-fonte. `tests/mcp-tool-describe.test.ts`
+  3/3; suite 674 passed | 4 skipped.
 - Gate integrity hardening-3: changed_files estrito, review currency e corroboracao Git (2026-10-18
   `gate-integrity-hardening-3`, SPT
   `.agents/PLAN-TASKS/2026-10-18-gate-integrity-hardening-3.md`): R2 valida

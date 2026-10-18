@@ -48,9 +48,9 @@ stable public documentation.
 ## Documentation for agents
 
 - [CAPACITY.md](CAPACITY.md) — capability map of this repository (static
-  photograph of commit `947fdb4`, 2026-10-18): 32 capabilities with honest
-  status (17 proven live, 9 partial, 1 unproven); regenerate with the
-  `dex-mapa-capacidades` skill, do not hand-edit verdicts.
+  photograph plus a live re-evaluation section, 2026-10-18): 34 capabilities
+  with honest status (24 proven live, 9 partial, 1 unproven); regenerate with
+  the `dex-mapa-capacidades` skill, do not hand-edit verdicts.
 - [`docs/INDEX.md`](docs/INDEX.md) is the public documentation map.
 - [MCP quickstart for agents](docs/guides/MCP_AGENT_QUICKSTART.md) explains the
   minimum GOAL flow, `tools/list` as machine-readable help, evidence, FAQ and
@@ -78,6 +78,18 @@ stable public documentation.
 
 The live MCP `tools/list` schema is authoritative for invoking tools. Stable
 documents explain workflow and invariants; they do not replace dynamic schemas.
+
+For a read-only shell view of one live tool, without invoking it:
+
+```bash
+node scripts/call-mcp-tool.mjs --workspace . --describe evidence_add
+node scripts/call-mcp-tool.mjs --workspace . --schema evidence_add
+node scripts/call-mcp-tool.mjs --workspace . --usage evidence_add
+```
+
+`--describe` prints the live description, input schema, annotations and an
+example; `--schema` prints the raw JSON Schema; `--usage` prints required
+arguments and an example skeleton. All three are read-only.
 
 ## Requirements
 
@@ -884,4 +896,4 @@ Current public documentation is intentionally small:
 | Immediate | `docs/INDEX.md` | Navigable public documentation map | Current |
 | Immediate | `docs/guides/MCP_AGENT_QUICKSTART.md` | Small-agent help, FAQ and troubleshooting | Current |
 | Immediate | `docs/contracts/CROSS_REPO_PROBLEM_REPORT_CONTRACT.md` | Reproducible consumer-to-owner problem reports | Current |
-| Later | Generated tool reference | Public schemas derived from the MCP server | Planned |
+| Later | Generated tool reference | Public schemas derived from the MCP server | Planned; `--describe/--schema/--usage` shell view is current |

@@ -37,11 +37,12 @@ corte (não é ausência).
 | CAP-16 fiscal camping | visita CONTAIN PASS; `FE-DEBT-003` aberto para extrair a cola restante | `npm run check:flow-engine` PASS |
 | CAP-17 selagem pós-commit | `598ae5d` per-commit continua FAIL por selagem em `76e9c94`; exceção documentada | replay per-commit/cumulativo |
 | CAP-33 gate de capacidades | novo `npm run check:capacity` + hook pre-commit bloqueiam commit com arquivos de capacidade sem reavaliação | script e hook desta visita |
+| CAP-34 help/schema/usage por tool | `--describe/--schema/--usage` no harness listam a tool sem invocá-la | `tests/mcp-tool-describe.test.ts` 3/3 |
 
-**Evidência do corte:** `npm run check` 671 passed | 4 skipped; build verde;
+**Evidência do corte:** `npm run check` 674 passed | 4 skipped; build verde;
 `check:flow-engine` PASS CONTAIN; `tests/gate-integrity-hardening-3.test.ts`
-4/4; `tests/capacity-gate.test.ts` 1/1; `npm run check:capacity` PASS; probes
-A/A2/B/C/D/E/F/G. **Limitações:** R5 permanece decisão documentada
+4/4; `tests/capacity-gate.test.ts` 1/1; `tests/mcp-tool-describe.test.ts`
+3/3; `npm run check:capacity` PASS; probes A/A2/B/C/D/E/F/G. **Limitações:** R5 permanece decisão documentada
 (evidence genérico aceita `criterion_proof`; review stale é contido por R3);
 R7 per-commit é exceção documentada; sem `.git` não há corroboração de diff.
 `FE-DEBT-003` aberto. A pendência P0
@@ -84,6 +85,7 @@ R7 per-commit é exceção documentada; sem `.git` não há corroboração de di
 | CAP-31 | Versioning/snapshot de produto | **não comprovada** | Estritamente documental; sem decisão de versão no corte |
 | CAP-32 | Dex Agent Telegram (áudio/proativo) | **comprovada** | Receipts reais messageId 879/880 (print não exercitado) |
 | CAP-33 | Gate de reavaliação de capacidades antes de commit | **comprovada** | `npm run check:capacity` + hook pre-commit desta visita |
+| CAP-34 | Help/schema/usage read-only por tool MCP | **comprovada** | `--describe/--schema/--usage` + `tests/mcp-tool-describe.test.ts` |
 
 ## Mapa relacional estático
 

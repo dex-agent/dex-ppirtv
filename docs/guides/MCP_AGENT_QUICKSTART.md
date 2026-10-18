@@ -217,9 +217,23 @@ When `reviewed_implementation_fingerprint` is supplied:
   `regression_risks`; and
 - the fingerprint must identify the current implementation revision.
 
-Otherwise `evidence_add` fails with
-`REVIEW_ATTESTATION_CLAIMS_REQUIRED`. The server does not create a successful
-evidence receipt and silently discard the fingerprint.
+The review keys in `observed_result` must be **flat at the top level**:
+
+```json
+{
+  "diff_reviewed": true,
+  "reviewed_targets": ["src/a.ts"],
+  "barata_scan": true,
+  "searched_patterns": ["consumidores vizinhos"],
+  "findings": [],
+  "regression_risks": []
+}
+```
+
+Nested review keys are rejected with `PPIRTV_INPUT_INVALID`. Otherwise
+`evidence_add` fails with `REVIEW_ATTESTATION_CLAIMS_REQUIRED`. The server
+does not create a successful evidence receipt and silently discard the
+fingerprint.
 
 ## Falhas comuns
 
@@ -227,8 +241,19 @@ FAQ and troubleshooting:
 
 ### Is there an `evidence_add --help` command?
 
-No. MCP tools are not CLI subcommands. Call `tools/list`; its live schema and
-description are the machine-readable help.
+There is no per-tool CLI subcommand. Call MCP `tools/list`; its live schema and
+description are authoritative. From a shell with the repo checked out, use the
+read-only harness instead of reading source:
+
+```bash
+node scripts/call-mcp-tool.mjs --workspace . --describe evidence_add
+node scripts/call-mcp-tool.mjs --workspace . --schema evidence_add
+node scripts/call-mcp-tool.mjs --workspace . --usage evidence_add
+```
+
+`--describe` prints name, description, input schema, annotations and an
+example; `--schema` prints the raw JSON Schema; `--usage` prints required
+arguments. All three only call `tools/list` and never invoke the tool.
 
 ### Why did the schema reject `environment` inside `revision_set`?
 
