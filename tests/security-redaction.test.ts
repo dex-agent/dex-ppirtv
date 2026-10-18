@@ -87,19 +87,22 @@ describe("secret redaction SSOT", () => {
 });
 
 describe("#1 secret in free-text does not leak to ledger", () => {
-  it("createFlow with sk-... in goal redacts in ledger (border output)", async () => {
-    // Bug #1: scrubSecrets redige por nome de chave, nao por conteudo.
-    // Um token sk-... em goal (campo livre) ia para ledger.ndjson sem redação.
-    // Agora scrubSecretLike (SSOT) redaciona por conteudo na borda de saida
-    // (ledger). O flow JSON interno mantem o original para o fiscal policy.
-    const flow = await engine.createFlow({
-      goal: "Testar usando sk-live-abc123xyz789 no objetivo"
-    });
+  it("createFlow with sk-... in goal is rejected before persisting (F4 fail-closed)", async () => {
+    // Bug #1 (historico): scrubSecrets redigia por nome de chave, nao por conteudo;
+    // um token sk-... em goal (campo livre) ia para ledger.ndjson sem redacao.
+    // SPT gate-integrity-f4f5f6 (laudo F4) endureceu o contrato: createFlow
+    // rejeita payload secret-like ANTES de persistir — o segredo nao chega ao
+    // flow JSON nem ao ledger (a redacao na borda de saida segue como defesa
+    // em profundidade).
+    await expect(
+      engine.createFlow({
+        goal: "Testar usando sk-live-abc123xyz789 no objetivo"
+      })
+    ).rejects.toThrow(/secret/i);
 
-    // Ler o ledger em disco e verificar se o segredo foi redatado.
+    // Nenhuma superficie persistida pode conter o segredo.
     const ledgerText = await readFile(store.ledgerPath, "utf8");
     expect(ledgerText).not.toContain("sk-live-abc123xyz789");
-    expect(ledgerText).toContain("[redacted]");
   });
 });
 

@@ -163,6 +163,21 @@ git hash-object src/flow-engine.ts
 | `FE-2026-10-15-FISCAL-BLOCK-TEACHING-MESSAGE` | `CONTAIN` | actionable fiscal-block teaching messages (split codes, state numbers, unblock route) | `src/error-envelope.ts` | glue-only message enrichment (delta 0); `FE-DEBT-002` open |
 | `FE-2026-10-17-REVIEW-LOOP-FISCAL-SANE` | `EXCEPTION` | stamp review validity on `evidence_attached`, gate loop-monitor reset on it, truthful review snippet | `src/gate-resolution.ts` | bounded integrity hotfix with causal RED (incident 2026-10-17, ~60 invalid retries); expires next diff that touches `src/flow-engine.ts` |
 | `FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES` | `SHRINK` | phase-transition policy (`phaseAdvanceAllowed`) extracted to the profile SSOT; mechanical fast-track and cross-profile return fail closed | `src/phase-profile.ts` | pays `FE-DEBT-002`; laudo 2026-10-17 F1/F2/F3 closed with causal RED |
+| `FE-2026-10-18-GATE-INTEGRITY-F4F5F6` | `EXCEPTION` | secret-like rejection at the three entrypoints, stale-gate snapshot invalidation and snapshot-checked reuse | `src/gate-resolution.ts` | bounded integrity guard (laudo F4/F5) with causal RED; expires next diff that touches `src/flow-engine.ts` |
+
+`FE-2026-10-18-GATE-INTEGRITY-F4F5F6` is a bounded integrity exception (laudo
+F4/F5, SPT gate-integrity-f4f5f6): the facade only gained pure-call guards —
+`assertNoSecretLikePayload` at `createFlow`/`updateFlowFactsUnlocked`/
+`startGoalUnlocked` (secret-like payload is rejected BEFORE persisting; the
+`pipeline_evidence` attach now declares `satisfies: item.expected_evidence`),
+plus `changed_files_snapshot` stamping, `invalidateStaleDownstreamGates` and
+snapshot-checked `shouldReuseSavedGate`. All policy lives in
+`src/gate-resolution.ts` (`gateSnapshotMatches`,
+`invalidateStaleDownstreamGates`, `genericEvidenceSatisfied`). Causal RED:
+F5 scenario D (`gate revisao passed + novo arquivo em changed_files
+bloqueia o avanço sem nova revisao`) plus F4/F6 REDs in
+`.agents/AUDITORIAS/EVIDENCIAS/2026-10-18-gate-integrity-f4f5f6-red.log`.
+Pays no debt; `FE-DEBT-002` remains open.
 
 `FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES` pays `FE-DEBT-002` through a
 verified cohesive seam: phase-transition policy

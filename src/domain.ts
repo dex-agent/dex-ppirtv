@@ -400,6 +400,10 @@ export type GateRecord = {
   checked_at: string;
   provided: Record<string, unknown>;
   implementation_fingerprint?: string;
+  // SPT gate-integrity-f4f5f6 (T-4, laudo F5): snapshot de changed_files no
+  // momento do check; gates downstream so sao reutilizados enquanto o snapshot
+  // permanecer identico ao estado atual do flow.
+  changed_files_snapshot?: string[];
   missing: string[];
   next: string;
   back_to: AnyPhase | null;

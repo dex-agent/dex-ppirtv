@@ -42,7 +42,7 @@ import {
   type WorkProgressStatus,
   type WorkProgressSummary
 } from "./domain.js";
-import { changedFilesContainCode, isStructuredReviewEvidence, resolveGateRequirements, reviewEvidenceDiagnostics, reviewEvidenceValidity, type GateRequirementResolution } from "./gate-resolution.js";
+import { changedFilesContainCode, gateSnapshotMatches, invalidateStaleDownstreamGates, isStructuredReviewEvidence, resolveGateRequirements, reviewEvidenceDiagnostics, reviewEvidenceValidity, type GateRequirementResolution } from "./gate-resolution.js";
 import {
   assertLegacyFlowCanReceiveFirstGoalBinding,
   ensureLedgerTransitionRecorded,
@@ -297,6 +297,8 @@ export class FlowEngine {
   }): Promise<Flow & PresentationEnvelope> {
     await this.store.init();
     requireText(input.goal, "goal");
+    // Laudo F4: segredo nao pode entrar no flow JSON nem no ledger.
+    assertNoSecretLikePayload(input, "createFlow");
     const now = nowIso();
     const flow = this.buildInitialFlow(input, await this.store.nextId("flow"), now);
     await this.store.saveFlow(flow);
@@ -393,6 +395,8 @@ export class FlowEngine {
   ): Promise<Flow> {
     const flow = await this.store.loadFlow(flowId);
     assertFlowAcceptsMutation(flow);
+    // Laudo F4: fato com segredo rejeita antes de persistir.
+    assertNoSecretLikePayload(facts, "update_flow_facts");
     const now = nowIso();
     flow.context = facts.context ?? flow.context;
     flow.risks = facts.risks ?? flow.risks;
@@ -408,6 +412,8 @@ export class FlowEngine {
       flow.deleted_files = flow.deleted_files ?? [];
     }
     assertDeletedFilesBelongToChangedFiles(flow.changed_files, flow.deleted_files);
+    // Laudo F5: mudanca de changed_files invalida gates downstream passados.
+    invalidateStaleDownstreamGates(flow.gates, flow.changed_files);
     flow.decisions = facts.decisions ?? flow.decisions;
     flow.scope = {
       in: facts.scope?.in ?? flow.scope.in,
@@ -560,6 +566,9 @@ export class FlowEngine {
   }
 
   private async startGoalUnlocked(input: GoalEnvelope): Promise<Record<string, unknown>> {
+    // Laudo F4: envelope com segredo (objective/context) rejeita antes de
+    // qualquer persistencia — mesmo vindo de SPT valido.
+    assertNoSecretLikePayload(input, "goal_start");
     const envelope = normalizeGoalEnvelope(input);
     const canonicalStore = path.basename(this.store.root).toLowerCase() === ".ppirtv";
     if (!canonicalStore && !this.store.fixtureOnlyNoncanonicalRoot) {
@@ -1285,6 +1294,7 @@ export class FlowEngine {
     const shouldReuseSavedGate =
       !input.provided &&
       savedGate?.status === "passed" &&
+      gateSnapshotMatches(savedGate as GateRecord, flow.changed_files) &&
       !officialGoalNeedsCanonicalVerdict(flow);
     const providedForGate =
       !input.provided && savedGate?.status === "passed" && officialGoalNeedsCanonicalVerdict(flow)
@@ -2898,6 +2908,7 @@ export class FlowEngine {
       checked_at: nowIso(),
       provided: effectiveProvided,
       implementation_fingerprint: flowForResolution.implementation_fingerprint,
+      changed_files_snapshot: [...changedFiles],
       missing,
       next: status === "passed" ? `advance_to_${profile.nextPhase[phase] ?? "complete"}` : `complete_gate_${phase}`,
       back_to: status === "passed" ? null : (profile.defaultBackTo[phase] as Phase | null)
@@ -2905,6 +2916,7 @@ export class FlowEngine {
     if (input.persist ?? true) {
       flow.changed_files = changedFiles;
       flow.deleted_files = deletedFiles;
+      invalidateStaleDownstreamGates(flow.gates, flow.changed_files);
       flow.implementation_fingerprint = flowForResolution.implementation_fingerprint;
       flow.gates[phase] = record;
       flow.status = status === "blocked" ? "blocked" : flow.status === "blocked" ? "active" : flow.status;
@@ -3041,6 +3053,7 @@ export class FlowEngine {
     const shouldReuseSavedGate =
       !input.provided &&
       savedGate?.status === "passed" &&
+      gateSnapshotMatches(savedGate as GateRecord, flow.changed_files) &&
       !officialGoalNeedsCanonicalVerdict(flow);
     const providedForGate =
       !input.provided && savedGate?.status === "passed" && officialGoalNeedsCanonicalVerdict(flow)
@@ -4438,7 +4451,8 @@ export class FlowEngine {
         kind: "pipeline_evidence",
         title: `Pipeline evidence ${input.index + 1}`,
         content: pipelineEvidenceText(item),
-        note: "Evidence declared by mm_pipeline_run input; external build/code execution must be attached separately when required."
+        note: "Evidence declared by mm_pipeline_run input; external build/code execution must be attached separately when required.",
+        satisfies: item.expected_evidence
       });
 
       advanced = await this.advance({

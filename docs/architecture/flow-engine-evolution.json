@@ -254,6 +254,46 @@
         "tests/engine.test.ts::T-MC-S compact flow runs end-to-end",
         "RED log .agents/AUDITORIAS/EVIDENCIAS/2026-10-17-gate-integrity-red.log (7 failed no base, 11 passed no head)"
       ]
+    },
+    {
+      "id": "FE-2026-10-18-GATE-INTEGRITY-F4F5F6",
+      "date": "2026-10-18",
+      "mode": "EXCEPTION",
+      "base_blob": "2fdc7720afdbcb86cbdbcf02103287c61b6a82fe",
+      "head_blob": "b8272922559f43f52ebf902be42559c70249f171",
+      "spt_path": ".agents/PLAN-TASKS/2026-10-18-gate-integrity-f4f5f6.md",
+      "responsibility": "Secret-like rejection at the three flow entrypoints, stale-gate snapshot invalidation and snapshot-checked reuse (laudo F4/F5)",
+      "owner": "$oraculo-refatoracao",
+      "destination_module": "src/gate-resolution.ts",
+      "consumers": [
+        "src/flow-engine.ts",
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/gate-integrity-f4f5f6.test.ts",
+        "tests/engine.test.ts",
+        "tests/security-redaction.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/gate-integrity-f4f5f6.test.ts": "gate revisao passed + novo arquivo em changed_files bloqueia o avanço sem nova revisao",
+        "tests/engine.test.ts": "final advance records afterPhase without beforePhase",
+        "tests/security-redaction.test.ts": "createFlow with sk-... in goal is rejected before persisting (F4 fail-closed)"
+      },
+      "changelog_marker": "Segredo no envelope, gate stale e evidencia vazia falham fechado (F4/F5/F6)",
+      "architecture_marker": "FE-2026-10-18-GATE-INTEGRITY-F4F5F6",
+      "exception_reason": "integrity",
+      "rollback": "Revert the F4/F5/F6 commit and remove the three assertNoSecretLikePayload calls, the changed_files_snapshot stamping, invalidateStaleDownstreamGates calls and the gateSnapshotMatches reuse guards; tests/gate-integrity-f4f5f6.test.ts returns to RED.",
+      "expires": "next diff that touches src/flow-engine.ts",
+      "red_evidence": "tests/gate-integrity-f4f5f6.test.ts::gate revisao passed + novo arquivo em changed_files bloqueia o avanço sem nova revisao",
+      "red_base_blob": "2fdc7720afdbcb86cbdbcf02103287c61b6a82fe",
+      "red_observed_failure": "RED log .agents/AUDITORIAS/EVIDENCIAS/2026-10-18-gate-integrity-f4f5f6-red.log: 5 failed | 3 passed no base — F4 secret persistia no flow JSON, F6 aceitava provided.evidence 'false' e F5 reutilizava gate de revisao stale apos changed_files",
+      "red_command": "npx vitest run tests/gate-integrity-f4f5f6.test.ts -t \"gate revisao passed + novo arquivo em changed_files bloqueia o avanço sem nova revisao\"",
+      "same_responsibility": false,
+      "behavior_preserved_by": [
+        "tests/gate-integrity-f4f5f6.test.ts::nao-regressao: gate passed com snapshot identico continua reutilizavel",
+        "tests/gate-integrity-f4f5f6.test.ts::goal_start rejeita envelope com segredo no objective antes de criar o flow",
+        "tests/engine.test.ts (198 passed) e suite completa 649 passed | 4 skipped apos a adaptacao declarada"
+      ]
     }
   ]
 }

@@ -10,6 +10,20 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
+- Segredo no envelope, gate stale e evidencia vazia falham fechado (F4/F5/F6) (2026-10-18
+  `gate-integrity-f4f5f6`, SPT
+  `.agents/PLAN-TASKS/2026-10-18-gate-integrity-f4f5f6.md`, laudo
+  `.agents/REVIEWS/2026-10-17-laudo-gate-integrity-hardening.md`): (F4)
+  `createFlow`, `update_flow_facts` e `goal_start` rejeitam payload
+  secret-like ANTES de persistir — segredo nao chega mais ao flow JSON nem ao
+  ledger; (F5) `GateRecord` grava `changed_files_snapshot`, gates downstream
+  (`revisao`/`teste`/`validacao`) passados sao invalidados quando
+  `changed_files` muda e o reuso exige snapshot identico; (F6) o requisito
+  generico `evidence` exige evidencia relevante (`satisfies` cobrindo
+  `expected_evidence` OU receipt de teste com `passed`/`failed`/`exit_code`),
+  nao a existencia de qualquer evidencia. Replay black-box dos cenarios C/D e
+  bateria em `tests/gate-integrity-f4f5f6.test.ts` (8 testes).
+
 - Gates de prova tipados, retorno cross-profile e mechanical com codigo falham fechado (2026-10-18
   `gate-integrity-hardening`, SPT
   `.agents/PLAN-TASKS/2026-10-17-gate-integrity-hardening.md`, laudo

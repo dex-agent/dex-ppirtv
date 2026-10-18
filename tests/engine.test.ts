@@ -369,6 +369,7 @@ describe("PPIRTV flow engine", () => {
 
   it("final advance records afterPhase without beforePhase", async () => {
     const flow = await engine.createFlow({ goal: "Final hooks PPIRTV" });
+    await engine.updateFlowFacts(flow.flow_id, { expected_evidence: ["teste"] });
     await engine.advance({ flow_id: flow.flow_id, provided: { context: "ctx", risks: ["r"], uncertainties: ["u"] } });
     await engine.advance({
       flow_id: flow.flow_id,
@@ -376,7 +377,7 @@ describe("PPIRTV flow engine", () => {
     });
     await engine.advance({ flow_id: flow.flow_id, provided: { implementation_done: true, changed_files: ["src/index.ts"] } });
     await engine.advance({ flow_id: flow.flow_id, provided: { diff_reviewed: true, barata_scan: true, regression_risks: ["baixo"] } });
-    await engine.attachEvidence({ flow_id: flow.flow_id, kind: "note", title: "evidencia final", content: "ok" });
+    await engine.attachEvidence({ flow_id: flow.flow_id, kind: "note", title: "evidencia final", content: "ok", satisfies: ["teste"] });
     await engine.advance({ flow_id: flow.flow_id, provided: { test_executed: true } });
     await engine.recordVerdict({
       flow_id: flow.flow_id,
@@ -4629,7 +4630,7 @@ describe("PPIRTV flow engine", () => {
     // porque lia prestacao_de_contas ja removido por compactPpirtvCheckout.
     const flow = await engine.createFlow({ goal: "BUG5 checkout compact count" });
     // Adicionar alguma atividade para gerar prestacao_de_contas
-    await engine.attachEvidence({ flow_id: flow.flow_id, kind: "note", title: "ev", content: "x" });
+    await engine.attachEvidence({ flow_id: flow.flow_id, kind: "note", title: "ev", content: "x", satisfies: ["review"] });
 
     const checkoutFull = await engine.goalCheckout({ flow_id: flow.flow_id }) as Record<string, unknown>;
     // prestacao_de_contas pode ser array ou objeto; contar de forma compativel.
@@ -7966,9 +7967,10 @@ describe("PPIRTV flow engine", () => {
 
   it("runs a complete PPIRTV flow E2E through all phases", async () => {
     const flow = await engine.createFlow({ goal: "Rodar E2E PPIRTV" });
+    await engine.updateFlowFacts(flow.flow_id, { expected_evidence: ["teste"] });
     await engine.openMeeting({ flow_id: flow.flow_id, type: "divergent", question: "Quais riscos existem?" });
     await engine.openMeeting({ flow_id: flow.flow_id, type: "convergent", question: "Qual menor trilho?" });
-    await engine.attachEvidence({ flow_id: flow.flow_id, kind: "note", title: "evidencia inicial", content: "ok" });
+    await engine.attachEvidence({ flow_id: flow.flow_id, kind: "note", title: "evidencia inicial", content: "ok", satisfies: ["teste"] });
 
     await engine.advance({ flow_id: flow.flow_id, provided: { context: "ctx", risks: ["r"], uncertainties: ["u"] } });
     await engine.advance({

@@ -1,4 +1,4 @@
-import type { Evidence, Flow } from "./domain.js";
+import type { Evidence, Flow, GateRecord } from "./domain.js";
 import type { GateRequirement } from "./phase-profile.js";
 import { normalizeReviewPath } from "./review-snapshot.js";
 
@@ -219,7 +219,10 @@ function requirementSatisfiedBySource(
     return providedRequirementSatisfied(key, provided[key]);
   }
   if (source === "evidence") {
-    return flow.evidence.length > 0 || truthy(provided[key]);
+    // SPT gate-integrity-f4f5f6 (T-3, laudo F6): existencia de evidencia nao
+    // e prova — exige evidencia relevante para o contrato da fase
+    // (satisfies cobrindo expected_evidence OU receipt de teste valido).
+    return genericEvidenceSatisfied(flow);
   }
   if (source === "verdict") {
     return canonicalVerdictRequired ? false : flow.verdicts.length > 0 || truthy(provided[key]);
@@ -252,6 +255,61 @@ function requirementSatisfiedBySource(
 
 function nonNegativeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+// Laudo F6: evidencia relevante para o requisito generico source=evidence.
+function genericEvidenceSatisfied(flow: Flow): boolean {
+  return flow.evidence.some((evidence) =>
+    (evidence.satisfies ?? []).some((item) => flow.expected_evidence.includes(item))
+    || isTestReceipt(evidence)
+  );
+}
+
+// SPT gate-integrity-f4f5f6 (T-4, laudo F5): gates downstream (revisao em
+// diante) so sao reutilizados quando o snapshot de changed_files gravado no
+// momento do check permanece identico ao estado atual do flow. Gates legados
+// sem snapshot nao sao reutilizados em flows com arquivos (fail-closed).
+const DOWNSTREAM_REVIEW_PHASES = new Set(["revisao", "teste", "validacao"]);
+
+export function gateSnapshotMatches(gate: GateRecord, changedFiles: string[]): boolean {
+  return arraysSetEqual(gate.changed_files_snapshot ?? [], changedFiles);
+}
+
+export function invalidateStaleDownstreamGates(
+  gates: Record<string, GateRecord>,
+  changedFiles: string[]
+): number {
+  let dropped = 0;
+  for (const phase of Object.keys(gates)) {
+    const gate = gates[phase];
+    if (gate.status === "passed" && DOWNSTREAM_REVIEW_PHASES.has(phase) && !gateSnapshotMatches(gate, changedFiles)) {
+      delete gates[phase];
+      dropped += 1;
+    }
+  }
+  return dropped;
+}
+
+function arraysSetEqual(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  const rightSet = new Set(right);
+  return left.every((item) => rightSet.has(item));
+}
+
+function isTestReceipt(evidence: Evidence): boolean {
+  if (!TEST_KINDS.has(evidence.kind) || !evidence.observed_result) {
+    return false;
+  }
+  const result = evidence.observed_result;
+  return (
+    nonNegativeInteger(result.passed)
+    && nonNegativeInteger(result.failed)
+    && result.passed + result.failed > 0
+    && result.failed === 0
+    && result.exit_code === 0
+  );
 }
 
 function scopeIsAuthorized(flow: Flow, evidence: Evidence): boolean {
