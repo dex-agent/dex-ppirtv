@@ -4,6 +4,7 @@ import { lstat, readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { Flow } from "./domain.js";
+import { isClientValueWrapper } from "./input-unwrap.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -13,8 +14,14 @@ export function normalizeReviewPath(value: string): string {
   return normalizeReviewPathForPlatform(value, process.platform);
 }
 
-export function normalizeReviewPathForPlatform(value: string, platform: NodeJS.Platform): string {
-  const normalized = value.trim().replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\.\/+/, "");
+// SPT input-nunca-bloqueante-frentes-2 (GO do dono 2026-10-18): o valor pode
+// vir embrulhado (artefato de cliente) ou como objeto de flow legado
+// persistido sujo. Nunca lanca TypeError criptico: desembrulha o artefato
+// conhecido, stringifica o resto (vira path inexistente -> state missing ->
+// gate fail-closed honesto, sem loop).
+export function normalizeReviewPathForPlatform(value: unknown, platform: NodeJS.Platform): string {
+  const raw = isClientValueWrapper(value) ? value.value : value;
+  const normalized = String(raw ?? "").trim().replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\.\/+/, "");
   return platform === "win32" ? normalized.toLowerCase() : normalized;
 }
 

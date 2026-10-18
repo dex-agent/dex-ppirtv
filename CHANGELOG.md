@@ -10,6 +10,28 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Alterado
 
+- Fronteira de input nunca bloqueante — frentes 2 e 3: unwrap profundo +
+  leitura que responde + SHRINK FE-DEBT-001 pago (2026-10-18, GO do dono
+  após auditoria por print): o desembrulho do artefato `{"value": X}` passa
+  a valer para TODOS os níveis (elementos de array e objetos aninhados —
+  causa do `provided.changed_files` inválido e do `[object object]` no
+  laudo do consumidor), em UM ponto no módulo novo `src/input-unwrap.ts`;
+  as tools de diagnóstico cujos handlers toleram shape arbitrário
+  (`goal_status`, `flow_status` — as rotas que o consumidor usa para
+  destravar) nunca rejeitam por forma; as demais mantêm o envelope
+  ensinante (campo/recebido/esperado/exemplo/rota — identificação com
+  referência, não loop); o replay de `provided`
+  persistido sujo em flows velhos é saneado antes do merge
+  (`sanitizePersistedProvided` — drop de lixo nunca adiciona satisfação, o
+  gate segue fail-closed), `normalizeReviewPathForPlatform` tolera não-string
+  (fim do `value.trim is not a function`) e o helper `unique` do monolito
+  descarta não-strings de flows legados. Critério de aceite = replay do
+  transcript real do consumidor: `tests/consumer-replay-jumper.test.ts`
+  (goal_status full responde no flow sujo + evidence_add aceito com arrays
+  embrulhados chegando flat). A visita ao monolito é SHRINK: os
+  classificadores de `spt_path` (`resolveSptPath`, `isDirectory`, `isFile`,
+  `isInsideOrEqual`, `isSensitivePath`) migram para
+  `src/spt-path-diagnostics.ts` e pagam a dívida FE-DEBT-001.
 - Fronteira de input nunca bloqueante (2026-10-18, laudo do consumidor na
   máquina jumper + diretiva do dono): o artefato de serialização de cliente
   `{"value": X}` (objeto de uma chave `"value"`, medido 2026-10-17 e

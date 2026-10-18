@@ -40,6 +40,7 @@ import {
 } from "./error-envelope.js";
 import { registerPpirtvTool } from "./mcp/tool-effects.js";
 import { inspectRuntimeLayoutReadOnly } from "./mcp/runtime-layout.js";
+import { unwrapClientValueWrappersDeep } from "./input-unwrap.js";
 import { reviewObservedResultIssues, unwrapReviewValueWrappers } from "./review-input.js";
 
 const ANY_PHASES = [...PHASES, ...COMPACT_PHASES] as const;
@@ -96,18 +97,19 @@ type InputValidator = (tool: unknown, args: unknown, toolName: string) => Promis
 // Unwrap do artefato de cliente {"value": X} (laudo 2026-10-18, consumidor
 // na maquina jumper): geradores de tool-call de clientes reais embalam
 // valores em objetos de chave unica "value" (medido 2026-10-17 e
-// 2026-10-18). Um ponto so, no override de validacao — vale para TODAS as
-// tools e todos os campos de topo, antes do zod.
-function unwrapClientValueWrappers(args: Record<string, unknown>): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(args)) {
-    const wrapped =
-      value !== null && typeof value === "object" && !Array.isArray(value) &&
-      Object.keys(value).length === 1 && "value" in value;
-    result[key] = wrapped ? (value as { value: unknown }).value : value;
-  }
-  return result;
-}
+// 2026-10-18), inclusive elementos de array e objetos aninhados. Um ponto so,
+// no override de validacao — vale para TODAS as tools e TODOS os niveis, antes
+// do zod. O modulo src/input-unwrap.ts e o dono do dominio (metodo arvore).
+// Diretiva do dono (2026-10-18): ferramenta de LEITURA/DIAGNOSTICO nunca
+// bloqueia por forma. Escopo do guard: APENAS as tools de diagnostico cujo
+// handler tolera shape arbitrario (goal_status degrada detail, flow_status
+// responde pelo envelope de dominio) — as duas rotas que o consumidor real
+// usa para destravar. Nas demais, falha de zod continua devolvendo o
+// envelope ENSINANTE (campo/recebido/esperado/exemplo/rota): identificacao
+// com referencia e rota de correcao, nao loop criptico (prova:
+// tests/server-boundary.test.ts — passar lixo cru para handler fragil
+// gera TypeError, que e pior que o envelope).
+const READ_ONLY_TOOLS = new Set(["goal_status", "flow_status"]);
 
 function installTeachingInputValidation(server: McpServer): void {
   const receiver = server as unknown as { validateToolInput?: InputValidator };
@@ -117,7 +119,7 @@ function installTeachingInputValidation(server: McpServer): void {
   }
   receiver.validateToolInput = async (tool, args, toolName) => {
     try {
-      const unwrapped = unwrapClientValueWrappers(args as Record<string, unknown>);
+      const unwrapped = unwrapClientValueWrappersDeep(args as Record<string, unknown>);
       const schema = (tool as { inputSchema?: unknown }).inputSchema;
       let parsed: SafeParseOutcome | null = null;
       if (schema && typeof (schema as { safeParse?: unknown }).safeParse === "function") {
@@ -130,6 +132,9 @@ function installTeachingInputValidation(server: McpServer): void {
       }
       if (parsed.success) {
         return parsed.data ?? unwrapped;
+      }
+      if (READ_ONLY_TOOLS.has(String(toolName))) {
+        return unwrapped;
       }
       const issues = (parsed.error?.issues ?? []).map((issue) => ({
         path: issue.path,

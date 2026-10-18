@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile, readdir, stat } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import {
   PHASES,
@@ -43,6 +43,7 @@ import {
   type WorkProgressSummary
 } from "./domain.js";
 import { changedFilesContainCode, invalidateStaleDownstreamGates, isStructuredReviewEvidence, mergePathFacts, providedRequirementDiagnostic, resolveGateRequirements, reviewCurrencyAppliesToPhase, reviewCurrencyMissing, reviewEvidenceDiagnostics, reviewEvidenceValidity, savedGateReusable, strictPathArray, type GateRequirementResolution } from "./gate-resolution.js";
+import { sanitizePersistedProvided } from "./input-unwrap.js";
 import { assertNoSecretLikeItems, assertNoSecretLikePayload, assertNoSecretLikeText } from "./security/secret-redaction.js";
 import {
   assertLegacyFlowCanReceiveFirstGoalBinding,
@@ -94,7 +95,12 @@ import {
   missingValidationDiagnostic,
   runtimeWorkspaceMismatchDiagnostic,
   SptPathContractError,
-  validationSptPathDiagnostic
+  validationSptPathDiagnostic,
+  resolveSptPath,
+  isDirectory,
+  isFile,
+  isInsideOrEqual,
+  isSensitivePath
 } from "./spt-path-diagnostics.js";
 import {
   assertCriterionProofRevisionCurrent,
@@ -914,8 +920,12 @@ export class FlowEngine {
     }
     const checklist = await this.renderChecklist(flow.flow_id, detail === "compact" ? "compact" : "full");
     const savedGate = flow.gates[flow.phase];
+    // SPT input-nunca-bloqueante-frentes-2: o provided persistido do flow
+    // velho pode conter o artefato de cliente {"value": X} gravado antes do
+    // fix (laudo jumper 2026-10-18). A LEITURA saneia antes de rejogar no
+    // checkGate — diagnostico nunca morre por dado persistido sujo.
     const gateProvided = savedGate?.status === "blocked" || (savedGate?.status === "passed" && officialGoalNeedsCanonicalVerdict(flow))
-      ? savedGate.provided
+      ? sanitizePersistedProvided(savedGate.provided)
       : {};
     const gate = await this.checkGate({ flow_id: flow.flow_id, phase: flow.phase, provided: gateProvided, persist: false });
     const currentVerdict = flow.verdicts.at(-1) ?? null;
@@ -1214,7 +1224,10 @@ export class FlowEngine {
     assertNoSecretLikePayload(input.provided, "provided");
     const phase = input.phase ?? flow.phase;
     assertPhase(phase);
-    const persistedProvided = (flow.gates[phase]?.provided ?? {}) as Record<string, unknown>;
+    // SPT input-nunca-bloqueante-frentes-2: persisted legado sujo e saneado
+    // antes do merge — o input NOVO continua estrito (contrato R2 do
+    // hardening-3 preservado); so o replay de dado antigo nao mata a chamada.
+    const persistedProvided = sanitizePersistedProvided(flow.gates[phase]?.provided);
     const effectiveProvided = { ...persistedProvided, ...(input.provided ?? {}) };
     const snapshot = this.resolveGateSnapshot(flow, phase, effectiveProvided);
     const meetings = await this.store.listMeetings(flow.flow_id);
@@ -2884,7 +2897,10 @@ export class FlowEngine {
     // que chamadas subsequentes sem reenviar o provided continuem considerando-o
     // resolvido. Sources flow/evidence/meeting/verdict continuam consultando o
     // fluxo vivo e nao sao afetados por este merge.
-    const persistedProvided = (flow.gates[phase]?.provided ?? {}) as Record<string, unknown>;
+    // SPT input-nunca-bloqueante-frentes-2: persisted legado sujo e saneado
+    // antes do merge — o input NOVO continua estrito (contrato R2 do
+    // hardening-3 preservado); so o replay de dado antigo nao mata a chamada.
+    const persistedProvided = sanitizePersistedProvided(flow.gates[phase]?.provided);
     const effectiveProvided: Record<string, unknown> = { ...persistedProvided, ...provided };
     const changedFiles = phase === "implementacao"
       ? unique([...flow.changed_files, ...strictPathArray(effectiveProvided.changed_files, "provided.changed_files")])
@@ -4727,38 +4743,6 @@ function pipelineBlocker(result: Record<string, unknown>): string {
   const missing = Array.isArray(result.missing) ? result.missing.join(", ") : "";
   const next = typeof result.next === "string" ? result.next : "complete_current_gate";
   return missing ? `${next}: ${missing}` : next;
-}
-
-function resolveSptPath(workspace: string, sptPath: string): string {
-  return path.resolve(path.isAbsolute(sptPath) ? sptPath : path.join(workspace, sptPath));
-}
-
-async function isDirectory(target: string): Promise<boolean> {
-  try {
-    return (await stat(target)).isDirectory();
-  } catch {
-    return false;
-  }
-}
-
-async function isFile(target: string): Promise<boolean> {
-  try {
-    return (await stat(target)).isFile();
-  } catch {
-    return false;
-  }
-}
-
-function isInsideOrEqual(parent: string, child: string): boolean {
-  const relative = path.relative(path.resolve(parent), path.resolve(child));
-  return relative === "" || (!!relative && !relative.startsWith("..") && !path.isAbsolute(relative));
-}
-
-function isSensitivePath(target: string): boolean {
-  return path
-    .resolve(target)
-    .split(path.sep)
-    .some((segment) => /^\.env(?:\.|$)/i.test(segment));
 }
 
 function normalizeComparable(text: string): string {
@@ -8331,7 +8315,10 @@ function nowIso(): string {
 }
 
 function unique(values: string[]): string[] {
-  return [...new Set(values.filter((value) => value.trim().length > 0))];
+  // SPT input-nunca-bloqueante-frentes-2: flows legados podem carregar o
+  // artefato de cliente {"value": X} em changed_files; o filtro tolerante
+  // descarta o nao-string em vez de lancar TypeError criptico na leitura.
+  return [...new Set(values.filter((value) => typeof value === "string" && value.trim().length > 0))];
 }
 
 function uniqueCooperators(values: Flow["cooperators"]): Flow["cooperators"] {

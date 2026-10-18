@@ -1,4 +1,43 @@
+import path from "node:path";
+import { stat } from "node:fs/promises";
 import type { SptPathDiagnostic, SptPathOwner } from "./domain.js";
+
+// SHRINK FE-DEBT-001 (SPT input-nunca-bloqueante-frentes-2, 2026-10-18):
+// substrato de classificacao/roteamento de spt_path extraido do monolito —
+// resolveSptPath, isDirectory, isFile, isInsideOrEqual e isSensitivePath
+// alimentam exatamente os checks.spt_path_* que esta modulo classifica
+// (SRP/CCP: classificadores e classificacao mudam juntos, num lugar so).
+export function resolveSptPath(workspace: string, sptPath: string): string {
+  return path.resolve(path.isAbsolute(sptPath) ? sptPath : path.join(workspace, sptPath));
+}
+
+export async function isDirectory(target: string): Promise<boolean> {
+  try {
+    return (await stat(target)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+export async function isFile(target: string): Promise<boolean> {
+  try {
+    return (await stat(target)).isFile();
+  } catch {
+    return false;
+  }
+}
+
+export function isInsideOrEqual(parent: string, child: string): boolean {
+  const relative = path.relative(path.resolve(parent), path.resolve(child));
+  return relative === "" || (!!relative && !relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+export function isSensitivePath(target: string): boolean {
+  return path
+    .resolve(target)
+    .split(path.sep)
+    .some((segment) => /^\.env(?:\.|$)/i.test(segment));
+}
 
 type ValidationDiagnosticInput = {
   checks: Record<string, boolean>;

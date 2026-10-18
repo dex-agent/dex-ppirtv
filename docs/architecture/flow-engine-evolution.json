@@ -473,6 +473,55 @@
         "tests/git-corroboration-commits.test.ts": "NOVO-1: commit-then-verdict de codigo nao passa de doc-only (worktree limpo)"
       },
       "red_evidence": "tests/git-corroboration-commits.test.ts::NOVO-1: commit-then-verdict de codigo nao passa de doc-only (worktree limpo)"
+    },
+    {
+      "id": "FE-2026-10-18-INPUT-NEVER-BLOCKING-F2-SHRINK",
+      "spt_path": ".agents/PLAN-TASKS/2026-10-18-input-nunca-bloqueante-frentes-2.md",
+      "responsibility": "Fronteira de input nunca bloqueante (frentes 2 e 3, GO do dono 2026-10-18): desembrulho profundo do artefato de cliente {\"value\": X} num ponto unico (src/input-unwrap.ts), tools de leitura nunca rejeitam por forma, saneamento do provided persistido sujo no replay e tolerancia a paths legados; o monolito mantem apenas a cola de chamada. Completa o pagamento de FE-DEBT-001: o substrato de classificacao de spt_path (resolveSptPath, isDirectory, isFile, isInsideOrEqual, isSensitivePath) deixa a fachada e passa a morar junto da classificacao em src/spt-path-diagnostics.ts.",
+      "owner": "$oraculo-refatoracao",
+      "changelog_marker": "frentes 2 e 3: unwrap profundo",
+      "architecture_marker": "FE-2026-10-18-INPUT-NEVER-BLOCKING-F2-SHRINK",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/consumer-replay-jumper.test.ts",
+        "tests/spt-validator-teaching.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/spt-validator-teaching.test.ts": "path inexistente fora de PLAN-TASKS e NOT_FOUND, nunca 'exists outside'"
+      },
+      "mode": "SHRINK",
+      "removed_symbols": [
+        "resolveSptPath",
+        "isDirectory",
+        "isFile",
+        "isInsideOrEqual",
+        "isSensitivePath"
+      ],
+      "symbol_mappings": {
+        "resolveSptPath": "resolveSptPath",
+        "isDirectory": "isDirectory",
+        "isFile": "isFile",
+        "isInsideOrEqual": "isInsideOrEqual",
+        "isSensitivePath": "isSensitivePath"
+      },
+      "same_responsibility": true,
+      "behavior_preserved_by": [
+        "tests/spt-validator-teaching.test.ts::path inexistente fora de PLAN-TASKS e NOT_FOUND, nunca 'exists outside'",
+        "tests/spt-validator-teaching.test.ts::arquivo EXISTENTE fora de PLAN-TASKS continua recebendo OUTSIDE_PLAN_TASKS (verdade mantida)",
+        "tests/consumer-replay-jumper.test.ts::goal_status detail full RESPONDE no flow com provided persistido embrulhado (o loop eterno do laudo)"
+      ],
+      "pays_debt_id": "FE-DEBT-001",
+      "destination_module": "src/spt-path-diagnostics.ts",
+      "base_blob": "c01421a6c7ff2d4e08a49e19bb99e2730c230858",
+      "head_blob": "cb629cedff217be112a82fe70c60c9e350c188b9",
+      "red_evidence": "tests/consumer-replay-jumper.test.ts::goal_status detail full RESPONDE no flow com provided persistido embrulhado (o loop eterno do laudo)",
+      "comparison": {
+        "base": "HEAD",
+        "head": "WORKTREE",
+        "source": "worktree"
+      }
     }
   ]
 }

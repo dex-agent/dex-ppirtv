@@ -23,6 +23,28 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-18 — frentes 2 e 3: unwrap profundo + leitura que responde + SHRINK FE-DEBT-001
+
+> GO do dono após auditoria por print (pedido × entendimento × entrega).
+> Causa-raiz do loop eterno do consumidor decifrada no código: o flow velho
+> persistiu `gates[implementacao].provided.changed_files` com elementos
+> `{"value": X}` e o `goal_status` compact/full rejoga esse provided no
+> `checkGate`, onde `strictPathArray` lançava DENTRO da tool de leitura.
+> Entregue: (1) `src/input-unwrap.ts` novo — desembrulho profundo (arrays e
+> objetos aninhados, teto de profundidade) no ponto único da fronteira para
+> TODAS as tools + `sanitizePersistedProvided` (replay de dado persistido
+> sujo é saneado; drop nunca adiciona satisfação — fail-closed honesto);
+> (2) as tools de diagnóstico com handler tolerante (`goal_status`,
+> `flow_status`) nunca rejeitam por forma na fronteira; as demais mantêm o
+> envelope ensinante com rota (identificação com referência, não loop); (3) `normalizeReviewPathForPlatform` tolera não-string e o
+> helper `unique` do monolito descarta não-strings legados (fim do
+> `value.trim is not a function`/`[object object]` críptico); (4) visita
+> SHRINK ao monolito paga FE-DEBT-001: classificadores de `spt_path`
+> migram para `src/spt-path-diagnostics.ts`. Critério de aceite = replay do
+> transcript real do consumidor: `tests/consumer-replay-jumper.test.ts` 4/4
+> (RED provado antes do fix) + `tests/input-unwrap.test.ts` 9/9;
+> `npm run check:flow-engine` PASS modo SHRINK.
+
 ## Reavaliação 2026-10-18 — fronteira de input nunca bloqueante (unwrap + ressalvas)
 
 > Diretiva do dono: problema vai ocorrer com 100% de certeza; quando ocorrer,
