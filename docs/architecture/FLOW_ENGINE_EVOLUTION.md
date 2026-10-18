@@ -164,6 +164,29 @@ git hash-object src/flow-engine.ts
 | `FE-2026-10-17-REVIEW-LOOP-FISCAL-SANE` | `EXCEPTION` | stamp review validity on `evidence_attached`, gate loop-monitor reset on it, truthful review snippet | `src/gate-resolution.ts` | bounded integrity hotfix with causal RED (incident 2026-10-17, ~60 invalid retries); expires next diff that touches `src/flow-engine.ts` |
 | `FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES` | `SHRINK` | phase-transition policy (`phaseAdvanceAllowed`) extracted to the profile SSOT; mechanical fast-track and cross-profile return fail closed | `src/phase-profile.ts` | pays `FE-DEBT-002`; laudo 2026-10-17 F1/F2/F3 closed with causal RED |
 | `FE-2026-10-18-GATE-INTEGRITY-F4F5F6` | `EXCEPTION` | secret-like rejection at the three entrypoints, stale-gate snapshot invalidation and snapshot-checked reuse | `src/gate-resolution.ts` | bounded integrity guard (laudo F4/F5) with causal RED; expires next diff that touches `src/flow-engine.ts` |
+| `FE-2026-10-18-MEMORY-GATE-LOOP-SHRINK` | `SHRINK` | memory-mining policy predicates and loop-window math (append-only history, reconciliation-id guard) | `src/memory/mining-policy.ts` | 12 symbols leave the facade (-142 nonblank); pays no debt (`FE-DEBT-002` already paid by TYPED-PHASES); SPT memory-gate-loop-solubility, decisao A |
+
+`FE-2026-10-18-MEMORY-GATE-LOOP-SHRINK` removes the last in-facade mining
+policy cluster: twelve predicates and helpers (`noMemoryWasPromoted`,
+`memoryRequiredByFlow`, `memoryMiningCompletedWithNoCandidates`,
+`memoryMiningStructurallyPromoted`, `memoryPostWriteValidationBlocks`,
+`numericMemoryField`, `memoryIntentText`, `hasVerdictAfterLatestMemoryMining`,
+`blockerSignature`, `loopWindowEvents`, `isLoopResetEvent`, type
+`FiscalVerdictInput`) now live in `src/memory/mining-policy.ts`, the SSOT
+already opened by `FE-2026-10-13-GOVERNED-TAG-CONTRACT`. The same visit lands
+the decisao A fix for the insoluble memory-gate loop (SPT
+memory-gate-loop-solubility): flow history is fully append-only — every
+mining attempt appends its own `memory_mined` event — while idempotency lives
+only in the V2 ledger keyed by reconciliation id, and `loopWindowEvents`
+resets the escalation window only when the reconciliation id differs from the
+previous mining (a duplicate re-mining after a positive verdict is not
+progress; legacy events without an id still reset). Causal RED:
+`.agents/AUDITORIAS/EVIDENCIAS/2026-10-18-memory-gate-loop-red.log`
+(1 failed | 3 passed at base `695b439`); post-fix battery
+`tests/memory-gate-loop.test.ts` (4 tests) plus the adapted recovery contract
+in `tests/flow-engine-dex-memoria-v2.test.ts`; full suite 653 passed |
+4 skipped. Pays no debt — `FE-DEBT-002` was already paid by
+`FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES`.
 
 `FE-2026-10-18-GATE-INTEGRITY-F4F5F6` is a bounded integrity exception (laudo
 F4/F5, SPT gate-integrity-f4f5f6): the facade only gained pure-call guards —

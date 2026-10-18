@@ -10,6 +10,21 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Adicionado
 
+- Loop de mineracao pos-veredito deixa de ser insolvel (history append-only por tentativa; SHRINK MGL) (2026-10-18
+  `memory-gate-loop-solubility`, SPT
+  `.agents/PLAN-TASKS/2026-10-18-memory-gate-loop-solubility.md`): (decisao A)
+  o history do flow e 100% append-only — cada mineracao registra um evento
+  `memory_mined` proprio, mesmo com resultado identico — e a idempotencia vive
+  SOMENTE no ledger V2 por reconciliation id; o loop monitor so reseta a
+  janela quando o reconciliation id muda (re-mining duplicado nao e progresso),
+  enquanto eventos legados sem id continuam resetando. Doze predicados de
+  politica de mineracao e a matematica da janela de loop sairam da fachada
+  para `src/memory/mining-policy.ts` (SHRINK
+  `FE-2026-10-18-MEMORY-GATE-LOOP-SHRINK`, -142 linhas nao-vazias). RED causal
+  em `.agents/AUDITORIAS/EVIDENCIAS/2026-10-18-memory-gate-loop-red.log`;
+  bateria em `tests/memory-gate-loop.test.ts` (4 testes) e suite completa
+  653 passed | 4 skipped.
+
 - Segredo no envelope, gate stale e evidencia vazia falham fechado (F4/F5/F6) (2026-10-18
   `gate-integrity-f4f5f6`, SPT
   `.agents/PLAN-TASKS/2026-10-18-gate-integrity-f4f5f6.md`, laudo

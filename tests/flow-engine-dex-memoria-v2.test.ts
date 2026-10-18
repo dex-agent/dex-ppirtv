@@ -1171,9 +1171,13 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
     expect(executor.execute).toHaveBeenCalledTimes(3);
     expect(minedResolutionEvents).toHaveLength(1);
     expect(persistedRetried.memory_candidate_resolutions).toHaveLength(1);
+    // SPT memory-gate-loop-solubility (decisao A): history e append-only — a
+    // tentativa pendente e o retry apos reload registram um evento CADA (2);
+    // a completude logica "exatamente uma vez" vive no ledger (1 linha,
+    // asserted acima via minedResolutionEvents).
     expect(persistedRetried.history.filter((event) =>
       event.type === "memory_mined" && event.data.v2_reconciliation_id === reconciliationId
-    )).toHaveLength(1);
+    )).toHaveLength(2);
   });
 
   it("recognizes memory_mined append-then-throw by reconciliation identity without duplicating the logical event", async () => {

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { resolveDexMemoriaHome as resolveConfiguredDexMemoriaHome } from "../config.js";
-import type { Flow, Meeting, MemoryCandidate } from "../domain.js";
+import type { Flow, Meeting, MemoryCandidate, MemoryMiningSummary, MemoryPostWriteValidation, VerdictStatus } from "../domain.js";
 import type { DexMemoriaV2Destination, DexMemoriaV2MiningClassification, DexMemoriaV2MiningClassifierInput } from "./dex-memoria-v2-adapter.js";
 import type { MemoryNugget } from "./memory-types.js";
 
@@ -593,4 +593,208 @@ export function requireV2PromotionMetadata(
     ...(persistedTheme ? { theme: persistedTheme } : {}),
     ...(persistedOwnerSkill ? { owner_skill: persistedOwnerSkill } : {})
   };
+}
+
+// SPT memory-gate-loop-solubility (T-5 SHRINK, laudo do oráculo 2026-10-17):
+// pacote puro de decisão de mining/gate extraído do FlowEngine — uma única
+// noção de ordem (append-only) e loop monitor que só trata id distinto como
+// progresso. Sem dependência do monolito (zero ciclo).
+
+export type FiscalVerdictInput = {
+  status?: VerdictStatus;
+  rationale?: string;
+  evidence_ids?: string[];
+  residual_risks?: string[];
+  next_step?: string;
+  review_artifact_path?: string;
+  review_findings?: string[];
+  verdict_parking_lot?: string[];
+  verdict_gold_mining?: string[];
+  attempt_count?: number;
+  regress_count?: number;
+  meeting_id?: string;
+  meeting_ids?: string[];
+  memory_mining?: Record<string, unknown> | null;
+};
+
+function memoryPolicyStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+export function memoryIntentText(flow: Flow, input: FiscalVerdictInput): string {
+  const envelope = flow.goal_binding?.envelope;
+  const generatedProvenanceContext = envelope
+    ? `GOAL/SPT via dex-code. Workspace: ${envelope.workspace}. SPT: ${envelope.spt_path}.`
+    : null;
+  const semanticContext = flow.context === generatedProvenanceContext ? "" : flow.context;
+
+  return [
+    flow.goal,
+    semanticContext,
+    ...flow.risks,
+    ...flow.uncertainties,
+    ...flow.tasks,
+    ...flow.expected_evidence,
+    ...flow.done_criteria,
+    input.rationale,
+    input.next_step,
+    ...(input.residual_risks ?? []),
+    ...(input.review_findings ?? [])
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function memoryRequiredByFlow(flow: Flow, input: FiscalVerdictInput = {}): boolean {
+  return (
+    flow.history.some(
+      (event) =>
+        event.type === "fiscal_policy_blocked" &&
+        (event.data.memory_required === true || memoryPolicyStringArray(event.data.blocking_reasons).includes("memory_required_but_empty"))
+    ) ||
+    /(memoria|memória|\bL[123]\b|lembranca|lembrança|aprendizado reutilizavel|aprendizado reutilizável|garimpo|pepita)/i.test(memoryIntentText(flow, input))
+  );
+}
+
+export function noMemoryWasPromoted(flow: Flow, memoryMining?: Record<string, unknown> | null): boolean {
+  const status = memoryMining ?? flow.memory_mining;
+  const writtenCount = typeof status?.written_count === "number" ? status.written_count : 0;
+  if (writtenCount > 0) {
+    return !memoryMiningStructurallyPromoted(status);
+  }
+  const candidatesCount = typeof status?.candidates_count === "number" ? status.candidates_count : 0;
+  const candidates = Array.isArray(status?.candidates) ? status.candidates : [];
+  const editQueue = Array.isArray(status?.edit_queue) ? status.edit_queue : [];
+  const effectiveCandidatesCount = Math.max(candidatesCount, candidates.length, editQueue.length);
+  if (effectiveCandidatesCount > 0) {
+    return candidates.length === 0;
+  }
+  // Se a mineracao ja foi executada e terminou vazia, nao ha candidato para
+  // escrever nem candidate_id para resolver. O blocker de "memoria vazia" so
+  // faz sentido antes da mineracao ou quando existe residuo real.
+  if (memoryMiningCompletedWithNoCandidates(status)) {
+    return false;
+  }
+  // Compatibilidade com estados antigos de classify_only sem todos os campos.
+  // O blocker de "memoria vazia" so faz sentido quando a mineracao ainda
+  // nao rodou ou quando existe strong_unwritten aguardando decisao.
+  const miningRan = typeof status?.last_run_at === "string" && status.last_run_at.length > 0;
+  const writePolicy = typeof status?.write_policy === "string" ? status.write_policy : "";
+  const strongUnwrittenCount = typeof status?.strong_unwritten_count === "number" ? status.strong_unwritten_count : 0;
+  if (miningRan && writePolicy === "classify_only" && strongUnwrittenCount === 0) {
+    return false;
+  }
+  return true;
+}
+
+export function memoryMiningCompletedWithNoCandidates(memoryMining: Record<string, unknown> | MemoryMiningSummary | undefined | null): boolean {
+  if (!memoryMining) {
+    return false;
+  }
+  const miningRan = typeof memoryMining.last_run_at === "string" && memoryMining.last_run_at.length > 0;
+  const candidates = Array.isArray(memoryMining.candidates) ? memoryMining.candidates : [];
+  const editQueue = Array.isArray(memoryMining.edit_queue) ? memoryMining.edit_queue : [];
+  return (
+    miningRan &&
+    numericMemoryField(memoryMining, "candidates_count") === 0 &&
+    candidates.length === 0 &&
+    numericMemoryField(memoryMining, "written_count") === 0 &&
+    numericMemoryField(memoryMining, "strong_unwritten_count") === 0 &&
+    numericMemoryField(memoryMining, "blocked_count") === 0 &&
+    numericMemoryField(memoryMining, "write_failures_count") === 0 &&
+    editQueue.length === 0 &&
+    !memoryPostWriteValidationBlocks(memoryMining.memory_post_write_validation as MemoryPostWriteValidation | undefined | null)
+  );
+}
+
+function memoryMiningStructurallyPromoted(memoryMining: Record<string, unknown> | MemoryMiningSummary | undefined | null): boolean {
+  if (!memoryMining) {
+    return false;
+  }
+  return memoryMining.memory_written === true
+    && memoryMining.memory_validated === true
+    && !memoryPostWriteValidationBlocks(memoryMining.memory_post_write_validation as MemoryPostWriteValidation | undefined | null);
+}
+
+export function memoryPostWriteValidationBlocks(validation: MemoryPostWriteValidation | undefined | null): boolean {
+  return validation?.required === true && validation.status !== "passed";
+}
+
+export function numericMemoryField(memory: Record<string, unknown> | MemoryMiningSummary | undefined | null, field: string): number {
+  const value = memory?.[field as keyof typeof memory];
+  return typeof value === "number" ? value : 0;
+}
+
+export function hasVerdictAfterLatestMemoryMining(flow: Flow): boolean {
+  const eventTypes = flow.history.map((event) => event.type);
+  const latestMining = eventTypes.lastIndexOf("memory_mined");
+  return latestMining >= 0 && eventTypes.lastIndexOf("verdict_recorded") > latestMining;
+}
+
+export function blockerSignature(blockers: string[]): string {
+  return [...new Set(blockers)].sort().join("|");
+}
+
+export function loopWindowEvents(flow: Flow, signature: string, resetOnPassedGate = true): Flow["history"] {
+  const history = flow.history;
+  const duplicateMinings = duplicateMiningEventIndexes(history);
+  let start = 0;
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    if (isLoopResetEvent(history[index], signature, resetOnPassedGate, duplicateMinings.has(index))) {
+      start = index + 1;
+      break;
+    }
+  }
+  return history.slice(start);
+}
+
+// SPT memory-gate-loop-solubility (T-4, decisão A): re-mining com
+// reconciliation id idêntico ao mining imediatamente anterior NÃO é progresso
+// — não reseta a janela do loop monitor. Eventos legacy sem id contam como
+// progresso próprio (retrocompatível).
+function duplicateMiningEventIndexes(history: Flow["history"]): Set<number> {
+  const duplicates = new Set<number>();
+  let lastId: string | undefined;
+  for (let index = 0; index < history.length; index += 1) {
+    const event = history[index];
+    if (event.type !== "memory_mined") {
+      continue;
+    }
+    const id = event.data?.v2_reconciliation_id;
+    if (typeof id === "string" && id.length > 0) {
+      if (id === lastId) {
+        duplicates.add(index);
+      }
+      lastId = id;
+    } else {
+      lastId = undefined;
+    }
+  }
+  return duplicates;
+}
+
+export function isLoopResetEvent(
+  event: Flow["history"][number],
+  signature: string,
+  resetOnPassedGate: boolean,
+  isDuplicateMining = false
+): boolean {
+  if (event.type === "fiscal_policy_blocked" || event.type === "goal_terminal_blocked") {
+    const eventSignature = String(event.data.loop_signature ?? blockerSignature(memoryPolicyStringArray(event.data.blocking_reasons)));
+    return eventSignature !== signature;
+  }
+  if (resetOnPassedGate && event.type === "gate_checked" && event.data.status === "passed") {
+    return true;
+  }
+  if (event.type === "evidence_attached") {
+    // SPT review-gate-loop-proof (T-3): evidencia de review INVALIDA nao e
+    // progresso — nao reseta a janela (o ciclico do incidente 2026-10-17
+    // anestesiava o fiscal com ~60 resets). Eventos antigos sem o campo e
+    // kinds nao-review (campo ausente) continuam resetando (retrocompativel).
+    return event.data.review_valid !== false;
+  }
+  if (event.type === "memory_mined") {
+    return !isDuplicateMining;
+  }
+  return ["meeting_closed", "phase_advanced", "verdict_recorded", "flow_completed", "flow_archived"].includes(event.type);
 }
