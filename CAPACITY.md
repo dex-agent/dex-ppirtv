@@ -23,6 +23,44 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-21 — fiscal auto-ressalva: required_cooperation ensina a receita e review_required lidera o composto
+
+> GO do dono 2026-10-21 ("menor corte possível com o maior ganho, sem
+> reinventar a roda") para a trava recorrente de 10 meses do blocker
+> `required_cooperation`. Delta deste corte (texto/schema/contrato/teste —
+> zero mudança de lógica do gate; `src/flow-engine.ts` intocado):
+> (1) `src/error-envelope.ts` — a sequência ensinada (`meetingSequence`)
+> agora carrega `satisfies_blockers: ["required_cooperation"]` +
+> `participants_present` no passo da `goal_meeting_close` e `evidence_ids`
+> no verdict, o reason da branch `register_required_cooperation` ensina a
+> receita literal (close com satisfies_blockers + participantes + verdict
+> com meeting_id/evidence_ids; preencher apenas cooperators não satisfaz) e
+> nasce a branch `attach_structural_review_before_meetings` como PRIMEIRA:
+> no bloqueio composto, `review_required` lidera (goal_status full →
+> evidence_add kind code_review espelhando `reviewRequiredSequence` do
+> engine, com scope_classification/scope_reference e arrays de substituição
+> não vazios + fingerprint vigente → goal_meeting_open → close com
+> participants_present/satisfies_blockers → verdict com
+> evidence_ids/meeting_id); no review puro, verdict SEM meeting_id;
+> (2) `src/server.ts` — description viva de `goal_meeting_close` ensina a
+> receita, `satisfies_blockers` ganha `.describe()`
+> (`INPUT_FIELD_DESCRIPTIONS`) e o branch `provide_meeting_id_for_verdict`
+> do `classifyToolError` respeita a liderança do review_required; (3)
+> contrato `GOAL_SPT_CANONICAL_CONTRACT.md` (global+local,
+> `audit:canonical` verde) ganha o bullet da forma de satisfação +
+> liderança do composto + pointer para GOAL_EXECUTION_BRIDGE; (4)
+> `tests/error-envelope.test.ts` com asserts literais (RED provado: 3
+> novos falharam antes do fix) + rodada de correção da revisão adversarial
+> em 2 voltas (F1 open ausente, F2 participants_present, F3 payload sem scope_*, F4
+> evidence_ids, F5 precedência sobre attempt-branches, F6 guarda no server,
+> F7 fixture alinhado ao schema vivo, F8 meeting_id no review puro, F4-residual da rodada 2: rationale
+> com o literal "cooperacao material" rearma o blocker no verdict
+> (positiveMeetingTrigger flow-engine l.5179) — rationales neutralizadas +
+> teste de regressão travando os literais).
+> Provas: suite 711 passed | 4 skipped (54 arquivos);
+> `audit-error-envelope` 33 famílias / 0 sem rota / 8 sequências válidas
+> contra schema vivo; probe MCP stdio `tools/list` 7/7 PASS. Base `424b1ca`.
+
 ## Reavaliação 2026-10-18 — frentes 2 e 3: unwrap profundo + leitura que responde + SHRINK FE-DEBT-001
 
 > GO do dono após auditoria por print (pedido × entendimento × entrega).

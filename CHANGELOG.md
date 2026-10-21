@@ -10,6 +10,33 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Alterado
 
+- Fiscal auto-ressalva do `required_cooperation` + liderança do
+  `review_required` no bloqueio composto (2026-10-21, GO do dono — menor
+  corte, maior ganho, sem skill nova): o envelope de erro passa a ensinar a
+  receita real de satisfação (`goal_meeting_open` → `goal_meeting_close`
+  com `satisfies_blockers=["required_cooperation"]` + `participants_present`
+  + decisão, consumida pelo `goal_verdict` via `meeting_id` com
+  `evidence_ids`; preencher apenas `cooperators` nunca satisfez — o filtro
+  eligible não lê esse campo); a nova branch
+  `attach_structural_review_before_meetings` (primeira da cadeia) declara
+  que `review_required` lidera qualquer composto e ensina a rota completa
+  `goal_status` full → `evidence_add` kind `code_review` (espelhando
+  `reviewRequiredSequence`: `scope_classification`/`scope_reference`,
+  arrays de substituição não vazios, fingerprint vigente) → cooperação →
+  veredito (sem `meeting_id` no review puro); a description viva e o
+  `.describe()` de `satisfies_blockers` na `goal_meeting_close` ensinam via
+  `tools/list`; o branch `provide_meeting_id_for_verdict` do
+  `classifyToolError` respeita a liderança do review; o contrato canônico
+  `GOAL_SPT_CANONICAL_CONTRACT.md` (global+local) ganha a forma de
+  satisfação + pointer para `GOAL_EXECUTION_BRIDGE`. RED provado (3 testes
+  novos falharam antes) + revisão adversarial com probes vivos (F1–F8
+  corrigidos: open na sequência, participants_present, payload com
+  scope_*, evidence_ids no verdict, precedência sobre attempt-branches,
+  guarda no server, fixture alinhado ao schema vivo, meeting_id condicional;
+  rodada 2: rationale do verdict com o literal "cooperacao material" rearma o
+  blocker — literais neutralizados + teste de regressão);
+  suite 711|4, audit-error-envelope 0 códigos sem rota / 8 sequências
+  válidas, probe tools/list 7/7. `src/flow-engine.ts` intocado.
 - Fronteira de input nunca bloqueante — frentes 2 e 3: unwrap profundo +
   leitura que responde + SHRINK FE-DEBT-001 pago (2026-10-18, GO do dono
   após auditoria por print): o desembrulho do artefato `{"value": X}` passa

@@ -843,6 +843,15 @@ Gate de fase e gate de fechamento sao contratos distintos:
   tool ou prompt que o cliente possa ter armazenado em cache.
   `phase_advance_allowed=true` inclui a transicao terminal protegida quando o
   gate local e os blockers de fechamento estiverem satisfeitos;
+- `required_cooperation` e meeting-owned: so e satisfeito por reuniao
+  fechada com `satisfies_blockers` contendo `required_cooperation`,
+  `participants_present` completos e decisao, consumida pelo
+  `goal_verdict` seguinte via `meeting_id`; preencher `cooperators` nao
+  satisfaz esse blocker. A semantica canonica vive em GOAL_EXECUTION_BRIDGE,
+  secao `goal_meeting_close`. No bloqueio composto, `review_required`
+  lidera: a review estrutural coerente (`evidence_add` kind `code_review`
+  citando o `implementation_fingerprint` vigente) precede qualquer reuniao
+  ou veredito, porque reuniao nunca satisfaz `review_required`;
 - terminalizacao e serializada pelo flow lock e idempotente: depois de
   `flow_completed`, retries retornam reutilizacao sem repetir hook ou ledger.
   Tentativas bloqueadas antes da conclusao registram

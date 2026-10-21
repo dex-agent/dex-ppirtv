@@ -736,7 +736,7 @@ function registerTools(
     server,
     "goal_meeting_close",
     {
-      description: "Close and freeze a GOAL meeting result. Only meeting-owned blockers are accepted; downstream impact requires an exact later meeting_id reference. Repeating the same frozen decision is an idempotent retry.",
+      description: "Close and freeze a GOAL meeting result. Only meeting-owned blockers are accepted; downstream impact requires an exact later meeting_id reference. To satisfy a required_cooperation fiscal blocker, close this meeting with satisfies_blockers: [\"required_cooperation\"] plus full participants_present and a decision, then reference the returned meeting_id in the next goal_verdict; filling cooperators alone does NOT satisfy the blocker (semantics: GOAL_EXECUTION_BRIDGE contract, goal_meeting_close section). Repeating the same frozen decision is an idempotent retry.",
       inputSchema: {
         flow_id: z.string().optional(),
         idempotency_key: z.string().optional(),
@@ -749,7 +749,7 @@ function registerTools(
         decisions: z.array(z.string()).optional(),
         decision: z.string().min(1).describe(INPUT_FIELD_DESCRIPTIONS.decision),
         next_required_action: z.record(z.unknown()).nullable().optional(),
-        satisfies_blockers: z.array(z.string()).optional(),
+        satisfies_blockers: z.array(z.string()).optional().describe(INPUT_FIELD_DESCRIPTIONS.satisfies_blockers),
         evidence_ids: z.array(z.string()).optional(),
         risks: z.array(z.string()).optional(),
         next_steps: z.array(z.string()).optional(),
@@ -1263,7 +1263,7 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
         next_required_action: memoryRequiredErrorAction(flowId)
       };
     }
-    if (/missing_for_verdict=.*meeting_id/i.test(message)) {
+    if (/missing_for_verdict=.*meeting_id/i.test(message) && !/review_required/i.test(message)) {
       return {
         ...base,
         code: "PPIRTV_FISCAL_BLOCKED",

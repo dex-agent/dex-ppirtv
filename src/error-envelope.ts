@@ -65,7 +65,9 @@ function meetingSequence(flowId: string): EnvelopeStep[] {
       args: {
         flow_id: flowId,
         meeting_id: "<meeting_id retornado por goal_meeting_open>",
-        decision: "cooperacao registrada; liberar veredito"
+        participants_present: ["<copie participants_required devolvido por goal_meeting_open, com todos presentes>"],
+        decision: "cooperacao registrada; liberar veredito",
+        satisfies_blockers: ["required_cooperation"]
       }
     },
     {
@@ -74,7 +76,8 @@ function meetingSequence(flowId: string): EnvelopeStep[] {
       args: {
         flow_id: flowId,
         status: "pronto",
-        rationale: "cooperacao material registrada na meeting citada",
+        rationale: "decisao de reuniao registrada e consumida por este veredito",
+        evidence_ids: ["<evidence_ids obrigatorias do flow>"],
         meeting_id: "<meeting_id retornado por goal_meeting_open>",
         next_step: "avancar o fluxo apos o veredito"
       }
@@ -95,6 +98,103 @@ function parseNumberAfter(message: string, key: string): number | null {
  */
 export function fiscalBlockedAction(message: string, flowId = "<flow_id>"): NextRequiredAction {
   const baseArgs = { flow_id: flowId };
+  if (/review_required/i.test(message)) {
+    // review_required lidera qualquer bloqueio composto (inclusive sobre
+    // attempts_insufficient/attempt_regress_limit): reuniao e veredito nao
+    // passam ate a review estrutural ficar coerente com o fingerprint
+    // vigente. O payload ensinado espelha reviewRequiredSequence do engine
+    // (scope_classification/scope_reference e arrays nao vazios sao
+    // obrigatorios no gate) e a receita viva do next_required_action de
+    // goal_status detail=full.
+    const meetingAlsoRequired =
+      /required_cooperation/i.test(message) && !/required_cooperation=(?:;|$|\s)/i.test(message);
+    const steps: EnvelopeStep[] = [
+      {
+        order: 1,
+        tool: "goal_status",
+        args: { ...baseArgs, detail: "full" }
+      },
+      {
+        order: 2,
+        tool: "evidence_add",
+        args: {
+          flow_id: flowId,
+          kind: "code_review",
+          title: "revisao estrutural coerente com o fingerprint vigente",
+          scope_classification: "target",
+          scope_reference: "<escopo revisado: arquivos alterados do flow>",
+          satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+          observed_result: {
+            diff_reviewed: true,
+            barata_scan: true,
+            reviewed_targets: ["<todos os changed_files reais do flow>"],
+            searched_patterns: ["<padroes efetivamente buscados na revisao>"],
+            findings: ["<achados materiais ou 'nenhum achado material'>"],
+            regression_risks: ["<riscos residuais ou 'nenhum risco residual'>"]
+          },
+          reviewed_implementation_fingerprint:
+            "<sha256 do implementation_fingerprint vigente exibido por goal_status detail=full>"
+        }
+      }
+    ];
+    if (meetingAlsoRequired) {
+      steps.push(
+        {
+          order: 3,
+          tool: "goal_meeting_open",
+          args: {
+            flow_id: flowId,
+            question: "registrar cooperacao material que destrava o veredito",
+            type: "decision",
+            suggested_cooperators: COOPERATOR_EXAMPLE
+          }
+        },
+        {
+          order: 4,
+          tool: "goal_meeting_close",
+          args: {
+            flow_id: flowId,
+            meeting_id: "<meeting_id retornado por goal_meeting_open>",
+            participants_present: ["<copie participants_required devolvido por goal_meeting_open, com todos presentes>"],
+            decision: "cooperacao registrada; liberar veredito",
+            satisfies_blockers: ["required_cooperation"]
+          }
+        },
+        {
+          order: 5,
+          tool: "goal_verdict",
+          args: {
+            flow_id: flowId,
+            status: "pronto",
+            rationale: "revisao estrutural coerente e decisao de reuniao registrada",
+            evidence_ids: ["<evidence_id retornado por evidence_add acima>", "<demais evidence_ids obrigatorias do flow>"],
+            meeting_id: "<meeting_id retornado por goal_meeting_open>",
+            next_step: "avancar o fluxo apos o veredito"
+          }
+        }
+      );
+    } else {
+      steps.push({
+        order: 3,
+        tool: "goal_verdict",
+        args: {
+          flow_id: flowId,
+          status: "pronto",
+          rationale: "revisao estrutural coerente com o fingerprint vigente",
+          evidence_ids: ["<evidence_id retornado por evidence_add acima>", "<demais evidence_ids obrigatorias do flow>"],
+          next_step: "avancar o fluxo apos o veredito"
+        }
+      });
+    }
+    return {
+      type: "attach_structural_review_before_meetings",
+      tool: "evidence_add",
+      reason:
+        "review_required lidera o bloqueio composto: reuniao e novo goal_verdict nao destravam ate a review estrutural ficar coerente com o implementation_fingerprint vigente (roteiro integral na description de goal_verdict e no next_required_action de goal_status detail=full); somente depois trate required_cooperation com satisfies_blockers",
+      args: { ...baseArgs, kind: "code_review", title: "revisao estrutural coerente com o fingerprint vigente" },
+      required_tool_sequence: steps
+    };
+  }
   if (/attempts_insufficient_before_positive_verdict/i.test(message)) {
     const attemptCount = parseNumberAfter(message, "attempt_count");
     const meetings = parseNumberAfter(message, "meetings");
@@ -124,7 +224,8 @@ export function fiscalBlockedAction(message: string, flowId = "<flow_id>"): Next
     return {
       type: "register_required_cooperation",
       tool: "goal_meeting_open",
-      reason: "o fiscal exige cooperacao material nomeada antes do veredito",
+      reason:
+        'o fiscal exige cooperacao material nomeada: feche goal_meeting_close com satisfies_blockers=["required_cooperation"] (participantes completos e decisao) e referencie meeting_id no goal_verdict; preencher apenas cooperators/participants nao satisfaz',
       args: { ...baseArgs, suggested_cooperators: COOPERATOR_EXAMPLE },
       required_tool_sequence: meetingSequence(flowId)
     };
@@ -330,6 +431,8 @@ export const INPUT_FIELD_DESCRIPTIONS = {
     "Array de objetos {name, reason, material} registrados como cooperacao; material=true so quando a contribuicao mudou decisao, risco, teste, doc ou veredito.",
   active_credits: "Array de strings descrevendo creditos ativos herdados do ciclo de meeting.",
   decision: "Texto da decisao que fecha a reuniao (string nao vazia).",
+  satisfies_blockers:
+    'Array de blockers que a reuniao fechada satisfaz. Unico owner de meeting hoje: ["required_cooperation"] — envia-lo (com participantes completos e decisao) e referenciar meeting_id no goal_verdict e o que destrava o fiscal; preencher apenas cooperators nao satisfaz.',
   meeting_id: "ID da reuniao fechada, retornado por goal_meeting_close.",
   auto_classify: "Boolean — classificar candidatos de memoria automaticamente.",
   write_policy: "Enum 'auto_write' | 'classify_only' (default 'auto_write') — gravar memoraveis fortes direto ou apenas classificar."

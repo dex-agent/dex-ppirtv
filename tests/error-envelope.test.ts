@@ -40,6 +40,100 @@ describe("error envelope contract (PPIRTV-ERRO-QUE-ENSINA-ENVELOPE)", () => {
     expect(action.required_tool_sequence ?? []).toHaveLength(0);
   });
 
+  it("composite required_cooperation + review_required routes review-first with the executable code_review recipe", () => {
+    const message =
+      "PPIRTV_FISCAL_BLOCKED: required_cooperation, review_required; attempt_count=0, regress_count=0, max=3, meetings=2; required_cooperation=chato|questionador";
+    const action = fiscalBlockedAction(message, "flow_test");
+    expect(action.type).toBe("attach_structural_review_before_meetings");
+    expect(action.tool).toBe("evidence_add");
+    expect(String(action.reason)).toContain("review_required");
+    const sequence = action.required_tool_sequence ?? [];
+    const statusStep = sequence.find((step) => step.tool === "goal_status");
+    expect(JSON.stringify(statusStep?.args)).toContain("full");
+    const reviewStep = sequence.find((step) => step.tool === "evidence_add");
+    expect(reviewStep?.args?.kind).toBe("code_review");
+    expect(reviewStep?.args?.scope_classification).toBe("target");
+    expect(String(reviewStep?.args?.scope_reference)).toContain("escopo");
+    expect(JSON.stringify(reviewStep?.args?.satisfies)).toContain("diff_reviewed");
+    expect(JSON.stringify(reviewStep?.args?.observed_result)).toContain("reviewed_targets");
+    expect(String(reviewStep?.args?.reviewed_implementation_fingerprint)).toContain("implementation_fingerprint");
+    // F1: a reuniao que o close fecha precisa nascer na propria sequencia
+    const openIndex = sequence.findIndex((step) => step.tool === "goal_meeting_open");
+    const closeIndex = sequence.findIndex((step) => step.tool === "goal_meeting_close");
+    expect(openIndex).toBeGreaterThanOrEqual(0);
+    expect(closeIndex).toBeGreaterThan(openIndex);
+    // F2: close sem participants_present fecha sem satisfazer (silencio)
+    const closeStep = sequence[closeIndex];
+    expect(JSON.stringify(closeStep?.args?.participants_present)).toContain("participants_required");
+    expect(JSON.stringify(closeStep?.args?.satisfies_blockers)).toContain("required_cooperation");
+    // F4: verdict positivo sem evidence_ids falha ou e rebaixado
+    const verdictStep = sequence.find((step) => step.tool === "goal_verdict");
+    expect(JSON.stringify(verdictStep?.args?.evidence_ids)).toContain("evidence_id");
+    expect(JSON.stringify(verdictStep?.args)).toContain("meeting_id");
+  });
+
+  it("pure review_required (sem required_cooperation) ensina review + verdict SEM meeting_id", () => {
+    const message = "PPIRTV_FISCAL_BLOCKED: review_required; attempt_count=0, regress_count=0, max=3, meetings=0";
+    const action = fiscalBlockedAction(message, "flow_test");
+    expect(action.type).toBe("attach_structural_review_before_meetings");
+    const sequence = action.required_tool_sequence ?? [];
+    expect(sequence.find((step) => step.tool === "evidence_add")).toBeDefined();
+    expect(sequence.find((step) => step.tool === "goal_meeting_close")).toBeUndefined();
+    expect(sequence.find((step) => step.tool === "goal_meeting_open")).toBeUndefined();
+    const verdictStep = sequence.find((step) => step.tool === "goal_verdict");
+    expect(JSON.stringify(verdictStep?.args)).not.toContain("meeting_id");
+    expect(JSON.stringify(verdictStep?.args?.evidence_ids)).toContain("evidence_id");
+  });
+
+  it("review_required lidera sobre attempts_insufficient e attempt_regress_limit_reached", () => {
+    const withAttempts = fiscalBlockedAction(
+      "PPIRTV_FISCAL_BLOCKED: attempt_regress_count, attempts_insufficient_before_positive_verdict, review_required; attempt_count=0, regress_count=0, max=3, meetings=0"
+    );
+    expect(withAttempts.type).toBe("attach_structural_review_before_meetings");
+    expect((withAttempts.required_tool_sequence ?? []).some((step) => step.tool === "evidence_add")).toBe(true);
+    const withLimit = fiscalBlockedAction(
+      "PPIRTV_FISCAL_BLOCKED: attempt_regress_limit_reached, review_required; attempt_count=4, regress_count=3, max=3, meetings=2"
+    );
+    expect(withLimit.type).toBe("attach_structural_review_before_meetings");
+    expect((withLimit.required_tool_sequence ?? []).some((step) => step.tool === "evidence_add")).toBe(true);
+  });
+
+  it("fiscal blocked envelope teaches satisfies_blockers in the pure required_cooperation route", () => {
+    const message =
+      "PPIRTV_FISCAL_BLOCKED: required_cooperation; attempt_count=0, regress_count=0, max=3, meetings=0; required_cooperation=chato";
+    const action = fiscalBlockedAction(message, "flow_test");
+    expect(action.type).toBe("register_required_cooperation");
+    expect(String(action.reason)).toContain("satisfies_blockers");
+    const close = (action.required_tool_sequence ?? []).find((step) => step.tool === "goal_meeting_close");
+    expect(JSON.stringify(close?.args?.satisfies_blockers)).toContain("required_cooperation");
+    expect(JSON.stringify(close?.args?.participants_present)).toContain("participants_required");
+    const verdict = (action.required_tool_sequence ?? []).find((step) => step.tool === "goal_verdict");
+    expect(JSON.stringify(verdict?.args?.evidence_ids)).toContain("evidence");
+  });
+
+  it("taught verdict rationales never re-arm required_cooperation (positiveMeetingTrigger literals)", () => {
+    // flow-engine positiveMeetingTrigger casa literais no texto fiscal do
+    // veredito ANTES de checar a meeting que satisfaz (rodada adversarial
+    // F4-residual, probe 2026-10-21): rationale ensinada com
+    // "cooperacao material" rejeita o veredito mesmo com a meeting correta.
+    const trigger =
+      /(sem reuniao|reuniao obrigatoria|reuniao material|mesa material|cooperacao material|sem meeting_id|participantes insuficientes)/i;
+    const messages = [
+      "PPIRTV_FISCAL_BLOCKED: required_cooperation; attempt_count=0, regress_count=0, max=3, meetings=0; required_cooperation=chato",
+      "PPIRTV_FISCAL_BLOCKED: required_cooperation, review_required; attempt_count=0, regress_count=0, max=3, meetings=2; required_cooperation=chato",
+      "PPIRTV_FISCAL_BLOCKED: review_required; attempt_count=0, regress_count=0, max=3, meetings=0"
+    ];
+    for (const message of messages) {
+      const action = fiscalBlockedAction(message, "flow_test");
+      const verdictSteps = (action.required_tool_sequence ?? []).filter((step) => step.tool === "goal_verdict");
+      expect(verdictSteps.length).toBeGreaterThan(0);
+      for (const step of verdictSteps) {
+        const rationale = String((step.args as { rationale?: string } | undefined)?.rationale ?? "");
+        expect(trigger.test(rationale)).toBe(false);
+      }
+    }
+  });
+
   it("fiscal blocked envelope omits empty required_cooperation segments", () => {
     const raw = "PPIRTV_FISCAL_BLOCKED: attempt_regress_count, attempts_insufficient_before_positive_verdict; attempt_count=0, regress_count=0, max=3, meetings=0; required_cooperation=";
     const normalized = normalizeFiscalBlockedMessage(raw);
@@ -188,7 +282,9 @@ describe("sequence oracle validates taught steps against live schemas", () => {
       properties: {
         flow_id: { type: "string" },
         meeting_id: { type: "string" },
-        decision: { type: "string" }
+        decision: { type: "string" },
+        participants_present: { type: "array" },
+        satisfies_blockers: { type: "array" }
       }
     },
     goal_verdict: {
@@ -197,23 +293,53 @@ describe("sequence oracle validates taught steps against live schemas", () => {
         flow_id: { type: "string" },
         status: { type: "string", enum: ["pronto", "pronto_com_ressalvas", "nao_pronto", "bloqueado"] },
         rationale: { type: "string" },
+        evidence_ids: { type: "array" },
         meeting_id: { type: "string" },
         next_step: { type: "string" }
+      }
+    },
+    goal_status: {
+      properties: {
+        flow_id: { type: "string" },
+        detail: { type: "string", enum: ["lean", "compact", "full"] }
+      }
+    },
+    evidence_add: {
+      required: ["flow_id", "title"],
+      properties: {
+        flow_id: { type: "string" },
+        kind: { type: "string" },
+        title: { type: "string" },
+        scope_classification: { type: "string", enum: ["target", "declared_dependency", "outside"] },
+        scope_reference: { type: "string" },
+        satisfies: { type: "array" },
+        observed_result: { type: "object" },
+        reviewed_implementation_fingerprint: { type: "string" }
       }
     }
   };
 
   it("accepts the taught meeting sequence when every required field and enum matches the live schema", () => {
     const action = fiscalBlockedAction(
-      "PPIRTV_FISCAL_BLOCKED: required_cooperation, review_required; attempt_count=0, regress_count=0, max=3, meetings=1; required_cooperation=chato|questionador"
+      "PPIRTV_FISCAL_BLOCKED: required_cooperation; attempt_count=0, regress_count=0, max=3, meetings=1; required_cooperation=chato|questionador"
     );
     const errors = validateSequenceSteps(action.required_tool_sequence ?? [], schemas);
     expect(errors).toEqual([]);
   });
 
+  it("oracle accepts the review-first composite sequence against live-shaped schemas", () => {
+    const action = fiscalBlockedAction(
+      "PPIRTV_FISCAL_BLOCKED: required_cooperation, review_required; attempt_count=0, regress_count=0, max=3, meetings=2; required_cooperation=chato"
+    );
+    const sequence = action.required_tool_sequence ?? [];
+    expect(sequence.find((step) => step.tool === "evidence_add")).toBeDefined();
+    const errors = validateSequenceSteps(sequence, schemas);
+    expect(errors).toEqual([]);
+  });
+
   it("rejects the historic decisao regression: invalid enum value in taught args", () => {
     const regression = fiscalBlockedAction(
-      "PPIRTV_FISCAL_BLOCKED: required_cooperation, review_required; attempt_count=0, regress_count=0, max=3, meetings=1; required_cooperation=chato"
+      "PPIRTV_FISCAL_BLOCKED: required_cooperation; attempt_count=0, regress_count=0, max=3, meetings=1; required_cooperation=chato"
     );
     const steps = (regression.required_tool_sequence ?? []).map((step) =>
       step.tool === "goal_meeting_open" ? { ...step, args: { ...step.args, type: "decisao" } } : step
