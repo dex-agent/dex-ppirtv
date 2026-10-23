@@ -142,11 +142,18 @@ describe("gate requirement resolution", () => {
       await expect(
         fingerprintReviewedImplementation(workspace, ["config.toml"], "linux")
       ).rejects.toThrow("REVIEW_SNAPSHOT_SENSITIVE_PATH");
-      for (const sensitivePath of [".npmrc", ".netrc", ".pypirc", ".git/config"]) {
+      for (const sensitivePath of [".npmrc", ".netrc", ".pypirc"]) {
         await expect(
           fingerprintReviewedImplementation(workspace, [sensitivePath], "linux")
         ).rejects.toThrow("REVIEW_SNAPSHOT_SENSITIVE_PATH");
       }
+      // Trilho 2026-10-23-snapshot-fantasma: sensivel sob dot-dir de runtime
+      // na raiz (.git/) e ruido de terceiro — REDIGIDO (conteudo nunca lido),
+      // nao bloqueia o fingerprint. Sensivel fora de runtime dir continua
+      // fail-closed (caso vendor abaixo).
+      await expect(
+        fingerprintReviewedImplementation(workspace, [".git/config"], "linux")
+      ).resolves.toMatch(/^sha256:[a-f0-9]{64}$/);
       await expect(
         fingerprintReviewedImplementation(workspace, ["vendor/project/.git/config"], "linux")
       ).rejects.toThrow("REVIEW_SNAPSHOT_SENSITIVE_PATH");

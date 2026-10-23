@@ -36,9 +36,28 @@ export async function fingerprintReviewedImplementation(
   const allowedMissing = new Set(
     (options.allowedMissingFiles ?? []).map((item) => normalizeReviewPathForPlatform(item, platform))
   );
-  const entries: Array<{ path: string; state: "file" | "missing" | "non_file" | "deleted"; sha256?: string }> = [];
+  const entries: Array<{ path: string; state: "file" | "missing" | "non_file" | "deleted" | "redacted_runtime"; sha256?: string }> = [];
 
   for (const relativePath of canonicalPaths) {
+    // Trilho 2026-10-23-snapshot-fantasma (rodada adversarial): o prefixo de
+    // runtime vale sobre o path RESOLVIDO lexicalmente — ".codex/../.env"
+    // resolve para ".env" e continua fail-closed; e TODO path sob runtime e
+    // redigido (independente de nome sensivel e de existir), porque conteudo
+    // de terceiro nunca e produto: nem lido, nem hasheado, nem bloqueando o
+    // verdict por arquivo ausente no modo strict do review. Aspas literais
+    // envolvendo o path (persistido sujo por cliente velho, mesma familia do
+    // input-unwrap 9a96e92) sao despilhadas ANTES do casamento de prefixo.
+    const lexicalRelative = normalizeReviewPathForPlatform(
+      path.relative(workspaceRoot, path.resolve(workspaceRoot, relativePath)),
+      platform
+    ).replace(/^["']+|["']+$/g, "");
+    if (lexicalRelative === ".." || lexicalRelative.startsWith("../") || path.isAbsolute(lexicalRelative)) {
+      throw new Error(`REVIEW_SNAPSHOT_OUTSIDE_WORKSPACE: ${normalizeReviewPathForPlatform(relativePath, platform)}`);
+    }
+    if (GIT_CORROBORATION_EXCLUDED_PREFIXES.some((prefix) => lexicalRelative.toLowerCase().startsWith(prefix))) {
+      entries.push({ path: relativePath, state: "redacted_runtime" });
+      continue;
+    }
     assertReviewSnapshotPathIsNotSensitive(relativePath);
     const absolutePath = path.resolve(workspaceRoot, relativePath);
     assertInsideWorkspace(workspaceRoot, absolutePath, platform);
@@ -98,7 +117,12 @@ export async function fingerprintReviewedImplementation(
 // corroboration (.ppirtv/ vivo travava vereditos doc-only legitimos;
 // .agents/ carrega SPT/receipts do proprio executor). Declaracao explicita
 // em changed_files continua valendo: o filtro so remove o ruido automatico.
-const GIT_CORROBORATION_EXCLUDED_PREFIXES = [".git/", ".ppirtv/", ".agents/"];
+// Trilho 2026-10-23-snapshot-fantasma: dot-dirs de runtime de QUALQUER host
+// (.codex/, .zcode/) sao o mesmo ruido — arquivo de terceiro nunca e
+// produto; e path sensivel sob qualquer destes prefixos e REDIGIDO no
+// snapshot, nunca bloqueante (pendencia
+// PPIRTV-VEREDITO-TERMINAL-GATES-SNAPSHOT-FANTASMA, flows 0568/0602 do jev).
+const GIT_CORROBORATION_EXCLUDED_PREFIXES = [".git/", ".ppirtv/", ".agents/", ".codex/", ".zcode/"];
 
 function filterCorroborationFiles(files: string[]): string[] {
   const filtered = files

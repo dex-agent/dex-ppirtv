@@ -331,7 +331,7 @@ const UNBLOCK_RULES: { code: string; pattern: RegExp; action: NextRequiredAction
   {
     code: "REVIEW_SNAPSHOT_PATH_INVALID",
     pattern: /REVIEW_SNAPSHOT_(?:OUTSIDE_WORKSPACE|SENSITIVE_PATH)/i,
-    action: { type: "use_workspace_relative_non_sensitive_path", tool: "evidence_add", reason: "caminhos de snapshot precisam ser relativos, dentro do workspace e nao-sensiveis" }
+    action: { type: "use_workspace_relative_non_sensitive_path", tool: "evidence_add", reason: "caminhos de snapshot precisam ser relativos, dentro do workspace e nao-sensiveis; path sensivel sob dot-dir de runtime de host (ex.: .codex/config.toml, .zcode/) e ruido de terceiro corroborado — tire o arquivo do workspace ou remova-o do changed_files (o fingerprint atual redige esses paths sem ler conteudo); segredo de produto proprio nunca entra no snapshot" }
   },
   {
     code: "REVIEW_SNAPSHOT_DECLARED_DELETION_STILL_EXISTS",

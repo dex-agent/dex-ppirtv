@@ -10,6 +10,31 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Alterado
 
+- Snapshot fantasma redigido: path sensível sob dot-dir de runtime de
+  terceiro nunca mais bloqueia o verdict (2026-10-23, GO do dono — cura da
+  pendência PPIRTV-VEREDITO-TERMINAL-GATES-SNAPSHOT-FANTASMA, flows
+  0568/0602 do jev): `GIT_CORROBORATION_EXCLUDED_PREFIXES` ganha `.codex/`
+  e `.zcode/` (ruído automático de runtime de qualquer host, igual
+  .git/.ppirtv/.agents); `fingerprintReviewedImplementation` REDIGE path
+  sensível sob esses prefixos como entrada `state:"redacted_runtime"`
+  (conteúdo NUNCA lido nem hasheado — teste de independência prova) em vez
+  de lançar `REVIEW_SNAPSHOT_SENSITIVE_PATH`, curando flows já envenenados
+  (o merge não-filtrado tinha sido persistido no `changed_files` — 416
+  paths no flow 0568; remover o arquivo/reiniciar o servidor não curava);
+  sensível de produto próprio (`.env`, `.npmrc`, `config.toml` na raiz,
+  `vendor/*/.git/config`) continua fail-closed; o envelope
+  `REVIEW_SNAPSHOT_PATH_INVALID` ensina a causa real (path de terceiro
+  corroborado) e a rota. Prova da vítima real: fingerprint do flow 0568
+  com os 416 paths persistidos computa sem throw no build novo. RED 2/3;
+  suite 714|4. `src/flow-engine.ts` intocado. Rodada adversarial (1, fixes
+  aplicados): redação passa a valer para TODO path sob prefixo de runtime
+  após resolução lexical — não apenas sensível-por-nome — o que cura também
+  o modo strict do attach de review (path runtime ausente não gera mais
+  REVIEW_SNAPSHOT_FILE_REQUIRED; prova da vítima real em modo strict
+  resolve), impede leitura/hash de runtime não-sensível (`.zcode/` etc.),
+  fecha o traversal `.codex/../.env` (resolve para produto → fail-closed) e
+  despirra aspas literais de path persistido sujo (família input-unwrap);
+  description de goal_verdict atualizada com a lista nova. Suite 716|4.
 - Fiscal auto-ressalva do `required_cooperation` + liderança do
   `review_required` no bloqueio composto (2026-10-21, GO do dono — menor
   corte, maior ganho, sem skill nova): o envelope de erro passa a ensinar a

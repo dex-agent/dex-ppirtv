@@ -1,10 +1,10 @@
 {
   "schema": "dex.capacity.snapshot.v1",
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
-  "fotografia_id": "2026-10-21-fiscal-auto-ressalva-required-cooperation",
-  "head": "424b1ca",
+  "fotografia_id": "2026-10-23-snapshot-fantasma-redigir-nao-bloquear",
+  "head": "ba6bb85",
   "tree_hash": null,
-  "generated_at": "2026-10-21T20:14:03.000000+00:00",
+  "generated_at": "2026-10-23T15:48:06.000000+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -23,10 +23,10 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 711,
+    "passed": 716,
     "failed": 0,
     "skipped": 4,
-    "files": 54
+    "files": 55
   },
   "tools_count": 32,
   "capabilities": [
@@ -563,6 +563,6 @@
     "R5 permanece decisao documentada; CAP-17 tem excecao per-commit 598ae5d.",
     "Sem .git nao ha corroboracao de diff real para changed_files.",
     "4 testes skipped nao foram investigados.",
-    "Matriz completa herdada do espelho 947fdb4; o delta do corte 2026-10-21 (fiscal auto-ressalva required_cooperation/review_required) revalidou o envelope de erro acionavel (CAP de erro-que-ensina) e a suite 711|4. As demais linhas permanecem com a evidencia do corte anterior."
+    "Matriz completa herdada do espelho 947fdb4; o delta do corte 2026-10-23 (snapshot fantasma: sensivel de runtime de terceiro redigido) revalidou o snapshot de review e a suite 716|4. As demais linhas permanecem com a evidencia do corte anterior."
   ]
 }

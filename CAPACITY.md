@@ -23,6 +23,42 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-23 — snapshot fantasma: sensível de runtime de terceiro é redigido, nunca bloqueia
+
+> GO do dono 2026-10-23, cura da pendência PPIRTV-VEREDITO-TERMINAL-GATES-
+> SNAPSHOT-FANTASMA (flows 0568/0602 do workspace jev travados em
+> `REVIEW_SNAPSHOT_SENSITIVE_PATH: .codex/config.toml`). Diagnóstico com
+> evidência: o guarda (sensível por nome, desde f9a63f1) estava certo, mas a
+> fronteira errada — `GIT_CORROBORATION_EXCLUDED_PREFIXES` (l.101) cobria
+> .git/.ppirtv/.agents e NÃO os dot-dirs de runtime de outros hosts; e o
+> merge não-filtrado foi PERSISTIDO no changed_files do flow (416 paths no
+> 0568, o universo untracked inteiro), de modo que remover o arquivo do
+> disco não curava e reiniciar o servidor tampouco. Delta do corte
+> (review-snapshot.ts + error-envelope.ts + testes; flow-engine.ts
+> intocado): (1) prefixos += `.codex/`, `.zcode/` (ruído automático de
+> runtime de qualquer host nunca entra pela corroboração); (2)
+> `fingerprintReviewedImplementation` REDIGE path sensível sob prefixo de
+> runtime como entrada `{state: "redacted_runtime"}` (conteúdo NUNCA lido
+> nem hasheado) em vez de lançar — cura flows já envenenados sem restart e
+> sem cirurgia; sensível FORA de runtime dir (`.env`, `.npmrc`, `config.toml`
+> de produto na raiz, `vendor/*/.git/config`) continua fail-closed; (3)
+> envelope REVIEW_SNAPSHOT_PATH_INVALID ensina a causa real e a rota (path
+> de terceiro corroborado; tirar do workspace/changed_files). Provas: RED
+> 2/3 falhas antes do fix; suite 716|4 (pós-rodada); probe da vítima real — fingerprint
+> do flow 0568 com os 416 paths persistidos (incluindo .codex/config.toml)
+> computa SEM throw no build novo; teste de independência prova que o
+> conteúdo redigido nunca altera o hash. Contrato atualizado: `.git/config`
+> na raiz passa a ser redigido (ruído de runtime), teste gate-resolution
+> ajustado com comentário. Base `ba6bb85`. RODADA ADVERSARIAL (1, fixes
+> aplicados antes do push): redação vale para TODO path sob prefixo de
+> runtime após resolução lexical (não só sensível-por-nome) — cura também o
+> modo strict do attach de review (REVIEW_SNAPSHOT_FILE_REQUIRED por path
+> runtime ausente morre; vítima 0568 resolve em strict), impede
+> leitura/hash de runtime não-sensível (.zcode/), fecha o traversal
+> .codex/../.env (fail-closed de produto preservado) e despirra aspas
+> literais de path persistido sujo (família input-unwrap). Suite 716|4;
+> description de goal_verdict atualizada.
+
 ## Reavaliação 2026-10-21 — fiscal auto-ressalva: required_cooperation ensina a receita e review_required lidera o composto
 
 > GO do dono 2026-10-21 ("menor corte possível com o maior ganho, sem
