@@ -57,7 +57,9 @@ corte (não é ausência).
 > leitura/hash de runtime não-sensível (.zcode/), fecha o traversal
 > .codex/../.env (fail-closed de produto preservado) e despirra aspas
 > literais de path persistido sujo (família input-unwrap). Suite 716|4;
-> description de goal_verdict atualizada.
+> description de goal_verdict atualizada. Selagem: Trilho CONCLUÍDO,
+commit e533f6a PUSHED; vítima 0568 provada em modo strict; ação consumidor
+= fleet update do jev + reanexar review.
 
 ## Reavaliação 2026-10-21 — fiscal auto-ressalva: required_cooperation ensina a receita e review_required lidera o composto
 
