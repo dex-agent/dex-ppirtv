@@ -23,6 +23,10 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-26 — selagem do record P1 no ledger de camping
+
+> Apenas governança: record FE-2026-10-26-VERDICT-FISCAL-POLICY-SHRINK ganha commit 9797016 + parent 883561b (selagem pós-commit); nenhum arquivo de capacidade mudou. Fotografia vigente segue 947fdb4; receipt atualizado em generated_at.
+
 ## Reavaliação 2026-10-26 — verdict-fiscal-policy-tree (SHRINK CCP P1)
 
 > Árvore CCP P1 (GO do dono): o eixo fiscal do verdict (`evaluateFiscalPolicy`
