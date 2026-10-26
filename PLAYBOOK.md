@@ -4,7 +4,7 @@ description: "Regras de decisao e procedimentos deste projeto - projecao gerada 
 type: playbook
 generated_by: "tools/playbook/generate-playbook.py"
 authority: derived_projection
-sources_revision: "sha256:a0918624d8c980d66db15c29e0a569578dc3c1923346d3a384741e56ca8e3808"
+sources_revision: "sha256:d6ee593b40f23e7159159274efe712126ad42c9cd73d3b136075852fb786dd32"
 sent_revision: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 do_not_edit: true
 ---
@@ -85,7 +85,7 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 | --- | --- | --- |
 | `AGENTS.md` | `644368d81dac6000091dc4f947a114c78cac37d9908072ae892594cdb024c76a` | nao |
 | `.agents/napkin.md` | `ffb5add5d7de8d42da0129b8a60dc9174aa441827e19470f8e884a3e8459ca49` | nao |
-| `.agents/PLAN-TASKS/ACTIVE.md` | `b1efda736de293d33e33ef74fe213ba2bbdadfb0f7801592a595472ffbc8720a` | nao |
+| `.agents/PLAN-TASKS/ACTIVE.md` | `c4218e54919456064a359de0fc78e26d9dbc104d52213b0dd952937814f03f73` | nao |
 
 ## Superficie enviada vs local
 

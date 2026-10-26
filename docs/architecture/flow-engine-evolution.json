@@ -524,6 +524,67 @@
       },
       "commit": "9a96e922c03c74c765f19a440d88c4e938cbb2ec",
       "parent_commit": "57479f9cc07651ed6c2b87420937565e8a4c89c5"
+    },
+    {
+      "id": "FE-2026-10-26-VERDICT-FISCAL-POLICY-SHRINK",
+      "spt_path": ".agents/PLAN-TASKS/2026-10-26-verdict-fiscal-policy-tree.md",
+      "responsibility": "Eixo fiscal do verdict (arvore CCP P1): evaluateFiscalPolicy (nucleo), fiscalResult, requiredCoo, cooReason, fiscalMateriality, fiscalText, materialRiskText, explicit/negative/positiveMeetingTrigger, codeReviewRequired, hasReviewEvidence, recurringRisk, hasEnoughAttempts e regressLimitReached saem da fachada para src/verdict-fiscal-policy.ts com dependencias explicitas (FiscalPolicyDeps) dos eixos vizinhos (memoria/hygiene/librarian/meetings/review-currency/regress-count) ate os cortes futuros; a fachada mantem wrappers finos e a cola de chamada.",
+      "owner": "$oraculo-refatoracao",
+      "changelog_marker": "Eixo fiscal do verdict sai do monolito",
+      "architecture_marker": "FE-2026-10-26-VERDICT-FISCAL-POLICY-SHRINK",
+      "consumers": [
+        "src/flow-engine.ts"
+      ],
+      "evidence": [
+        "tests/gate-integrity-revalidation.test.ts",
+        "tests/gate-integrity-hardening-3.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/gate-integrity-revalidation.test.ts": "R6/C-6 (integracao): envelope mechanical com scripts/deploy exige review no veredito (nao completa pronto)"
+      },
+      "mode": "SHRINK",
+      "removed_symbols": [
+        "fiscalMateriality",
+        "fiscalText",
+        "materialRiskText",
+        "negativeMeetingTrigger",
+        "positiveMeetingTrigger",
+        "explicitMeetingTrigger",
+        "codeReviewRequired",
+        "recurringRisk",
+        "hasEnoughAttempts",
+        "regressLimitReached",
+        "requiredCooperationRequired"
+      ],
+      "symbol_mappings": {
+        "fiscalMateriality": "fiscalMateriality",
+        "fiscalText": "fiscalText",
+        "materialRiskText": "materialRiskText",
+        "negativeMeetingTrigger": "negativeMeetingTrigger",
+        "positiveMeetingTrigger": "positiveMeetingTrigger",
+        "explicitMeetingTrigger": "explicitMeetingTrigger",
+        "codeReviewRequired": "codeReviewRequired",
+        "recurringRisk": "recurringRisk",
+        "hasEnoughAttempts": "hasEnoughAttempts",
+        "regressLimitReached": "regressLimitReached",
+        "requiredCooperationRequired": "requiredCooperationStillActive"
+      },
+      "same_responsibility": true,
+      "behavior_preserved_by": [
+        "tests/gate-integrity-revalidation.test.ts::R6/C-6 (integracao): envelope mechanical com scripts/deploy exige review no veredito (nao completa pronto)",
+        "tests/gate-integrity-revalidation.test.ts::R2/C-2: requisitos source=flow rejeitam [], 'false', 0 e {} como prova (sem fallback truthy)",
+        "tests/gate-integrity-hardening-3.test.ts::R3 review currency claims-only same-path bloqueia apos mudanca de conteudo (suite 4/4)"
+      ],
+      "pays_debt_id": null,
+      "destination_module": "src/verdict-fiscal-policy.ts",
+      "base_blob": "cb629cedff217be112a82fe70c60c9e350c188b9",
+      "head_blob": "93f8c5f5c7d1b1318552d1397160edec58bf6295",
+      "red_evidence": "tests/gate-integrity-revalidation.test.ts::R2/C-2: requisitos source=flow rejeitam [], 'false', 0 e {} como prova (sem fallback truthy)",
+      "comparison": {
+        "base": "HEAD",
+        "head": "WORKTREE",
+        "source": "worktree"
+      }
     }
   ]
 }

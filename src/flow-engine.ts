@@ -132,6 +132,16 @@ import {
   requireV2PromotionMetadata,
   type FiscalVerdictInput
 } from "./memory/mining-policy.js";
+import {
+  evaluateFiscalPolicyWithDeps,
+  explicitMeetingTrigger,
+  fiscalResultWithDeps,
+  fiscalText,
+  hasReviewEvidenceWithDeps,
+  requiredCooWithDeps,
+  type FiscalPolicyDeps,
+  type FiscalPolicyResult
+} from "./verdict-fiscal-policy.js";
 
 export {
   boundedRecallErrorReferences,
@@ -146,19 +156,6 @@ const USER_PROFILE_POINTER = "$env:USERPROFILE";
 export const WORK_PROGRESS_MAX_RUNNING_EVENTS = 100;
 
 type RecallVisualStatus = NonNullable<PresentationEnvelope["display"]["librarian"]>;
-
-type FiscalPolicyResult = {
-  material: boolean;
-  blocking_reasons: string[];
-  required_cooperation: Cooperator[];
-  meeting_policy: {
-    required: boolean;
-    rotation: string[];
-    repertoire: string[];
-    objective: string;
-  };
-  direct_action: string;
-};
 
 type ResolveMemoryCandidatesInput = {
   flow_id: string;
@@ -4980,205 +4977,44 @@ function officialGoalNeedsCanonicalVerdict(flow: Flow, phase: AnyPhase = flow.ph
   return Boolean(flow.goal_binding && phase === "validacao" && flow.verdicts.length === 0);
 }
 
+// P1 verdict-fiscal-policy-tree: nucleo fiscal migrou para src/verdict-fiscal-policy.ts;
+// wrappers preservam as assinaturas locais e injetam as dependencias dos eixos vizinhos.
+const FISCAL_POLICY_DEPS: FiscalPolicyDeps = {
+  memoryMiningBlockedReason: MEMORY_MINING_BLOCKED_VERDICT_REASON,
+  maxRegressions: FISCAL_CONFIG.maxRegressions,
+  hasHygieneBlocking,
+  librarianRequired,
+  latestLibrarianStatus,
+  inputMeetingIds,
+  hasVerdictRecordedAfterIndex,
+  latestFiscalBlockEvent,
+  hasClosedMeetingSatisfying,
+  requiredCooperationStillActive,
+  countRegressions,
+  countHistory,
+  truthy,
+  stringArray,
+  unique,
+  changedFilesMatchReview,
+  reviewedChangedFilesForVerdict,
+  reviewRemainsCurrent
+};
+
 function evaluateFiscalPolicy(flow: Flow, input: FiscalVerdictInput = {}): FiscalPolicyResult {
-  const material = fiscalMateriality(flow, input);
-  const blockingReasons: string[] = [];
-  if (!material) {
-    return fiscalResult(false, []);
-  }
+  return evaluateFiscalPolicyWithDeps(flow, input, FISCAL_POLICY_DEPS);
+}
 
-  if (memoryRequiredByFlow(flow, input) && noMemoryWasPromoted(flow, input.memory_mining)) {
-    blockingReasons.push("memory_required_but_empty");
-  }
-  if (hasHygieneBlocking(flow)) {
-    blockingReasons.push("hygiene_blocking");
-  }
-  if (codeReviewRequired(flow, input) && !hasReviewEvidence(flow, input)) {
-    blockingReasons.push("review_required");
-  }
-  if (librarianRequired(flow, input) && latestLibrarianStatus(flow)?.status !== "recalled") {
-    blockingReasons.push("librarian_status");
-  }
-  if (recurringRisk(input) && regressLimitReached(flow, input)) {
-    blockingReasons.push("attempt_regress_count", "attempt_regress_limit_reached");
-  } else if (recurringRisk(input) && !hasEnoughAttempts(flow, input)) {
-    blockingReasons.push("attempt_regress_count", "attempts_insufficient_before_positive_verdict");
-  }
-  if (requiredCooperationRequired(flow, input, blockingReasons)) {
-    blockingReasons.unshift("required_cooperation");
-  }
-
-  return fiscalResult(true, unique(blockingReasons));
+function hasReviewEvidence(flow: Flow, input: FiscalVerdictInput): boolean {
+  return hasReviewEvidenceWithDeps(flow, input, FISCAL_POLICY_DEPS);
 }
 
 function fiscalResult(material: boolean, blockingReasons: string[]): FiscalPolicyResult {
-  const meetingRequired = blockingReasons.includes("required_cooperation");
-  return {
-    material,
-    blocking_reasons: blockingReasons,
-    required_cooperation: blockingReasons.includes("required_cooperation") ? requiredCoo(blockingReasons) : [],
-    meeting_policy: {
-      required: meetingRequired,
-      rotation: [
-        "ancora-fluxo",
-        "chato",
-        "questionador",
-        "entrevista-me",
-        "reuniao",
-        "garimpeiro",
-        "dex-memoria",
-        "estacionamento",
-        "sprinter",
-        "mapeador-implementacao",
-        "duda-dev",
-        "revisor-codigo",
-        "tio-testador",
-        "validador-pronto"
-      ],
-      repertoire: [
-        "E SE falhar?",
-        "pra que?",
-        "por que?",
-        "onde nasce?",
-        "qual origem?",
-        "qual destino?",
-        "qual gatilho?",
-        "precisa lembrar disso?",
-        "qual saida ainda nao foi tentada?",
-        "qual ponto cego esta sendo protegido pelo plano atual?",
-        "estamos seguindo nossos principios?"
-      ],
-      objective: "rotacionar integrantes, provocar desvios uteis, procurar pontos cegos e recomendar regresso/fase correta antes de veredito positivo"
-    },
-    direct_action:
-      blockingReasons.length > 0
-        ? `resolver_blockers_fiscais: ${blockingReasons.join(", ")}`
-        : "fiscal_policy_clear"
-  };
+  return fiscalResultWithDeps(material, blockingReasons, FISCAL_POLICY_DEPS);
 }
 
 function requiredCoo(reasonInput: string | string[]): Cooperator[] {
-  const blockingReasons = Array.isArray(reasonInput) ? reasonInput : [];
-  const fallbackReason = Array.isArray(reasonInput) ? "modo fiscal PPIRTV exige mesa COO material por fase" : reasonInput;
-  return [
-    "ancora-fluxo",
-    "chato",
-    "questionador",
-    "entrevista-me",
-    "garimpeiro",
-    "dex-memoria",
-    "estacionamento",
-    "reuniao",
-    "sprinter",
-    "duda-dev",
-    "mapeador-implementacao",
-    "revisor-codigo",
-    "tio-testador",
-    "validador-pronto"
-  ].map((name) => ({ name, reason: cooReason(name, blockingReasons, fallbackReason), material: true }));
+  return requiredCooWithDeps(reasonInput, FISCAL_POLICY_DEPS);
 }
-
-function cooReason(name: string, blockers: string[], fallbackReason: string): string {
-  if (name === "revisor-codigo" && blockers.includes("review_required")) {
-    return "obrigatorio por review_required: mudanca/risco de codigo exige artefato ou achados de revisao";
-  }
-  if ((name === "garimpeiro" || name === "dex-memoria") && blockers.some((blocker) => ["memory_required_but_empty", MEMORY_MINING_BLOCKED_VERDICT_REASON].includes(blocker))) {
-    return "obrigatorio por memory_required_but_empty/memory_mining_blocked_verdict: garimpar pepitas, classificar memoria L1/L2 e dar destino a candidatos fortes antes de veredito positivo";
-  }
-  if ((name === "reuniao" || name === "sprinter") && blockers.includes("required_cooperation")) {
-    return "obrigatorio por required_cooperation: ressalva material exige reuniao material e trilho/regresso definido";
-  }
-  if (name === "tio-testador" && blockers.some((blocker) => ["hygiene_blocking", "review_required", "attempt_regress_count"].includes(blocker))) {
-    return "obrigatorio por risco de teste/evidencia: provar comportamento antes de qualquer positivo";
-  }
-  if (name === "validador-pronto") {
-    return "obrigatorio antes de qualquer veredito positivo: conferir blockers fiscais e evidencias coerentes";
-  }
-  if (name === "ancora-fluxo") {
-    return "obrigatorio para regresso correto: apontar fase, retorno e proxima acao quando houver bloqueio";
-  }
-  if (name === "chato" || name === "questionador" || name === "entrevista-me") {
-    return "obrigatorio para perguntas de pressao: E SE, pra que, por que, onde, quando, quanto e estamos seguindo os principios?";
-  }
-  if (name === "estacionamento") {
-    return "obrigatorio para registrar saidas nao tentadas, pendencias e pontos cegos sem sumir com contexto";
-  }
-  if (name === "duda-dev" || name === "mapeador-implementacao") {
-    return "obrigatorio para ligar o bloqueio ao contrato, classe/grupo/secao e impacto implementavel";
-  }
-  return fallbackReason;
-}
-
-function fiscalMateriality(flow: Flow, input: FiscalVerdictInput): boolean {
-  if (!flow.goal_binding) {
-    return false;
-  }
-  // NOVO-1 fail-closed: commits divergentes ininspecionaveis (base Git orfa)
-  // sao materia fiscal por si — o fast-track mechanical nao pode afirmar
-  // doc-only sem conseguir inspecionar o diff.
-  const unresolvedGitDivergence = flow.git_unresolved_commits === true;
-  const material = () =>
-    input.status === "pronto_com_ressalvas" ||
-    materialRiskText(fiscalText(flow, input)) ||
-    memoryRequiredByFlow(flow, input) ||
-    codeReviewRequired(flow, input) ||
-    hasHygieneBlocking(flow) ||
-    recurringRisk(input) ||
-    latestLibrarianStatus(flow)?.status === "failed";
-  // Fast-track: mechanical risk (text/doc/refs updates) skips fiscal material.
-  if (flow.goal_binding.envelope.risk_level === "mechanical") {
-    return (unresolvedGitDivergence || changedFilesContainCode(flow.changed_files)) && material();
-  }
-  return material();
-}
-
-function fiscalText(flow: Flow, input: FiscalVerdictInput): string {
-  return [
-    flow.goal,
-    flow.context,
-    ...flow.risks,
-    ...flow.uncertainties,
-    ...flow.tasks,
-    ...flow.expected_evidence,
-    ...flow.done_criteria,
-    ...flow.changed_files,
-    input.rationale,
-    input.next_step,
-    ...(input.residual_risks ?? []),
-    ...(input.review_findings ?? [])
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
-function materialRiskText(text: string): boolean {
-  return /(risco material|risco de produto|regress|erro recorrente|falh|bloque|sem reuniao|sem reunião|sem revisor|sem memoria|sem memória|bibliotecario|bibliotecário|graphify|hygiene|codigo|código|mudanca de codigo|mudança de código|principios|princípios)/i.test(text);
-}
-
-function requiredCooperationRequired(flow: Flow, input: FiscalVerdictInput, blockingReasons: string[]): boolean {
-  return requiredCooperationStillActive(flow, input);
-}
-
-function explicitMeetingTrigger(text: string): boolean {
-  const normalized = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  return normalized
-    .split(/[\r\n.;]+/)
-    .map((segment) => segment.trim())
-    .filter(Boolean)
-    .some((segment) => positiveMeetingTrigger(segment) && !negativeMeetingTrigger(segment));
-}
-
-function negativeMeetingTrigger(text: string): boolean {
-  return (
-    /(required_cooperation|meeting_id|participantes insuficientes).{0,80}(nao se aplica|nao e necessario|nao ha|required false|opcional|sem necessidade|nao ocorreu)/i.test(text) ||
-    /(nao se aplica|nao e necessario|nao ha|opcional|sem necessidade|nao ocorreu).{0,80}(required_cooperation|meeting_id|participantes insuficientes)/i.test(text)
-  );
-}
-
-function positiveMeetingTrigger(text: string): boolean {
-  return /(sem reuniao|reuniao obrigatoria|reuniao material|mesa material|cooperacao material|divergente\/convergente\/transversal|sem meeting_id|required_cooperation (obrigator|exig|missing|falt|pendente)|participantes insuficientes)/i.test(text);
-}
-
 function requiredCooperationStillActive(flow: Flow, input: FiscalVerdictInput = {}): boolean {
   if (explicitMeetingTrigger(fiscalText(flow, input))) {
     return true;
@@ -5274,43 +5110,6 @@ function reviewStatusForPostWrite(validation: MemoryPostWriteValidation, written
     return "failed_post_write_validation";
   }
   return "pending_consciencia_memorias";
-}
-
-function codeReviewRequired(flow: Flow, input: FiscalVerdictInput): boolean {
-  // NOVO-1 fail-closed: commits divergentes que o diff nao consegue
-  // inspecionar (base orfa) sempre exigem review.
-  const unresolvedGitDivergence = flow.git_unresolved_commits === true;
-  const baseCodeReviewRequired = () =>
-    flow.changed_files.length > 0 || /(codigo|código|mudanca de codigo|mudança de código|diff|review|revisor)/i.test(fiscalText(flow, input));
-  // Fast-track: mechanical risk (text/doc updates) does not require code review.
-  if (flow.goal_binding?.envelope.risk_level === "mechanical") {
-    return (unresolvedGitDivergence || changedFilesContainCode(flow.changed_files)) && baseCodeReviewRequired();
-  }
-  return unresolvedGitDivergence || baseCodeReviewRequired();
-}
-
-function hasReviewEvidence(flow: Flow, input: FiscalVerdictInput): boolean {
-  const citedEvidenceIds = input.evidence_ids ? new Set(input.evidence_ids) : null;
-  if (citedEvidenceIds) {
-    return flow.evidence.some((evidence) =>
-      citedEvidenceIds.has(evidence.evidence_id)
-      && isStructuredReviewEvidence(flow, evidence)
-    );
-  }
-  return (
-    flow.verdicts.some((verdict) =>
-      verdict.reviewed_implementation_fingerprint
-        ? verdict.reviewed_implementation_fingerprint === flow.implementation_fingerprint
-        : !flow.implementation_fingerprint &&
-          (
-            truthy(verdict.review_artifact_path) ||
-            verdict.review_findings.length > 0
-          ) &&
-          changedFilesMatchReview(flow.changed_files, reviewedChangedFilesForVerdict(flow, verdict)) &&
-          reviewRemainsCurrent(flow, verdict)
-    ) ||
-    flow.evidence.some((evidence) => isStructuredReviewEvidence(flow, evidence))
-  );
 }
 
 function canonicalChangedFiles(changedFiles: string[]): string[] {
@@ -5660,22 +5459,6 @@ function librarianExplicitlyOutOfScope(flow: Flow, inputText: string): boolean {
     return false;
   }
   return !/(obrigatorio agora|exigido agora|required now|bloqueia p1|bloquear p1|gate p1)/i.test(inputText);
-}
-
-function recurringRisk(input: FiscalVerdictInput): boolean {
-  return /\b(?:erros?|falhas?|bugs?|defeitos?|problemas?|incidentes?|riscos?)\s+recorrentes?\b|\btentativas?\b|\bregress/i.test(
-    [input.rationale, input.next_step, ...(input.residual_risks ?? [])].filter(Boolean).join("\n")
-  );
-}
-
-function hasEnoughAttempts(flow: Flow, input: FiscalVerdictInput): boolean {
-  const attemptCount = input.attempt_count ?? countHistory(flow, "verdict_recorded");
-  const regressCount = input.regress_count ?? countRegressions(flow);
-  return attemptCount >= 2 || regressCount >= 1 || flow.meetings.length > 0;
-}
-
-function regressLimitReached(flow: Flow, input: FiscalVerdictInput): boolean {
-  return (input.regress_count ?? countRegressions(flow)) >= FISCAL_CONFIG.maxRegressions;
 }
 
 function countHistory(flow: Flow, type: string): number {
