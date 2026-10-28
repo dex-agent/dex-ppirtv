@@ -280,6 +280,26 @@ a documented post-commit seal exception: 598ae5d per-commit replay fails
 because its record commit was added in 76e9c94; the cumulative replay and
 76e9c94/947fdb4 replays PASS.
 
+### Mining deposit visibility (2026-10-27)
+
+FE-2026-10-27-MINING-DEPOSIT-VISIBILITY-CONTAIN is a glue-only CONTAIN with
+FE-DEBT-004 open. The mining deposit visibility policy (when the summary
+must expose the empty funnel via `nuggets_collected` +
+`deposit_guidance`) lives in the SSOT `src/memory/mining-policy.ts`
+(`EMPTY_MINING_DEPOSIT_GUIDANCE` + pure projection
+`emptyMiningDepositGuidance`); the facade only projects the call into the
+legacy summary/return and the `mineMemoryV2` summary/return — 8 nonblank
+glue lines, zero new decision points, guards, symbols or exports in the
+monolith. Causal RED: 9 failed / 0 passed preserved at
+`.agents/AUDITORIAS/EVIDENCIAS/2026-10-27-mining-deposit-red.log`; suite
+`tests/mining-deposit-visibility.test.ts` (9 tests, both writer paths +
+unblock route + delphi build vocabulary). Debt FE-DEBT-004 (payable by any
+verified shrink): move the mining summary/return projection fill out of the
+facade into the mining SSOT when a safe seam exists. FE-DEBT-001/002/003
+are already paid (`FE-2026-10-13-GOVERNED-TAG-CONTRACT`,
+`FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES`,
+`FE-2026-10-18-GIT-CORROBORATION-COMMITS-SHRINK`).
+
 ## Safe seam sequence
 
 `FE-DEBT-001` was paid by `FE-2026-10-13-GOVERNED-TAG-CONTRACT`; `FE-DEBT-002` by

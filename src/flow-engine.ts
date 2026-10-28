@@ -55,12 +55,14 @@ import {
   classifyMemoryCandidate,
   classifyDexMemoriaV2Intent,
   collectMemoryNuggets,
+  emptyMiningDepositGuidance,
   executeDexMemoriaV2Adapter,
   governAutoWriteCandidate,
   isWritableCandidate,
   linkParkingToGold,
   MemoryLibrarian,
   memoryCandidateLedgerData,
+  miningDepositStep,
   resolveDexMemoriaHome,
   validateMemoryPostWrite,
   writeMemoryCandidate,
@@ -1724,6 +1726,8 @@ export class FlowEngine {
       blocked_count: unresolvedBlocked.length,
       ledger_only_count: ledgerOnly.length,
       discarded_count: discarded.length,
+      nuggets_collected: nuggets.length,
+      deposit_guidance: emptyMiningDepositGuidance(nuggets.length),
       strong_unwritten_count: strongUnwritten.length,
       resolved_candidate_ids: resolvedCandidateIds,
       resolved_strong_unwritten_count: resolvedStrongUnwritten.length,
@@ -1826,7 +1830,9 @@ export class FlowEngine {
       memory_post_write_validation: postWriteValidation,
       unclassified: unresolvedBlocked.length,
       blocked_verdict: summary.blocked_verdict,
-      memory_required_but_empty: summary.memory_required_but_empty
+      memory_required_but_empty: summary.memory_required_but_empty,
+      nuggets_collected: nuggets.length,
+      deposit_guidance: emptyMiningDepositGuidance(nuggets.length)
     };
   }
 
@@ -2009,6 +2015,8 @@ export class FlowEngine {
       blocked_count: blockedCandidateCount,
       ledger_only_count: ledgerOnly.length,
       discarded_count: discarded.length,
+      nuggets_collected: input.nuggets.length,
+      deposit_guidance: emptyMiningDepositGuidance(input.nuggets.length),
       estacionamento_count: estacionamento.length,
       resolved_candidate_ids: resolvedCandidateIds,
       resolved_strong_unwritten_count: resolvedCandidateIds.length,
@@ -2189,6 +2197,8 @@ export class FlowEngine {
       blocked_count: summary.blocked_count,
       memory_required_but_empty: false,
       written_count: written.length,
+      nuggets_collected: input.nuggets.length,
+      deposit_guidance: emptyMiningDepositGuidance(input.nuggets.length),
       unclassified: unclassifiedCount
     };
   }
@@ -6611,21 +6621,22 @@ function reviewRequiredSequence(flow: Flow): Array<Record<string, unknown>> {
 
 function memoryMiningRequiredSequence(flow: Flow): Array<Record<string, unknown>> {
   return [
+    miningDepositStep(flow.flow_id),
     {
-      order: 1,
+      order: 2,
       tool: "mm_memory_mining",
       purpose: "executar garimpo/classificacao canonica de memoria no flow antes de novo veredito positivo",
       args: { flow_id: flow.flow_id, auto_classify: true, write_policy: "auto_write" },
       capture: "memory_mining_summary"
     },
     {
-      order: 2,
+      order: 3,
       tool: "goal_status",
       purpose: "confirmar que memory_required_but_empty saiu dos blockers antes de repetir goal_verdict",
       args: { flow_id: flow.flow_id }
     },
     {
-      order: 3,
+      order: 4,
       tool: "goal_verdict",
       purpose: "somente se goal_status nao listar memory_required_but_empty e os demais blockers estiverem resolvidos",
       only_if: "goal_status.blockers nao contem memory_required_but_empty",

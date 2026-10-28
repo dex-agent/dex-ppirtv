@@ -23,6 +23,27 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-27 — mining-deposit-visibility (CONTAIN + vocabulário delphi)
+
+> GO do dono 2026-10-27 (Trilho `2026-10-27-mining-deposit-visibility`): fim do
+> 0-anestesiante do `mm_memory_mining`. Delta de capacidade: o summary/retorno do
+> mining expõe `nuggets_collected` e, com a coleta vazia, `deposit_guidance`
+> ensinando a depositar (política no SSOT `src/memory/mining-policy.ts`,
+> consumida pelos dois caminhos de writer — visita CONTAIN
+> `FE-2026-10-27-MINING-DEPOSIT-VISIBILITY-CONTAIN`, debt `FE-DEBT-004` aberta);
+> as DUAS rotas de unblock (`memoryRequiredErrorAction` em `src/server.ts`,
+> agora exportada, e `memoryMiningRequiredSequence` no flow-engine) devolvem
+> passo 1 `evidence_attach` com `gold_mining` modelo antes de minerar, via
+> builder SSOT `miningDepositStep`; `THEME_RULES` delphi reconhece `dcc32|dpr|dproj` (ouro de
+> build pontuava 4 e caía em `ledger_only` silencioso); description do
+> `mm_memory_mining` declara que o classificador lê somente texto depositado em
+> `gold_mining`/`parking_lot`. Prova: suite nova RED-first
+> `tests/mining-deposit-visibility.test.ts` (9 casos; RED 9/9 preservado em
+> `.agents/AUDITORIAS/EVIDENCIAS/2026-10-27-mining-deposit-red.log`) + suite
+> integral 725|4 (56 arquivos) + camping CONTAIN PASS + tools/list 32 vivo com
+> description nova. Nenhuma capacidade nova/removida (fotografia `947fdb4`
+> vigente; receipt atualizado em `generated_at`/`suite`).
+
 ## Reavaliação 2026-10-26 — selagem do record P1 no ledger de camping
 
 > Apenas governança: record FE-2026-10-26-VERDICT-FISCAL-POLICY-SHRINK ganha commit 9797016 + parent 883561b (selagem pós-commit); nenhum arquivo de capacidade mudou. Fotografia vigente segue 947fdb4; receipt atualizado em generated_at.

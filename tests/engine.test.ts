@@ -5308,10 +5308,14 @@ describe("PPIRTV flow engine", () => {
       can_retry_verdict: false
     });
     expect(sequence[0]).toMatchObject({
+      tool: "evidence_attach",
+      args: expect.objectContaining({ flow_id: flowId, gold_mining: expect.any(Array) })
+    });
+    expect(sequence[1]).toMatchObject({
       tool: "mm_memory_mining",
       args: { flow_id: flowId, auto_classify: true, write_policy: "auto_write" }
     });
-    expect(sequence[1]).toMatchObject({ tool: "goal_status", args: { flow_id: flowId } });
+    expect(sequence[2]).toMatchObject({ tool: "goal_status", args: { flow_id: flowId } });
     expect(memoryDiagnostics).toMatchObject({
       required: true,
       mined: false,

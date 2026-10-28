@@ -23,6 +23,7 @@ import {
   WorkProgressContractError
 } from "./flow-engine.js";
 import { GoalIdempotencyDuplicateBindingsError } from "./goal-ledger-recovery.js";
+import { miningDepositStep } from "./memory/mining-policy.js";
 import { isGovernedTag } from "./memory/index.js";
 import { scrubSecretLikeText } from "./security/secret-redaction.js";
 import { PpirtvStore } from "./store.js";
@@ -771,7 +772,7 @@ function registerTools(
     server,
     "mm_memory_mining",
     {
-      description: "Classify and automatically write valid GOAL memory candidates, reporting every action. The ordinary call needs only flow_id when the human learning text states project/local, global/cross-project, both, or a recognizable theme; v2_* fields are advanced overrides.",
+      description: MM_MEMORY_MINING_TOOL_DESCRIPTION,
       inputSchema: {
         flow_id: z.string().min(1),
         auto_classify: z.boolean().default(true).describe(INPUT_FIELD_DESCRIPTIONS.auto_classify),
@@ -1395,19 +1396,28 @@ function parsePipeListFromError(message: string, key: string): string[] {
   return match[1].split("|").map((item) => item.trim()).filter(Boolean);
 }
 
-function memoryRequiredErrorAction(flowId: string) {
+// SPT 2026-10-27-mining-deposit-visibility (F1a): description declara a fonte
+// de entrada do minerador; exportada para fixação por teste sem client MCP.
+export const MM_MEMORY_MINING_TOOL_DESCRIPTION = "Classify and automatically write valid GOAL memory candidates, reporting every action. The ordinary call needs only flow_id when the human learning text states project/local, global/cross-project, both, or a recognizable theme; v2_* fields are advanced overrides. The classifier reads only text deposited in the gold_mining/parking_lot slots (evidence_attach.gold_mining, meeting/verdict gold_mining); an empty deposit returns nuggets_collected=0 with deposit_guidance teaching how to deposit.";
+
+// SPT 2026-10-27-mining-deposit-visibility (F1b): a rota de resgate ensina o
+// depósito ANTES de minerar — o passo é o builder SSOT miningDepositStep
+// (mining-policy.ts), compartilhado com a rota do engine
+// (memoryMiningRequiredSequence), para o unblock ter uma única verdade.
+export function memoryRequiredErrorAction(flowId: string) {
   return {
     type: "run_memory_mining",
     tool: "mm_memory_mining",
-    reason: "memory_required_but_empty exige mm_memory_mining canonico no flow antes de novo goal_verdict positivo",
+    reason: "memory_required_but_empty exige deposito de aprendizado (evidence_attach.gold_mining) antes do mm_memory_mining canonico e novo goal_verdict positivo",
     required_tool_sequence: [
+      miningDepositStep(flowId),
       {
-        order: 1,
+        order: 2,
         tool: "mm_memory_mining",
         args: { flow_id: flowId, auto_classify: true, write_policy: "auto_write" }
       },
-      { order: 2, tool: "goal_status", args: { flow_id: flowId } },
-      { order: 3, tool: "goal_verdict", only_if: "goal_status.blockers nao contem memory_required_but_empty" }
+      { order: 3, tool: "goal_status", args: { flow_id: flowId } },
+      { order: 4, tool: "goal_verdict", only_if: "goal_status.blockers nao contem memory_required_but_empty" }
     ]
   };
 }

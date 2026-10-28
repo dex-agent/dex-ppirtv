@@ -10,6 +10,32 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Alterado
 
+- Mining expõe a entrada vazia e ensina o depósito (2026-10-27, GO do dono — Trilho
+  `mining-deposit-visibility`, SPT
+  `.agents/PLAN-TASKS/2026-10-27-mining-deposit-visibility.md`): fim do
+  0-anestesiante do `mm_memory_mining` — summary e retorno passam a expor
+  `nuggets_collected` e, quando nenhum depósito sobrevive à coleta,
+  `deposit_guidance` ensinando a depositar; a política mora no SSOT
+  `src/memory/mining-policy.ts` (`EMPTY_MINING_DEPOSIT_GUIDANCE` +
+  projeção pura `emptyMiningDepositGuidance`), consumida pelos dois caminhos
+  de writer (legacy e `mineMemoryV2`) como cola de projeção sem decisão nova
+  no monolito (visita CONTAIN do camping, debt `FE-DEBT-004` pagável em
+  SHRINK futuro). As DUAS rotas de unblock de `memory_required_but_empty` —
+  `memoryRequiredErrorAction` em `src/server.ts` (agora exportada) e
+  `memoryMiningRequiredSequence` no flow-engine — ganham passo 1
+  `evidence_attach` com `gold_mining` modelo antes de minerar, via builder
+  SSOT `miningDepositStep` em `src/memory/mining-policy.ts` (única verdade do
+  passo; mining/status/verdict reordenados para 2/3/4; colateral declarado:
+  asserts de índice da sequência em `tests/engine.test.ts` atualizados para a
+  nova ordem). `THEME_RULES`
+  delphi reconhece vocabulário de build (`dcc32|dpr|dproj` — ouro real
+  pontuava 4 e caía em `ledger_only` silencioso). Description do
+  `mm_memory_mining` declara que o classificador lê somente texto depositado
+  em `gold_mining`/`parking_lot`. Suite nova RED-first
+  `tests/mining-deposit-visibility.test.ts` (9 casos; RED 9/9 preservado em
+  `.agents/AUDITORIAS/EVIDENCIAS/2026-10-27-mining-deposit-red.log`). O
+  comportamento "vazio satisfaz o fiscal" é PRESERVADO de propósito (decisão
+  MGL 2026-10-18) — a cura é visibilidade + rota, não bloqueio.
 - Eixo fiscal do verdict sai do monolito (2026-10-26, GO do dono — árvore CCP P1
   `verdict-fiscal-policy-tree`, SPT
   `.agents/PLAN-TASKS/2026-10-26-verdict-fiscal-policy-tree.md`): o núcleo

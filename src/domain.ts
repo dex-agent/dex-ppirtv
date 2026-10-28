@@ -316,6 +316,11 @@ export type MemoryMiningSummary = {
   blocked_count: number;
   ledger_only_count: number;
   discarded_count: number;
+  // SPT 2026-10-27-mining-deposit-visibility: a entrada do funil fica visível;
+  // vazio continua satisfazendo o fiscal (decisão MGL), mas nunca mais lê como
+  // "nada memorável".
+  nuggets_collected?: number;
+  deposit_guidance?: string;
   memory_required_but_empty?: boolean;
   candidates?: Array<Record<string, unknown>>;
   written?: Array<{ candidate_id: string; files: string[] }>;

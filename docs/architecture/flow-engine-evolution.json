@@ -587,6 +587,36 @@
       },
       "commit": "979701635e4300c2e0d9a21b7a463e4cd498e385",
       "parent_commit": "883561b1e45607076cf89ae95f237ec0b58798a2"
+    },
+    {
+      "id": "FE-2026-10-27-MINING-DEPOSIT-VISIBILITY-CONTAIN",
+      "spt_path": ".agents/PLAN-TASKS/2026-10-27-mining-deposit-visibility.md",
+      "responsibility": "Egress de visibilidade da entrada de mining: expor nuggets_collected e deposit_guidance quando nenhum deposito sobrevive a coleta, e ensinar o deposito ANTES de minerar nas duas rotas de unblock; a politica (quando o guidance aparece + passo de deposito miningDepositStep) mora no SSOT src/memory/mining-policy.ts e a fachada so cola a projecao nos summaries/retornos dos dois caminhos de writer e o passo 1 na sequencia memoryMiningRequiredSequence, sem decisao nova no monolito.",
+      "owner": "$oraculo-refatoracao",
+      "changelog_marker": "Mining expõe a entrada vazia e ensina o depósito",
+      "architecture_marker": "FE-2026-10-27-MINING-DEPOSIT-VISIBILITY-CONTAIN",
+      "consumers": [
+        "src/flow-engine.ts"
+      ],
+      "evidence": [
+        "tests/mining-deposit-visibility.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/mining-deposit-visibility.test.ts": "legacy: flow sem depósito devolve nuggets_collected=0 e deposit_guidance citando evidence_attach.gold_mining"
+      },
+      "mode": "CONTAIN",
+      "glue_only": true,
+      "destination_module": "src/memory/mining-policy.ts",
+      "debt": {
+        "id": "FE-DEBT-004",
+        "status": "open",
+        "owner": "$oraculo-refatoracao",
+        "when": "proximo SHRINK com seam seguro para extrair o preenchimento de summary/retorno de mining da fachada para o SSOT de mining-policy",
+        "responsibility": "Egress de visibilidade da entrada de mining: expor nuggets_collected e deposit_guidance quando nenhum deposito sobrevive a coleta, e ensinar o deposito ANTES de minerar nas duas rotas de unblock; a politica (quando o guidance aparece + passo de deposito miningDepositStep) mora no SSOT src/memory/mining-policy.ts e a fachada so cola a projecao nos summaries/retornos dos dois caminhos de writer e o passo 1 na sequencia memoryMiningRequiredSequence, sem decisao nova no monolito.",
+        "payment_scope": "any_verified_shrink"
+      },
+      "base_blob": "93f8c5f5c7d1b1318552d1397160edec58bf6295",
+      "head_blob": "ec75ad63710a2043ed7e6828f9507576f00f58cf"
     }
   ]
 }

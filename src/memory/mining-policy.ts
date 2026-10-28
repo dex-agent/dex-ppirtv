@@ -12,7 +12,7 @@ import { assertGovernedTag } from "./governed-tag.js";
 
 const THEME_RULES: Array<{ theme: string; pattern: RegExp }> = [
   { theme: "pythia-deepseek", pattern: /pythia-deepseek/i },
-  { theme: "delphi", pattern: /delphi|dunitx|pascal|firebird|acbr/i },
+  { theme: "delphi", pattern: /delphi|dcc32|dpr|dproj|dunitx|pascal|firebird|acbr/i },
   { theme: "ppirtv", pattern: /ppirtv|goal|spt|trilho|ledger|flow/i },
   { theme: "mcp", pattern: /mcp/i },
   { theme: "deepseek", pattern: /deepseek/i },
@@ -88,6 +88,41 @@ export const AUTO_WRITE_REVIEW_TAGS = ["#ppirtv/mm-auto-write", "#ppirtv/conscie
 
 export function resolveDexMemoriaHome(): string {
   return path.resolve(resolveConfiguredDexMemoriaHome());
+}
+
+// SPT 2026-10-27-mining-deposit-visibility (F1): a boca do funil precisa ser
+// GRITANTE quando vazia — "0 candidatos" sozinho anestesia o garimpo da sessão
+// (episódio master_maximus: ouro real existia e nada ensinava a depositá-lo).
+// Texto de egress puro consumido pelos DOIS caminhos de writer (legacy e v2)
+// quando nenhum nugget sobreviveu à coleta: nada depositado OU tudo filtrado
+// como bookkeeping.
+export const EMPTY_MINING_DEPOSIT_GUIDANCE =
+  "Entrada de mining vazia (nuggets_collected=0): o minerador classifica SOMENTE texto depositado nos slots gold_mining/parking_lot (evidence_attach.gold_mining, gold_mining de meeting e de verdict) - nada foi depositado ou tudo foi filtrado como bookkeeping. Para alimentar o funil: evidence_attach com gold_mining [\"Regra <tema>: <aprendizado reutilizavel do bloco>\"] ANTES de rodar mm_memory_mining novamente.";
+
+// A decisao de QUANDO o guidance aparece mora aqui (SSOT de politica de
+// mining), nao na fachada: o FlowEngine so cola a projecao nos summaries e
+// retornos, sem decisao nova dentro do monolito (visita CONTAIN do camping).
+export function emptyMiningDepositGuidance(nuggetsCollected: number): string | undefined {
+  return nuggetsCollected === 0 ? EMPTY_MINING_DEPOSIT_GUIDANCE : undefined;
+}
+
+// SPT mining-deposit-visibility (F1b): passo de deposito compartilhado pelas
+// DUAS rotas de unblock (memoryRequiredErrorAction em server.ts e
+// memoryMiningRequiredSequence no flow-engine) — uma unica verdade do
+// "deposite o aprendizado ANTES de minerar" (o minerador classifica somente
+// texto depositado; minerar com a boca vazia so devolve 0 candidatos).
+export function miningDepositStep(flowId: string, order = 1): Record<string, unknown> {
+  return {
+    order,
+    tool: "evidence_attach",
+    only_if: "aprendizado do bloco ainda nao depositado em gold_mining/parking_lot",
+    purpose: "depositar o aprendizado do bloco: o minerador classifica somente texto depositado",
+    args: {
+      flow_id: flowId,
+      title: "Deposito de aprendizado do bloco",
+      gold_mining: ["Regra <tema>: <aprendizado reutilizavel do bloco>"]
+    }
+  };
 }
 
 export function collectMemoryNuggets(flow: Flow, meetings: Meeting[]): MemoryNugget[] {
