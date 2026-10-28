@@ -616,7 +616,9 @@
         "payment_scope": "any_verified_shrink"
       },
       "base_blob": "93f8c5f5c7d1b1318552d1397160edec58bf6295",
-      "head_blob": "ec75ad63710a2043ed7e6828f9507576f00f58cf"
+      "head_blob": "ec75ad63710a2043ed7e6828f9507576f00f58cf",
+      "commit": "734322ac7d3c6259d8a0bf8000527b47fe2b2c44",
+      "parent_commit": "7fec5bb4dbc2aea2ec5587d489b491dfa22cb07f"
     }
   ]
 }

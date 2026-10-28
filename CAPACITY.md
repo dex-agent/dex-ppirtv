@@ -23,6 +23,14 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-28 — selagem do record mining-deposit-visibility no ledger de camping
+
+> Apenas governança: record FE-2026-10-27-MINING-DEPOSIT-VISIBILITY-CONTAIN
+> ganha commit 734322a + parent 7fec5bb (selagem pós-commit; validador
+> `ledger_commit_seal: PASS`); nenhum arquivo de capacidade mudou neste
+> commit. Fotografia vigente segue 947fdb4; receipt atualizado em
+> generated_at.
+
 ## Reavaliação 2026-10-27 — mining-deposit-visibility (CONTAIN + vocabulário delphi)
 
 > GO do dono 2026-10-27 (Trilho `2026-10-27-mining-deposit-visibility`): fim do
