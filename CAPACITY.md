@@ -23,6 +23,13 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-28 — selagem do record mining-egress-shrink no ledger de camping
+
+> Apenas governança: record FE-2026-10-28-MINING-EGRESS-SHRINK ganha commit
+> 6e2b4b9 + parent a678a1a (selagem pós-commit; `ledger_commit_seal: PASS`);
+> nenhum arquivo de capacidade mudou neste commit. Fotografia vigente segue
+> 947fdb4; receipt atualizado em generated_at.
+
 ## Reavaliação 2026-10-28 — mining-egress-shrink (SHRINK paga FE-DEBT-004)
 
 > GO do dono 2026-10-28 (Trilho `mining-egress-shrink`, veredito do
