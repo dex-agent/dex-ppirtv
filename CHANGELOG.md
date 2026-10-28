@@ -10,6 +10,22 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Alterado
 
+- Egress de mining e sequência de unblock saem da fachada (2026-10-28, GO do
+  dono — Trilho `mining-egress-shrink`, SPT
+  `.agents/PLAN-TASKS/2026-10-28-mining-egress-shrink.md`): pagamento da debt
+  de camping `FE-DEBT-004` com SHRINK verificado — `memoryMiningRequiredSequence`
+  migra de `src/flow-engine.ts` para o SSOT `src/memory/mining-policy.ts`
+  (Mover Função; a fachada consome por import nos 2 call sites
+  `required_tool_sequence` e `executable_route`) e o par de projeção
+  `nuggets_collected`/`deposit_guidance` colapsa no helper único
+  `miningVisibilityEgress` do SSOT, espalhado nos 4 pontos da fachada (legacy
+  summary/return + v2 summary/return). Comportamento preservado: BASELINE
+  725|4 no HEAD `a678a1a`, suites de rede 222/222 sem edição de teste
+  (mining-deposit 9 + engine 198 + mining-policy 15). Record
+  `FE-2026-10-28-MINING-EGRESS-SHRINK` no ledger com
+  `pays_debt_id=FE-DEBT-004` (a debt deixa de estar aberta); selagem
+  pós-commit no commit seguinte. Próximo candidato da maratona destravado:
+  sub-eixo meetings (`PPIRTV-VERDICT-MEETINGS-TREE`).
 - Mining expõe a entrada vazia e ensina o depósito (2026-10-27, GO do dono — Trilho
   `mining-deposit-visibility`, SPT
   `.agents/PLAN-TASKS/2026-10-27-mining-deposit-visibility.md`): fim do

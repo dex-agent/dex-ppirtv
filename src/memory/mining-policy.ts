@@ -125,6 +125,53 @@ export function miningDepositStep(flowId: string, order = 1): Record<string, unk
   };
 }
 
+// SPT mining-egress-shrink (2026-10-28, paga FE-DEBT-004): a montagem da
+// sequência de unblock de memória é política de mining pura (consome só
+// flow_id e os builders daqui) — Mover Função da fachada para o SSOT.
+export function memoryMiningRequiredSequence(flow: Flow): Array<Record<string, unknown>> {
+  return [
+    miningDepositStep(flow.flow_id),
+    {
+      order: 2,
+      tool: "mm_memory_mining",
+      purpose: "executar garimpo/classificacao canonica de memoria no flow antes de novo veredito positivo",
+      args: { flow_id: flow.flow_id, auto_classify: true, write_policy: "auto_write" },
+      capture: "memory_mining_summary"
+    },
+    {
+      order: 3,
+      tool: "goal_status",
+      purpose: "confirmar que memory_required_but_empty saiu dos blockers antes de repetir goal_verdict",
+      args: { flow_id: flow.flow_id }
+    },
+    {
+      order: 4,
+      tool: "goal_verdict",
+      purpose: "somente se goal_status nao listar memory_required_but_empty e os demais blockers estiverem resolvidos",
+      only_if: "goal_status.blockers nao contem memory_required_but_empty",
+      args: {
+        flow_id: flow.flow_id,
+        status: "pronto_com_ressalvas",
+        evidence_ids: ["<evidence_ids_obrigatorias>"],
+        meeting_id: "<meeting_id_se_required_cooperation_estava_ativo>",
+        rationale: "Veredito apos mm_memory_mining canonico e blockers fiscais resolvidos.",
+        residual_risks: ["<risco residual ou nenhum>"],
+        next_step: "<proximo passo com quando>"
+      }
+    }
+  ];
+}
+
+// O par de egress de visibilidade é UM conceito (contagem da entrada + ensino
+// do depósito quando vazio): o helper devolve os dois campos e os 4 pontos da
+// fachada (summary/return legacy e v2) só espalham.
+export function miningVisibilityEgress(nuggetsCollected: number): { nuggets_collected: number; deposit_guidance?: string } {
+  return {
+    nuggets_collected: nuggetsCollected,
+    deposit_guidance: emptyMiningDepositGuidance(nuggetsCollected)
+  };
+}
+
 export function collectMemoryNuggets(flow: Flow, meetings: Meeting[]): MemoryNugget[] {
   type CollectedNugget = MemoryNugget & { dedupeKey: string };
   const nuggets: CollectedNugget[] = [];

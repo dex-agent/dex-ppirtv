@@ -300,6 +300,21 @@ are already paid (`FE-2026-10-13-GOVERNED-TAG-CONTRACT`,
 `FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES`,
 `FE-2026-10-18-GIT-CORROBORATION-COMMITS-SHRINK`).
 
+### Mining egress shrink (2026-10-28)
+
+FE-2026-10-28-MINING-EGRESS-SHRINK pays FE-DEBT-004 (opened by the CONTAIN
+FE-2026-10-27-MINING-DEPOSIT-VISIBILITY-CONTAIN). The whole mining unblock +
+visibility egress policy cluster left the facade by Move Function:
+`memoryMiningRequiredSequence` now lives in `src/memory/mining-policy.ts`
+(pure policy — consumes only flow_id and the SSOT builders; facade call sites
+`required_tool_sequence` and `executable_route` import it), and the
+`nuggets_collected`/`deposit_guidance` pair collapsed into the single SSOT
+helper `miningVisibilityEgress`, spread at the four facade projection points.
+Behavior preserved by the live suite with zero test edits: BASELINE 725|4 at
+`a678a1a`, network suites 222/222 (mining-deposit 9 + engine 198 +
+mining-policy 15). No new debt: record `debt: null`; the camping gate for
+sibling cuts (sub-eixo meetings) is unblocked again.
+
 ## Safe seam sequence
 
 `FE-DEBT-001` was paid by `FE-2026-10-13-GOVERNED-TAG-CONTRACT`; `FE-DEBT-002` by

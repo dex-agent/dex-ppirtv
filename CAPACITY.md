@@ -23,6 +23,20 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-28 — mining-egress-shrink (SHRINK paga FE-DEBT-004)
+
+> GO do dono 2026-10-28 (Trilho `mining-egress-shrink`, veredito do
+> $oraculo-refatoracao): a política de unblock de memória
+> (`memoryMiningRequiredSequence`) e o par de egress de visibilidade
+> (`nuggets_collected`/`deposit_guidance`, helper `miningVisibilityEgress`)
+> migram da fachada para o SSOT `src/memory/mining-policy.ts` (Mover Função —
+> SHRINK `FE-2026-10-28-MINING-EGRESS-SHRINK` PASS com
+> `pays_debt_id=FE-DEBT-004`; a debt deixa de estar aberta e cortes irmãos
+> como o sub-eixo meetings destravam). Prova: BASELINE 725|4 no HEAD
+> `a678a1a`; suites de rede 222/222 sem edição de teste; camping PASS mode
+> SHRINK reasons []. Nenhuma capacidade nova/removida (fotografia `947fdb4`
+> vigente; receipt atualizado em `generated_at`).
+
 ## Reavaliação 2026-10-28 — selagem do record mining-deposit-visibility no ledger de camping
 
 > Apenas governança: record FE-2026-10-27-MINING-DEPOSIT-VISIBILITY-CONTAIN

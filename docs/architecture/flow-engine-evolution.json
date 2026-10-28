@@ -619,6 +619,41 @@
       "head_blob": "ec75ad63710a2043ed7e6828f9507576f00f58cf",
       "commit": "734322ac7d3c6259d8a0bf8000527b47fe2b2c44",
       "parent_commit": "7fec5bb4dbc2aea2ec5587d489b491dfa22cb07f"
+    },
+    {
+      "id": "FE-2026-10-28-MINING-EGRESS-SHRINK",
+      "spt_path": ".agents/PLAN-TASKS/2026-10-28-mining-egress-shrink.md",
+      "responsibility": "Politica de unblock de memoria e egress de visibilidade da entrada de mining: a sequencia requerida (passo de deposito evidence_attach antes de mm_memory_mining) e o par de projecao nuggets_collected/deposit_guidance sao politica pura do SSOT src/memory/mining-policy.ts (memoryMiningRequiredSequence + miningVisibilityEgress); a fachada so importa e espalha nos pontos de summary/return dos dois caminhos de writer.",
+      "owner": "$oraculo-refatoracao",
+      "changelog_marker": "Egress de mining e sequência de unblock saem da fachada",
+      "architecture_marker": "FE-2026-10-28-MINING-EGRESS-SHRINK",
+      "consumers": [
+        "src/flow-engine.ts"
+      ],
+      "evidence": [
+        "tests/mining-deposit-visibility.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/mining-deposit-visibility.test.ts": "legacy: flow sem depósito devolve nuggets_collected=0 e deposit_guidance citando evidence_attach.gold_mining"
+      },
+      "mode": "SHRINK",
+      "removed_symbols": [
+        "memoryMiningRequiredSequence"
+      ],
+      "symbol_mappings": {
+        "memoryMiningRequiredSequence": "memoryMiningRequiredSequence"
+      },
+      "same_responsibility": true,
+      "behavior_preserved_by": [
+        "tests/mining-deposit-visibility.test.ts 9/9 (egress nos dois caminhos de writer + unblock com passo de deposito)",
+        "tests/engine.test.ts verde incluindo a rota goalStatus da sequencia (participa das 222 da rede)",
+        "BASELINE npm run check 725|4 no HEAD a678a1a sem edicao de teste"
+      ],
+      "pays_debt_id": "FE-DEBT-004",
+      "debt": null,
+      "base_blob": "ec75ad63710a2043ed7e6828f9507576f00f58cf",
+      "head_blob": "2e971ddc919438bfc31e52ff7ac77f1a5be7ebb6",
+      "destination_module": "src/memory/mining-policy.ts"
     }
   ]
 }
