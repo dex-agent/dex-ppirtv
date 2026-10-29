@@ -23,6 +23,13 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-29 (b) — selagem do record env-snapshot no ledger de camping
+
+> Apenas governança: record FE-2026-10-29-ENV-SNAPSHOT-REDACTION-CONTAIN ganha
+> commit 4bf8aab + parent e46bf09 (selagem pós-commit; `ledger_commit_seal:
+> PASS`); nenhum arquivo de capacidade mudou neste commit. Fotografia vigente
+> segue 947fdb4; receipt atualizado em generated_at.
+
 ## Reavaliação 2026-10-29 — env-snapshot-sensitive-redaction (CONTAIN + redação de sensível não-declarado)
 
 > Corte do Trilho `2026-10-29-env-snapshot-sensitive-redaction.md` (consumo da
