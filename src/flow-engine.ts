@@ -115,7 +115,7 @@ import {
   taskProjection,
   traceabilityFromContract
 } from "./spt-traceability.js";
-import { fingerprintReviewedImplementation, freezeGitHeadBase, normalizeReviewPath, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
+import { freezeGitHeadBase, normalizeReviewPath, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
 import {
   normalizeRecallConsumptionInput,
   sameRecallReferences,
@@ -3770,15 +3770,9 @@ export class FlowEngine {
       );
     }
     if (reviewAttestation && flow.goal_binding?.envelope.workspace) {
-      const strictFingerprint = await fingerprintReviewedImplementation(
-        flow.goal_binding.envelope.workspace,
-        flow.changed_files,
-        process.platform,
-        {
-          requireReviewableFiles: true,
-          allowedMissingFiles: flow.deleted_files ?? []
-        }
-      );
+      // PPIRTV-ENV-SNAPSHOT-001 (emenda barata 2): delegação pura ao SSOT —
+      // a redação de sensível não-declarado vale também na atestação estrita.
+      const strictFingerprint = await strictReviewSnapshotFingerprint(flow, { requireReviewableFiles: true });
       if (!input.reviewed_implementation_fingerprint) {
         throw new Error("REVIEW_SNAPSHOT_FINGERPRINT_REQUIRED: obtain implementation_fingerprint after implementation and attest that exact snapshot");
       }

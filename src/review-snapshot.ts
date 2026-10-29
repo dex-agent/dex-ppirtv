@@ -29,14 +29,22 @@ export async function fingerprintReviewedImplementation(
   workspace: string,
   changedFiles: string[],
   platform = process.platform,
-  options: { requireReviewableFiles?: boolean; allowedMissingFiles?: string[] } = {}
+  options: { requireReviewableFiles?: boolean; allowedMissingFiles?: string[]; redactedSensitivePaths?: string[] } = {}
 ): Promise<string> {
   const workspaceRoot = path.resolve(workspace);
   const canonicalPaths = [...new Set(changedFiles.map((item) => normalizeReviewPathForPlatform(item, platform)).filter(Boolean))].sort();
   const allowedMissing = new Set(
     (options.allowedMissingFiles ?? []).map((item) => normalizeReviewPathForPlatform(item, platform))
   );
-  const entries: Array<{ path: string; state: "file" | "missing" | "non_file" | "deleted" | "redacted_runtime"; sha256?: string }> = [];
+  // PPIRTV-ENV-SNAPSHOT-001 (decisão do owner 2026-10-29): sensível NÃO
+  // declarado (vítima do sweep de corroboração legado) é ruído de terceiro —
+  // REDIGIDO como o redacted_runtime, antes de lstat/readFile: conteúdo nunca
+  // lido nem hasheado. Sensível fora da lista segue fail-closed (produto
+  // próprio declarado).
+  const redactedSensitive = new Set(
+    (options.redactedSensitivePaths ?? []).map((item) => normalizeReviewPathForPlatform(item, platform))
+  );
+  const entries: Array<{ path: string; state: "file" | "missing" | "non_file" | "deleted" | "redacted_runtime" | "redacted_sensitive"; sha256?: string }> = [];
 
   for (const relativePath of canonicalPaths) {
     // Trilho 2026-10-23-snapshot-fantasma (rodada adversarial): o prefixo de
@@ -58,7 +66,13 @@ export async function fingerprintReviewedImplementation(
       entries.push({ path: relativePath, state: "redacted_runtime" });
       continue;
     }
-    assertReviewSnapshotPathIsNotSensitive(relativePath);
+    if (isSensitiveWorkspacePath(relativePath)) {
+      if (redactedSensitive.has(normalizeReviewPathForPlatform(relativePath, platform))) {
+        entries.push({ path: relativePath, state: "redacted_sensitive" });
+        continue;
+      }
+      throw new Error(`REVIEW_SNAPSHOT_SENSITIVE_PATH: ${relativePath}`);
+    }
     const absolutePath = path.resolve(workspaceRoot, relativePath);
     assertInsideWorkspace(workspaceRoot, absolutePath, platform);
     try {
@@ -76,9 +90,16 @@ export async function fingerprintReviewedImplementation(
       const resolvedPath = await realpath(absolutePath);
       const resolvedWorkspaceRoot = await realpath(workspaceRoot);
       assertInsideWorkspace(resolvedWorkspaceRoot, resolvedPath, platform);
-      assertReviewSnapshotPathIsNotSensitive(
-        normalizeReviewPathForPlatform(path.relative(resolvedWorkspaceRoot, resolvedPath), platform)
+      const resolvedRelative = normalizeReviewPathForPlatform(
+        path.relative(resolvedWorkspaceRoot, resolvedPath), platform
       );
+      if (isSensitiveWorkspacePath(resolvedRelative)) {
+        if (redactedSensitive.has(resolvedRelative)) {
+          entries.push({ path: relativePath, state: "redacted_sensitive" });
+          continue;
+        }
+        throw new Error(`REVIEW_SNAPSHOT_SENSITIVE_PATH: ${relativePath}`);
+      }
       if (!(await stat(resolvedPath)).isFile()) {
         if (options.requireReviewableFiles) {
           throw new Error(`REVIEW_SNAPSHOT_FILE_REQUIRED: ${relativePath}`);
@@ -122,12 +143,18 @@ export async function fingerprintReviewedImplementation(
 // produto; e path sensivel sob qualquer destes prefixos e REDIGIDO no
 // snapshot, nunca bloqueante (pendencia
 // PPIRTV-VEREDITO-TERMINAL-GATES-SNAPSHOT-FANTASMA, flows 0568/0602 do jev).
+// PPIRTV-ENV-SNAPSHOT-001 (2026-10-29): sensivel por nome (.env e irmaos) e
+// o mesmo ruido automatico na corroboration — nunca entra no merge; a rota
+// de declaracao (provided/revision_set) continua sendo a unica porta e la o
+// sensivel segue fail-closed.
 const GIT_CORROBORATION_EXCLUDED_PREFIXES = [".git/", ".ppirtv/", ".agents/", ".codex/", ".zcode/"];
 
 function filterCorroborationFiles(files: string[]): string[] {
   const filtered = files
     .map((file) => normalizeReviewPath(file))
-    .filter((file) => file.length > 0 && !GIT_CORROBORATION_EXCLUDED_PREFIXES.some((prefix) => file.startsWith(prefix)));
+    .filter((file) => file.length > 0
+      && !GIT_CORROBORATION_EXCLUDED_PREFIXES.some((prefix) => file.startsWith(prefix))
+      && !isSensitiveWorkspacePath(file));
   return [...new Set(filtered)];
 }
 
@@ -220,15 +247,65 @@ export async function withCurrentImplementationFingerprint(flow: Flow): Promise<
   if (!workspace || flow.status === "complete" || flow.status === "archived") {
     return flow;
   }
-  const implementationFingerprint = await fingerprintReviewedImplementation(
-    workspace,
-    flow.changed_files,
-    process.platform,
-    { allowedMissingFiles: flow.deleted_files ?? [] }
-  );
+  const implementationFingerprint = await strictReviewSnapshotFingerprint(flow);
   return implementationFingerprint === flow.implementation_fingerprint
     ? flow
     : { ...flow, implementation_fingerprint: implementationFingerprint };
+}
+
+// PPIRTV-ENV-SNAPSHOT-001 (emenda barata 2): a rota CORRENTE e a rota ESTRITA
+// de atestação de review compartilham a MESMA verdade — o fingerprint do flow
+// com redação de sensível não-declarado. A fachada só delega (visita CONTAIN
+// ao camping; debt FE-DEBT-005).
+export async function strictReviewSnapshotFingerprint(
+  flow: Flow,
+  options: { requireReviewableFiles?: boolean } = {}
+): Promise<string> {
+  const workspace = flow.goal_binding?.envelope.workspace;
+  if (!workspace) {
+    throw new Error("REVIEW_SNAPSHOT_WORKSPACE_REQUIRED: strict review snapshot requires a flow workspace binding");
+  }
+  const redactedSensitivePaths = redactableSensitivePaths(flow);
+  return fingerprintReviewedImplementation(workspace, flow.changed_files, process.platform, {
+    requireReviewableFiles: options.requireReviewableFiles,
+    allowedMissingFiles: flow.deleted_files ?? [],
+    ...(redactedSensitivePaths.length > 0 ? { redactedSensitivePaths } : {})
+  });
+}
+
+// PPIRTV-ENV-SNAPSHOT-001 (2026-10-29): sensível congelado no changed_files
+// que NÃO consta no universo declarado do flow (provided.changed_files de
+// qualquer gate + revision_set de criterion_proof) é ruído de terceiro
+// varrido pela corroboração legada — redigido no snapshot, nunca bloqueante.
+// Sensível declarado segue fail-closed: a diferença terceiro × produto é por
+// PROVENIÊNCIA de declaração (decisão explícita do owner, laudo §17).
+function redactableSensitivePaths(flow: Flow): string[] {
+  const declared = new Set<string>();
+  for (const gate of Object.values(flow.gates ?? {})) {
+    const changed = (gate as { provided?: { changed_files?: unknown } }).provided?.changed_files;
+    if (Array.isArray(changed)) {
+      for (const item of changed) {
+        if (typeof item === "string") declared.add(normalizeReviewPath(item));
+      }
+    }
+  }
+  for (const evidence of flow.evidence ?? []) {
+    const revisionSet = (evidence as unknown as { criterion_proof?: { revision_set?: Array<{ paths?: Array<{ path: unknown }> }> } }).criterion_proof?.revision_set;
+    for (const revision of revisionSet ?? []) {
+      for (const entry of revision.paths ?? []) {
+        if (typeof entry.path === "string") declared.add(normalizeReviewPath(entry.path));
+      }
+    }
+  }
+  // Leitura tolerante a dado persistido sujo (input-nunca-bloqueante): item
+  // embrulhado/objeto vira string pela MESMA normalização do pipeline do
+  // snapshot antes do casamento de sensibilidade — redigir só o que é path
+  // sensível de verdade; sujeira segue o destino antigo (missing/non_file).
+  return flow.changed_files
+    .map((item) => normalizeReviewPath(item))
+    .filter((normalized) => normalized.length > 0
+      && isSensitiveWorkspacePath(normalized)
+      && !declared.has(normalized));
 }
 
 // SPT gate-integrity-hardening-3 (R6): aplica o diff Git ao flow antes da
@@ -246,12 +323,6 @@ export async function withGitCorroboratedChangedFiles(flow: Flow): Promise<Flow>
     return flow;
   }
   return { ...flow, changed_files: merged, git_unresolved_commits: unresolved || undefined };
-}
-
-function assertReviewSnapshotPathIsNotSensitive(relativePath: string): void {
-  if (isSensitiveWorkspacePath(relativePath)) {
-    throw new Error(`REVIEW_SNAPSHOT_SENSITIVE_PATH: ${relativePath}`);
-  }
 }
 
 export function isSensitiveWorkspacePath(relativePath: string): boolean {

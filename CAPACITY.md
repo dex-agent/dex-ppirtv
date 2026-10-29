@@ -23,6 +23,24 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-29 — env-snapshot-sensitive-redaction (CONTAIN + redação de sensível não-declarado)
+
+> Corte do Trilho `2026-10-29-env-snapshot-sensitive-redaction.md` (consumo da
+> pendência PPIRTV-ENV-SNAPSHOT-001 do ledger `.agents/PENDENTES.md`). Deltas
+> sobre a fotografia 947fdb4; recibo atualizado (`dex.capacity.snapshot.v1`).
+
+| Capacidade | Delta observado | Evidência |
+|---|---|---|
+| CAP-07 review estrutural | corroboração git NUNCA incorpora path sensível (filtro `isSensitiveWorkspacePath` no merge); snapshot redige sensível NÃO-declarado (entry `redacted_sensitive`, conteúdo nunca lido nem hasheado) por proveniência de declaração (provided.changed_files de todos os gates + revision_set de criterion_proof); sensível DECLARADO segue fail-closed (`revision_path_sensitive` intacto); rotas corrente e ESTRITA de atestação compartilham o wrapper SSOT `strictReviewSnapshotFingerprint` (emenda barata 2) | `tests/env-snapshot-sensitive.test.ts` 6/6 — vítima e2e destrava (gate revisão passed + verdict sem REVIEW_SNAPSHOT_SENSITIVE_PATH); `tests/gate-resolution.test.ts` + `tests/review-snapshot-redaction.test.ts` verdes sem edição |
+| CAP-11 leitura tolerante | `redactableSensitivePaths` normaliza item sujo/embrulhado pela MESMA rota do pipeline antes do casamento de sensibilidade — suíte adversarial existente pegou o colateral ao vivo (crédito: replay sujo do consumidor) | `tests/consumer-replay-jumper.test.ts` verde; suíte integral 731 \| 4 sem edição de teste |
+| CAP-16 fiscal camping | visita CONTAIN PASS (`FE-2026-10-29-ENV-SNAPSHOT-REDACTION-CONTAIN`, `glue_only`, destination `src/review-snapshot.ts`); debt `FE-DEBT-005` aberta e pagável (`any_verified_shrink`) | `npm run check:flow-engine` PASS |
+
+**Evidência do corte:** `npm run check` verde (audit + camping CONTAIN +
+capacity + build + suíte 731 passed | 4 skipped, 57 arquivos); RED preservado
+em `.agents/AUDITORIAS/EVIDENCIAS/2026-10-29-env-snapshot-red.log`. **Limitações:**
+lacunas 12.1 (risk_level mechanical) e 12.3 (população exposta) do laudo seguem
+incertas (corte próprio); FE-DEBT-005 aberta.
+
 ## Reavaliação 2026-10-28 — selagem do record mining-egress-shrink no ledger de camping
 
 > Apenas governança: record FE-2026-10-28-MINING-EGRESS-SHRINK ganha commit

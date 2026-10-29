@@ -10,6 +10,27 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Alterado
 
+- Snapshot redige sensível não-declarado de terceiro (2026-10-29, GO do dono —
+  Trilho `env-snapshot-sensitive-redaction`, SPT
+  `.agents/PLAN-TASKS/2026-10-29-env-snapshot-sensitive-redaction.md`, consumo
+  da pendência `PPIRTV-ENV-SNAPSHOT-001` sobre o laudo do workspace
+  consumidor): untracked sensível (.env) varrido pela corroboração git não
+  congela mais flow oficial para sempre — `filterCorroborationFiles` também
+  descarta `isSensitiveWorkspacePath` (prevenção no merge);
+  `fingerprintReviewedImplementation` ganha a opção aditiva
+  `redactedSensitivePaths` (entry `redacted_sensitive`, conteúdo nunca lido
+  nem hasheado) e a proveniência de declaração (`redactableSensitivePaths`:
+  provided.changed_files de todos os gates + revision_set de criterion_proof)
+  separa TERCEIRO não-declarado (redigido, flow destrava) de PRODUTO PRÓPRIO
+  declarado (segue fail-closed, guard `revision_path_sensitive` intacto).
+  Emenda barata 2: as rotas corrente e ESTRITA de atestação de review
+  compartilham o wrapper SSOT `strictReviewSnapshotFingerprint` — visita
+  CONTAIN ao camping (`FE-2026-10-29-ENV-SNAPSHOT-REDACTION-CONTAIN`), debt
+  `FE-DEBT-005` aberta e pagável. Suíte nova RED-first
+  `tests/env-snapshot-sensitive.test.ts` (vítima e2e destrava; guardas
+  declarados preservados); suíte integral verde sem edição de teste
+  existente. Consumidor `ConfigurarWindows` deve re-executar o
+  `ppirtv-close-harness-v3.mjs` para o verdict do flow vítima.
 - Egress de mining e sequência de unblock saem da fachada (2026-10-28, GO do
   dono — Trilho `mining-egress-shrink`, SPT
   `.agents/PLAN-TASKS/2026-10-28-mining-egress-shrink.md`): pagamento da debt

@@ -315,6 +315,25 @@ Behavior preserved by the live suite with zero test edits: BASELINE 725|4 at
 mining-policy 15). No new debt: record `debt: null`; the camping gate for
 sibling cuts (sub-eixo meetings) is unblocked again.
 
+## FE-2026-10-29-ENV-SNAPSHOT-REDACTION-CONTAIN
+
+PPIRTV-ENV-SNAPSHOT-001 (SPT `2026-10-29-env-snapshot-sensitive-redaction`):
+the strict review-attestation route called `fingerprintReviewedImplementation`
+directly (no redaction), so a frozen third-party `.env` still blocked
+`attachEvidence kind=code_review` even after the SSOT gained the redaction
+policy (emenda barata 2, found in T-2 GREEN). Both routes — current
+`withCurrentImplementationFingerprint` and strict attestation — now share the
+SSOT wrapper `strictReviewSnapshotFingerprint` in `src/review-snapshot.ts`;
+the facade swap at the attestation site is pure delegation (no new decision,
+symbol, or export in the monolith; net nonblank delta negative). The
+declaration-of-provenance policy (`redactableSensitivePaths`) lives entirely
+in the SSOT. Causal test: `tests/env-snapshot-sensitive.test.ts` ("vítima
+end-to-end: flow com .env congelado destrava (gate revisão + verdict sem
+SENSITIVE_PATH)"). Record mode CONTAIN, `glue_only: true`,
+`destination_module: src/review-snapshot.ts`, opens payable debt
+`FE-DEBT-005` (extract the strict-fingerprint option assembly from the
+facade on the next verified SHRINK seam).
+
 ## Safe seam sequence
 
 `FE-DEBT-001` was paid by `FE-2026-10-13-GOVERNED-TAG-CONTRACT`; `FE-DEBT-002` by

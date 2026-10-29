@@ -656,6 +656,36 @@
       "destination_module": "src/memory/mining-policy.ts",
       "commit": "6e2b4b94972a0d64365a7ac69f22aff03c12b194",
       "parent_commit": "a678a1a06a65065b67ea6afb4d1e4399ce4c92d5"
+    },
+    {
+      "id": "FE-2026-10-29-ENV-SNAPSHOT-REDACTION-CONTAIN",
+      "spt_path": ".agents/PLAN-TASKS/2026-10-29-env-snapshot-sensitive-redaction.md",
+      "responsibility": "Fingerprint estrito de atestação de review para flow com sensível não-declarado congelado: a política de redação (universo declarado via provided.changed_files + revision_set, lista redactableSensitivePaths e wrapper strictReviewSnapshotFingerprint) mora no SSOT src/review-snapshot.ts; a fachada troca a chamada direta de fingerprintReviewedImplementation por delegação ao wrapper na rota de atestação estrita, sem decisão nova no monolito.",
+      "owner": "$oraculo-refatoracao",
+      "changelog_marker": "Snapshot redige sensível não-declarado de terceiro",
+      "architecture_marker": "FE-2026-10-29-ENV-SNAPSHOT-REDACTION-CONTAIN",
+      "consumers": [
+        "src/flow-engine.ts"
+      ],
+      "evidence": [
+        "tests/env-snapshot-sensitive.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/env-snapshot-sensitive.test.ts": "vítima end-to-end: flow com .env congelado destrava (gate revisão + verdict sem SENSITIVE_PATH)"
+      },
+      "mode": "CONTAIN",
+      "glue_only": true,
+      "destination_module": "src/review-snapshot.ts",
+      "debt": {
+        "id": "FE-DEBT-005",
+        "status": "open",
+        "owner": "$oraculo-refatoracao",
+        "when": "proximo SHRINK com seam seguro para tirar da fachada a montagem de options do fingerprint de review (requireReviewableFiles/allowedMissingFiles) e a guarda de workspace da atestação",
+        "responsibility": "Fingerprint estrito de atestação de review para flow com sensível não-declarado congelado: a política de redação (universo declarado via provided.changed_files + revision_set, lista redactableSensitivePaths e wrapper strictReviewSnapshotFingerprint) mora no SSOT src/review-snapshot.ts; a fachada troca a chamada direta de fingerprintReviewedImplementation por delegação ao wrapper na rota de atestação estrita, sem decisão nova no monolito.",
+        "payment_scope": "any_verified_shrink"
+      },
+      "base_blob": "2e971ddc919438bfc31e52ff7ac77f1a5be7ebb6",
+      "head_blob": "e7a33aff2cc5c4543316295abd4b96be5c6b4f9c"
     }
   ]
 }
