@@ -46,7 +46,21 @@ export async function fingerprintReviewedImplementation(
   );
   const entries: Array<{ path: string; state: "file" | "missing" | "non_file" | "deleted" | "redacted_runtime" | "redacted_sensitive"; sha256?: string }> = [];
 
-  for (const relativePath of canonicalPaths) {
+  for (let relativePath of canonicalPaths) {
+    // PPIRTV-GIT-QUOTING-UNWRAP-001 (ponte legacy, 2026-10-30): entry
+    // congelada com aspas pelo parser pré--z — path EXATO primeiro (nome
+    // real quotado é possível no Linux e nunca é mis-hash); se o exato não
+    // existe e o despido existe, processa o DESPIDO: entry registrada com o
+    // path real e o sha do conteúdo real; ambas ausentes segue o contrato
+    // atual (missing / FILE_REQUIRED fail-closed).
+    const unquotedLegacy = relativePath.replace(/^["']+|["']+$/g, "");
+    if (unquotedLegacy !== relativePath && unquotedLegacy.length > 0) {
+      const exactExists = await lstat(path.resolve(workspaceRoot, relativePath)).then(() => true, () => false);
+      if (!exactExists) {
+        const unquotedExists = await lstat(path.resolve(workspaceRoot, unquotedLegacy)).then(() => true, () => false);
+        if (unquotedExists) relativePath = unquotedLegacy;
+      }
+    }
     // Trilho 2026-10-23-snapshot-fantasma (rodada adversarial): o prefixo de
     // runtime vale sobre o path RESOLVIDO lexicalmente — ".codex/../.env"
     // resolve para ".env" e continua fail-closed; e TODO path sob runtime e
@@ -173,17 +187,25 @@ export async function gitChangedFiles(workspace: string): Promise<string[] | nul
   try {
     const { stdout } = await execFileAsync(
       "git",
-      ["-C", workspaceRoot, "status", "--porcelain", "--untracked-files=all"],
+      ["-C", workspaceRoot, "status", "--porcelain", "-z", "--untracked-files=all"],
       { windowsHide: true, maxBuffer: 4 * 1024 * 1024 }
     );
-    const files = stdout
-      .split(/\r?\n/)
-      .map((line) => line.slice(3).trim())
-      .filter(Boolean)
-      .flatMap((line) => {
-        const renamed = line.split(" -> ");
-        return renamed.length === 2 ? [renamed[1]] : [line];
-      });
+    // PPIRTV-GIT-QUOTING-UNWRAP-001 (2026-10-30): saída -z é NUL-delimited e
+    // o git NUNCA quoteia paths nela (imunidade estrutural ao C-quoting de
+    // espaços e non-ASCII que congelava entries com aspas no changed_files).
+    // Rename/copy (R/C) traz a ORIGEM como campo NUL extra logo após o alvo —
+    // consumir mantendo o ALVO NOVO (mesma semântica do antigo split " -> ").
+    // NÃO trim na entry inteira: o código XY pode começar com espaço (" M")
+    // e o trim comeria o ponto do ".ppirtv/..." — slice(3) PRIMEIRO (ordem
+    // do parser antigo), trim só no path extraído.
+    const entries = stdout.split("\0").filter((line) => line.trim().length > 0);
+    const files: string[] = [];
+    for (let index = 0; index < entries.length; index += 1) {
+      const status = entries[index].slice(0, 2);
+      const filePath = entries[index].slice(3).trim();
+      if (filePath.length > 0) files.push(filePath);
+      if (status.includes("R") || status.includes("C")) index += 1;
+    }
     return filterCorroborationFiles(files);
   } catch {
     return null;
@@ -217,12 +239,14 @@ export async function gitCommittedFilesSince(workspace: string, base?: string): 
   const head = await gitHeadAt(workspace);
   if (!head || head === base) return { files: [], diverged: false };
   try {
-    const { stdout } = await execFileAsync(
-      "git",
-      ["-C", path.resolve(workspace), "diff", "--name-only", `${base}..HEAD`],
-      { windowsHide: true, maxBuffer: 4 * 1024 * 1024 }
-    );
-    const files = filterCorroborationFiles(stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean));
+      const { stdout } = await execFileAsync(
+        "git",
+        ["-C", path.resolve(workspace), "diff", "--name-only", "-z", `${base}..HEAD`],
+        { windowsHide: true, maxBuffer: 4 * 1024 * 1024 }
+      );
+      // PPIRTV-GIT-QUOTING-UNWRAP-001: o diff --name-only também C-quoteia
+      // non-ASCII (escapes octais) na saída LF; no -z NUNCA quoteia.
+      const files = filterCorroborationFiles(stdout.split("\0").map((line) => line.trim()).filter(Boolean));
     return { files, diverged: false };
   } catch {
     return { files: null, diverged: true };

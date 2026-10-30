@@ -23,6 +23,26 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-30 — git-porcelain-nul-quoting (parsers -z + ponte legacy)
+
+> Corte do Trilho `2026-10-30-git-porcelain-nul-quoting.md` (consumo da
+> pendência PPIRTV-GIT-QUOTING-UNWRAP-001). Deltas sobre a fotografia 947fdb4;
+> recibo atualizado (`dex.capacity.snapshot.v1`).
+
+| Capacidade | Delta observado | Evidência |
+|---|---|---|
+| CAP-11 corroboração git | `gitChangedFiles` e `gitCommittedFilesSince` consomem saída `-z` NUL-delimited (git NUNCA quoteia com -z) — imunidade estrutural ao C-quoting de espaços (status) e non-ASCII/escapes octais (diff, divergência D1 da recepção); rename/copy do -z consumido mantendo o ALVO novo; ordem slice(3)-antes-do-trim preservada (trim na entry inteira comia o XY " M" e manava ".ppirtv/..." em "pirtv/..." — barata pega ao vivo pela suíte irmã) | `tests/git-porcelain-quoting.test.ts` 6/6 (parser cru ×3, e2e strict sem FILE_REQUIRED e zero entry quotada congelada, ponte legacy fp(quoted)==fp(real), guard fail-closed) |
+| CAP-07 review estrutural | ponte legacy no loop de entries: entry congelada com aspas (parser pré--z) resolve o arquivo REAL via prefer-exact-then-unquoted (exact primeiro — nome real quotado no Linux nunca mis-hash; entry registrada com path despido + sha real); ambas ausentes seguem fail-closed | idem (C-3) + `tests/consumer-replay-jumper.test.ts` + `tests/git-corroboration-commits.test.ts` verdes sem edição |
+| CAP-16 fiscal camping | flow-engine.ts FORA do diff (toda a mudança no SSOT review-snapshot.ts); gate verde sem visita nova | `npm run check:flow-engine` PASS (sem declaration nova) |
+
+**Evidência do corte:** `npm run check` verde (audit + camping + capacity +
+build + suíte 737 passed | 4 skipped, 58 arquivos, zero edição de teste
+existente); RED preservado em
+`.agents/AUDITORIAS/EVIDENCIAS/2026-10-30-git-quoting-red.log` (5 causais |
+1 guard). **Limitações:** comportamento `-z` em git antigo/Linux/macOS não
+testado localmente (contrato documentado; X-01 do Trilho); workspace
+consumidor ConfigurarWindows intocado (restrição da recepção).
+
 ## Reavaliação 2026-10-29 (b) — selagem do record env-snapshot no ledger de camping
 
 > Apenas governança: record FE-2026-10-29-ENV-SNAPSHOT-REDACTION-CONTAIN ganha

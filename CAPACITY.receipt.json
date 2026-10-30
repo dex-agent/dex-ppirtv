@@ -4,7 +4,7 @@
   "fotografia_id": "2026-10-23-snapshot-fantasma-redigir-nao-bloquear",
   "head": "e46bf09",
   "tree_hash": null,
-  "generated_at": "2026-10-29T20:29:04.000Z",
+  "generated_at": "2026-10-30T11:01:59.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -23,10 +23,10 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 731,
+    "passed": 737,
     "failed": 0,
     "skipped": 4,
-    "files": 57
+    "files": 58
   },
   "tools_count": 32,
   "capabilities": [

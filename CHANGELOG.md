@@ -10,6 +10,28 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Alterado
 
+- Parsers de corroboração imunes a C-quoting do git (2026-10-30, GO do dono —
+  Trilho `git-porcelain-nul-quoting`, SPT
+  `.agents/PLAN-TASKS/2026-10-30-git-porcelain-nul-quoting.md`, consumo da
+  pendência `PPIRTV-GIT-QUOTING-UNWRAP-001`): git C-quoteia paths (espaços no
+  `status --porcelain` — `core.quotePath=false` não cura; non-ASCII com
+  escapes octais no `diff --name-only`, divergência D1 da recepção) e o parser
+  `line.slice(3)` mantinha aspas literais — impossíveis no Windows (lstat
+  ENOENT) — congelando entries no `changed_files` e matando o strict review
+  com `REVIEW_SNAPSHOT_FILE_REQUIRED`. Cura estrutural: `gitChangedFiles` e
+  `gitCommittedFilesSince` consomem saída `-z` NUL-delimited (git nunca
+  quoteia; rename/copy consumido mantendo o alvo novo; slice(3)-antes-do-trim
+  preservado — trim na entry inteira comia o XY " M" e expunha runtime como
+  não-doc); ponte legacy no loop de entries: entry congelada com aspas
+  resolve o arquivo REAL via prefer-exact-then-unquoted (exact primeiro;
+  nome real quotado no Linux nunca mis-hash; entry com path despido + sha
+  real); ambas ausentes seguem fail-closed. Suíte nova RED-first
+  `tests/git-porcelain-quoting.test.ts` 6/6 (5 causais | 1 guard no RED);
+  suíte integral 737|4 (58 arquivos) sem edição de teste; barata do trim-slice
+  pega ao vivo pela suíte irmã `git-corroboration-commits` (lição do corte
+  anterior aplicada pelo spt-revisor). Workspace consumidor ConfigurarWindows
+  intocado (restrição da recepção); flow-engine intocado (camping sem visita
+  nova).
 - Snapshot redige sensível não-declarado de terceiro (2026-10-29, GO do dono —
   Trilho `env-snapshot-sensitive-redaction`, SPT
   `.agents/PLAN-TASKS/2026-10-29-env-snapshot-sensitive-redaction.md`, consumo
