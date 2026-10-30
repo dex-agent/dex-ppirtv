@@ -2,9 +2,9 @@
   "schema": "dex.capacity.snapshot.v1",
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-10-23-snapshot-fantasma-redigir-nao-bloquear",
-  "head": "e46bf09",
+  "head": "f3953a6",
   "tree_hash": null,
-  "generated_at": "2026-10-30T11:01:59.000Z",
+  "generated_at": "2026-10-30T19:18:17.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -369,13 +369,14 @@
       "consumer": "Agente pequeno",
       "trigger": "`spt_validate`",
       "behavior": "Valida SPT v3 com diagnósticos",
-      "oracle": "Suíte dedicada verde",
+      "oracle": "Jornada viva no corte kit-spt-valido-por-construcao (2026-10-30) + suíte dedicada verde",
       "evidence": [
-        "666"
+        "666",
+        ".agents/receipts/2026-10-30-kit-spt-validate-1a-execucao.log"
       ],
-      "state": "parcial",
+      "state": "comprovada",
       "limits": [
-        "goal_start revalida internamente (jornada viva), chamada standalone não ocorreu hoje"
+        "Chamada standalone comprovada no dogfood do kit SPT (MCP stdio em dist/index.js, valid=true de primeira); revalidação interna do goal_start segue a rota principal"
       ]
     },
     {

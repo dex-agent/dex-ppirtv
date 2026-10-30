@@ -23,6 +23,28 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-30 — kit SPT válido-por-construção (autoria fill-first, zero src)
+
+> Corte do Trilho `2026-10-30-kit-spt-valido-por-construcao.md` (PRD aprovado
+> por arena cega). Dor: SPTs nasciam prose-first e reprovavam ~100% de primeira
+> no validador machine-first; o kit inverte a autoria para fill-first (molde de
+> slots + preflight local SEM MCP). Docs+kit apenas — zero `src/`/`tests/` no
+> diff; suíte re-medida viva no fechamento.
+
+| Capacidade | Delta observado | Evidência |
+|---|---|---|
+| CAP-23 autoria de SPT (upstream do spt_validate) | kit `spt-kit/` no repo: `MOLDE.md` com 21 slots `TODO-PREENCHER` (preencher, nunca interpretar), `RULES.md` R1-R08 com rótulos de cobertura declarada, `GUIA.md` 1 página (instalação, ordem de preenchimento, gate único), `preflight.mjs` S01-S09 sem MCP (graph check requisito/critério/task, cobertura, LF, anti-drift S09 por sha256), fixtures adversariais (`criterio-inchido`, `molde-drift`); schema `SCHEMA/dex.spt.v3.schm.md` (padrão `.schm.md` da casa) com checksum anti-drift; `.gitattributes` `eol=lf` para `spt-kit/**` e `SCHEMA/**`. **Transição de estado: `parcial` → `comprovada`** — o limit da fotografia ("chamada standalone não ocorreu") caiu ao vivo: o dogfood chamou `spt_validate` standalone via MCP stdio no `dist/index.js` real | bateria ER 10/10 verde (`.agents/receipts/2026-10-30-kit-spt-er-battery.log`: preflight `achados=0`, `valid:true`, `execution_eligible:true`, ER-10 pipeline exit=0); dogfood `valid=true` de PRIMEIRA (`.agents/receipts/2026-10-30-kit-spt-validate-1a-execucao.log`) |
+| CAP-01 goal_start (consumidor final) | upstream da revalidação resolvido na autoria: SPT nascido do molde com preflight verde chega ao `goal_start` sem reprovação de primeira por forma (a dor prose-first × machine-first) | dogfood do corte (validação de primeira acima); suíte integral 737 \| 4 intocada |
+| CAP-16 fiscal camping | `src/flow-engine.ts` FORA do diff (corte docs+kit); gatilho read-only | `npm run check:flow-engine` exit 0, `NOT_APPLICABLE` (sem declaration nova) |
+
+**Evidência do corte:** suíte integral re-medida VIVA — 737 passed | 4 skipped
+(741), 58 arquivos, 66.5s, zero edição de teste; PLAYBOOK fresco
+(`generate-playbook.py --check` exit 0); `npm run check:capacity -- --staged`
+PASS com este recibo. **Limitações:** preflight cobre a forma estrutural
+(R1-R08 → S01-S09), não a semântica de fondo (segue com dono/`spt-revisor`);
+`preflight.mjs` depende do pacote `yaml` (já presente no repo); S09 vale
+enquanto molde e schema mudarem no mesmo commit (GUIA §Anti-drift).
+
 ## Reavaliação 2026-10-30 — git-porcelain-nul-quoting (parsers -z + ponte legacy)
 
 > Corte do Trilho `2026-10-30-git-porcelain-nul-quoting.md` (consumo da

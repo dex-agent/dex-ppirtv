@@ -8,6 +8,22 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+### Adicionado
+
+- Kit SPT válido-por-construção (2026-10-30, GO do dono — Trilho
+  `kit-spt-valido-por-construcao-261030`, SPT local
+  `.agents/PLAN-TASKS/2026-10-30-kit-spt-valido-por-construcao.md`; PRD
+  aprovado por arena cega de 20 modelos no registry): novo
+  `SCHEMA/dex.spt.v3.schm.md` (schema documental rev 1 no padrão `.schm.md`
+  da casa, com checksum do molde registrado) e `spt-kit/` — `MOLDE.md`
+  (21 slots TODO-PREENCHER), `RULES.md` (R1-R08, uma verificação cada),
+  `GUIA.md` (1 página), `preflight.mjs` (S01-S09, sem MCP) e fixtures RED
+  (S03 critério inchido, S09 drift de checksum). Bateria ER-01..ER-10 10/10
+  verde (receipt local `.agents/receipts/2026-10-30-kit-spt-er-battery.log`);
+  dogfood: o próprio Trilho nasceu `valid=true` de primeira (receipt local
+  `.agents/receipts/2026-10-30-kit-spt-validate-1a-execucao.log`). Memórias
+  do bloco pendentes de gravação dex (owner: sessão de fechamento).
+
 ### Alterado
 
 - Parsers de corroboração imunes a C-quoting do git (2026-10-30, GO do dono —
