@@ -2,9 +2,9 @@
   "schema": "dex.capacity.snapshot.v1",
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-10-23-snapshot-fantasma-redigir-nao-bloquear",
-  "head": "f3953a6",
+  "head": "8e72830",
   "tree_hash": null,
-  "generated_at": "2026-10-30T19:18:17.000Z",
+  "generated_at": "2026-10-31T22:30:06.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"

@@ -23,6 +23,24 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-10-31 — cura do MOLDE uncertainties rev 2 (docs-only, zero src)
+
+> Corte do Trilho skills `2026-10-31-fechar-ciclo-teto-1024` (task A-04). Dor:
+> o MOLDE ensinava ERRADO — "senao remover esta linha" em `uncertainties`,
+> mas o schema `dex.spt.v3` exige min 1 item (erro pago 2x no mesmo dia,
+> plaquinha `SPT-TRILHO-NASCE-DO-MOLDE-261031`). Cura: frase substituída por
+> `TODO-PREENCHER` com a regra explícita (NUNCA remova a chave; declare a
+> ressalva residual); registro do schema bumped para rev 2 com
+> `MOLDE.md sha256:8b8d5761`; `preflight.mjs --checksum` verde (S09 anti-drift).
+
+| Capacidade | Delta observado | Evidência |
+|---|---|---|
+| CAP-23 autoria de SPT | molde curado (a causa incendiária do erro de uncertainties morre na fonte que ensina); dogfood do molde curado ao vivo: Trilho do corte nasceu do MOLDE rev 2 — preflight `achados=0` e `spt_validate valid=true` | receipt `spt_validate` do Trilho skills (fingerprint `ef75d7d8`); S09 `achados=0` |
+| Matriz CAP-23 (dívida do `8e72830`) | linha da matriz principal ainda `**parcial**` enquanto receipt dizia `comprovada` — `tests/capacity-receipt.test.ts` vermelho na suíte integral; alinhada para `**comprovada**` (transição já declarada na Reavaliação 2026-10-30 do kit) | suíte integral re-medida viva no fechamento deste corte |
+
+**Evidência do corte:** suíte integral re-medida (números no
+`CAPACITY.receipt.json` desta revisão); zero `src/` no diff — docs+kit apenas.
+
 ## Reavaliação 2026-10-30 — kit SPT válido-por-construção (autoria fill-first, zero src)
 
 > Corte do Trilho `2026-10-30-kit-spt-valido-por-construcao.md` (PRD aprovado
@@ -359,7 +377,7 @@ R7 per-commit é exceção documentada; sem `.git` não há corroboração de di
 | CAP-20 | Launcher global com contrato workspace+cwd | **comprovada** | Sem sinal → erro tipado; com sinal → `ok:true` (2 oráculos) |
 | CAP-21 | runtime_probe | **comprovada** | Presente em toda chamada de harness |
 | CAP-22 | ppirtv_trace / arqueologia evolutiva | **parcial** | Suíte verde; sem consumo vivo no corte |
-| CAP-23 | spt_validate standalone | **parcial** | Suíte verde; no corte só via revalidação interna do goal_start |
+| CAP-23 | spt_validate standalone | **comprovada** | Suíte verde; dogfood standalone via MCP stdio no `dist/index.js` real (corte kit 2026-10-30: `valid=true` de primeira, `.agents/receipts/2026-10-30-kit-spt-validate-1a-execucao.log`) |
 | CAP-24 | Reuniões / required_cooperation | **parcial** | Suíte verde; sem reunião viva no corte |
 | CAP-25 | hygiene_scan / lixeira com manifesto | **parcial** | Suíte verde; sem scan vivo no corte |
 | CAP-26 | mm_pipeline_run (orquestração em lote) | **parcial** | Suíte verde; missão do corte foi single-flow |

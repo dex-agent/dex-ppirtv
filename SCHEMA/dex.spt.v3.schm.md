@@ -4,7 +4,7 @@ versao: 1
 status: vivo
 dono: dex-PPIRTV
 fonte-viva: 'contracts/GOAL_SPT_CANONICAL_CONTRACT.md (contrato) + src/spt-contract.ts (zod executavel) + templates/SPEC-PLAN-TASKS.template.md (template) + spt-kit/ (molde, regras, guia, preflight)'
-registro: 'rev 1 (2026-10-30, corte kit-spt-valido-por-construcao); MOLDE.md sha256:b5e3a96b777781441ccd11395c050d0c8a165bfffc4f34040f6f885da3be298a'
+registro: 'rev 2 (2026-10-31, cura uncertainties — molde ensinava remover campo que o schema exige min 1 item; GO do dono, Trilho skills 2026-10-31-mover-porta-padrao); MOLDE.md sha256:8b8d576187712b79eb8ce96172354bd3b2a4c66b88ccec9232bbe5fd5472c273'
 ---
 
 # dex.spt.v3 — Trilho/SPT SPEC-PLAN-TASKs versão 3

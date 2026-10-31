@@ -51,7 +51,7 @@ closure_gates:
 risks:
   - 'TODO-PREENCHER risco com mitigacao'
 uncertainties:
-  - 'Somente com incerteza material real e decisao pendente; senao remover esta linha'
+  - 'TODO-PREENCHER incerteza material real; campo OBRIGATORIO com minimo 1 item no schema dex.spt.v3 — NUNCA remova a chave (sem incerteza bloqueante, declare a ressalva residual monitorada, ex.: commit de repo externo fora do flow)'
 gates:
   - 'spt_validate retorna valid=true e contract_version=3 antes de goal_start.'
 validation:
