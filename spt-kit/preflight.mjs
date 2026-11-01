@@ -6,6 +6,35 @@ import { createHash } from "node:crypto";
 import { parseDocument } from "yaml";
 
 const args = process.argv.slice(2);
+
+// Triade documental (P4 erro-que-ensina): --help/--schema/--usage respondem
+// exit 0 ANTES de qualquer leitura de arquivo — nunca ENOENT por flag.
+const PRE_FLIGHT_DOC = {
+  name: "spt-kit preflight.mjs",
+  usage: [
+    "node preflight.mjs <spt.md>",
+    "node preflight.mjs --checksum <molde.md>"
+  ],
+  schema: {
+    contract: "dex.spt.preflight.doc.v1",
+    checks: "S00..S09 (forma local; spt_validate MCP permanece a autoridade)",
+    exit: "0 = achados=0; 1 = achados>0"
+  },
+  examples: [
+    "node preflight.mjs .agents/PLAN-TASKS/2026-10-31-meu-trilho.md",
+    "node preflight.mjs --checksum MOLDE.md"
+  ]
+};
+const DOC_FLAGS = { "--help": "help", "-h": "help", "--schema": "schema", "--usage": "usage" };
+const docFlag = args.find((a) => DOC_FLAGS[a]);
+if (docFlag) {
+  const kind = DOC_FLAGS[docFlag];
+  if (kind === "schema") console.log(JSON.stringify(PRE_FLIGHT_DOC.schema, null, 2));
+  else if (kind === "usage") console.log([PRE_FLIGHT_DOC.name, "", "Exemplos:", ...PRE_FLIGHT_DOC.examples].join("\n"));
+  else console.log([PRE_FLIGHT_DOC.name, "", "Uso:", ...PRE_FLIGHT_DOC.usage, "", "Contrato completo: node preflight.mjs --schema"].join("\n"));
+  process.exit(0);
+}
+
 const achados = [];
 const add = (code, msg) => achados.push(`${code}: ${msg}`);
 

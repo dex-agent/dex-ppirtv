@@ -23,6 +23,28 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-11-01 — preflight do kit ganha tríade documental (docs+kit, zero src)
+
+> Lapidação em voo do kit, fechada por `dex-git-fechamento` sob ordem do dono:
+> `spt-kit/preflight.mjs` responde `--help`/`--schema`/`--usage` com exit 0
+> ANTES de qualquer leitura de arquivo (padrão help vivo da casa — tríade
+> documental; contrato `dex.spt.preflight.doc.v1`). Resíduo do corte anterior
+> garimpado: backup `MOLDE.md.bak-20261031-uncertainties` idêntico ao
+> `8e72830:spt-kit/MOLDE.md` (sha256 conferido — valor já preservado no
+> histórico) → `.agents/LIXEIRA/` com MANIFEST.
+
+| Capacidade | Delta observado | Evidência |
+|---|---|---|
+| CAP-23 autoria de SPT (preflight) | tríade documental viva: `--help`/`--usage` devolvem texto e `--schema` devolve JSON (`dex.spt.preflight.doc.v1`) com exit 0 sem tocar arquivo (nunca ENOENT por flag); caminhos normais intactos (flags desconhecidas seguem tratadas como path) | probes ao vivo: 3 flags exit 0; `--checksum MOLDE.md` `achados=0` (S09 anti-drift); fixtures `criterio-inchido` (S03) e `molde-drift` (S00) com exit 1 |
+| CAP-16 fiscal camping | `src/flow-engine.ts` FORA do diff; gatilho read-only | `npm run check:flow-engine` exit 0, `NOT_APPLICABLE` |
+
+**Evidência do corte:** suíte integral re-medida VIVA — 737 passed | 4 skipped
+(741), 58 arquivos, 61.8s, zero edição de teste; `npm run check:capacity
+-- --staged` PASS com este recibo. **Limitações:** a tríade do preflight é
+local ao script (o preflight não é tool MCP — não herda do `tools/list`);
+o texto da tríade não é congelado por teste (contrato declarado no
+`--schema`).
+
 ## Reavaliação 2026-10-31 — cura do MOLDE uncertainties rev 2 (docs-only, zero src)
 
 > Corte do Trilho skills `2026-10-31-fechar-ciclo-teto-1024` (task A-04). Dor:
