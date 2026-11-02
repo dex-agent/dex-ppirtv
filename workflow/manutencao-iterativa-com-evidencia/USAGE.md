@@ -52,3 +52,19 @@ cc=1 e `assertToolEffectCatalog` sobreposto com 17). Captura
 0.4.2 de `implantacao-01/02`, `reutilizacao-local-01` e `pos-integracao-01`
 sao fotografia historica do motor — NAO comparaveis (R13). Cobertura 90/80 e
 ciclos continuam nao medidos.
+
+## Corte 01 — 2026-11-02 (primeiro corte real de codigo; medidor 0.4.3)
+
+Trilho `.agents/PLAN-TASKS/2026-11-02-manutencao-corte-01-tool-effects.md`
+(flow flow_20261102173436095_3234_0001). Alvo pelo numero novo:
+`assertToolEffectCatalog` cc=16 (max de src/mcp). Mudanca: helper PRIVADO
+`assertToolEffectDeclaration` extraido (6 regras verbatim, sem export novo —
+regra da casa); catalogo fica mismatch+loop. Guard: suite
+tests/tool-effects.test.ts **9/9 SEM edicao** (antes e depois). Medicao
+comparavel MESMO motor: baseline `pos-fix-01` (cc 16, soma 22/16) →
+`corte-manutencao-01` (catalogo **cc 4**, declaration **cc 13**, soma
+**23/13**). Trade-off registrado como observacao (soma 22→23, mais 1 funcao;
+PERFIL observacional R13 — nao veto). Captura: engine 0.4.3, revision
+1c5d0f1, partial. Consumidor real: tool-effects.ts l.252 (carga do modulo).
+Reuso: helper de uso unico justificado por responsabilidade/contrato (R4 do
+pacote) — reuso efetivo NAO alegado.

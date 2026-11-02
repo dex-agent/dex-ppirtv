@@ -9,6 +9,16 @@
 
 ## Identidade da fotografia
 
+## Reavaliação 2026-11-02 — corte de manutenção 01 (assertToolEffectDeclaration)
+
+Primeiro corte real do método (Trilho `manutencao-corte-01-tool-effects`):
+`assertToolEffectCatalog` 16→**4** (mismatch + loop) com helper privado
+`assertToolEffectDeclaration` 13 (6 regras verbatim, sem export novo).
+Comportamento preservado: `tests/tool-effects.test.ts` 9/9 sem edição.
+Trade-off: soma src/mcp 22→23, max 16→13 (observação, não veto — PERFIL
+observacional). Evidência comparável: baseline `pos-fix-01` vs
+`corte-manutencao-01` no mesmo motor 0.4.3.
+
 ## Reavaliação 2026-11-02 — medidor 0.4.3 (P1 do oráculo, corte medidor-ts-range-corpo)
 
 Selagem do corte: commits `8f51e98` (USAGE+CAPACITY) e o HANDOFF fixam

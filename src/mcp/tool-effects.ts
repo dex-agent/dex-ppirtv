@@ -203,6 +203,37 @@ export const TOOL_EFFECTS = {
   )
 } satisfies Record<PpirtvToolName, ToolEffectDeclaration>;
 
+function assertToolEffectDeclaration(name: string, declaration: ToolEffectDeclaration): void {
+  const { annotations, effect, rationale } = declaration;
+  if (!rationale.trim()) {
+    throw new Error(`PPIRTV_TOOL_EFFECT_RATIONALE_REQUIRED: tool=${name}`);
+  }
+  const hintValues = [
+    annotations.readOnlyHint,
+    annotations.destructiveHint,
+    annotations.idempotentHint,
+    annotations.openWorldHint
+  ];
+  if (hintValues.some((value) => typeof value !== "boolean")) {
+    throw new Error(`PPIRTV_TOOL_EFFECT_HINTS_INCOMPLETE: tool=${name}`);
+  }
+  if (annotations.openWorldHint) {
+    throw new Error(`PPIRTV_TOOL_EFFECT_OPEN_WORLD_UNSUPPORTED: tool=${name}`);
+  }
+  if (effect === "read_only" && (!annotations.readOnlyHint || annotations.destructiveHint)) {
+    throw new Error(`PPIRTV_TOOL_EFFECT_READ_ONLY_CONTRADICTION: tool=${name}`);
+  }
+  if (effect !== "read_only" && annotations.readOnlyHint) {
+    throw new Error(`PPIRTV_TOOL_EFFECT_MUTATION_MARKED_READ_ONLY: tool=${name}`);
+  }
+  if (effect === "additive" && annotations.destructiveHint) {
+    throw new Error(`PPIRTV_TOOL_EFFECT_ADDITIVE_MARKED_DESTRUCTIVE: tool=${name}`);
+  }
+  if (effect === "state_changing" && !annotations.destructiveHint) {
+    throw new Error(`PPIRTV_TOOL_EFFECT_STATE_CHANGE_MARKED_ADDITIVE: tool=${name}`);
+  }
+}
+
 export function assertToolEffectCatalog(
   catalog: Record<string, ToolEffectDeclaration>,
   registeredNames: readonly string[] = REQUIRED_TOOLS
@@ -218,34 +249,7 @@ export function assertToolEffectCatalog(
   }
 
   for (const [name, declaration] of Object.entries(catalog)) {
-    const { annotations, effect, rationale } = declaration;
-    if (!rationale.trim()) {
-      throw new Error(`PPIRTV_TOOL_EFFECT_RATIONALE_REQUIRED: tool=${name}`);
-    }
-    const hintValues = [
-      annotations.readOnlyHint,
-      annotations.destructiveHint,
-      annotations.idempotentHint,
-      annotations.openWorldHint
-    ];
-    if (hintValues.some((value) => typeof value !== "boolean")) {
-      throw new Error(`PPIRTV_TOOL_EFFECT_HINTS_INCOMPLETE: tool=${name}`);
-    }
-    if (annotations.openWorldHint) {
-      throw new Error(`PPIRTV_TOOL_EFFECT_OPEN_WORLD_UNSUPPORTED: tool=${name}`);
-    }
-    if (effect === "read_only" && (!annotations.readOnlyHint || annotations.destructiveHint)) {
-      throw new Error(`PPIRTV_TOOL_EFFECT_READ_ONLY_CONTRADICTION: tool=${name}`);
-    }
-    if (effect !== "read_only" && annotations.readOnlyHint) {
-      throw new Error(`PPIRTV_TOOL_EFFECT_MUTATION_MARKED_READ_ONLY: tool=${name}`);
-    }
-    if (effect === "additive" && annotations.destructiveHint) {
-      throw new Error(`PPIRTV_TOOL_EFFECT_ADDITIVE_MARKED_DESTRUCTIVE: tool=${name}`);
-    }
-    if (effect === "state_changing" && !annotations.destructiveHint) {
-      throw new Error(`PPIRTV_TOOL_EFFECT_STATE_CHANGE_MARKED_ADDITIVE: tool=${name}`);
-    }
+    assertToolEffectDeclaration(name, declaration);
   }
 }
 

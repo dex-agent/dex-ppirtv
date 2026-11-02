@@ -3,11 +3,31 @@
   "reavaliacao_workflow_portability": {
     "date": "2026-11-02",
     "base_sha": "f6daafa8f7fa09010ae73faab75c0171d66967b2",
-    "scope": ["workflow/manutencao-iterativa-com-evidencia/", "CAPACITY.md", "CAPACITY.receipt.json", "CHANGELOG.md", "PLAYBOOK.md", "PLAYBOOK.index.json"],
+    "scope": [
+      "workflow/manutencao-iterativa-com-evidencia/",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json",
+      "CHANGELOG.md",
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json"
+    ],
     "delta": "Preflight e dependencias da instancia1.0.1; global1.2.0/variantes1.1.0 validados separadamente; politica local preservada.",
     "evidence": ".agents/receipts/workflow-retrofit-20261102/FINAL-REPORT.md",
-    "observed": {"relocated_packages": 5, "missing_dependency_tests": 5, "contact_owner_tests": 15, "contact_consumer_tests": 29, "schema_findings": 0, "suite_passed": 776, "suite_skipped": 4, "suite_files": 59},
-    "limits": ["quatro testes condicionais skipped", "instalacao em outro host nao observada", "skills externas nao viajam no clone do produto"]
+    "observed": {
+      "relocated_packages": 5,
+      "missing_dependency_tests": 5,
+      "contact_owner_tests": 15,
+      "contact_consumer_tests": 29,
+      "schema_findings": 0,
+      "suite_passed": 776,
+      "suite_skipped": 4,
+      "suite_files": 59
+    },
+    "limits": [
+      "quatro testes condicionais skipped",
+      "instalacao em outro host nao observada",
+      "skills externas nao viajam no clone do produto"
+    ]
   },
   "reavaliacao_integracao_fiscal": {
     "date": "2026-11-02",
@@ -79,7 +99,7 @@
   "fotografia_id": "2026-11-02-fiscal-verdict-nao-positivo",
   "head": "6629f0fdb7618d928877cdd78ce7096838118260",
   "tree_hash": null,
-  "generated_at": "2026-11-02T17:05:00.000Z",
+  "generated_at": "2026-11-02T17:40:00.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
