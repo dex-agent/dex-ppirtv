@@ -27,6 +27,9 @@ nonblank, +2 decisões, RED causal ligado ao blob base 52d5e72); nenhuma
 dívida paga ou aberta por este corte; janela lexical de materialidade tabuada
 em PENDENTES. Outras linhas abaixo preservam fotografias históricas.
 
+Selagem documental do corte: commit `6629f0f` fixa os blobs desta medição;
+nenhuma lógica ou capacidade adicional foi alterada na selagem.
+
 ## Reavaliação 2026-11-02 — recorrencia fiscal tipificada
 
 Corte `f4443d3+working-tree`, owner PPIRTV. CAP-35 observada em fixtures:

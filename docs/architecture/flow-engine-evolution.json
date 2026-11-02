@@ -761,7 +761,9 @@
       "base_blob": "52d5e7276bc9273218d16f603c7eb001e60ae762",
       "head_blob": "569c774fc5aadeccaeb0eee829361b22134d32da",
       "pays_debt_id": null,
-      "debt": null
+      "debt": null,
+      "commit": "6629f0fdb7618d928877cdd78ce7096838118260",
+      "parent_commit": "2e63c8c0411ae96686f62cd5ea65d6b221117b32"
     }
   ]
 }
