@@ -2,7 +2,7 @@
   "schema": "dex.capacity.snapshot.v1",
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-02-fiscal-recorrencia-tipificada",
-  "head": "f4443d38dc4199c2601d4c777f4e3d6e5877fbe9+working-tree",
+  "head": "27f500c6fc0820f25dbcc8c285a901703b95c6b3",
   "tree_hash": null,
   "generated_at": "2026-11-02T09:15:00.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",

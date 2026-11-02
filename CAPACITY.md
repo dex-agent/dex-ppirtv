@@ -19,6 +19,9 @@ foram reavaliados neste delta. SHRINK PASS: -17 linhas nao vazias, -1 decisao
 na fachada, FE-DEBT-005 paga. Outras linhas abaixo preservam fotografias
 historicas e nao recebem nova certificacao por este corte.
 
+Selagem documental do PR: commit `27f500c` fixa os blobs desta medição;
+nenhuma lógica ou capacidade adicional foi alterada na selagem.
+
 | Capacidade | Delta observado | Evidencia |
 | --- | --- | --- |
 | CAP-35 recorrencia | Declaracao booleana, omissao/reload, false, encerramento, tipos e teto real inclusive mechanical | `tests/fiscal-recurrence.test.ts`, MCP schema real |
