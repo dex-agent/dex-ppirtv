@@ -99,7 +99,7 @@
   "fotografia_id": "2026-11-02-fiscal-verdict-nao-positivo",
   "head": "6629f0fdb7618d928877cdd78ce7096838118260",
   "tree_hash": null,
-  "generated_at": "2026-11-02T17:52:00.000Z",
+  "generated_at": "2026-11-02T17:58:00.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"

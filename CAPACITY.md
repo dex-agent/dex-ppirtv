@@ -13,7 +13,8 @@
 
 Retrofit do template (mesma sessao): global 1.2.0->1.2.1 (3 gotchas +
 nota PPIRTV) e instancia 1.0.1->1.0.2 (passo 9 do config; medidor 0.4.3
-minimo). Documental; checkers OK nos dois lados; nenhum schema.
+minimo). Documental; checkers OK nos dois lados; nenhum schema. Selagem:
+commit `2e24584` fixa os blobs; HANDOFF reconciliado com o push efetivo.
 
 
 Primeiro corte real do método (Trilho `manutencao-corte-01-tool-effects`):
