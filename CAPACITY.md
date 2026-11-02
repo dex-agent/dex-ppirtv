@@ -14,7 +14,9 @@
 Retrofit do template (mesma sessao): global 1.2.0->1.2.1 (3 gotchas +
 nota PPIRTV) e instancia 1.0.1->1.0.2 (passo 9 do config; medidor 0.4.3
 minimo). Documental; checkers OK nos dois lados; nenhum schema. Selagem:
-commit `2e24584` fixa os blobs; HANDOFF reconciliado com o push efetivo.
+commit `2e24584` fixa os blobs; HANDOFF reconciliado com o push efetivo
+(ate `e0395c5`) e regra anti-drift: estado de push NAO se registra no
+HANDOFF — a verdade mora no git log/origin/main.
 
 
 Primeiro corte real do método (Trilho `manutencao-corte-01-tool-effects`):
