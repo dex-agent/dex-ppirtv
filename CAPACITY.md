@@ -11,6 +11,11 @@
 
 ## Reavaliação 2026-11-02 — corte de manutenção 01 (assertToolEffectDeclaration)
 
+Retrofit do template (mesma sessao): global 1.2.0->1.2.1 (3 gotchas +
+nota PPIRTV) e instancia 1.0.1->1.0.2 (passo 9 do config; medidor 0.4.3
+minimo). Documental; checkers OK nos dois lados; nenhum schema.
+
+
 Primeiro corte real do método (Trilho `manutencao-corte-01-tool-effects`):
 `assertToolEffectCatalog` 16→**4** (mismatch + loop) com helper privado
 `assertToolEffectDeclaration` 13 (6 regras verbatim, sem export novo).

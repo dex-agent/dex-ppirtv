@@ -1,7 +1,7 @@
 ---
 schema: dex.workflow.v1
 slug: manutencao-iterativa-com-evidencia
-version: 1.0.1
+version: 1.0.2
 status: ativo
 owner: executor PPIRTV; owner do comportamento; reviewer
 created: 2026-11-02
@@ -84,7 +84,7 @@ python -B -m unittest discover -s workflow/manutencao-iterativa-com-evidencia/te
 8. Se útil e suportado, meça código bruto com capacidades selecionadas e mesma versão/configuração/escopo. Preserve raw values; avalie perfis em etapa separada como report-only. Nunca converta perfil, exemplo de threshold ou disponibilidade de capacidade em gate automático sem decisão explícita do owner.
    Verificação: motor/política, revisão, entradas e capacidades são rastreáveis; ausente/não aplicável/parcial não vira zero nem aprovação.
 
-9. Executar capture-cut.py com identificador do corte real. Config.json fixa banco .agents/CODE-REVIEW-GRAPH/graph.db do PPIRTV. O script atualiza esse banco e consome exporter 1.2.0 da skill code-review-graph e medidor 0.4.2, preservando raw/log/receipt. Comparar somente schema, extrator, escopo, linguagens e normalizacao compativeis. Completeness partial e ciclos not_reported permanecem explicitos. Conferir MCP get_minimal_context no mesmo repo e head_matches_build=true; esse campo nao prova bytes dirty indexados.
+9. Executar capture-cut.py com identificador do corte real. Config.json declara graph.database (.agents/CODE-REVIEW-GRAPH/graph.db neste repo) e o script le esse valor do config (nao hardcode). O script atualiza esse banco e consome exporter 1.2.0 da skill code-review-graph e medidor 0.4.3 (minimo: 0.4.3 com range de corpo TS corrigido — raws de 0.4.2 sao fotografia historica nao comparavel, R13), preservando raw/log/receipt. Comparar somente schema, extrator, escopo, linguagens e normalizacao compativeis. Completeness partial e ciclos not_reported permanecem explicitos. Conferir MCP get_minimal_context no mesmo repo e head_matches_build=true; esse campo nao prova bytes dirty indexados.
    Verificação: diff identifica added/removed/changed nodes/edges e ciclos somente quando ambos lados os reportam; movimento sem identidade estável fica ambíguo; arestas e destinos unresolved são preservados. Sucesso do indexador não afirma completude.
 
 10. Feche o bloco com diff, testes, decisão de reuso, valores brutos selecionados, avaliações de perfil separadas, proveniência dos snapshots e limitações/pendências com owner e quando. Registre mudança do hook/config somente se já existia e foi autorizada; não instale hook global por este procedimento.
