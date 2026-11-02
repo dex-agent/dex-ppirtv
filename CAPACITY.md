@@ -9,6 +9,16 @@
 
 ## Identidade da fotografia
 
+## Reavaliação 2026-11-02 — contrato canônico ensina a rota terminal do teto
+
+Cura da deriva que ensinava o loop: GOAL_SPT_CANONICAL_CONTRACT (global +
+cópia local, linha ~952) ainda EXIGIA `open_decision_meeting` no teto de
+regressões — o mapa da "reunião sem saída" que janelas consumidoras
+reportaram. Contrato agora ensina o terminal por desenho (opção b):
+`close_flow_with_reservation` (nao_pronto → flow_archive → flow novo);
+reunião NÃO é rota de saída do teto. `audit:canonical` PASS. Zero mudança de
+código — somente a fonte que os consumidores seguem.
+
 ## Reavaliação 2026-11-02 — verdict não-positivo + teto terminal
 
 Corte `2e63c8c+working-tree` (Trilho

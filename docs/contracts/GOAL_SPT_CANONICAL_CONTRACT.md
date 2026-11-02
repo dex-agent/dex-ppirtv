@@ -950,9 +950,15 @@ em sucesso; deve dizer que foi arquivado com bloqueios preservados.
 material equivalente.
 
 Para evitar loop ruim, o maximo fiscal inicial e 3 regressos por flow. Ao
-atingir `max_regressions`, o motor deve marcar `regress_limit_reached=true` e
-exigir `next_required_action.type="open_decision_meeting"` em vez de mandar
-regressar novamente.
+atingir `max_regressions`, o motor deve marcar `regress_limit_reached=true`
+com `can_retry_verdict=false`: o teto e TERMINAL por desenho (decisao do owner
+2026-11-02, opcao b) — reuniao decisoria NAO desbloqueia veredito positivo no
+mesmo flow (`MEETING_RESOLVABLE_BLOCKERS` cobre apenas `required_cooperation`).
+A rota oficial e `next_required_action.type="close_flow_with_reservation"`:
+registrar veredito `nao_pronto` documentando ressalva e aprendizado,
+`flow_archive` (blockers preservados no historico) e abrir flow novo carregando
+o aprendizado. Nunca prescrever repetir `goal_verdict` positivo com
+`locked_by_limit=true`, nem abrir reuniao como rota de saida do teto.
 
 `checklist_render` deve tratar principios dependentes de prova como tri-state:
 `checked`, `blocked`/`unchecked` ou `pending`. Hygiene, memoria, regresso e

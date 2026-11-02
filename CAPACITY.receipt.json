@@ -4,7 +4,7 @@
   "fotografia_id": "2026-11-02-fiscal-verdict-nao-positivo",
   "head": "6629f0fdb7618d928877cdd78ce7096838118260",
   "tree_hash": null,
-  "generated_at": "2026-11-02T11:55:00.000Z",
+  "generated_at": "2026-11-02T12:40:00.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -583,6 +583,7 @@
     "4 testes skipped nao foram investigados.",
     "Matriz completa herdada do espelho 947fdb4; o delta do corte 2026-10-23 (snapshot fantasma: sensivel de runtime de terceiro redigido) revalidou o snapshot de review e a suite 716|4. As demais linhas permanecem com a evidencia do corte anterior.",
     "Fotografia de worktree sobre o HEAD 2e63c8c (corte fiscal-verdict-nao-positivo); nova medicao exige novo pedido.",
-    "Teto terminal muda o contrato do next_required_action do limite (open_decision_meeting -> close_flow_with_reservation); consumidores que parseavam o tipo antigo foram adaptados nos testes do repo."
+    "Teto terminal muda o contrato do next_required_action do limite (open_decision_meeting -> close_flow_with_reservation); consumidores que parseavam o tipo antigo foram adaptados nos testes do repo.",
+    "Contrato canonico do teto reescrito para rota terminal (2026-11-02): janelas com processo MCP antigo + contrato antigo ensinam o loop de reuniao — frota precisa pull+build+reconnect+contrato novo."
   ]
 }
