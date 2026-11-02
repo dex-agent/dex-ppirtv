@@ -14,7 +14,6 @@
 Selagem do corte: commits `8f51e98` (USAGE+CAPACITY) e o HANDOFF fixam
 os blobs desta medição; nenhuma lógica de produto alterada.
 
-
 Corte **documental** (zero `src/` do produto): fix na fonte do medidor
 `dex-complexidade-ciclomatica` 0.4.2→0.4.3 (range do corpo TS com return
 type anotado; sintoma CC=1 da irmã era bug de range), suíte da skill 38/38,
@@ -24,6 +23,10 @@ Remediação, backup 0.4.2 em CHECKPOINT. Nenhuma capacidade MCP alterada;
 `recurring_risk`/teto terminal intactos. Raws 0.4.2 = fotografia histórica
 do motor (R13 — não comparáveis). Verdict
 `vrd_20261102165109623_3210_0001` pronto_com_ressalvas.
+
+## Reavaliação 2026-11-02 — portabilidade do workflow
+
+Delta documental: instancia local1.0.1 adota seletivamente global1.2.0, com dependencias/preflight e regua PPIRTV v1 preservada. Cinco templates globais relocalizados com perfis reais CC-only e fixtures CC2; cinco negativos de dependencia ausente; contato owner15/15 e consumidores29/29. Nenhuma nova capacidade MCP ou alteracao fiscal. Schemas11/0, acervo49/49; prova .agents/receipts/workflow-retrofit-20261102/FINAL-REPORT.md. Nao certifica instalacao na maquina irma, cobertura, ciclos ou ganho longitudinal.
 
 ## Reavaliação 2026-11-02 — integracao e prova real da rota terminal
 
