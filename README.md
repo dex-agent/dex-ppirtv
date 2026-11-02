@@ -45,6 +45,10 @@ Development notes, internal plans and handoff files may exist in a maintainer
 workspace. They are not part of the public package unless they are rewritten as
 stable public documentation.
 
+For a draft pull request, describe the intended change, the checks actually
+run and any remaining gaps. A published draft is evidence of submission;
+acceptance still depends on review and the applicable checks for that revision.
+
 ## Documentation for agents
 
 - [Laudo: recorrência fiscal e fingerprint pós-recall](docs/contracts/FISCAL_RECURRENCE_BUG_REPORT_2026-11-02.md)

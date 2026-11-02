@@ -9,6 +9,16 @@
 
 ## Identidade da fotografia
 
+## Reavaliação 2026-11-02 — ensaio de PR de rascunho
+
+Base `2e63c8c0411ae96686f62cd5ea65d6b221117b32`. Delta limitado ao README,
+changelog e registro dos gates de publicação; nenhum código, tool ou contrato
+MCP alterado. A fotografia e os oráculos históricos abaixo ficam preservados.
+Este corte não certifica capacidade adicional do servidor: o ensaio mede a
+skill externa dex-gerar-pull-request e seu transporte Git/GitHub. Resultados
+locais executados constam no corpo do PR; o estado remoto é conferido depois
+do envio e não é antecipado por este registro pré-commit.
+
 ## Reavaliação 2026-11-02 — recorrencia fiscal tipificada
 
 Corte `f4443d3+working-tree`, owner PPIRTV. CAP-35 observada em fixtures:

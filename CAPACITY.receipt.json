@@ -1,5 +1,12 @@
 {
   "schema": "dex.capacity.snapshot.v1",
+  "reavaliacao_documental": {
+    "date": "2026-11-02",
+    "base_sha": "2e63c8c0411ae96686f62cd5ea65d6b221117b32",
+    "scope": ["README.md", "CHANGELOG.md", "CAPACITY.md", "CAPACITY.receipt.json", "PLAYBOOK.md", "PLAYBOOK.index.json"],
+    "delta": "Orientacao de revisao de PR draft e gates documentais; nenhuma capacidade MCP alterada.",
+    "limits": ["suite e capabilities abaixo preservam evidencias historicas; publicacao real so se comprova por readback posterior do GitHub"]
+  },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-02-fiscal-recorrencia-tipificada",
   "head": "27f500c6fc0820f25dbcc8c285a901703b95c6b3",

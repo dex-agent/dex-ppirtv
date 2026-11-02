@@ -8,6 +8,12 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+### Documentado — 2026-11-02
+
+- README explicita o conteúdo esperado de um PR de rascunho e distingue
+  publicação de aceitação. Recorte documental usado no ensaio real da
+  dex-gerar-pull-request; sem alteração de runtime ou contrato MCP.
+
 ### Corrigido — 2026-11-02
 
 - Recorrencia fiscal deixa de ser inferida de texto livre: `goal_verdict`
