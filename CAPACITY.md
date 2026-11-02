@@ -30,6 +30,14 @@ em PENDENTES. Outras linhas abaixo preservam fotografias históricas.
 Selagem documental do corte: commit `6629f0f` fixa os blobs desta medição;
 nenhuma lógica ou capacidade adicional foi alterada na selagem.
 
+Fix-up da revisão adversarial do commit (code-reviewer, APPROVED_WITH_NITS →
+consumido): descrição do `recurring_risk` na fronteira MCP atualizada para a
+semântica positivo-only (superfície de ensino era o próprio bug corrigido) e
+composto review+teto do envelope termina na rota terminal (nunca
+`goal_verdict pronto` impossível); 2 testes de composto novos. Suíte integral
+776 | 4 skipped | 59 arquivos; camping NOT_APPLICABLE (flow-engine intacto
+após a selagem).
+
 ## Reavaliação 2026-11-02 — recorrencia fiscal tipificada
 
 Corte `f4443d3+working-tree`, owner PPIRTV. CAP-35 observada em fixtures:

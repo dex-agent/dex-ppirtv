@@ -98,6 +98,33 @@ function parseNumberAfter(message: string, key: string): number | null {
  */
 export function fiscalBlockedAction(message: string, flowId = "<flow_id>"): NextRequiredAction {
   const baseArgs = { flow_id: flowId };
+  // Rota terminal do teto de regressos (decisao do dono 2026-11-02, opcao b):
+  // positivo e impossivel com locked_by_limit — encerrar com ressalva,
+  // arquivar preservando blockers e abrir flow novo. Reusada nos compostos.
+  const terminalReservationTail = (startOrder: number): EnvelopeStep[] => [
+    {
+      order: startOrder + 1,
+      tool: "goal_verdict",
+      args: {
+        flow_id: flowId,
+        status: "nao_pronto",
+        rationale: "<ressalva: limite de regressos fiscal atingido; aprendizado do flow>",
+        evidence_ids: ["<evidence_id>"],
+        residual_risks: ["teto de regressoes terminal por desenho"],
+        next_step: "abrir flow novo carregando o aprendizado quando <quando>"
+      }
+    },
+    {
+      order: startOrder + 2,
+      tool: "flow_archive",
+      args: { flow_id: flowId, reason: "limite de regressos fiscal (teto terminal por desenho); flow novo carrega o aprendizado" }
+    },
+    {
+      order: startOrder + 3,
+      tool: "goal_start",
+      args: { workspace: "<workspace>", spt_path: "<trilho do novo corte>", objective: "<objetivo do novo corte>", idempotency_key: "<chave>" }
+    }
+  ];
   if (/review_required/i.test(message)) {
     // review_required lidera qualquer bloqueio composto (inclusive sobre
     // attempts_insufficient/attempt_regress_limit): reuniao e veredito nao
@@ -185,6 +212,20 @@ export function fiscalBlockedAction(message: string, flowId = "<flow_id>"): Next
           next_step: "avancar o fluxo apos o veredito"
         }
       });
+    }
+    if (/attempt_regress_limit_reached/i.test(message)) {
+      // Composto review+teto: o positivo e impossivel com locked_by_limit —
+      // apos a review, a saida e a rota terminal, nunca repetir o veredito.
+      while (steps.at(-1)?.tool === "goal_verdict") steps.pop();
+      steps.push(...terminalReservationTail(steps.length));
+      return {
+        type: "attach_structural_review_before_meetings",
+        tool: "evidence_add",
+        reason:
+          "review_required lidera o bloqueio composto e o teto de regressos torna o veredito positivo impossivel (locked_by_limit): anexe a review estrutural e encerre pela rota terminal com ressalva (nao_pronto + flow_archive + flow novo)",
+        args: { ...baseArgs, kind: "code_review", title: "revisao estrutural coerente com o fingerprint vigente" },
+        required_tool_sequence: steps
+      };
     }
     return {
       type: "attach_structural_review_before_meetings",

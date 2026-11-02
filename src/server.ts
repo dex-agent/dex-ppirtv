@@ -891,7 +891,7 @@ function registerTools(
         verdict_gold_mining: z.array(z.string()).optional(),
         attempt_count: z.number().int().nonnegative().optional(),
         regress_count: z.number().int().nonnegative().optional(),
-        recurring_risk: z.boolean().optional().describe("Declare current recurring risk explicitly; prose never declares it. Omission preserves a pending declaration; false clears that declaration; a recorded verdict ends it. Persisted regressions remain effective."),
+        recurring_risk: z.boolean().optional().describe("Declare current recurring risk explicitly; prose never declares it. Omission preserves a pending declaration; false persists only when the verdict records (a rejected verdict writes no signal); only a recorded POSITIVE verdict (pronto/pronto_com_ressalvas) ends the report. Persisted regressions remain effective and the regress ceiling is terminal (close_flow_with_reservation)."),
         meeting_id: z.string().optional(),
         meeting_ids: z.array(z.string()).optional(),
         next_step: z.string().min(1)
