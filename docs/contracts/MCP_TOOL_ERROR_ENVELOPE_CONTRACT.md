@@ -50,7 +50,17 @@ Exemplo: suite verde pode omitir o campo; incidente atual usa
 `{"recurring_risk":true}`; resolucao explicita de relato pendente usa
 `{"recurring_risk":false}` com justificativa e provas reais no verdict.
 
-**Fonte dos números**: `hasEnoughAttempts`/`countHistory`/`countRegressions` (`src/flow-engine.ts:5756-5781`) já computam tudo no ponto do throw — o envelope só deixa de descartar.
+Fechamento do relato (revisao em dupla 2026-11-02): somente um verdict
+POSITIVO gravado (`pronto`/`pronto_com_ressalvas`) encerra o relato pendente;
+`nao_pronto`/`bloqueado`/veredito rejeitado nao desarmam a recorrencia. O
+`false` so persiste quando o veredito grava (`reportRecurringRiskCleared`);
+retry com mesmo valor efetivo nao duplica evento. O teto
+`attempt_regress_limit_reached` e terminal por desenho (decisao do dono
+2026-11-02, opcao b): envelope e `next_required_action` prescrevem
+encerramento com ressalva (`nao_pronto`) + `flow_archive` + flow novo —
+nunca repetir `goal_verdict` com `locked_by_limit=true`.
+
+**Fonte dos números**: `hasEnoughAttempts`/`countHistory`/`countRegressions` (`src/verdict-fiscal-policy.ts`) já computam tudo no ponto do throw — o envelope só deixa de descartar.
 
 ## Inventário 2026-10-15 (151 throw sites · ~80 códigos CAPS · ~20 traduzidos)
 

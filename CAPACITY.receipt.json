@@ -17,10 +17,10 @@
     "limits": ["suite e capabilities abaixo preservam evidencias historicas; publicacao real so se comprova por readback posterior do GitHub"]
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
-  "fotografia_id": "2026-11-02-fiscal-recorrencia-tipificada",
-  "head": "27f500c6fc0820f25dbcc8c285a901703b95c6b3",
+  "fotografia_id": "2026-11-02-fiscal-verdict-nao-positivo",
+  "head": "6629f0fdb7618d928877cdd78ce7096838118260",
   "tree_hash": null,
-  "generated_at": "2026-11-02T09:15:00.000Z",
+  "generated_at": "2026-11-02T12:40:00.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -39,7 +39,7 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 769,
+    "passed": 776,
     "failed": 0,
     "skipped": 4,
     "files": 59
@@ -52,11 +52,16 @@
       "owner": "verdict-fiscal-policy",
       "consumer": "Agente MCP e consumidor direto FlowEngine",
       "trigger": "goal_verdict.recurring_risk boolean ou teto historico de regressos",
-      "behavior": "Texto nao cria recorrencia; sinal pendente sobrevive omissao/reload ate false ou verdict; teto real independe do boolean e do fast-track mechanical",
+      "behavior": "Texto nao cria recorrencia; sinal pendente true sobrevive omissao/reload/bloqueio; fechamento SOMENTE por verdict positivo gravado (pronto|pronto_com_ressalvas); false so grava com veredito consumado; teto real independe do booleano e e terminal com saida provada (close_flow_with_reservation via flow_archive); retry nao duplica evento",
       "oracle": "tests/fiscal-recurrence.test.ts 24/24 + goal-fiscal 26/26 + tools/list real",
-      "evidence": [".agents/AUDITORIAS/EVIDENCIAS/2026-11-02-fiscal-recorrencia/focused-final.log", ".agents/AUDITORIAS/EVIDENCIAS/2026-11-02-fiscal-recorrencia/mcp-schema.json"],
+      "evidence": [
+        ".agents/AUDITORIAS/EVIDENCIAS/2026-11-02-fiscal-recorrencia/focused-final.log",
+        ".agents/AUDITORIAS/EVIDENCIAS/2026-11-02-fiscal-recorrencia/mcp-schema.json"
+      ],
       "state": "comprovada",
-      "limits": ["Prova de comportamento com fixtures sinteticas e engine; contrato MCP observado; outros eixos lexicais fiscais nao foram redesenhados."]
+      "limits": [
+        "Prova de comportamento com fixtures sinteticas e engine; contrato MCP observado; outros eixos lexicais fiscais nao foram redesenhados."
+      ]
     },
     {
       "id": "CAP-01",
@@ -288,7 +293,7 @@
       "owner": "validate-flow-engine-boundary",
       "consumer": "Oráculo-refatoração",
       "trigger": "Diff que toca flow-engine",
-      "behavior": "Record obrigatorio; CONTAIN desta visita PASS; replay por janela; markers exigidos; FE-DEBT-003 aberto",
+      "behavior": "Record obrigatorio; EXCEPTION integrity desta visita PASS (RED causal, +21 nonblank, +2 decisoes); replay por janela; markers exigidos",
       "oracle": "Replays PASS hoje (visit + cumulative) + EXCEPTION H2 aceita",
       "evidence": [
         "check:flow-engine PASS CONTAIN; record FE-2026-10-18-GATE-INTEGRITY-HARDENING-3"
@@ -592,6 +597,9 @@
     "R5 permanece decisao documentada; CAP-17 tem excecao per-commit 598ae5d.",
     "Sem .git nao ha corroboracao de diff real para changed_files.",
     "4 testes skipped nao foram investigados.",
-    "Matriz completa herdada do espelho 947fdb4; o delta do corte 2026-10-23 (snapshot fantasma: sensivel de runtime de terceiro redigido) revalidou o snapshot de review e a suite 716|4. As demais linhas permanecem com a evidencia do corte anterior."
+    "Matriz completa herdada do espelho 947fdb4; o delta do corte 2026-10-23 (snapshot fantasma: sensivel de runtime de terceiro redigido) revalidou o snapshot de review e a suite 716|4. As demais linhas permanecem com a evidencia do corte anterior.",
+    "Fotografia de worktree sobre o HEAD 2e63c8c (corte fiscal-verdict-nao-positivo); nova medicao exige novo pedido.",
+    "Teto terminal muda o contrato do next_required_action do limite (open_decision_meeting -> close_flow_with_reservation); consumidores que parseavam o tipo antigo foram adaptados nos testes do repo.",
+    "Contrato canonico do teto reescrito para rota terminal (2026-11-02): janelas com processo MCP antigo + contrato antigo ensinam o loop de reuniao — frota precisa pull+build+reconnect+contrato novo."
   ]
 }

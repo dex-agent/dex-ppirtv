@@ -366,6 +366,21 @@ FE-DEBT-005 e paga por este seam coeso, conforme `any_verified_shrink`.
 Provas: T26/T26b do engine, bateria fiscal adversarial e receipt do gate
 `check:flow-engine`; nenhum novo armazenamento ou dependencia.
 
+### FE-2026-11-02-FISCAL-VERDICT-NAO-POSITIVO-INTEGRITY (EXCEPTION)
+
+EXCEPTION integrity (revisao em dupla do merge 2e63c8c): verdict_recorded de
+qualquer status fechava o relato de recorrencia — `nao_pronto` gravado desarmava
+o fiscal e o positivo seguinte passava sem tentativas (falso-verde). A fachada
+ganha so glue (+21 nonblank, +2 decisoes dentro do orcamento EXCEPTION): retem
+`recurring_risk=false` do relato precoce e chama `reportRecurringRiskCleared`
+apos gravar o veredito; a politica (scan positivo-only, dedup, builder do teto
+terminal `close_flow_with_reservation`) mora em `src/verdict-fiscal-policy.ts`.
+RED causal: 4 casos novos falham no baseline (blob 52d5e72), selector
+`tests/fiscal-recurrence.test.ts::veredito rejeitado com false NAO persiste
+sinal nem apaga pending true`; rollback = revert do commit; expira no proximo
+diff que tocar a fachada. Nao paga divida; a janela lexical de materialidade
+fica tabuada em PENDENTES (PPIRTV-FISCAL-MATERIALIDADE-LEXICAL-261102).
+
 - Architecture/extraction owner: `$oraculo-refatoracao` with `$clean-code`
   (since 2026-10-14 by owner decision; the fiscal also accepts the legacy
   `$refactoring-fowler-rich` so the immutable ledger history keeps replaying).

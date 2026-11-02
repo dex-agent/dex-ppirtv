@@ -18,6 +18,23 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Corrigido — 2026-11-02
 
+- Veredito não-positivo não desarma mais a recorrência fiscal (P1 da revisão
+  em dupla do merge 2e63c8c): o scan de `recurringRisk` encerra o relato
+  pendente somente com `verdict_recorded` positivo (`pronto`/`pronto_com_ressalvas`);
+  `nao_pronto`/`bloqueado`/veredito rejeitado não apagam a declaração.
+  `recurring_risk: false` só persiste quando o veredito grava
+  (`reportRecurringRiskCleared` — veredito rejeitado não grava sinal); retry
+  com mesmo valor efetivo não duplica `recurring_risk_reported`. Teto de
+  regressão `attempt_regress_limit_reached` vira terminal por desenho
+  (decisão do dono, opção b): envelope e `next_required_action`
+  (`close_flow_with_reservation`) prescrevem encerrar com ressalva +
+  `flow_archive` + flow novo — nunca "repita o veredito" com
+  `locked_by_limit=true`. Trilho
+  `2026-11-02-fiscal-verdict-nao-positivo`; provas:
+  `tests/fiscal-recurrence.test.ts` 29/29 (RED 4|24 no baseline),
+  `tests/engine.test.ts` (4 asserts do teto adaptados ao contrato novo),
+  contrato do envelope atualizado (ponteiro morto corrigido) e 3 dívidas
+  registradas no PENDENTES.
 - Recorrencia fiscal deixa de ser inferida de texto livre: `goal_verdict`
   aceita `recurring_risk` boolean opcional. Omissao preserva relato pendente,
   `false` o encerra, verdict registrado encerra a avaliacao. Regressos

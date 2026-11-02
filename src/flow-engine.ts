@@ -137,7 +137,7 @@ import {
 } from "./memory/mining-policy.js";
 import {
   evaluateFiscalPolicyWithDeps,
-  countHistory, countRegressions, reportFiscalSignals,
+  countHistory, countRegressions, reportFiscalSignals, reportRecurringRiskCleared,
   explicitMeetingTrigger,
   fiscalResultWithDeps,
   fiscalText,
@@ -2684,7 +2684,10 @@ export class FlowEngine {
     let flow = await this.store.loadFlow(input.flow_id);
     assertGoalBinding(flow);
     assertFlowAcceptsMutation(flow);
-    flow = await reportFiscalSignals(this.store, flow, input, this.ledger.bind(this));
+    // false so grava com o veredito consumado: veredito rejeitado nao pode
+    // apagar um relato pending true (revisao em dupla 2026-11-02).
+    const earlySignalsInput = input.recurring_risk === false ? { ...input, recurring_risk: undefined } : input;
+    flow = await reportFiscalSignals(this.store, flow, earlySignalsInput, this.ledger.bind(this));
     const meetingIds = unique([input.meeting_id, ...(input.meeting_ids ?? [])].filter(Boolean) as string[]);
     for (const meetingId of meetingIds) {
       const meeting = await this.store.loadMeeting(meetingId);
@@ -2777,6 +2780,9 @@ export class FlowEngine {
       meeting_ids: meetingIds,
       next_step: input.next_step
     }, { allowOfficialGoal: true });
+    if (input.recurring_risk === false) {
+      await reportRecurringRiskCleared(this.store, await this.store.loadFlow(input.flow_id), this.ledger.bind(this));
+    }
     const statusSnapshot = await this.goalStatus({ flow_id: input.flow_id, detail: mutationStatusDetail(flow) });
     const closureBlockers = stringArray(statusSnapshot.closure_blockers);
     const terminalAdvanceAllowed =
@@ -6035,12 +6041,16 @@ function nextRequiredActionFor(
     };
   }
   if (regressLimitReached) {
+    // Terminal por desenho (decisao do dono 2026-11-02, opcao b): o teto nao e
+    // desbloqueavel por reuniao — a saida provada e encerrar com ressalva
+    // registrada (veredito nao-positivo), arquivar preservando os blockers e
+    // abrir flow novo carregando o aprendizado. Nunca prescrever repetir
+    // goal_verdict aqui (contradizia can_retry_verdict=false).
     return {
-      type: "open_decision_meeting",
-      tool: "goal_meeting_open",
-      reason: "limite de regressos atingido; abrir reuniao de decisao/validador-pronto em vez de repetir loop de retorno",
+      type: "close_flow_with_reservation",
+      tool: "flow_archive",
+      reason: "limite de regressos fiscal atingido: este flow e terminal por desenho; registre veredito nao-positivo documentando a ressalva, arquive preservando os blockers e abra um flow novo com o aprendizado",
       back_to: backTo,
-      meeting_kind: "decisao",
       regress_count: regressCount,
       max_regressions: FISCAL_CONFIG.maxRegressions,
       locked_by_limit: true,
@@ -6048,18 +6058,29 @@ function nextRequiredActionFor(
       required_tool_sequence: [
         {
           order: 1,
-          tool: "goal_meeting_open",
-          purpose: "abrir reuniao de decisao; nao repetir goal_verdict enquanto locked_by_limit=true",
-          args: { flow_id: flow.flow_id, kind: "decisao", question: "Decidir saida apos limite de regressos fiscais" },
-          capture: "meeting_id"
+          tool: "goal_verdict",
+          purpose: "registrar veredito nao-positivo documentando a ressalva do limite (positivo permanece impossivel com locked_by_limit)",
+          args: {
+            flow_id: flow.flow_id,
+            status: "nao_pronto",
+            rationale: "<ressalva: limite de regressos fiscal atingido; aprendizado do flow>",
+            evidence_ids: ["<evidence_id>"],
+            residual_risks: ["teto de regressoes terminal por desenho"],
+            next_step: "abrir flow novo carregando o aprendizado quando <quando>"
+          }
         },
         {
           order: 2,
-          tool: "goal_meeting_close",
-          purpose: "fechar decisao com responsaveis e blockers preservados",
-          args: { meeting_id: "<meeting_id>", participants_present: ["chato", "reuniao", "validador-pronto"], decision: "decisao fiscal registrada" }
+          tool: "flow_archive",
+          purpose: "encerrar o flow terminal com reason; blockers ficam preservados no historico",
+          args: { flow_id: flow.flow_id, reason: "limite de regressos fiscal (teto terminal por desenho); flow novo carrega o aprendizado" }
         },
-        { order: 3, tool: "goal_status", purpose: "confirmar novo estado antes de qualquer veredito", args: { flow_id: flow.flow_id } }
+        {
+          order: 3,
+          tool: "goal_start",
+          purpose: "abrir flow novo com o aprendizado do flow arquivado",
+          args: { workspace: "<workspace>", spt_path: "<trilho do novo corte>", objective: "<objetivo do novo corte>", idempotency_key: "<chave>" }
+        }
       ]
     };
   }

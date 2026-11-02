@@ -22,6 +22,44 @@ Este corte não certifica capacidade adicional do servidor: o ensaio mede a
 skill externa dex-gerar-pull-request e seu transporte Git/GitHub. Resultados
 locais executados constam no corpo do PR; o estado remoto é conferido depois
 do envio e não é antecipado por este registro pré-commit.
+## Reavaliação 2026-11-02 — contrato canônico ensina a rota terminal do teto
+
+Cura da deriva que ensinava o loop: GOAL_SPT_CANONICAL_CONTRACT (global +
+cópia local, linha ~952) ainda EXIGIA `open_decision_meeting` no teto de
+regressões — o mapa da "reunião sem saída" que janelas consumidoras
+reportaram. Contrato agora ensina o terminal por desenho (opção b):
+`close_flow_with_reservation` (nao_pronto → flow_archive → flow novo);
+reunião NÃO é rota de saída do teto. `audit:canonical` PASS. Zero mudança de
+código — somente a fonte que os consumidores seguem.
+
+## Reavaliação 2026-11-02 — verdict não-positivo + teto terminal
+
+Corte `2e63c8c+working-tree` (Trilho
+`2026-11-02-fiscal-verdict-nao-positivo`, revisão em dupla do merge 2e63c8c),
+owner PPIRTV. CAP-35 reavaliada no delta: fechamento do relato de recorrência
+somente por verdict positivo gravado (`pronto`/`pronto_com_ressalvas`);
+`false` só persiste com veredito consumado; retry não duplica evento; teto de
+regressões terminal por desenho (opção b do dono) com saída provada
+`close_flow_with_reservation` → `flow_archive` + flow novo — envelope não
+prescreve mais repetir veredito. Provas: `tests/fiscal-recurrence.test.ts`
+29/29 (RED 4|24 no baseline), suíte integral 774 testes, 4 skipped, 59
+arquivos; fronteira MCP intacta. `src/verdict-fiscal-policy.ts`,
+`src/flow-engine.ts` (glue), `src/error-envelope.ts` e os 3 arquivos de teste
+foram reavaliados neste delta. Camping: EXCEPTION integrity PASS (+21
+nonblank, +2 decisões, RED causal ligado ao blob base 52d5e72); nenhuma
+dívida paga ou aberta por este corte; janela lexical de materialidade tabuada
+em PENDENTES. Outras linhas abaixo preservam fotografias históricas.
+
+Selagem documental do corte: commit `6629f0f` fixa os blobs desta medição;
+nenhuma lógica ou capacidade adicional foi alterada na selagem.
+
+Fix-up da revisão adversarial do commit (code-reviewer, APPROVED_WITH_NITS →
+consumido): descrição do `recurring_risk` na fronteira MCP atualizada para a
+semântica positivo-only (superfície de ensino era o próprio bug corrigido) e
+composto review+teto do envelope termina na rota terminal (nunca
+`goal_verdict pronto` impossível); 2 testes de composto novos. Suíte integral
+776 | 4 skipped | 59 arquivos; camping NOT_APPLICABLE (flow-engine intacto
+após a selagem).
 
 ## Reavaliação 2026-11-02 — recorrencia fiscal tipificada
 

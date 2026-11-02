@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FlowEngine } from "../src/flow-engine.js";
 import { PpirtvStore } from "../src/store.js";
+import { fiscalBlockedAction } from "../src/error-envelope.js";
 
 let tempRoot: string;
 let engine: FlowEngine;
@@ -102,5 +103,42 @@ describe("recorrencia fiscal por fatos", () => {
     await expect(engine.goalVerdict({ ...proposal, recurring_risk: value, regress_count: 3 } as unknown as typeof proposal)).rejects.toThrow(/recurring_risk.*boolean/i);
     expect((await engine.store.loadFlow(proposal.flow_id)).history).toEqual(before.history);
     expect(await engine.store.readLedger(proposal.flow_id)).toEqual(ledger);
+  });
+});
+
+describe("veredito nao-positivo nao desarma recorrencia (revisao dupla 2026-11-02)", () => {
+  it("nao_pronto gravado com true declarado NAO encerra relato: positivo seguinte exige tentativas", async () => {
+    await engine.goalVerdict({ ...proposal, status: "nao_pronto", recurring_risk: true, next_step: "Retomar quando o fix pousar." });
+    await expect(engine.goalVerdict(proposal)).rejects.toThrow(/attempts_insufficient/);
+  });
+
+  it("veredito rejeitado com false NAO persiste sinal nem apaga pending true", async () => {
+    await expect(engine.goalVerdict({ ...proposal, recurring_risk: true })).rejects.toThrow(/attempts_insufficient/);
+    await expect(engine.goalVerdict({ ...proposal, recurring_risk: false, evidence_ids: ["ev_inexistente"] })).rejects.toThrow(/Unknown evidence_ids/);
+    const flow = await engine.store.loadFlow(proposal.flow_id);
+    expect(flow.history.filter((event) => event.type === "recurring_risk_reported").map((event) => event.data.recurring_risk)).toEqual([true]);
+    await expect(engine.goalVerdict(proposal)).rejects.toThrow(/attempts_insufficient/);
+  });
+
+  it("envelope do teto prescreve encerramento com ressalva, nunca repetir veredito", () => {
+    const action = fiscalBlockedAction("PPIRTV_FISCAL_BLOCKED: attempt_regress_count, attempt_regress_limit_reached; regress_count=3 max=3; attempt_count=1");
+    expect(JSON.stringify(action)).not.toMatch(/repita o veredito/i);
+    expect(action.tool).not.toBe("goal_verdict");
+    expect(JSON.stringify(action)).toMatch(/ressalva|encerr/i);
+  });
+
+  it("retry com mesmo valor efetivo nao duplica recurring_risk_reported", async () => {
+    await expect(engine.goalVerdict({ ...proposal, recurring_risk: true })).rejects.toThrow(/attempts_insufficient/);
+    await expect(engine.goalVerdict({ ...proposal, recurring_risk: true })).rejects.toThrow(/attempts_insufficient/);
+    const flow = await engine.store.loadFlow(proposal.flow_id);
+    expect(flow.history.filter((event) => event.type === "recurring_risk_reported")).toHaveLength(1);
+  });
+
+  it("next_required_action do teto e terminal: close_flow_with_reservation via flow_archive, sem reuniao nem retry", async () => {
+    await expect(engine.goalVerdict({ ...proposal, regress_count: 3 })).rejects.toThrow(/attempt_regress_limit_reached/);
+    const status = (await engine.goalStatus({ flow_id: proposal.flow_id })) as Record<string, unknown>;
+    const action = status.next_required_action as Record<string, unknown>;
+    expect(action).toMatchObject({ type: "close_flow_with_reservation", tool: "flow_archive", can_retry_verdict: false });
+    expect(JSON.stringify(action.required_tool_sequence)).not.toMatch(/goal_meeting_open/);
   });
 });

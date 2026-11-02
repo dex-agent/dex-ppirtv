@@ -3822,8 +3822,8 @@ describe("PPIRTV flow engine", () => {
     expect(status.blockers).not.toContain("required_cooperation");
     expect(status.required_cooperation).toEqual([]);
     expect(status.next_required_action).toMatchObject({
-      type: "open_decision_meeting",
-      tool: "goal_meeting_open"
+      type: "close_flow_with_reservation",
+      tool: "flow_archive"
     });
   });
 
@@ -5601,8 +5601,8 @@ describe("PPIRTV flow engine", () => {
       regress_required: false,
       can_retry_verdict: false,
       next_required_action: {
-        type: "open_decision_meeting",
-        tool: "goal_meeting_open",
+        type: "close_flow_with_reservation",
+        tool: "flow_archive",
         can_retry_verdict: false
       }
     });
@@ -6001,8 +6001,8 @@ describe("PPIRTV flow engine", () => {
       regress_limit_reached: true,
       locked_by_limit: true,
       next_required_action: {
-        type: "open_decision_meeting",
-        meeting_kind: "decisao",
+        type: "close_flow_with_reservation",
+        tool: "flow_archive",
         locked_by_limit: true
       }
     });
@@ -6045,8 +6045,8 @@ describe("PPIRTV flow engine", () => {
       regress_limit_reached: true,
       locked_by_limit: true,
       next_required_action: {
-        type: "open_decision_meeting",
-        meeting_kind: "decisao",
+        type: "close_flow_with_reservation",
+        tool: "flow_archive",
         can_retry_verdict: false
       }
     });

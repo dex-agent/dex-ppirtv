@@ -697,15 +697,29 @@
       "owner": "$oraculo-refatoracao",
       "mode": "SHRINK",
       "destination_module": "src/verdict-fiscal-policy.ts",
-      "consumers": ["src/flow-engine.ts"],
-      "evidence": ["tests/fiscal-recurrence.test.ts", "tests/engine.test.ts"],
+      "consumers": [
+        "src/flow-engine.ts"
+      ],
+      "evidence": [
+        "tests/fiscal-recurrence.test.ts",
+        "tests/engine.test.ts"
+      ],
       "evidence_selectors": {
         "tests/engine.test.ts": "T26 persists goal_regress and consumes reported regress_count before requiring decision meeting"
       },
-      "removed_symbols": ["countHistory", "countRegressions"],
-      "symbol_mappings": {"countHistory": "countHistory", "countRegressions": "countRegressions"},
+      "removed_symbols": [
+        "countHistory",
+        "countRegressions"
+      ],
+      "symbol_mappings": {
+        "countHistory": "countHistory",
+        "countRegressions": "countRegressions"
+      },
       "same_responsibility": true,
-      "behavior_preserved_by": ["tests/engine.test.ts T26 e T26b preservam contagem e teto real", "tests/fiscal-recurrence.test.ts preserva historico sob false e valor menor"],
+      "behavior_preserved_by": [
+        "tests/engine.test.ts T26 e T26b preservam contagem e teto real",
+        "tests/fiscal-recurrence.test.ts preserva historico sob false e valor menor"
+      ],
       "pays_debt_id": "FE-DEBT-005",
       "debt": null,
       "changelog_marker": "Recorrencia fiscal deixa de ser inferida de texto livre",
@@ -714,6 +728,42 @@
       "head_blob": "52d5e7276bc9273218d16f603c7eb001e60ae762",
       "commit": "27f500c6fc0820f25dbcc8c285a901703b95c6b3",
       "parent_commit": "f4443d38dc4199c2601d4c777f4e3d6e5877fbe9"
+    },
+    {
+      "id": "FE-2026-11-02-FISCAL-VERDICT-NAO-POSITIVO-INTEGRITY",
+      "date": "2026-11-02",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-02-fiscal-verdict-nao-positivo.md",
+      "responsibility": "Encerramento do relato de recorrencia fiscal: false so grava com veredito consumado; teto de regressao terminal com saida provada.",
+      "owner": "$oraculo-refatoracao",
+      "mode": "EXCEPTION",
+      "exception_reason": "integrity",
+      "rollback": "revert do commit deste corte restaura o scan antigo (qualquer verdict_recorded fecha relato), o envelope antigo do teto e a sequencia de reuniao decisao; a suite fiscal volta ao RED com as 4 falhas do baseline",
+      "expires": "next diff that touches src/flow-engine.ts",
+      "red_evidence": "tests/fiscal-recurrence.test.ts::veredito rejeitado com false NAO persiste sinal nem apaga pending true",
+      "red_base_blob": "52d5e7276bc9273218d16f603c7eb001e60ae762",
+      "red_observed_failure": "4 casos novos falham no baseline 2e63c8c: nao_pronto gravado fecha relato (positivo seguinte passa sem tentativas), false de veredito rejeitado apaga pending true, envelope do teto manda repetir veredito proibido, retry com mesmo valor duplica evento",
+      "red_command": "npx vitest run tests/fiscal-recurrence.test.ts -t \"veredito rejeitado com false NAO persiste sinal nem apaga pending true\"",
+      "destination_module": "src/verdict-fiscal-policy.ts",
+      "consumers": [
+        "src/flow-engine.ts"
+      ],
+      "evidence": [
+        "tests/fiscal-recurrence.test.ts",
+        "tests/engine.test.ts",
+        "tests/error-envelope.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/fiscal-recurrence.test.ts": "nao_pronto gravado com true declarado NAO encerra relato: positivo seguinte exige tentativas",
+        "tests/engine.test.ts": "T26b blocks a positive retry at the regress limit even after a material meeting"
+      },
+      "changelog_marker": "Veredito não-positivo não desarma mais a recorrência fiscal",
+      "architecture_marker": "FE-2026-11-02-FISCAL-VERDICT-NAO-POSITIVO-INTEGRITY",
+      "base_blob": "52d5e7276bc9273218d16f603c7eb001e60ae762",
+      "head_blob": "569c774fc5aadeccaeb0eee829361b22134d32da",
+      "pays_debt_id": null,
+      "debt": null,
+      "commit": "6629f0fdb7618d928877cdd78ce7096838118260",
+      "parent_commit": "2e63c8c0411ae96686f62cd5ea65d6b221117b32"
     }
   ]
 }

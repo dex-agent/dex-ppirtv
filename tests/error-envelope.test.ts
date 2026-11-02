@@ -34,10 +34,30 @@ describe("error envelope contract (PPIRTV-ERRO-QUE-ENSINA-ENVELOPE)", () => {
     const message = "PPIRTV_FISCAL_BLOCKED: attempt_regress_count, attempt_regress_limit_reached; attempt_count=4, regress_count=3, max=3, meetings=2";
     const action = fiscalBlockedAction(message, "flow_test");
     expect(action.type).toBe("stop_regressing_and_fix_work");
-    expect(action.tool).toBe("goal_verdict");
+    expect(action.tool).toBe("flow_archive");
     expect(String(action.reason)).toContain("regress_count=3");
     expect(String(action.reason)).toContain("legacy alias: attempt_regress_count");
-    expect(action.required_tool_sequence ?? []).toHaveLength(0);
+    expect(String(action.reason)).not.toMatch(/repita o veredito/i);
+    expect(String(action.reason)).toMatch(/ressalva|encerr/i);
+  });
+
+  it("composite review_required + regress limit ends with the terminal reservation route, never a positive verdict", () => {
+    const message = "PPIRTV_FISCAL_BLOCKED: review_required, attempt_regress_count, attempt_regress_limit_reached; attempt_count=4, regress_count=3, max=3, meetings=2";
+    const action = fiscalBlockedAction(message, "flow_test");
+    expect(action.type).toBe("attach_structural_review_before_meetings");
+    const seq = JSON.stringify(action.required_tool_sequence ?? []);
+    expect(seq).toContain("flow_archive");
+    expect(seq).not.toMatch(/"status"\s*:\s*"pronto"/);
+    expect(seq).toContain("nao_pronto");
+  });
+
+  it("composite required_cooperation + regress limit routes terminal via the limit branch (engine order), not a meeting loop", () => {
+    const message = "PPIRTV_FISCAL_BLOCKED: attempt_regress_count, attempt_regress_limit_reached, required_cooperation; attempt_count=4, regress_count=3, max=3, meetings=2";
+    const action = fiscalBlockedAction(message, "flow_test");
+    expect(action.type).toBe("stop_regressing_and_fix_work");
+    expect(action.tool).toBe("flow_archive");
+    expect(String(action.reason)).toMatch(/ressalva|encerr/i);
+    expect(String(action.reason)).not.toMatch(/repita o veredito/i);
   });
 
   it("composite required_cooperation + review_required routes review-first with the executable code_review recipe", () => {
