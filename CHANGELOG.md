@@ -8,6 +8,8 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- 2026-11-02 — Integrada correcao fiscal terminal423e89a preservando workflow0e566b1; contratos globais sincronizados, check776/4 e rota real Hub com nao_pronto/arquivo/sucessor de reconciliacao. Transporte desktop exige reconexao apos encerrar launcher antigo; MCP stdio corrigido comprovado. Produto consumidor nao recebe aceite implicito.
+
 ### Documentado — 2026-11-02
 
 - Implanta workflow de manutencao continua1.0.0, derivado do global reconciliado1.1.0; perfil PPIRTV v1 com CC5/nesting2 e metas90/80 report-only. Wrapper local consome CRG existente, exporter1.2.0 e medidor0.4.2; contato v1 validado pela skill owner. Snapshots e metricas reais preservam limites; sem alteracao do runtime fiscal ou flows consumidores.

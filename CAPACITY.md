@@ -9,6 +9,10 @@
 
 ## Identidade da fotografia
 
+## Reavaliação 2026-11-02 — integracao e prova real da rota terminal
+
+Integracao fbf7d9d preserva workflow0e566b1 e correcao423e89a. Check completo776pass/4skip; contratos global/local sincronizados. Consumidor Hub real arquivado com nao_pronto, contador4/3 preservado e sucessor de reconciliacao aberto. Prova de runtime via MCP stdio real; transporte nativo desta janela ficou fechado apos encerrar launcher antigo e depende de reconexao cliente. Delta desta selagem limitado a capacidade, changelog e PLAYBOOK regenerado; nao altera codigo fiscal nem aceita produto Hub. Receipt .agents/receipts/runtime-fiscal-closeout.md.
+
 ## Reavaliação 2026-11-02 — metodo de manutencao continua
 
 Base77c019d, escopo workflow/, .code-review-graphignore, README, changelog e projecao PLAYBOOK. Instancia1.0.0/global1.1.0; consumo real de CRG2.3.7/exporter1.2.0/medidor0.4.2 com perfil PPIRTV v1. Nenhuma capacidade MCP ou politica fiscal alterada. Suite do checkout769passed4skipped/59arquivos; consumidor local5/5, contato15/15, checker37/37, exporter24/24 e medidor37/37+fixtures. Cobertura/ciclos e ganho longitudinal nao medidos; extracao TS suspeita reproduzida e encaminhada ao owner. Fotografia historica das capacidades de produto abaixo preservada; isto reavalia somente o delta de metodo/ferramentas.

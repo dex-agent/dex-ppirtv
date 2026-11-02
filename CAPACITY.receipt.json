@@ -1,5 +1,14 @@
 {
   "schema": "dex.capacity.snapshot.v1",
+  "reavaliacao_integracao_fiscal": {
+    "date": "2026-11-02",
+    "base_sha": "fbf7d9d",
+    "scope": ["CAPACITY.md", "CAPACITY.receipt.json", "CHANGELOG.md", "PLAYBOOK.md", "PLAYBOOK.index.json"],
+    "delta": "Integracao validada; rota terminal exercitada em consumidor real sem reset; selagem documental sem codigo novo.",
+    "evidence": ".agents/receipts/runtime-fiscal-closeout.md",
+    "suite": {"passed": 776, "skipped": 4, "files": 59},
+    "limits": ["Cliente desktop precisa reconectar transporte", "Produto Hub nao aceito", "Quatro testes skipped"]
+  },
   "reavaliacao_manutencao": {
     "date": "2026-11-02",
     "base_sha": "77c019d87362efef12a832a92976e8a3e8f9e0fc",
