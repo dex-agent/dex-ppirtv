@@ -1,7 +1,7 @@
 ---
 schema: dex.workflow.v1
 slug: manutencao-iterativa-com-evidencia
-version: 1.0.0
+version: 1.0.1
 status: ativo
 owner: executor PPIRTV; owner do comportamento; reviewer
 created: 2026-11-02
@@ -16,6 +16,8 @@ Documentos irmãos: [RULES.md](RULES.md) · [SCHEMA/SCHEMA.md](SCHEMA/SCHEMA.md)
 Configuracao: [config.json](config.json) · [perfil consumivel](profile-cc-v1.json) · [politica PPIRTV v1](PERFIL-EXPERIMENTAL.md) · [scripts](scripts/INDEX.md) · [testes](tests/INDEX.md) · [referencias](references/INDEX.md).
 
 ## Promessa
+
+Entrada adicional obrigatoria: [PORTABILITY.md](PORTABILITY.md), dependencias e contato owner; retrofit seletivo global1.2.0, regua local preservada.
 
 Evolui um bloco coeso por vez, preservando comportamento e registrando por que uma abstração será reutilizada, adaptada ou criada. Usa testes, medições selecionáveis e grafo existente como evidências complementares, sem trocar manutenção futura por uma nota isolada.
 

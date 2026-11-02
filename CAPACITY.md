@@ -9,6 +9,10 @@
 
 ## Identidade da fotografia
 
+## Reavaliação 2026-11-02 — portabilidade do workflow
+
+Delta documental: instancia local1.0.1 adota seletivamente global1.2.0, com dependencias/preflight e regua PPIRTV v1 preservada. Cinco templates globais relocalizados com perfis reais CC-only e fixtures CC2; cinco negativos de dependencia ausente; contato owner15/15 e consumidores29/29. Nenhuma nova capacidade MCP ou alteracao fiscal. Schemas11/0, acervo49/49; prova .agents/receipts/workflow-retrofit-20261102/FINAL-REPORT.md. Nao certifica instalacao na maquina irma, cobertura, ciclos ou ganho longitudinal.
+
 ## Reavaliação 2026-11-02 — integracao e prova real da rota terminal
 
 Integracao fbf7d9d preserva workflow0e566b1 e correcao423e89a. Check completo776pass/4skip; contratos global/local sincronizados. Consumidor Hub real arquivado com nao_pronto, contador4/3 preservado e sucessor de reconciliacao aberto. Prova de runtime via MCP stdio real; transporte nativo desta janela ficou fechado apos encerrar launcher antigo e depende de reconexao cliente. Delta desta selagem limitado a capacidade, changelog e PLAYBOOK regenerado; nao altera codigo fiscal nem aceita produto Hub. Receipt .agents/receipts/runtime-fiscal-closeout.md.

@@ -8,6 +8,8 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- 2026-11-02 — Workflow local1.0.1 declara preflight/dependencias e adocao seletiva do global1.2.0; perfil PPIRTV v1 preservado. Retrofit global comprovou cinco pacotes relocalizados, perfis CC consumidos e falha explicita por dependencia ausente; nao altera runtime fiscal ou flows. Skills externas exigem verificacao no computador consumidor.
+
 - 2026-11-02 — Integrada correcao fiscal terminal423e89a preservando workflow0e566b1; contratos globais sincronizados, check776/4 e rota real Hub com nao_pronto/arquivo/sucessor de reconciliacao. Transporte desktop exige reconexao apos encerrar launcher antigo; MCP stdio corrigido comprovado. Produto consumidor nao recebe aceite implicito.
 
 ### Documentado — 2026-11-02
