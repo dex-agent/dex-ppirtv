@@ -1,0 +1,14 @@
+# Escopo autoral; nao duplicar exclusoes por filtro posterior no snapshot.
+/.agents/**
+/.ppirtv/**
+/.pilot-data/**
+/artifacts/**
+/coverage/**
+/dist/**
+/build/**
+/node_modules/**
+/skills/dex-agent/**
+**/browser-profile/**
+**/browser-profiles/**
+**/playwright-report/**
+**/test-results/**

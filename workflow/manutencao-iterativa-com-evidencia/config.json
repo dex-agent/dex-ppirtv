@@ -1,0 +1,11 @@
+{
+  "schema": "dex.workflow.ppirtv.manutencao.config.v1",
+  "version": "1.0.0",
+  "project_id": "dex-PPIRTV",
+  "owner": "executor do corte; owner do comportamento; reviewer",
+  "graph": {"data_dir": ".agents/CODE-REVIEW-GRAPH", "database": ".agents/CODE-REVIEW-GRAPH/graph.db"},
+  "measurement_roots": ["src/mcp", "workflow/manutencao-iterativa-com-evidencia/scripts"],
+  "profile": "workflow/manutencao-iterativa-com-evidencia/profile-cc-v1.json",
+  "receipt_root": ".agents/receipts/manutencao-continua",
+  "contact": {"workspace_id": "T0B109A82SW", "channel_id": "D0C5E5Y8MRT", "thread_id": "1793625886.184229"}
+}

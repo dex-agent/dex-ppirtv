@@ -10,6 +10,8 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Documentado — 2026-11-02
 
+- Implanta workflow de manutencao continua1.0.0, derivado do global reconciliado1.1.0; perfil PPIRTV v1 com CC5/nesting2 e metas90/80 report-only. Wrapper local consome CRG existente, exporter1.2.0 e medidor0.4.2; contato v1 validado pela skill owner. Snapshots e metricas reais preservam limites; sem alteracao do runtime fiscal ou flows consumidores.
+
 - README explicita o conteúdo esperado de um PR de rascunho e distingue
   publicação de aceitação. Recorte documental usado no ensaio real da
   dex-gerar-pull-request; sem alteração de runtime ou contrato MCP.

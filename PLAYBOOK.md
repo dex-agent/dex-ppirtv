@@ -4,7 +4,7 @@ description: "Regras de decisao e procedimentos deste projeto - projecao gerada 
 type: playbook
 generated_by: "tools/playbook/generate-playbook.py"
 authority: derived_projection
-sources_revision: "sha256:6f484372f24b658e567f09b684f3e9043cb4fb6a9875d164d1cca5e371ba8aeb"
+sources_revision: "sha256:7360a20b4bc78cefb89b96226b2ded176a2e8fc3cafc063e1c8d525d25579b36"
 sent_revision: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 do_not_edit: true
 ---
@@ -23,19 +23,19 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 ### Regras locais
 
-- Localizador: `PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL`
+- Localizador: `PPIRTV-MANUTENCAO-CONTINUA-CRG`
 - Gatilho: Formato de ciclo: `Unreleased` ate decisao explicita de versao; gatilhos:
-- Extrato: - Laudo do corte fiscal: `docs/contracts/FISCAL_RECURRENCE_BUG_REPORT_2026-11-02.md`.
-- Fonte: `AGENTS.md#L26-L161`
-- Selo: `pb-75606daa`
+- Extrato: - `PPIRTV-MANUTENCAO-CONTINUA-CRG`: antes de corte de manutencao/reuso, ler workflow/RULES.md e workflow/manutencao-iterativa-com-evidencia...
+- Fonte: `AGENTS.md#L26-L163`
+- Selo: `pb-8938be6d`
 
 ### Validacao minima
 
 - Localizador: `PPIRTV-CAPACITY-COMMIT-GATE`
 - Gatilho: ndeclarado
 - Extrato: ```powershell
-- Fonte: `AGENTS.md#L191-L213`
-- Selo: `pb-359f896f`
+- Fonte: `AGENTS.md#L193-L215`
+- Selo: `pb-97348542`
 
 ### Ordens diretas do Comandante Owner o $chato 🗣️
 
@@ -47,16 +47,16 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
   - $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamen...
   - Ative o fluxo visual PPIRTV com checklist visual dinâmico u...
   - Sempre finalize o trabalho analisando "com lentes dos espec...
-- Fonte: `AGENTS.md#L214-L276`
-- Selo: `pb-ffb0841a`
+- Fonte: `AGENTS.md#L216-L278`
+- Selo: `pb-f0d4ceb4`
 
 ### Dex Agent Local
 
 - Localizador: `PPIRTV-GIT-CONSOLIDACAO-SELETIVA-MAIN`
 - Gatilho: - Antes de qualquer consolidacao Git deste repositorio, recupere o gatilho
 - Extrato: - Projeto: `dex-PPIRTV`
-- Fonte: `AGENTS.md#L277-L321`
-- Selo: `pb-7a9a2873`
+- Fonte: `AGENTS.md#L279-L323`
+- Selo: `pb-81fb4545`
 
 ### Leitura obrigatoria (bootstrap)
 
@@ -68,8 +68,8 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
   - `.agents/ACTIVE.md`
   - `.agents/HANDOFF.md`
   - `.agents/PLAN-TASKS/ACTIVE.md`
-- Fonte: `AGENTS.md#L400-L407`
-- Selo: `pb-aefd5ab8`
+- Fonte: `AGENTS.md#L402-L409`
+- Selo: `pb-cad80448`
 
 ## Runbook <-> Playbook (procedimentos)
 
@@ -83,9 +83,9 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 | caminho | sha256 | Enviado? |
 | --- | --- | --- |
-| `AGENTS.md` | `25320d5a4ecd03dfe2aae5f7b0666712dee2729c10bb8537af867d0145c5a2bc` | nao |
-| `.agents/napkin.md` | `f8f5bad9c9bd2481f7a30c8edefab0bc3a20feef3af4dedaa850ce2417b9b9fd` | nao |
-| `.agents/PLAN-TASKS/ACTIVE.md` | `ef5aac8b801e70afaf48a15f7078a78b556b6fa41a4780379b269c66eb3e7b2a` | nao |
+| `AGENTS.md` | `936b0c906e848b554aafa49d14a4ac012f8c97db7333c47ff4751ce6993bcbe7` | nao |
+| `.agents/napkin.md` | `fba7a9ec155e9421a227aa9e6459511f9ee4bc076bb1256e0af089acdf43cc1c` | nao |
+| `.agents/PLAN-TASKS/ACTIVE.md` | `7f9ca7301f0dda06256e99efd1497c25ce43bd284ec7f2dd21d788014e2aebbe` | nao |
 
 ## Superficie enviada vs local
 
@@ -95,8 +95,8 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 ## Secoes nao decodificadas
 
-- Organizacao De Artefatos E Scripts -> `AGENTS.md#L162` (sem token de localizador)
-- Graphify local -> `AGENTS.md#L322` (sem token de localizador)
-- Bootstrap (toda janela nova, nesta ordem) -> `AGENTS.md#L355` (sem token de localizador)
-- Indexação (doutrina da casa) -> `AGENTS.md#L373` (sem token de localizador)
-- Envio a terceiros -> `AGENTS.md#L380` (sem token de localizador)
+- Organizacao De Artefatos E Scripts -> `AGENTS.md#L164` (sem token de localizador)
+- Graphify local -> `AGENTS.md#L324` (sem token de localizador)
+- Bootstrap (toda janela nova, nesta ordem) -> `AGENTS.md#L357` (sem token de localizador)
+- Indexação (doutrina da casa) -> `AGENTS.md#L375` (sem token de localizador)
+- Envio a terceiros -> `AGENTS.md#L382` (sem token de localizador)

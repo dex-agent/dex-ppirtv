@@ -9,6 +9,10 @@
 
 ## Identidade da fotografia
 
+## Reavaliação 2026-11-02 — metodo de manutencao continua
+
+Base77c019d, escopo workflow/, .code-review-graphignore, README, changelog e projecao PLAYBOOK. Instancia1.0.0/global1.1.0; consumo real de CRG2.3.7/exporter1.2.0/medidor0.4.2 com perfil PPIRTV v1. Nenhuma capacidade MCP ou politica fiscal alterada. Suite do checkout769passed4skipped/59arquivos; consumidor local5/5, contato15/15, checker37/37, exporter24/24 e medidor37/37+fixtures. Cobertura/ciclos e ganho longitudinal nao medidos; extracao TS suspeita reproduzida e encaminhada ao owner. Fotografia historica das capacidades de produto abaixo preservada; isto reavalia somente o delta de metodo/ferramentas.
+
 ## Reavaliação 2026-11-02 — ensaio de PR de rascunho
 
 Base `2e63c8c0411ae96686f62cd5ea65d6b221117b32`. Delta limitado ao README,

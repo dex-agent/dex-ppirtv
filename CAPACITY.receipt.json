@@ -1,5 +1,14 @@
 {
   "schema": "dex.capacity.snapshot.v1",
+  "reavaliacao_manutencao": {
+    "date": "2026-11-02",
+    "base_sha": "77c019d87362efef12a832a92976e8a3e8f9e0fc",
+    "scope": ["workflow/", ".code-review-graphignore", "README.md", "CHANGELOG.md", "PLAYBOOK.md", "PLAYBOOK.index.json", "CAPACITY.md", "CAPACITY.receipt.json"],
+    "delta": "Instancia de manutencao com ferramentas owners; nenhuma capacidade MCP ou politica fiscal alterada.",
+    "evidence": ".agents/receipts/manutencao-continua-20261102/",
+    "suite": {"passed": 769, "skipped": 4, "files": 59},
+    "limits": ["CRG parcial", "extracao TS do medidor com reproducao pendente no owner", "cobertura e ciclos nao medidos", "runtime fiscal local nao atualizado"]
+  },
   "reavaliacao_documental": {
     "date": "2026-11-02",
     "base_sha": "2e63c8c0411ae96686f62cd5ea65d6b221117b32",

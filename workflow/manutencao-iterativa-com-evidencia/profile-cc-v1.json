@@ -1,0 +1,7 @@
+{
+  "schema": "dex.complexidade.profile.v1",
+  "id": "ppirtv-experimental-v1",
+  "version": "1.0.0",
+  "capabilities": ["cc"],
+  "thresholds": {"cc": {"max_per_function": 5}}
+}

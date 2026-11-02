@@ -2,6 +2,8 @@
 
 FileVersion: 0.3.0
 
+Continuous maintenance for agents: [workflow entry](workflow/manutencao-iterativa-com-evidencia/WORKFLOW.md), [experimental PPIRTV v1 policy](workflow/manutencao-iterativa-com-evidencia/PERFIL-EXPERIMENTAL.md). Read the workflow rules before capture; observations do not change fiscal gates.
+
 `dex-PPIRTV` is a local MCP stdio server for running PPIRTV execution flows with
 explicit phases, gates, meetings, evidence, verdicts, memory mining and
 multi-flow pipelines.
