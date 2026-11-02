@@ -11,6 +11,10 @@
 
 ## Reavaliação 2026-11-02 — medidor 0.4.3 (P1 do oráculo, corte medidor-ts-range-corpo)
 
+Selagem do corte: commits `8f51e98` (USAGE+CAPACITY) e o HANDOFF fixam
+os blobs desta medição; nenhuma lógica de produto alterada.
+
+
 Corte **documental** (zero `src/` do produto): fix na fonte do medidor
 `dex-complexidade-ciclomatica` 0.4.2→0.4.3 (range do corpo TS com return
 type anotado; sintoma CC=1 da irmã era bug de range), suíte da skill 38/38,
