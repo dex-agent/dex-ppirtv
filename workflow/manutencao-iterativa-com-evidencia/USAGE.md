@@ -35,3 +35,20 @@ python -B "$env:USERPROFILE/.agents/skills/check-schemas/scripts/check-schemas.p
 ```
 
 - Nao repetir captura com mesmo identificador; output create-only. Troca de source/config requer nova captura; mudanca de motor requer remedir, nao reavaliar raw antigo.
+
+## Remediacao 2026-11-02 — pos-fix-01 (medidor 0.4.3)
+
+Defeito de range do corpo TS confirmado e corrigido na fonte (Trilho
+`.agents/PLAN-TASKS/2026-11-02-medidor-ts-range-corpo.md`; CHANGELOG da skill
+`dex-complexidade-ciclomatica` 0.4.3): `_body_brace_after_parameters` tratava
+o `{` do corpo como tipo-objeto em return type anotado — colapso (cc=1) e
+sobreposicao de simbolos. O sintoma "scanner-probe CC=1" da tabela acima era
+SINTOMA desse bug; regexes de decisao estavam integras (leitura da fonte).
+Provas: RED 3 falhas em 5 asserts no baseline 0.4.2; suite da skill 38/38
+(teste novo test_range_ts.py); re-medicao src/mcp com ranges disjuntos e
+coerentes (22/16; antes 21/17 com `inspectRuntimeLayoutReadOnly` colapsado em
+cc=1 e `assertToolEffectCatalog` sobreposto com 17). Captura
+`.agents/receipts/manutencao-continua/pos-fix-01/` com engine 0.4.3; raws
+0.4.2 de `implantacao-01/02`, `reutilizacao-local-01` e `pos-integracao-01`
+sao fotografia historica do motor — NAO comparaveis (R13). Cobertura 90/80 e
+ciclos continuam nao medidos.

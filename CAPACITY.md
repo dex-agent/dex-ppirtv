@@ -9,6 +9,18 @@
 
 ## Identidade da fotografia
 
+## Reavaliação 2026-11-02 — medidor 0.4.3 (P1 do oráculo, corte medidor-ts-range-corpo)
+
+Corte **documental** (zero `src/` do produto): fix na fonte do medidor
+`dex-complexidade-ciclomatica` 0.4.2→0.4.3 (range do corpo TS com return
+type anotado; sintoma CC=1 da irmã era bug de range), suíte da skill 38/38,
+re-medição src/mcp 22/16 com ranges disjuntos, captura `pos-fix-01`
+(provenance engine 0.4.3, revision f6daafa=HEAD), USAGE do pacote com seção
+Remediação, backup 0.4.2 em CHECKPOINT. Nenhuma capacidade MCP alterada;
+`recurring_risk`/teto terminal intactos. Raws 0.4.2 = fotografia histórica
+do motor (R13 — não comparáveis). Verdict
+`vrd_20261102165109623_3210_0001` pronto_com_ressalvas.
+
 ## Reavaliação 2026-11-02 — integracao e prova real da rota terminal
 
 Integracao fbf7d9d preserva workflow0e566b1 e correcao423e89a. Check completo776pass/4skip; contratos global/local sincronizados. Consumidor Hub real arquivado com nao_pronto, contador4/3 preservado e sucessor de reconciliacao aberto. Prova de runtime via MCP stdio real; transporte nativo desta janela ficou fechado apos encerrar launcher antigo e depende de reconexao cliente. Delta desta selagem limitado a capacidade, changelog e PLAYBOOK regenerado; nao altera codigo fiscal nem aceita produto Hub. Receipt .agents/receipts/runtime-fiscal-closeout.md.

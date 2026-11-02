@@ -3,33 +3,74 @@
   "reavaliacao_integracao_fiscal": {
     "date": "2026-11-02",
     "base_sha": "fbf7d9d",
-    "scope": ["CAPACITY.md", "CAPACITY.receipt.json", "CHANGELOG.md", "PLAYBOOK.md", "PLAYBOOK.index.json"],
+    "scope": [
+      "CAPACITY.md",
+      "CAPACITY.receipt.json",
+      "CHANGELOG.md",
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json"
+    ],
     "delta": "Integracao validada; rota terminal exercitada em consumidor real sem reset; selagem documental sem codigo novo.",
     "evidence": ".agents/receipts/runtime-fiscal-closeout.md",
-    "suite": {"passed": 776, "skipped": 4, "files": 59},
-    "limits": ["Cliente desktop precisa reconectar transporte", "Produto Hub nao aceito", "Quatro testes skipped"]
+    "suite": {
+      "passed": 776,
+      "skipped": 4,
+      "files": 59
+    },
+    "limits": [
+      "Cliente desktop precisa reconectar transporte",
+      "Produto Hub nao aceito",
+      "Quatro testes skipped"
+    ]
   },
   "reavaliacao_manutencao": {
     "date": "2026-11-02",
     "base_sha": "77c019d87362efef12a832a92976e8a3e8f9e0fc",
-    "scope": ["workflow/", ".code-review-graphignore", "README.md", "CHANGELOG.md", "PLAYBOOK.md", "PLAYBOOK.index.json", "CAPACITY.md", "CAPACITY.receipt.json"],
+    "scope": [
+      "workflow/",
+      ".code-review-graphignore",
+      "README.md",
+      "CHANGELOG.md",
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json"
+    ],
     "delta": "Instancia de manutencao com ferramentas owners; nenhuma capacidade MCP ou politica fiscal alterada.",
     "evidence": ".agents/receipts/manutencao-continua-20261102/",
-    "suite": {"passed": 769, "skipped": 4, "files": 59},
-    "limits": ["CRG parcial", "extracao TS do medidor com reproducao pendente no owner", "cobertura e ciclos nao medidos", "runtime fiscal local nao atualizado"]
+    "suite": {
+      "passed": 769,
+      "skipped": 4,
+      "files": 59
+    },
+    "limits": [
+      "CRG parcial",
+      "extracao TS do medidor com reproducao pendente no owner",
+      "cobertura e ciclos nao medidos",
+      "runtime fiscal local nao atualizado"
+    ]
   },
   "reavaliacao_documental": {
     "date": "2026-11-02",
     "base_sha": "2e63c8c0411ae96686f62cd5ea65d6b221117b32",
-    "scope": ["README.md", "CHANGELOG.md", "CAPACITY.md", "CAPACITY.receipt.json", "PLAYBOOK.md", "PLAYBOOK.index.json"],
+    "scope": [
+      "README.md",
+      "CHANGELOG.md",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json",
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json"
+    ],
     "delta": "Orientacao de revisao de PR draft e gates documentais; nenhuma capacidade MCP alterada.",
-    "limits": ["suite e capabilities abaixo preservam evidencias historicas; publicacao real so se comprova por readback posterior do GitHub"]
+    "limits": [
+      "suite e capabilities abaixo preservam evidencias historicas; publicacao real so se comprova por readback posterior do GitHub"
+    ]
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-02-fiscal-verdict-nao-positivo",
   "head": "6629f0fdb7618d928877cdd78ce7096838118260",
   "tree_hash": null,
-  "generated_at": "2026-11-02T12:40:00.000Z",
+  "generated_at": "2026-11-02T16:58:00.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -609,6 +650,7 @@
     "Matriz completa herdada do espelho 947fdb4; o delta do corte 2026-10-23 (snapshot fantasma: sensivel de runtime de terceiro redigido) revalidou o snapshot de review e a suite 716|4. As demais linhas permanecem com a evidencia do corte anterior.",
     "Fotografia de worktree sobre o HEAD 2e63c8c (corte fiscal-verdict-nao-positivo); nova medicao exige novo pedido.",
     "Teto terminal muda o contrato do next_required_action do limite (open_decision_meeting -> close_flow_with_reservation); consumidores que parseavam o tipo antigo foram adaptados nos testes do repo.",
-    "Contrato canonico do teto reescrito para rota terminal (2026-11-02): janelas com processo MCP antigo + contrato antigo ensinam o loop de reuniao — frota precisa pull+build+reconnect+contrato novo."
+    "Contrato canonico do teto reescrito para rota terminal (2026-11-02): janelas com processo MCP antigo + contrato antigo ensinam o loop de reuniao — frota precisa pull+build+reconnect+contrato novo.",
+    "Medidor CC correto na fonte 0.4.3 (2026-11-02): raws 0.4.2 dos receipts anteriores sao fotografia historica do motor quebrado — comparacoes de CC exigem motor 0.4.3+ (R13)."
   ]
 }
