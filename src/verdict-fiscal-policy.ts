@@ -284,11 +284,21 @@ export function hasReviewEvidenceWithDeps(flow: Flow, input: FiscalVerdictInput,
   );
 }
 
+// Somente verdict POSITIVO consumido encerra o relato pendente de recorrencia;
+// nao_pronto/bloqueado/rejeitado nao atenderam nada (revisao em dupla 2026-11-02).
+const POSITIVE_VERDICT_STATUSES = new Set(["pronto", "pronto_com_ressalvas"]);
+
+function pendingRecurringRisk(flow: Flow): boolean {
+  const latest = [...flow.history]
+    .reverse()
+    .find((event) => event.type === "recurring_risk_reported"
+      || (event.type === "verdict_recorded" && POSITIVE_VERDICT_STATUSES.has(String(event.data.status))));
+  return latest?.type === "recurring_risk_reported" && latest.data.recurring_risk === true;
+}
+
 function recurringRisk(flow: Flow, input: FiscalVerdictInput): boolean {
   if (input.recurring_risk !== undefined) return input.recurring_risk === true;
-  // Um verdict encerra o relato pendente; bloqueio ou omissao nao o apagam.
-  const latest = [...flow.history].reverse().find((event) => event.type === "recurring_risk_reported" || event.type === "verdict_recorded");
-  return latest?.type === "recurring_risk_reported" && latest.data.recurring_risk === true;
+  return pendingRecurringRisk(flow);
 }
 
 function hasEnoughAttempts(flow: Flow, input: FiscalVerdictInput, deps: FiscalPolicyDeps): boolean {
@@ -330,7 +340,7 @@ export async function reportFiscalSignals(
   if (input.regress_count !== undefined && input.regress_count > countRegressions(flow)) {
     reports.push({ type: "regress_count_reported", data: { regress_count: input.regress_count, source: "goal_verdict" } });
   }
-  if (input.recurring_risk !== undefined) {
+  if (input.recurring_risk !== undefined && input.recurring_risk !== pendingRecurringRisk(flow)) {
     reports.push({ type: "recurring_risk_reported", data: { recurring_risk: input.recurring_risk, source: "goal_verdict" } });
   }
   for (const report of reports) {
@@ -342,4 +352,20 @@ export async function reportFiscalSignals(
     flow = await store.loadFlow(flow.flow_id);
   }
   return flow;
+}
+
+// Encerramento explicito (false) so vira evento quando o veredito consumiu:
+// goalVerdict retem o false do relato precoce (veredito rejeitado nao grava
+// sinal) e chama aqui DEPOIS de gravar o veredito.
+export async function reportRecurringRiskCleared(
+  store: Pick<PpirtvStore, "saveFlow" | "loadFlow">,
+  flow: Flow,
+  ledger: (flowId: string, type: string, data: Record<string, unknown>, actor: string) => Promise<void>
+): Promise<Flow> {
+  const now = new Date().toISOString();
+  flow.history.push({ at: now, type: "recurring_risk_reported", data: { recurring_risk: false, source: "goal_verdict" } });
+  flow.updated_at = now;
+  await store.saveFlow(flow);
+  await ledger(flow.flow_id, "recurring_risk_reported", { recurring_risk: false, source: "goal_verdict" }, "goal_verdict");
+  return store.loadFlow(flow.flow_id);
 }

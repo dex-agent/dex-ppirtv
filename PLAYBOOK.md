@@ -4,7 +4,7 @@ description: "Regras de decisao e procedimentos deste projeto - projecao gerada 
 type: playbook
 generated_by: "tools/playbook/generate-playbook.py"
 authority: derived_projection
-sources_revision: "sha256:731b0f0ffc65bb92dc5ec510f76835685f00b1827de03f4e1a624f0581b92715"
+sources_revision: "sha256:82dd85c55784253d045018081680775c327c4c267ac3fdb74a52f18b05928c42"
 sent_revision: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 do_not_edit: true
 ---
@@ -25,17 +25,17 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 - Localizador: `PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL`
 - Gatilho: Formato de ciclo: `Unreleased` ate decisao explicita de versao; gatilhos:
-- Extrato: - Laudo do corte fiscal: `docs/contracts/FISCAL_RECURRENCE_BUG_REPORT_2026-11-02.md`.
-- Fonte: `AGENTS.md#L26-L161`
-- Selo: `pb-75606daa`
+- Extrato: - Manter `CHANGELOG.md` atualizado. Owner: `$projeto-manter-changelog`.
+- Fonte: `AGENTS.md#L26-L167`
+- Selo: `pb-dc9e879d`
 
 ### Validacao minima
 
 - Localizador: `PPIRTV-CAPACITY-COMMIT-GATE`
 - Gatilho: ndeclarado
 - Extrato: ```powershell
-- Fonte: `AGENTS.md#L191-L213`
-- Selo: `pb-359f896f`
+- Fonte: `AGENTS.md#L197-L219`
+- Selo: `pb-085a874b`
 
 ### Ordens diretas do Comandante Owner o $chato 🗣️
 
@@ -47,16 +47,16 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
   - $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamen...
   - Ative o fluxo visual PPIRTV com checklist visual dinâmico u...
   - Sempre finalize o trabalho analisando "com lentes dos espec...
-- Fonte: `AGENTS.md#L214-L276`
-- Selo: `pb-ffb0841a`
+- Fonte: `AGENTS.md#L220-L282`
+- Selo: `pb-c82e689d`
 
 ### Dex Agent Local
 
 - Localizador: `PPIRTV-GIT-CONSOLIDACAO-SELETIVA-MAIN`
 - Gatilho: - Antes de qualquer consolidacao Git deste repositorio, recupere o gatilho
 - Extrato: - Projeto: `dex-PPIRTV`
-- Fonte: `AGENTS.md#L277-L321`
-- Selo: `pb-7a9a2873`
+- Fonte: `AGENTS.md#L283-L327`
+- Selo: `pb-b3450f8f`
 
 ### Leitura obrigatoria (bootstrap)
 
@@ -68,8 +68,8 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
   - `.agents/ACTIVE.md`
   - `.agents/HANDOFF.md`
   - `.agents/PLAN-TASKS/ACTIVE.md`
-- Fonte: `AGENTS.md#L400-L407`
-- Selo: `pb-aefd5ab8`
+- Fonte: `AGENTS.md#L406-L413`
+- Selo: `pb-b6ab4d64`
 
 ## Runbook <-> Playbook (procedimentos)
 
@@ -83,9 +83,9 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 | caminho | sha256 | Enviado? |
 | --- | --- | --- |
-| `AGENTS.md` | `25320d5a4ecd03dfe2aae5f7b0666712dee2729c10bb8537af867d0145c5a2bc` | nao |
-| `.agents/napkin.md` | `f8f5bad9c9bd2481f7a30c8edefab0bc3a20feef3af4dedaa850ce2417b9b9fd` | nao |
-| `.agents/PLAN-TASKS/ACTIVE.md` | `2f2c1d2a17a5ce4f93c24d26d6de4864936b05dc3214d88f505411233dc363ae` | nao |
+| `AGENTS.md` | `644368d81dac6000091dc4f947a114c78cac37d9908072ae892594cdb024c76a` | nao |
+| `.agents/napkin.md` | `ed25bc621ec3249e0c75a17cd2d42cb0a43af300862fa35ae3643aa0ed248c46` | nao |
+| `.agents/PLAN-TASKS/ACTIVE.md` | `71a08bcbf87b70d6c229ecabc58e1735d82382f9fe5b7df34c1f4f64b157192e` | nao |
 
 ## Superficie enviada vs local
 
@@ -95,8 +95,8 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 ## Secoes nao decodificadas
 
-- Organizacao De Artefatos E Scripts -> `AGENTS.md#L162` (sem token de localizador)
-- Graphify local -> `AGENTS.md#L322` (sem token de localizador)
-- Bootstrap (toda janela nova, nesta ordem) -> `AGENTS.md#L355` (sem token de localizador)
-- Indexação (doutrina da casa) -> `AGENTS.md#L373` (sem token de localizador)
-- Envio a terceiros -> `AGENTS.md#L380` (sem token de localizador)
+- Organizacao De Artefatos E Scripts -> `AGENTS.md#L168` (sem token de localizador)
+- Graphify local -> `AGENTS.md#L328` (sem token de localizador)
+- Bootstrap (toda janela nova, nesta ordem) -> `AGENTS.md#L361` (sem token de localizador)
+- Indexação (doutrina da casa) -> `AGENTS.md#L379` (sem token de localizador)
+- Envio a terceiros -> `AGENTS.md#L386` (sem token de localizador)

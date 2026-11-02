@@ -9,6 +9,24 @@
 
 ## Identidade da fotografia
 
+## Reavaliação 2026-11-02 — verdict não-positivo + teto terminal
+
+Corte `2e63c8c+working-tree` (Trilho
+`2026-11-02-fiscal-verdict-nao-positivo`, revisão em dupla do merge 2e63c8c),
+owner PPIRTV. CAP-35 reavaliada no delta: fechamento do relato de recorrência
+somente por verdict positivo gravado (`pronto`/`pronto_com_ressalvas`);
+`false` só persiste com veredito consumado; retry não duplica evento; teto de
+regressões terminal por desenho (opção b do dono) com saída provada
+`close_flow_with_reservation` → `flow_archive` + flow novo — envelope não
+prescreve mais repetir veredito. Provas: `tests/fiscal-recurrence.test.ts`
+29/29 (RED 4|24 no baseline), suíte integral 774 testes, 4 skipped, 59
+arquivos; fronteira MCP intacta. `src/verdict-fiscal-policy.ts`,
+`src/flow-engine.ts` (glue), `src/error-envelope.ts` e os 3 arquivos de teste
+foram reavaliados neste delta. Camping: EXCEPTION integrity PASS (+21
+nonblank, +2 decisões, RED causal ligado ao blob base 52d5e72); nenhuma
+dívida paga ou aberta por este corte; janela lexical de materialidade tabuada
+em PENDENTES. Outras linhas abaixo preservam fotografias históricas.
+
 ## Reavaliação 2026-11-02 — recorrencia fiscal tipificada
 
 Corte `f4443d3+working-tree`, owner PPIRTV. CAP-35 observada em fixtures:

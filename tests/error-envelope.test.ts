@@ -34,10 +34,11 @@ describe("error envelope contract (PPIRTV-ERRO-QUE-ENSINA-ENVELOPE)", () => {
     const message = "PPIRTV_FISCAL_BLOCKED: attempt_regress_count, attempt_regress_limit_reached; attempt_count=4, regress_count=3, max=3, meetings=2";
     const action = fiscalBlockedAction(message, "flow_test");
     expect(action.type).toBe("stop_regressing_and_fix_work");
-    expect(action.tool).toBe("goal_verdict");
+    expect(action.tool).toBe("flow_archive");
     expect(String(action.reason)).toContain("regress_count=3");
     expect(String(action.reason)).toContain("legacy alias: attempt_regress_count");
-    expect(action.required_tool_sequence ?? []).toHaveLength(0);
+    expect(String(action.reason)).not.toMatch(/repita o veredito/i);
+    expect(String(action.reason)).toMatch(/ressalva|encerr/i);
   });
 
   it("composite required_cooperation + review_required routes review-first with the executable code_review recipe", () => {

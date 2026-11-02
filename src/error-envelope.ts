@@ -213,10 +213,13 @@ export function fiscalBlockedAction(message: string, flowId = "<flow_id>"): Next
   if (/attempt_regress_limit_reached/i.test(message)) {
     const regressCount = parseNumberAfter(message, "regress_count");
     const max = parseNumberAfter(message, "max");
+    // Terminal por desenho (decisao do dono 2026-11-02, opcao b): nunca
+    // prescrever repetir goal_verdict — a saida provada e encerrar com
+    // ressalva, arquivar preservando blockers e abrir flow novo.
     return {
       type: "stop_regressing_and_fix_work",
-      tool: "goal_verdict",
-      reason: `limite de regressoes atingido (regress_count=${regressCount ?? "?"}, max=${max ?? "?"}); legacy alias: attempt_regress_count — pare de regredir, corrija o trabalho e repita o veredito`,
+      tool: "flow_archive",
+      reason: `limite de regressoes atingido (regress_count=${regressCount ?? "?"}, max=${max ?? "?"}); legacy alias: attempt_regress_count — este flow e terminal por desenho: registre veredito nao-positivo com a ressalva, arquive com reason (blockers preservados) e abra um flow novo com o aprendizado`,
       args: baseArgs
     };
   }
