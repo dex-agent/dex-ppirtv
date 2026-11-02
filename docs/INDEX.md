@@ -33,6 +33,9 @@ state under `.agents/` is outside the public documentation boundary.
 
 ## Start here
 
+- [Laudo do falso positivo fiscal](contracts/FISCAL_RECURRENCE_BUG_REPORT_2026-11-02.md)
+  — reprodução, causa, correções, testes e lacunas do corte de 2026-11-02.
+
 - [MCP quickstart for agents](guides/MCP_AGENT_QUICKSTART.md) — minimal GOAL
   flow, `tools/list` as help, evidence examples, FAQ and troubleshooting.
 - [Cross-repository problem report contract](contracts/CROSS_REPO_PROBLEM_REPORT_CONTRACT.md)

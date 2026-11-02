@@ -4956,6 +4956,7 @@ describe("PPIRTV flow engine", () => {
         flow_id: flowId,
         status: "pronto_com_ressalvas",
         rationale: "Erro recorrente ainda sem resolucao suficiente.",
+        recurring_risk: true,
         evidence_ids: [evidenceId],
         residual_risks: [],
         attempt_count: 1,

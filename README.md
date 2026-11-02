@@ -47,6 +47,9 @@ stable public documentation.
 
 ## Documentation for agents
 
+- [Laudo: recorrência fiscal e fingerprint pós-recall](docs/contracts/FISCAL_RECURRENCE_BUG_REPORT_2026-11-02.md)
+  — reprodução do bug, causa confirmada, testes e limites da correção.
+
 - [CAPACITY.md](CAPACITY.md) — capability map of this repository (static
   photograph plus a live re-evaluation section, 2026-10-18): 34 capabilities
   with honest status (24 proven live, 9 partial, 1 unproven); regenerate with

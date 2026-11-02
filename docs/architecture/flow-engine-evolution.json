@@ -688,6 +688,32 @@
       "head_blob": "e7a33aff2cc5c4543316295abd4b96be5c6b4f9c",
       "commit": "4bf8aabc40659ab6cb82b2ca6db283641d67f6ce",
       "parent_commit": "e46bf09330818adbc03ee498b5c55b590bf8809f"
+    },
+    {
+      "id": "FE-2026-11-02-FISCAL-SIGNALS-SHRINK",
+      "date": "2026-11-02",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-02-fiscal-recorrencia-tipificada.md",
+      "responsibility": "Relato e contagem fiscal: contadores preservados e persistencia dos sinais delegados ao modulo fiscal; texto livre nao declara recorrencia.",
+      "owner": "$oraculo-refatoracao",
+      "mode": "SHRINK",
+      "destination_module": "src/verdict-fiscal-policy.ts",
+      "consumers": ["src/flow-engine.ts"],
+      "evidence": ["tests/fiscal-recurrence.test.ts", "tests/engine.test.ts"],
+      "evidence_selectors": {
+        "tests/engine.test.ts": "T26 persists goal_regress and consumes reported regress_count before requiring decision meeting"
+      },
+      "removed_symbols": ["countHistory", "countRegressions"],
+      "symbol_mappings": {"countHistory": "countHistory", "countRegressions": "countRegressions"},
+      "same_responsibility": true,
+      "behavior_preserved_by": ["tests/engine.test.ts T26 e T26b preservam contagem e teto real", "tests/fiscal-recurrence.test.ts preserva historico sob false e valor menor"],
+      "pays_debt_id": "FE-DEBT-005",
+      "debt": null,
+      "changelog_marker": "Recorrencia fiscal deixa de ser inferida de texto livre",
+      "architecture_marker": "FE-2026-11-02-FISCAL-SIGNALS-SHRINK",
+      "base_blob": "e7a33aff2cc5c4543316295abd4b96be5c6b4f9c",
+      "head_blob": "52d5e7276bc9273218d16f603c7eb001e60ae762",
+      "commit": "27f500c6fc0820f25dbcc8c285a901703b95c6b3",
+      "parent_commit": "f4443d38dc4199c2601d4c777f4e3d6e5877fbe9"
     }
   ]
 }

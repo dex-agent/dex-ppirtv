@@ -891,6 +891,7 @@ function registerTools(
         verdict_gold_mining: z.array(z.string()).optional(),
         attempt_count: z.number().int().nonnegative().optional(),
         regress_count: z.number().int().nonnegative().optional(),
+        recurring_risk: z.boolean().optional().describe("Declare current recurring risk explicitly; prose never declares it. Omission preserves a pending declaration; false clears that declaration; a recorded verdict ends it. Persisted regressions remain effective."),
         meeting_id: z.string().optional(),
         meeting_ids: z.array(z.string()).optional(),
         next_step: z.string().min(1)

@@ -855,6 +855,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto",
         rationale: "Tentativa posterior sem vincular a reuniao elegivel.",
+        recurring_risk: true,
         evidence_ids: [evidence.evidence_id],
         next_step: "repetir com meeting_id"
       })

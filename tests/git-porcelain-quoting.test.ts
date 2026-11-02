@@ -16,14 +16,15 @@ import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { FlowEngine } from "../src/flow-engine.js";
-import { fingerprintReviewedImplementation, gitChangedFiles, gitCommittedFilesSince } from "../src/review-snapshot.js";
+import { fingerprintReviewedImplementation, gitChangedFiles, gitCommittedFilesSince, strictReviewSnapshotFingerprint } from "../src/review-snapshot.js";
 import { PpirtvStore } from "../src/store.js";
 import type { Flow } from "../src/domain.js";
 
 let tempRoot = "";
 afterEach(async () => {
+  vi.unstubAllEnvs();
   if (tempRoot.startsWith(os.tmpdir())) await rm(tempRoot, { recursive: true, force: true });
   tempRoot = "";
 });
@@ -113,6 +114,7 @@ describe("C-1: parsers imunes a C-quoting (saída -z)", () => {
 
 describe("C-2: e2e strict — espaçado não congela entry quotada", () => {
   it("verdict congela corroboração SEM aspas e review anexa sem FILE_REQUIRED", async () => {
+    vi.stubEnv("PPIRTV_GRAPHIFY_RECALL", "1");
     const { workspace, sptPath } = await makeQuotingWorkspace();
     const { engine, flowId } = await startFixtureGoal(workspace, sptPath);
     await engine.goalGateCheck({
@@ -145,6 +147,7 @@ describe("C-2: e2e strict — espaçado não congela entry quotada", () => {
     // (o espaçado real é hasheado; nada de path impossível com aspas).
     const status = (await engine.goalStatus({ flow_id: flowId, detail: "full" })) as Record<string, unknown>;
     const fingerprint = String(status.implementation_fingerprint);
+    expect(fingerprint).toBe(await strictReviewSnapshotFingerprint(await engine.store.loadFlow(flowId)));
     expect(fingerprint).toMatch(/^sha256:[a-f0-9]{64}$/);
     await engine.attachEvidence({
       flow_id: flowId, kind: "code_review", title: "Review estrutural fixture",

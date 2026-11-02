@@ -357,6 +357,15 @@ active SPT selects exactly one seam.
 
 ## Ownership and maintenance
 
+### FE-2026-11-02-FISCAL-SIGNALS-SHRINK
+
+`countHistory` e `countRegressions` saem da fachada para o modulo fiscal com
+semantica preservada. O relato de contagem passa pelo mesmo modulo, sob lock
+existente; `recurring_risk` boolean adiciona declaracao auditada sem regex.
+FE-DEBT-005 e paga por este seam coeso, conforme `any_verified_shrink`.
+Provas: T26/T26b do engine, bateria fiscal adversarial e receipt do gate
+`check:flow-engine`; nenhum novo armazenamento ou dependencia.
+
 - Architecture/extraction owner: `$oraculo-refatoracao` with `$clean-code`
   (since 2026-10-14 by owner decision; the fiscal also accepts the legacy
   `$refactoring-fowler-rich` so the immutable ledger history keeps replaying).
