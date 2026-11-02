@@ -26,6 +26,14 @@ escopo, evidencias e lacunas quando existirem.
 
 ### Alterado
 
+- GUIA do kit cita a tríade documental do preflight (2026-11-01, revisão de
+  print de sessão irmã em outra máquina — Trilho demo-e2e; o tropeço
+  `--help` → ENOENT era da versão pré-`1239263`): `spt-kit/GUIA.md` ganha a
+  seção "Ajuda viva" (`--help`/`--schema`/`--usage`, exit 0 antes de ler
+  qualquer arquivo), fechando a regra 3 do padrão documental da casa — tríade
+  citada como fonte viva. Comportamento já entregue em `1239263`; aqui só a
+  fonte viva de uso foi completada.
+
 - Parsers de corroboração imunes a C-quoting do git (2026-10-30, GO do dono —
   Trilho `git-porcelain-nul-quoting`, SPT
   `.agents/PLAN-TASKS/2026-10-30-git-porcelain-nul-quoting.md`, consumo da

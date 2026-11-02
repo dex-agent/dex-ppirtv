@@ -23,6 +23,20 @@ vivo no corte OU suíte dedicada verde; `parcial` = implementada + suíte verde,
 sem jornada de consumidor viva no corte; `não comprovada` = sem oráculo no
 corte (não é ausência).
 
+## Reavaliação 2026-11-01 — GUIA do kit cita a tríade (fonte viva de uso; doc pura)
+
+> Revisão de print de sessão irmã (outra máquina, Trilho demo-e2e): `--help`
+> deu ENOENT na versão pré-`1239263` e a dica gravada apontava para
+> `spt-kit/GUIA.md` — que não citava a tríade (regra 3 do padrão documental
+> da casa: tríade citada como fonte viva). Cura doc: seção "Ajuda viva" no
+> GUIA com os 3 comandos. Zero `src/`/`tests/`/`scripts/`; nenhum estado de
+> capacidade muda — comportamento já entregue em `1239263`.
+
+| Capacidade | Delta observado | Evidência |
+|---|---|---|
+| CAP-23 autoria de SPT (preflight) | fonte viva de uso completa: `GUIA.md` cita `--help`/`--schema`/`--usage` (comportamento unchanged, entregue em `1239263`) | probes ao vivo nesta janela: 3 flags exit 0 (`--schema` devolve JSON `dex.spt.preflight.doc.v1`) |
+| CAP-16 fiscal camping | `src/flow-engine.ts` FORA do diff; consulta read-only | `npm run check:flow-engine` `NOT_APPLICABLE` |
+
 ## Reavaliação 2026-11-01 — preflight do kit ganha tríade documental (docs+kit, zero src)
 
 > Lapidação em voo do kit, fechada por `dex-git-fechamento` sob ordem do dono:

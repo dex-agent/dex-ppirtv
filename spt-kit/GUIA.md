@@ -17,6 +17,14 @@ node scripts/validate-spt.mjs --workspace <workspace> --spt-path <seu-spt.md>
 ```
 Verde = `achados=0` + `valid=true`. Vermelho = corrija o campo apontado e rode de novo.
 
+## Ajuda viva (tríade documental)
+```
+node spt-kit/preflight.mjs --help     # flags e uso
+node spt-kit/preflight.mjs --schema   # contrato JSON (dex.spt.preflight.doc.v1)
+node spt-kit/preflight.mjs --usage    # exemplos
+```
+As 3 flags respondem exit 0 ANTES de ler qualquer arquivo (nunca ENOENT por flag).
+
 ## Anti-drift
 `node spt-kit/preflight.mjs --checksum spt-kit/MOLDE.md` — S09 = molde divergente do registro.
 
