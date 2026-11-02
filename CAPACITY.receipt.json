@@ -1,10 +1,10 @@
 {
   "schema": "dex.capacity.snapshot.v1",
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
-  "fotografia_id": "2026-10-23-snapshot-fantasma-redigir-nao-bloquear",
-  "head": "1239263",
+  "fotografia_id": "2026-11-02-fiscal-recorrencia-tipificada",
+  "head": "f4443d38dc4199c2601d4c777f4e3d6e5877fbe9+working-tree",
   "tree_hash": null,
-  "generated_at": "2026-11-02T00:28:28.000Z",
+  "generated_at": "2026-11-02T09:15:00.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -23,13 +23,25 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 737,
+    "passed": 769,
     "failed": 0,
     "skipped": 4,
-    "files": 58
+    "files": 59
   },
   "tools_count": 32,
   "capabilities": [
+    {
+      "id": "CAP-35",
+      "capability": "Recorrencia fiscal por declaracao tipada com historico preservado",
+      "owner": "verdict-fiscal-policy",
+      "consumer": "Agente MCP e consumidor direto FlowEngine",
+      "trigger": "goal_verdict.recurring_risk boolean ou teto historico de regressos",
+      "behavior": "Texto nao cria recorrencia; sinal pendente sobrevive omissao/reload ate false ou verdict; teto real independe do boolean e do fast-track mechanical",
+      "oracle": "tests/fiscal-recurrence.test.ts 24/24 + goal-fiscal 26/26 + tools/list real",
+      "evidence": [".agents/AUDITORIAS/EVIDENCIAS/2026-11-02-fiscal-recorrencia/focused-final.log", ".agents/AUDITORIAS/EVIDENCIAS/2026-11-02-fiscal-recorrencia/mcp-schema.json"],
+      "state": "comprovada",
+      "limits": ["Prova de comportamento com fixtures sinteticas e engine; contrato MCP observado; outros eixos lexicais fiscais nao foram redesenhados."]
+    },
     {
       "id": "CAP-01",
       "capability": "goal_start com SPT v3 (binding, idempotency_key, revalidação)",

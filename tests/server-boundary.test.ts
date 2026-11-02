@@ -76,4 +76,21 @@ describe("MCP boundary teaches input shape (PPIRTV_INPUT_INVALID)", () => {
     const text = JSON.stringify(response.content ?? []);
     expect(text).not.toContain("PPIRTV_INPUT_INVALID");
   }, 60_000);
+
+  it("anuncia recurring_risk boolean opcional na fronteira MCP real", async () => {
+    const { tools } = await client.listTools();
+    const schema = tools.find((tool) => tool.name === "goal_verdict")!.inputSchema;
+    expect(schema.properties?.recurring_risk).toMatchObject({ type: "boolean" });
+    expect(schema.required).not.toContain("recurring_risk");
+  });
+
+  it.each(["true", "false", 1, 0, null, {}, []])("recusa recurring_risk=%j sem coercao pelo MCP", async (value) => {
+    const response = await client.callTool({ name: "goal_verdict", arguments: {
+      flow_id: "synthetic_nonexistent", status: "pronto", rationale: "Fixture.", next_step: "Encerrar quando validado.", recurring_risk: value
+    } });
+    expect(response.isError).toBe(true);
+    const text = JSON.stringify(response.content);
+    expect(text).toContain("PPIRTV_INPUT_INVALID");
+    expect(text).toContain("recurring_risk");
+  });
 });

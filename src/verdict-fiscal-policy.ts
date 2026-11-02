@@ -5,6 +5,7 @@
 // review-currency/regress-count) entram via FiscalPolicyDeps até os cortes futuros
 // desses eixos; imports diretos só do que já é módulo (mining-policy, gate-resolution).
 import type { Cooperator, Evidence, Flow, Verdict } from "./domain.js";
+import type { PpirtvStore } from "./store.js";
 import {
   memoryRequiredByFlow,
   noMemoryWasPromoted,
@@ -69,9 +70,9 @@ export function evaluateFiscalPolicyWithDeps(
   if (deps.librarianRequired(flow, input) && deps.latestLibrarianStatus(flow)?.status !== "recalled") {
     blockingReasons.push("librarian_status");
   }
-  if (recurringRisk(input) && regressLimitReached(flow, input, deps)) {
+  if (regressLimitReached(flow, input, deps)) {
     blockingReasons.push("attempt_regress_count", "attempt_regress_limit_reached");
-  } else if (recurringRisk(input) && !hasEnoughAttempts(flow, input, deps)) {
+  } else if (recurringRisk(flow, input) && !hasEnoughAttempts(flow, input, deps)) {
     blockingReasons.push("attempt_regress_count", "attempts_insufficient_before_positive_verdict");
   }
   if (deps.requiredCooperationStillActive(flow, input)) {
@@ -187,13 +188,14 @@ function fiscalMateriality(flow: Flow, input: FiscalVerdictInput, deps: FiscalPo
   // sao materia fiscal por si — o fast-track mechanical nao pode afirmar
   // doc-only sem conseguir inspecionar o diff.
   const unresolvedGitDivergence = flow.git_unresolved_commits === true;
+  // Fatos estruturados prevalecem sobre o fast-track documental.
+  if (recurringRisk(flow, input) || regressLimitReached(flow, input, deps)) return true;
   const material = () =>
     input.status === "pronto_com_ressalvas" ||
     materialRiskText(fiscalText(flow, input)) ||
     memoryRequiredByFlow(flow, input) ||
     codeReviewRequired(flow, input) ||
     deps.hasHygieneBlocking(flow) ||
-    recurringRisk(input) ||
     deps.latestLibrarianStatus(flow)?.status === "failed";
   // Fast-track: mechanical risk (text/doc/refs updates) skips fiscal material.
   if (flow.goal_binding.envelope.risk_level === "mechanical") {
@@ -282,18 +284,62 @@ export function hasReviewEvidenceWithDeps(flow: Flow, input: FiscalVerdictInput,
   );
 }
 
-function recurringRisk(input: FiscalVerdictInput): boolean {
-  return /\b(?:erros?|falhas?|bugs?|defeitos?|problemas?|incidentes?|riscos?)\s+recorrentes?\b|\btentativas?\b|\bregress/i.test(
-    [input.rationale, input.next_step, ...(input.residual_risks ?? [])].filter(Boolean).join("\n")
-  );
+function recurringRisk(flow: Flow, input: FiscalVerdictInput): boolean {
+  if (input.recurring_risk !== undefined) return input.recurring_risk === true;
+  // Um verdict encerra o relato pendente; bloqueio ou omissao nao o apagam.
+  const latest = [...flow.history].reverse().find((event) => event.type === "recurring_risk_reported" || event.type === "verdict_recorded");
+  return latest?.type === "recurring_risk_reported" && latest.data.recurring_risk === true;
 }
 
 function hasEnoughAttempts(flow: Flow, input: FiscalVerdictInput, deps: FiscalPolicyDeps): boolean {
   const attemptCount = input.attempt_count ?? deps.countHistory(flow, "verdict_recorded");
-  const regressCount = input.regress_count ?? deps.countRegressions(flow);
+  const regressCount = Math.max(input.regress_count ?? 0, deps.countRegressions(flow));
   return attemptCount >= 2 || regressCount >= 1 || flow.meetings.length > 0;
 }
 
 function regressLimitReached(flow: Flow, input: FiscalVerdictInput, deps: FiscalPolicyDeps): boolean {
-  return (input.regress_count ?? deps.countRegressions(flow)) >= deps.maxRegressions;
+  return Math.max(input.regress_count ?? 0, deps.countRegressions(flow)) >= deps.maxRegressions;
+}
+
+export function countHistory(flow: Flow, type: string): number {
+  return flow.history.filter((event) => event.type === type).length;
+}
+
+export function countRegressions(flow: Flow): number {
+  const reported = flow.history
+    .filter((event) => event.type === "regress_count_reported" && typeof event.data.regress_count === "number")
+    .map((event) => event.data.regress_count as number);
+  return Math.max(countHistory(flow, "phase_returned"), 0, ...reported);
+}
+
+export async function reportFiscalSignals(
+  store: Pick<PpirtvStore, "saveFlow" | "loadFlow">,
+  flow: Flow,
+  input: FiscalVerdictInput,
+  ledger: (flowId: string, type: string, data: Record<string, unknown>, actor: string) => Promise<void>
+): Promise<Flow> {
+  if (input.recurring_risk !== undefined && typeof input.recurring_risk !== "boolean") {
+    throw new Error("recurring_risk must be a boolean");
+  }
+  for (const key of ["attempt_count", "regress_count"] as const) {
+    if (input[key] !== undefined && (!Number.isInteger(input[key]) || input[key]! < 0)) {
+      throw new Error(`${key} must be a nonnegative integer`);
+    }
+  }
+  const reports: Array<{ type: string; data: Record<string, unknown> }> = [];
+  if (input.regress_count !== undefined && input.regress_count > countRegressions(flow)) {
+    reports.push({ type: "regress_count_reported", data: { regress_count: input.regress_count, source: "goal_verdict" } });
+  }
+  if (input.recurring_risk !== undefined) {
+    reports.push({ type: "recurring_risk_reported", data: { recurring_risk: input.recurring_risk, source: "goal_verdict" } });
+  }
+  for (const report of reports) {
+    const now = new Date().toISOString();
+    flow.history.push({ at: now, ...report });
+    flow.updated_at = now;
+    await store.saveFlow(flow);
+    await ledger(flow.flow_id, report.type, report.data, "goal_verdict");
+    flow = await store.loadFlow(flow.flow_id);
+  }
+  return flow;
 }

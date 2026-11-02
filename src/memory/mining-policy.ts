@@ -689,6 +689,7 @@ export type FiscalVerdictInput = {
   verdict_gold_mining?: string[];
   attempt_count?: number;
   regress_count?: number;
+  recurring_risk?: boolean;
   meeting_id?: string;
   meeting_ids?: string[];
   memory_mining?: Record<string, unknown> | null;

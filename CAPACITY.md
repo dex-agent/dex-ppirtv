@@ -9,6 +9,22 @@
 
 ## Identidade da fotografia
 
+## Reavaliação 2026-11-02 — recorrencia fiscal tipificada
+
+Corte `f4443d3+working-tree`, owner PPIRTV. CAP-35 observada em fixtures:
+24 testes de recorrencia e 26 da fronteira fiscal passaram. MCP real anuncia
+boolean opcional; check consolidado passou: 769 testes, 4 skipped, 59 arquivos.
+`src/flow-engine.ts`, modulo fiscal, tipo compartilhado, schema e testes
+foram reavaliados neste delta. SHRINK PASS: -17 linhas nao vazias, -1 decisao
+na fachada, FE-DEBT-005 paga. Outras linhas abaixo preservam fotografias
+historicas e nao recebem nova certificacao por este corte.
+
+| Capacidade | Delta observado | Evidencia |
+| --- | --- | --- |
+| CAP-35 recorrencia | Declaracao booleana, omissao/reload, false, encerramento, tipos e teto real inclusive mechanical | `tests/fiscal-recurrence.test.ts`, MCP schema real |
+| CAP-16 camping | Contadores e relato saem da fachada | receipt SHRINK do corte |
+
+
 | Dimensão | Valor |
 | --- | --- |
 | Objeto | dex-PPIRTV — servidor MCP executor PPIRTV (goal/flow/gate/evidence/memory) + launcher global + dex-agent local |
@@ -425,6 +441,7 @@ R7 per-commit é exceção documentada; sem `.git` não há corroboração de di
 | CAP-32 | Dex Agent Telegram (áudio/proativo) | **comprovada** | Receipts reais messageId 879/880 (print não exercitado) |
 | CAP-33 | Gate de reavaliação de capacidades antes de commit | **comprovada** | `npm run check:capacity` + hook pre-commit desta visita |
 | CAP-34 | Help/schema/usage read-only por tool MCP (entrypoint + harness) | **comprovada** | `dist/index.js --describe/--schema/--usage` + `tests/tool-cli-entrypoint.test.ts` 4/4 |
+| CAP-35 | Recorrencia fiscal por fatos tipados | **comprovada** | 24 casos engine e schema MCP real; outros eixos fora do corte |
 
 ## Mapa relacional estático
 

@@ -3,29 +3,29 @@
   "generated_by": "tools/playbook/generate-playbook.py",
   "authority": "derived_projection",
   "repo_name": "dex-PPIRTV",
-  "sources_revision": "sha256:7d588b3ea5100b7824ddf5de74c15701529542ef02d34586838cc3c331b009bf",
+  "sources_revision": "sha256:731b0f0ffc65bb92dc5ec510f76835685f00b1827de03f4e1a624f0581b92715",
   "sent_revision": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "rules": [
     {
-      "seal": "pb-dc9e879d",
+      "seal": "pb-75606daa",
       "locator": "PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL",
       "title": "Regras locais",
       "gatilho": "Formato de ciclo: `Unreleased` ate decisao explicita de versao; gatilhos:",
-      "extrato": "- Manter `CHANGELOG.md` atualizado. Owner: `$projeto-manter-changelog`.",
+      "extrato": "- Laudo do corte fiscal: `docs/contracts/FISCAL_RECURRENCE_BUG_REPORT_2026-11-02.md`.",
       "rotas": [],
-      "fonte": "AGENTS.md#L26-L167"
+      "fonte": "AGENTS.md#L26-L161"
     },
     {
-      "seal": "pb-085a874b",
+      "seal": "pb-359f896f",
       "locator": "PPIRTV-CAPACITY-COMMIT-GATE",
       "title": "Validacao minima",
       "gatilho": "ndeclarado",
       "extrato": "```powershell",
       "rotas": [],
-      "fonte": "AGENTS.md#L197-L219"
+      "fonte": "AGENTS.md#L191-L213"
     },
     {
-      "seal": "pb-c82e689d",
+      "seal": "pb-ffb0841a",
       "locator": "PPIRTV-CHATO-LIVE-PREFLIGHT",
       "title": "Ordens diretas do Comandante Owner o $chato 🗣️",
       "gatilho": "2. $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamento da $estacionamento ao lado da $garimpeiro e tudo que for achado MEMORÁVEL...",
@@ -36,19 +36,19 @@
         "Ative o fluxo visual PPIRTV com checklist visual dinâmico u...",
         "Sempre finalize o trabalho analisando \"com lentes dos espec..."
       ],
-      "fonte": "AGENTS.md#L220-L282"
+      "fonte": "AGENTS.md#L214-L276"
     },
     {
-      "seal": "pb-b3450f8f",
+      "seal": "pb-7a9a2873",
       "locator": "PPIRTV-GIT-CONSOLIDACAO-SELETIVA-MAIN",
       "title": "Dex Agent Local",
       "gatilho": "- Antes de qualquer consolidacao Git deste repositorio, recupere o gatilho",
       "extrato": "- Projeto: `dex-PPIRTV`",
       "rotas": [],
-      "fonte": "AGENTS.md#L283-L327"
+      "fonte": "AGENTS.md#L277-L321"
     },
     {
-      "seal": "pb-b6ab4d64",
+      "seal": "pb-aefd5ab8",
       "locator": "PENDENTES-LEDGER",
       "title": "Leitura obrigatoria (bootstrap)",
       "gatilho": "5. `.agents/PENDENTES.md` — ledger de pendências append-only (schema `dex.pendencias.v2`; gatilho `PENDENTES-LEDGER`)",
@@ -59,7 +59,7 @@
         "`.agents/HANDOFF.md`",
         "`.agents/PLAN-TASKS/ACTIVE.md`"
       ],
-      "fonte": "AGENTS.md#L406-L413"
+      "fonte": "AGENTS.md#L400-L407"
     }
   ],
   "mesa": {
@@ -73,39 +73,39 @@
   "nao_decodificadas": [
     {
       "titulo": "Organizacao De Artefatos E Scripts",
-      "ancora": "AGENTS.md#L168"
+      "ancora": "AGENTS.md#L162"
     },
     {
       "titulo": "Graphify local",
-      "ancora": "AGENTS.md#L328"
+      "ancora": "AGENTS.md#L322"
     },
     {
       "titulo": "Bootstrap (toda janela nova, nesta ordem)",
-      "ancora": "AGENTS.md#L361"
+      "ancora": "AGENTS.md#L355"
     },
     {
       "titulo": "Indexação (doutrina da casa)",
-      "ancora": "AGENTS.md#L379"
+      "ancora": "AGENTS.md#L373"
     },
     {
       "titulo": "Envio a terceiros",
-      "ancora": "AGENTS.md#L386"
+      "ancora": "AGENTS.md#L380"
     }
   ],
   "fontes": [
     {
       "caminho": "AGENTS.md",
-      "sha256": "644368d81dac6000091dc4f947a114c78cac37d9908072ae892594cdb024c76a",
+      "sha256": "25320d5a4ecd03dfe2aae5f7b0666712dee2729c10bb8537af867d0145c5a2bc",
       "enviado": false
     },
     {
       "caminho": ".agents/napkin.md",
-      "sha256": "ed25bc621ec3249e0c75a17cd2d42cb0a43af300862fa35ae3643aa0ed248c46",
+      "sha256": "f8f5bad9c9bd2481f7a30c8edefab0bc3a20feef3af4dedaa850ce2417b9b9fd",
       "enviado": false
     },
     {
       "caminho": ".agents/PLAN-TASKS/ACTIVE.md",
-      "sha256": "a4b3ab90c62acd8098053d51c7e5c92d08048b997849114a9f7b9dbb3d2e36f9",
+      "sha256": "2f2c1d2a17a5ce4f93c24d26d6de4864936b05dc3214d88f505411233dc363ae",
       "enviado": false
     }
   ]

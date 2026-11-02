@@ -7,6 +7,15 @@ Data: 2026-05-24
 Este contrato define o formato canonico para criar prompts `/GOAL`,
 `GoalEnvelope` e Trilhos `SPEC-PLAN-TASKs` executaveis pelo `dex-ppirtv`.
 
+## Kit de criacao (emenda 2026-10-30)
+
+Trilho/SPT v3 NOVO nasce do KIT `spt-kit/` do repo dono `dex-PPIRTV`
+(localizavel por `es.exe preflight.mjs`, filtro `spt-kit`): COPIE o `MOLDE.md`
+(21 slots `TODO-PREENCHER`; nunca redija front matter do zero), obedeca as
+`RULES.md` (R1-R08/S01-S09) e rode `node preflight.mjs <trilho>` ate
+`achados=0` ANTES do `spt_validate`. Schema registrado:
+`dex.spt.v3` no tema schema-padrao e `SCHEMA/dex.spt.v3.schm.md` no repo dono.
+
 ## Fronteira /goal e /GOAL
 
 `/goal` do CodeWhale e contexto ou meta de sessao. Ele ajuda o cliente a manter

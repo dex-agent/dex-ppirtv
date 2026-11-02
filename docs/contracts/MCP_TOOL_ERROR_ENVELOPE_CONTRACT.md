@@ -30,6 +30,26 @@ Todo erro que cruza a fronteira MCP das tools do dex-PPIRTV carrega:
 
 **Compatibilidade**: o texto da mensagem nova mantém o alias legado `attempt_regress_count` até grep provar que nenhum consumidor depende da string exata.
 
+### Declaracao de recorrencia — 2026-11-02
+
+`goal_verdict.recurring_risk` e boolean opcional. Texto em `rationale`,
+`next_step` e `residual_risks` nao declara recorrencia: "suite de regressao
+verde", negacao, citacao ou qualquer outra frase nao sao fatos desse eixo.
+Um incidente recorrente atual deve ser declarado com `true`. Omissao preserva
+o relato pendente apos reinicio; `false` explicito encerra somente o relato;
+`verdict_recorded` encerra a avaliacao. History e ledger conservam os eventos
+`recurring_risk_reported`. Flows antigos sem eventos continuam legiveis.
+
+O teto usa o maximo entre a contagem recebida e a persistida, independente do
+booleano. `false` e contagem menor nao apagam fatos. O relato conjunto e
+validado antes da primeira escrita, sob o lock existente; nao se promete
+transacao nova entre arquivo do flow e ledger. Os contadores agora vivem em
+`src/verdict-fiscal-policy.ts`. Outros eixos fiscais conservam seus contratos.
+
+Exemplo: suite verde pode omitir o campo; incidente atual usa
+`{"recurring_risk":true}`; resolucao explicita de relato pendente usa
+`{"recurring_risk":false}` com justificativa e provas reais no verdict.
+
 **Fonte dos números**: `hasEnoughAttempts`/`countHistory`/`countRegressions` (`src/flow-engine.ts:5756-5781`) já computam tudo no ponto do throw — o envelope só deixa de descartar.
 
 ## Inventário 2026-10-15 (151 throw sites · ~80 códigos CAPS · ~20 traduzidos)

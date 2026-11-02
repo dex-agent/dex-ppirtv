@@ -8,6 +8,21 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+### Corrigido — 2026-11-02
+
+- Recorrencia fiscal deixa de ser inferida de texto livre: `goal_verdict`
+  aceita `recurring_risk` boolean opcional. Omissao preserva relato pendente,
+  `false` o encerra, verdict registrado encerra a avaliacao. Regressos
+  persistidos prevalecem sobre contagem menor e sobre `false`; suite verde,
+  negacoes e citacoes nao criam `attempt_regress_count`. Relatos invalidos
+  sao rejeitados conjuntamente antes de escrita. Contadores e persistencia
+  fiscal saem da fachada (FE-2026-11-02-FISCAL-SIGNALS-SHRINK, FE-DEBT-005).
+  Provas: `tests/fiscal-recurrence.test.ts`, T10/T26/T26b, MCP schema real.
+- `goal_status full` reaplica o fingerprint corrente depois do reload do
+  primeiro recall. Corrige hash stale comprovado em dois testes e preserva a
+  rejeicao strict de hash divergente. A copia documental local do contrato
+  GOAL/SPT foi sincronizada com a emenda global do kit de 2026-10-30.
+
 ### Adicionado
 
 - Kit SPT válido-por-construção (2026-10-30, GO do dono — Trilho

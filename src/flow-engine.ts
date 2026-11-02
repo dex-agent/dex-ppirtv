@@ -137,6 +137,7 @@ import {
 } from "./memory/mining-policy.js";
 import {
   evaluateFiscalPolicyWithDeps,
+  countHistory, countRegressions, reportFiscalSignals,
   explicitMeetingTrigger,
   fiscalResultWithDeps,
   fiscalText,
@@ -932,7 +933,7 @@ export class FlowEngine {
     let rawLibrarianStatus = latestLibrarianStatus(flow) ?? latestLibrarianStatusFromLedger(await this.store.readLedger(flow.flow_id));
     if (!rawLibrarianStatus && graphifyRecallConfigured() && flow.status !== "archived") {
       rawLibrarianStatus = await this.runBeforePhaseHook(flow, flow.phase, "ppirtv_checkin");
-      flow = await this.store.loadFlow(flow.flow_id);
+      flow = await withCurrentImplementationFingerprint(await this.store.loadFlow(flow.flow_id));
     }
     const fiscal = evaluateFiscalPolicy(flow);
     const persistedFiscal = latestFiscalBlock(flow);
@@ -2639,6 +2640,7 @@ export class FlowEngine {
     verdict_gold_mining?: string[];
     attempt_count?: number;
     regress_count?: number;
+    recurring_risk?: boolean;
     meeting_id?: string;
     meeting_ids?: string[];
     next_step: string;
@@ -2674,6 +2676,7 @@ export class FlowEngine {
     verdict_gold_mining?: string[];
     attempt_count?: number;
     regress_count?: number;
+    recurring_risk?: boolean;
     meeting_id?: string;
     meeting_ids?: string[];
     next_step: string;
@@ -2681,18 +2684,7 @@ export class FlowEngine {
     let flow = await this.store.loadFlow(input.flow_id);
     assertGoalBinding(flow);
     assertFlowAcceptsMutation(flow);
-    if (typeof input.regress_count === "number" && input.regress_count > countRegressions(flow)) {
-      const now = nowIso();
-      flow.history.push({
-        at: now,
-        type: "regress_count_reported",
-        data: { regress_count: input.regress_count, source: "goal_verdict" }
-      });
-      flow.updated_at = now;
-      await this.store.saveFlow(flow);
-      await this.ledger(flow.flow_id, "regress_count_reported", { regress_count: input.regress_count, source: "goal_verdict" }, "goal_verdict");
-      flow = await this.store.loadFlow(input.flow_id);
-    }
+    flow = await reportFiscalSignals(this.store, flow, input, this.ledger.bind(this));
     const meetingIds = unique([input.meeting_id, ...(input.meeting_ids ?? [])].filter(Boolean) as string[]);
     for (const meetingId of meetingIds) {
       const meeting = await this.store.loadMeeting(meetingId);
@@ -5460,17 +5452,6 @@ function librarianExplicitlyOutOfScope(flow: Flow, inputText: string): boolean {
     return false;
   }
   return !/(obrigatorio agora|exigido agora|required now|bloqueia p1|bloquear p1|gate p1)/i.test(inputText);
-}
-
-function countHistory(flow: Flow, type: string): number {
-  return flow.history.filter((event) => event.type === type).length;
-}
-
-function countRegressions(flow: Flow): number {
-  const reported = flow.history
-    .filter((event) => event.type === "regress_count_reported" && typeof event.data.regress_count === "number")
-    .map((event) => event.data.regress_count as number);
-  return Math.max(countHistory(flow, "phase_returned"), 0, ...reported);
 }
 
 function hasHygieneBlocking(flow: Flow): boolean {
