@@ -42,6 +42,14 @@ falso verde; base DEFAULT (last_built) é a rota; pós-cura: built_at
 (impossibilitar o erro). Fechamento: flow 3022 **complete** (veredito
 `vrd_20261105195738696_3030_0001` **pronto**, sem ressalvas).
 
+Causa incendiária eliminada (mesma sessão, barata-scan do dono): o
+`capture-cut.py` do método gerava os falsos verdes (`--base HEAD` NO-OP) —
+curado com base DEFAULT + **pós-condição no receipt** (`built_at_commit` ==
+`rev-parse HEAD`; divergindo nasce `failed`). Baseline honesta:
+`regularizacao-261105` (2536 nós/130 arquivos). CRG-FRESH-GATE e lista do
+capacity gate alinhados: `src/tests/scripts/workflow/tools` (barata irmã
+do scan). Teste capacity-gate 1/1 sem edição.
+
 ## Reavaliação 2026-11-05 — snapshot unborn/aninhado/casing (issues #6 + #5.1)
 
 Fechamento (mesma sessão): flow 2950 **complete** (veredito

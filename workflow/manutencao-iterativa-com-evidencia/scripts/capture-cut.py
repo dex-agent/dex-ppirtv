@@ -72,7 +72,22 @@ def capture(cut):
                'coverage': 'not_measured', 'new_cycles': 'not_measured', 'status': 'running'}
     try:
         receipt['tools'] = {str(p): digest(p) for p in [exporter, meter]}
-        run_command(['code-review-graph', 'update', '--repo', str(REPO), '--data-dir', str(inside_repo(config['graph']['data_dir'])), '--base', 'HEAD'], output / 'crg-update.log', commands)
+        run_command(['code-review-graph', 'update', '--repo', str(REPO), '--data-dir', str(inside_repo(config['graph']['data_dir']))], output / 'crg-update.log', commands)
+        # CRG-BASE-HEAD-NOOP (2026-11-05): '--base HEAD' era NO-OP silencioso
+        # (diff HEAD..HEAD vazio; "0 files updated" com arquivo novo) e o
+        # receipt dava FALSO VERDE com o banco stale (preso em 339e3ca/agosto
+        # enquanto receipts anotavam revision nova). Base DEFAULT (last_built)
+        # e o incremental correto — e a captura so vale com o banco
+        # COMPROVADAMENTE no HEAD: built_at_commit conferido contra o
+        # rev-parse; divergindo, o receipt nasce 'failed' (impossibilitar o
+        # erro, nao depender da memoria).
+        run_command(['code-review-graph', 'status', '--repo', str(REPO), '--data-dir', str(inside_repo(config['graph']['data_dir'])), '--json'], output / 'crg-status.json', commands)
+        status_text = (output / 'crg-status.json').read_text(encoding='utf8')
+        status_payload = json.loads(status_text[status_text.find('{'):])
+        head_commit = subprocess.run(['git', '-C', str(REPO), 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout.strip()
+        built_at = str(status_payload.get('built_at_commit', ''))
+        if built_at != head_commit:
+            raise RuntimeError(f'CRG stale: built_at_commit {built_at[:12]} != HEAD {head_commit[:12]} — o update nao alcancou o HEAD (capture invalida)')
         run_command([sys.executable, '-B', str(exporter), '--database', str(inside_repo(config['graph']['database'])), '--repo-root', str(REPO), '--output', str(output / 'graph.json')], output / 'export.log', commands)
         for index, root in enumerate(config['measurement_roots']):
             common = [sys.executable, '-B', str(meter), '--escopo', 'projeto', '--raiz', str(inside_repo(root)), '--schema-version', '2', '--format', 'json']

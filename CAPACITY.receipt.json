@@ -99,7 +99,7 @@
   "fotografia_id": "2026-11-05-crg-gate-precommit",
   "head": "fe3dc2144c78e483931761d2be263249c08dd84a",
   "tree_hash": null,
-  "generated_at": "2026-11-05T19:59:38.000Z",
+  "generated_at": "2026-11-05T20:10:48.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -741,7 +741,7 @@
       "CAPACITY.md",
       "CAPACITY.receipt.json"
     ],
-    "delta": "Bloco CRG-FRESH-GATE no pre-commit (auto-curativo, aviso se CLI ausente); barata --base HEAD NO-OP morta e documentada. Fechamento: flow 3022 complete, vrd_3030 pronto.",
+    "delta": "Bloco CRG-FRESH-GATE no pre-commit (auto-curativo, aviso se CLI ausente); barata --base HEAD NO-OP morta e documentada. Fechamento: flow 3022 complete, vrd_3030 pronto. Causa incendiaria eliminada: capture-cut com base DEFAULT + pos-condicao built_at==HEAD (receipt nasce failed se divergir); capacity gate alinhado (workflow/+tools, barata irma do scan).",
     "evidence": ".agents/PLAN-TASKS/2026-11-05-crg-gate-precommit.md",
     "limits": [
       "push fora do corte",

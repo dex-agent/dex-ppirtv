@@ -15,6 +15,13 @@ const capabilityPrefixes = [
   "src/",
   "tests/",
   "scripts/",
+  // Barata-scan 2026-11-05 (dex-barata-scan, irmã do buraco do CRG-FRESH-GATE):
+  // a lista cobria só src/tests/scripts e cortes só-workflow (scripts do
+  // método) ou só-tools (hooks/gates) não disparavam reavaliação no modo
+  // worktree — mesma furada que o grep do pre-commit tinha. Alinhada com o
+  // grep do CRG gate: uma só verdade do que é código que exige reavaliação.
+  "workflow/",
+  "tools/",
   "package.json",
   "package-lock.json",
   "tsconfig.json",

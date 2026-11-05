@@ -17,7 +17,11 @@ node scripts/check-capacity.mjs --staged || exit 1
 # incremental correto. Maquina sem a CLI (frota): aviso nao-bloqueante (o gate
 # endurece onde a ferramenta existe; travar commit por falta de ferramenta e
 # autossabotagem P10).
-if git diff --cached --name-only | grep -qE '^(src|tests|scripts)/'; then
+# CAUSA INCENDIARIA morta 2026-11-05 (pergunta do dono: "sintoma ou causa?"):
+# o grep cobria so src/tests/scripts e o Trilho C (tools/) passou por fora —
+# workflow/ (scripts do metodo) e tools/ (hooks/gates) tambem sao codigo que
+# o CRG precisa enxergar.
+if git diff --cached --name-only | grep -qE '^(src|tests|scripts|workflow|tools)/'; then
   if command -v code-review-graph >/dev/null 2>&1; then
     code-review-graph update --repo . --data-dir .agents/CODE-REVIEW-GRAPH -q \
       || { echo "CRG GATE FAIL: update incremental falhou (rode sem --base; confira .agents/CODE-REVIEW-GRAPH)"; exit 1; }

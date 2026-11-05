@@ -36,6 +36,25 @@ python -B "$env:USERPROFILE/.agents/skills/check-schemas/scripts/check-schemas.p
 
 - Nao repetir captura com mesmo identificador; output create-only. Troca de source/config requer nova captura; mudanca de motor requer remedir, nao reavaliar raw antigo.
 
+## Regularizacao 2026-11-05 — CRG-BASE-HEAD-NOOP (barata-ouro do metodo)
+
+Os Trilhos das issues #6/#5.1/#5.2 (c481247/921e8e0) rodaram SEM captura por
+corte — e todas as capturas desde agosto eram FALSO VERDE: o
+`capture-cut.py` passava `--base HEAD` ao `code-review-graph update`, que é
+NO-OP silencioso (diff HEAD..HEAD vazio), deixando o banco preso em
+`339e3ca`/agosto (1801 nós/69 arquivos) enquanto os receipts anotavam a
+revision nova do git. Cura na fonte (mesma sessão, pergunta do dono
+"apagamos o incêndio ou eliminamos a causa incendiária?"): (1) update com
+base DEFAULT (`last_built`); (2) o receipt agora EXIGE pós-condição —
+`built_at_commit` conferido contra `rev-parse HEAD`; divergindo, nasce
+`failed` (falso verde impossibilitado por construção); (3) baseline honesta
+renasce em `.agents/receipts/manutencao-continua/regularizacao-261105/`
+(2536 nós/130 arquivos); (4) CRG-FRESH-GATE no pre-commit cobre
+`src/tests/scripts/workflow/tools` (grep alinhado com o capacity gate, que
+também ganhou workflow/+tools — barata irmã da varredura dex-barata-scan).
+Os diffs longitudinais A→B não existem como evidência comparável (perda
+histórica documentada); a fotografia de agora é a baseline futura.
+
 ## Remediacao 2026-11-02 — pos-fix-01 (medidor 0.4.3)
 
 Defeito de range do corpo TS confirmado e corrigido na fonte (Trilho
