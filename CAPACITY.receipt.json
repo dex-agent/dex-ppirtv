@@ -99,7 +99,7 @@
   "fotografia_id": "2026-11-05-verdict-learning-shrink",
   "head": "fe3dc2144c78e483931761d2be263249c08dd84a",
   "tree_hash": null,
-  "generated_at": "2026-11-05T19:35:34.000Z",
+  "generated_at": "2026-11-05T19:45:08.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -720,7 +720,7 @@
       "CAPACITY.md",
       "CAPACITY.receipt.json"
     ],
-    "delta": "SHRINK: deriveVerdictLearning+isStrongLearningText extraidas p/ src/verdict-learning.ts; findings com filtro isStrongLearningText (simetria rationale). Camping SHRINK PASS.",
+    "delta": "SHRINK: deriveVerdictLearning+isStrongLearningText extraidas p/ src/verdict-learning.ts; findings com filtro isStrongLearningText (simetria rationale). Camping SHRINK PASS. Fechamento: flow 2993 complete, vrd_3002 pronto_com_ressalvas; onda densa estacionada EST-20261105.",
     "evidence": ".agents/PLAN-TASKS/2026-11-05-verdict-learning-filtro-findings.md",
     "suite": {
       "passed": 782,

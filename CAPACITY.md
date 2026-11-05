@@ -24,6 +24,11 @@ inalterada; registro FE-2026-11-05-VERDICT-LEARNING-FILTRO-FINDINGS
 (SHRINK PASS). Suíte 782|0|4 (61 files); `npm run check` exit 0. Push fora
 do corte.
 
+Fechamento (mesma sessão): flow 2993 **complete** (veredito
+`vrd_20261105194113176_3002_0001` pronto_com_ressalvas, camping SHRINK PASS,
+mining 2 nuggets); ressava do dono: onda DENSA do cluster learning estacionada
+(EST-20261105-ONDA-DENSA-VERDICT-LEARNING).
+
 ## Reavaliação 2026-11-05 — snapshot unborn/aninhado/casing (issues #6 + #5.1)
 
 Fechamento (mesma sessão): flow 2950 **complete** (veredito
