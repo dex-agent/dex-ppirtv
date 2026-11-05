@@ -8,6 +8,8 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- 2026-11-05 — Corrige coletor de corroboração em `src/review-snapshot.ts` (issues GitHub #6 P1 + #5.1, Trilho `.agents/PLAN-TASKS/2026-11-05-snapshot-unborn-aninhado.md`, flow 2950, veredito pronto_com_ressalvas): repos unborn (sem HEAD) não têm mais corroboração por status (`gitChangedFiles` null — mantém declaração com limitação, precedente do próprio contrato); parser do porcelain -z descarta entrada com barra final (repo aninhado nunca foi revisável e congelava verdict em REVIEW_SNAPSHOT_FILE_REQUIRED persistido); `dedupeChangedFilesByFsIdentity` deduplica por identidade fs (win32 case-insensitive preservando casing da declaração, Linux exato) e saneia flows feridos na próxima visita; early-return do merge compara conteúdo (2===2 escondia troca dir↔untracked). RED 4/4 no baseline; caracterização nova 5/5; 2 guards com fixture unborn adaptados com commit-base (provas ipsis literis); suíte 781|0|4 (60 files); `npm run check` exit 0; strict do snapshot intocado. Push fora do corte.
+
 - 2026-11-02 — Workflow local1.0.1 declara preflight/dependencias e adocao seletiva do global1.2.0; perfil PPIRTV v1 preservado. Retrofit global comprovou cinco pacotes relocalizados, perfis CC consumidos e falha explicita por dependencia ausente; nao altera runtime fiscal ou flows. Skills externas exigem verificacao no computador consumidor.
 
 - 2026-11-02 — Integrada correcao fiscal terminal423e89a preservando workflow0e566b1; contratos globais sincronizados, check776/4 e rota real Hub com nao_pronto/arquivo/sucessor de reconciliacao. Transporte desktop exige reconexao apos encerrar launcher antigo; MCP stdio corrigido comprovado. Produto consumidor nao recebe aceite implicito.

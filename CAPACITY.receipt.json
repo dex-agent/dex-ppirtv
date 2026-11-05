@@ -99,7 +99,7 @@
   "fotografia_id": "2026-11-05-snapshot-unborn-aninhado",
   "head": "fe3dc2144c78e483931761d2be263249c08dd84a",
   "tree_hash": null,
-  "generated_at": "2026-11-05T19:08:33.000Z",
+  "generated_at": "2026-11-05T19:22:39.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -693,7 +693,7 @@
       "CAPACITY.md",
       "CAPACITY.receipt.json"
     ],
-    "delta": "Coletor unborn->null; parser descarta trailing-slash (repo aninhado); merge dedupe por identidade fs + saneamento trailing-slash; early-return por conteudo. Strict intocado.",
+    "delta": "Coletor unborn->null; parser descarta trailing-slash (repo aninhado); merge dedupe por identidade fs + saneamento trailing-slash; early-return por conteudo. Strict intocado. Fechamento: flow 2950 complete, veredito vrd_2965 pronto_com_ressalvas; docs de selagem no commit seguinte.",
     "evidence": ".agents/PLAN-TASKS/2026-11-05-snapshot-unborn-aninhado.md",
     "suite": {
       "passed": 781,

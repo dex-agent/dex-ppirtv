@@ -11,6 +11,12 @@
 
 ## Reavaliação 2026-11-05 — snapshot unborn/aninhado/casing (issues #6 + #5.1)
 
+Fechamento (mesma sessão): flow 2950 **complete** (veredito
+`vrd_20261105191612400_2965_0001` pronto_com_ressalvas, gates de fase
+passed, mining 2 nuggets ledger_only, memória-viva reconciliada);
+documentação de selagem (CHANGELOG + playbook regen) no commit de docs da
+mesma data.
+
 Coletor e merge de corroboração saneados em `src/review-snapshot.ts` (Trilho
 `2026-11-05-snapshot-unborn-aninhado`, flow `flow_20261105185901479_2950_0001`):
 (1) repo **unborn** (sem HEAD) não tem mais corroboração por status
