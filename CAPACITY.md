@@ -21,7 +21,9 @@ Validacao final: 17 focais; `npm run check` com 794 passed/4 skipped/62 arquivos
 MCP novo com 32 tools. Uma rodada anterior falhou por EPERM no lock de reuniao;
 log preservado e bateria isolada 24/24, sem alterar o lock neste corte.
 Limite: recuperacao sintetica nao certifica fechamento do consumidor externo;
-runtime persistente exige carregar o build final. Matriz historica abaixo preservada.
+runtime persistente exige carregar o build final. Neste host, reinicio nativo
+foi confirmado depois do build. Publicacao para revisao no PR #7; atualizacao
+documental de fechamento sem novo comportamento. Matriz historica abaixo preservada.
 
 ## Reavaliação 2026-11-05 — verdict-learning SHRINK (issue #5.2)
 

@@ -3,6 +3,7 @@
   "reavaliacao_snapshot_publica": {
     "date": "2026-11-05",
     "base_sha": "ada0c0d",
+    "publication_followup": {"pull_request": "https://github.com/dex-agent/dex-ppirtv/pull/7", "native_restart_confirmed": true, "code_changed": false, "scope": ["CAPACITY.md", "CAPACITY.receipt.json", "PLAYBOOK.md", "PLAYBOOK.index.json"]},
     "scope": ["src/review-snapshot.ts", "src/domain.ts", "tests/review-snapshot-recovery.test.ts", "tests/git-corroboration-unborn.test.ts", "tests/INDEX.md"],
     "delta": "Projecao read-only do escopo legado e persistencia pela evidencia aceita; dedupe separado da exclusao com proveniencia.",
     "evidence": ["tests/review-snapshot-recovery.test.ts", ".agents/receipts/snapshot-publica-20261105/red.log", ".agents/receipts/snapshot-publica-20261105/check.log", ".agents/receipts/snapshot-publica-20261105/green.log"],
