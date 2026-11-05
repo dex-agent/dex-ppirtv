@@ -3,12 +3,43 @@
   "reavaliacao_snapshot_publica": {
     "date": "2026-11-05",
     "base_sha": "ada0c0d",
-    "publication_followup": {"pull_request": "https://github.com/dex-agent/dex-ppirtv/pull/7", "native_restart_confirmed": true, "code_changed": false, "scope": ["CAPACITY.md", "CAPACITY.receipt.json", "PLAYBOOK.md", "PLAYBOOK.index.json"]},
-    "scope": ["src/review-snapshot.ts", "src/domain.ts", "tests/review-snapshot-recovery.test.ts", "tests/git-corroboration-unborn.test.ts", "tests/INDEX.md"],
+    "publication_followup": {
+      "pull_request": "https://github.com/dex-agent/dex-ppirtv/pull/7",
+      "native_restart_confirmed": true,
+      "code_changed": false,
+      "scope": [
+        "CAPACITY.md",
+        "CAPACITY.receipt.json",
+        "PLAYBOOK.md",
+        "PLAYBOOK.index.json"
+      ]
+    },
+    "scope": [
+      "src/review-snapshot.ts",
+      "src/domain.ts",
+      "tests/review-snapshot-recovery.test.ts",
+      "tests/git-corroboration-unborn.test.ts",
+      "tests/INDEX.md"
+    ],
     "delta": "Projecao read-only do escopo legado e persistencia pela evidencia aceita; dedupe separado da exclusao com proveniencia.",
-    "evidence": ["tests/review-snapshot-recovery.test.ts", ".agents/receipts/snapshot-publica-20261105/red.log", ".agents/receipts/snapshot-publica-20261105/check.log", ".agents/receipts/snapshot-publica-20261105/green.log"],
-    "observed": {"suite_passed": 794, "suite_skipped": 4, "suite_files": 62, "focal_passed": 17, "mcp_tools": 32},
-    "limits": ["fixture MCP nao certifica aceite do consumidor externo", "runtime persistente precisa carregar o build final", "EPERM intermitente no lock de reuniao observado em rodada anterior; isolado 24/24"]
+    "evidence": [
+      "tests/review-snapshot-recovery.test.ts",
+      ".agents/receipts/snapshot-publica-20261105/red.log",
+      ".agents/receipts/snapshot-publica-20261105/check.log",
+      ".agents/receipts/snapshot-publica-20261105/green.log"
+    ],
+    "observed": {
+      "suite_passed": 794,
+      "suite_skipped": 4,
+      "suite_files": 62,
+      "focal_passed": 17,
+      "mcp_tools": 32
+    },
+    "limits": [
+      "fixture MCP nao certifica aceite do consumidor externo",
+      "runtime persistente precisa carregar o build final",
+      "EPERM intermitente no lock de reuniao observado em rodada anterior; isolado 24/24"
+    ]
   },
   "reavaliacao_workflow_portability": {
     "date": "2026-11-02",
@@ -106,10 +137,10 @@
     ]
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
-  "fotografia_id": "2026-11-05-crg-gate-precommit",
+  "fotografia_id": "2026-11-05-merge-pr7",
   "head": "fe3dc2144c78e483931761d2be263249c08dd84a",
   "tree_hash": null,
-  "generated_at": "2026-11-05T20:10:48.000Z",
+  "generated_at": "2026-11-05T20:47:55.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -756,6 +787,22 @@
     "limits": [
       "push fora do corte",
       "no-op --base HEAD reportado por feedback a skill owner"
+    ]
+  },
+  "reavaliacao_merge_pr7": {
+    "date": "2026-11-05",
+    "base_sha": "66b568c",
+    "scope": [
+      "src/domain.ts",
+      "src/review-snapshot.ts",
+      "tests/review-snapshot-recovery.test.ts",
+      "tests/git-corroboration-unborn.test.ts",
+      "docs/guides/MCP_AGENT_QUICKSTART.md"
+    ],
+    "delta": "Merge consciente PR #7 (irma): recoverLegacyReviewScope com proveniencia; dedupe volta a 1 responsabilidade; suíte 62/794|0|4; PR MERGED.",
+    "evidence": ".agents/PLAN-TASKS/2026-11-05-merge-pr7-review-scope-recovery.md",
+    "limits": [
+      "3 lapidações menores registradas (idioma, doc domain, recover 2x)"
     ]
   }
 }

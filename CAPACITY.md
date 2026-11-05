@@ -45,6 +45,16 @@ Fechamento (mesma sessão): flow 2993 **complete** (veredito
 mining 2 nuggets); ressava do dono: onda DENSA do cluster learning estacionada
 (EST-20261105-ONDA-DENSA-VERDICT-LEARNING).
 
+## Reavaliação 2026-11-05 — merge PR #7 (review-scope-recovery da irmã)
+
+Trilho  (flow 3051 complete,
+veredito  pronto_com_ressalvas): merge consciente do PR #7 —
+recuperação de flows LEGADOS pela rota pública (
+com **proveniência**: diretório declarado permanece; dedupe volta a *Do One
+Thing*); suíte no main 62 files / **794|0|4**; conflitos só em PLAYBOOK
+(regen); PR #7 **MERGED** (20:47) com comentário de prova; CRG-FRESH-GATE
+rodou sozinho no pre-commit do merge. 3 lapidações menores registradas.
+
 ## Reavaliação 2026-11-05 — CRG-FRESH-GATE no pre-commit (diretriz do dono)
 
 Trilho `2026-11-05-crg-gate-precommit` (flow 3022): hook pre-commit ganha
