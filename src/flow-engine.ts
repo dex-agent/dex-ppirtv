@@ -135,6 +135,7 @@ import {
   requireV2PromotionMetadata,
   type FiscalVerdictInput
 } from "./memory/mining-policy.js";
+import { deriveVerdictLearning } from "./verdict-learning.js";
 import {
   evaluateFiscalPolicyWithDeps,
   countHistory, countRegressions, reportFiscalSignals, reportRecurringRiskCleared,
@@ -7204,35 +7205,6 @@ function goalEvidenceMetadataNote(flow: Flow, input: { title: string; content?: 
 
 function mergeEvidenceNotes(note: string | undefined, metadata: string | undefined): string | undefined {
   return [note, metadata].filter(Boolean).join("\n") || undefined;
-}
-
-function deriveVerdictLearning(
-  input: FiscalVerdictInput,
-  evidences: Evidence[]
-): { gold_mining: string[]; parking_lot: string[]; review_findings: string[] } {
-  const reviewFindings = input.review_findings ?? [];
-  const explicitGold = input.verdict_gold_mining ?? [];
-  const explicitParking = input.verdict_parking_lot ?? [];
-  const gold = [
-    ...explicitGold,
-    ...reviewFindings.map((finding) => `Achado de review: ${finding}`),
-    ...(isStrongLearningText(input.rationale) ? [`Achado garimpado do veredito: ${input.rationale}`] : [])
-  ];
-  const parking = [
-    ...explicitParking,
-    ...(input.residual_risks ?? []).map((risk) => `Risco residual estacionado: ${risk}`),
-    ...(input.review_artifact_path ? [`Artefato de review para consulta: ${input.review_artifact_path}`] : []),
-    ...evidences.map((evidence) => `Evidencia usada no veredito: ${evidence.title}${evidence.uri ? ` -> ${evidence.uri}` : ""}`)
-  ];
-  return {
-    gold_mining: unique(gold),
-    parking_lot: unique(parking),
-    review_findings: unique(reviewFindings)
-  };
-}
-
-function isStrongLearningText(value: string | undefined): boolean {
-  return Boolean(value && /(falso verde|contrato|princip|harness|canonical|case|CPU|RTX|CUDA|Graphify|MCP|PPIRTV|loop|bloque|regress|falh)/i.test(value));
 }
 
 const FUTURE_ACTION_PATTERN = /\b(resolv|corrig|implement|valid|revis|test|cri|abr|execut|fa[cz]|ajust|migr|refator|document|submet|envia|public|deploy|build|compil|rodar?|investig|diagnostic|analis|medir|monitor|otimiz|limp|remove|substitu|atualiz|configur|instal|deslig|liga)\w*\b|depois|mais tarde|futuro|pr[oó]ximo|em breve|oportunamente|quando der|abrir issue|criar PR|submeter PR|ver iss|olhar iss|pensar em/i;

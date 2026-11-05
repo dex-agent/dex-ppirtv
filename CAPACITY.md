@@ -9,6 +9,21 @@
 
 ## Identidade da fotografia
 
+## Reavaliação 2026-11-05 — verdict-learning SHRINK (issue #5.2)
+
+Trilho `2026-11-05-verdict-learning-filtro-findings` (flow
+`flow_20261105192958447_2993_0001`): SHRINK do camping flow-engine —
+`deriveVerdictLearning`+`isStrongLearningText` extraídas para
+`src/verdict-learning.ts` (módulo puro, tipos por import de
+mining-policy/domain, sem ciclo; fachada ganha só o import/l.2767).
+Comportamento (issue #5.2): review_findings só viram gold_mining com texto
+forte (mesma regra do rationale) — a promoção cega criava candidatos de
+confiança baixa (2 gerados ao vivo pelo flow 2950). RED 1/1 no baseline;
+guard mining-policy verde SEM edição; porta explícita verdict_gold_mining
+inalterada; registro FE-2026-11-05-VERDICT-LEARNING-FILTRO-FINDINGS
+(SHRINK PASS). Suíte 782|0|4 (61 files); `npm run check` exit 0. Push fora
+do corte.
+
 ## Reavaliação 2026-11-05 — snapshot unborn/aninhado/casing (issues #6 + #5.1)
 
 Fechamento (mesma sessão): flow 2950 **complete** (veredito

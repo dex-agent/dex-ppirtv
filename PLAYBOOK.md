@@ -4,7 +4,7 @@ description: "Regras de decisao e procedimentos deste projeto - projecao gerada 
 type: playbook
 generated_by: "tools/playbook/generate-playbook.py"
 authority: derived_projection
-sources_revision: "sha256:0660590113902ed5b094f0bb6d25436724063606afdfadfe19754e0c45e256fe"
+sources_revision: "sha256:5e204446384500a9aeb359c3b86d64953035213ef58aad46d8fd10a54b89d3cf"
 sent_revision: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 do_not_edit: true
 ---
@@ -21,21 +21,29 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 ## Regras de decisao (plaquinhas)
 
+### Painel de Ferramentas
+
+- Localizador: `PAINEL-DE-FERRAMENTAS`
+- Gatilho: ### 4. Memorias quentes (L1 vivos — completo em `.agents/GATILHOS-VIVOS.md`)
+- Extrato: (consultar ANTES de qualquer pesquisa web — molde de ecossistema
+- Fonte: `AGENTS.md#L26-L68`
+- Selo: `pb-b04ade35`
+
 ### Regras locais
 
 - Localizador: `PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL`
 - Gatilho: Formato de ciclo: `Unreleased` ate decisao explicita de versao; gatilhos:
 - Extrato: - Manter `CHANGELOG.md` atualizado. Owner: `$projeto-manter-changelog`.
-- Fonte: `AGENTS.md#L26-L167`
-- Selo: `pb-dc9e879d`
+- Fonte: `AGENTS.md#L69-L210`
+- Selo: `pb-b2044664`
 
 ### Validacao minima
 
 - Localizador: `PPIRTV-CAPACITY-COMMIT-GATE`
 - Gatilho: ndeclarado
 - Extrato: ```powershell
-- Fonte: `AGENTS.md#L197-L219`
-- Selo: `pb-085a874b`
+- Fonte: `AGENTS.md#L240-L262`
+- Selo: `pb-2f3cd64d`
 
 ### Ordens diretas do Comandante Owner o $chato 🗣️
 
@@ -47,16 +55,16 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
   - $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamen...
   - Ative o fluxo visual PPIRTV com checklist visual dinâmico u...
   - Sempre finalize o trabalho analisando "com lentes dos espec...
-- Fonte: `AGENTS.md#L220-L282`
-- Selo: `pb-c82e689d`
+- Fonte: `AGENTS.md#L263-L325`
+- Selo: `pb-9ffc90ab`
 
 ### Dex Agent Local
 
 - Localizador: `PPIRTV-GIT-CONSOLIDACAO-SELETIVA-MAIN`
 - Gatilho: - Antes de qualquer consolidacao Git deste repositorio, recupere o gatilho
 - Extrato: - Projeto: `dex-PPIRTV`
-- Fonte: `AGENTS.md#L283-L327`
-- Selo: `pb-b3450f8f`
+- Fonte: `AGENTS.md#L326-L370`
+- Selo: `pb-237bbf07`
 
 ### Leitura obrigatoria (bootstrap)
 
@@ -68,8 +76,8 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
   - `.agents/ACTIVE.md`
   - `.agents/HANDOFF.md`
   - `.agents/PLAN-TASKS/ACTIVE.md`
-- Fonte: `AGENTS.md#L406-L413`
-- Selo: `pb-b6ab4d64`
+- Fonte: `AGENTS.md#L449-L456`
+- Selo: `pb-e87bdd29`
 
 ## Runbook <-> Playbook (procedimentos)
 
@@ -83,7 +91,7 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 | caminho | sha256 | Enviado? |
 | --- | --- | --- |
-| `AGENTS.md` | `644368d81dac6000091dc4f947a114c78cac37d9908072ae892594cdb024c76a` | nao |
+| `AGENTS.md` | `3df541abf0995b32f6130a31f630ac75bd6d070b45504c07766a3636f713fa69` | nao |
 | `.agents/napkin.md` | `e54020462ff836a9b393a403f14d3a30afe78b121d92a095fc1e97d9571f0d94` | nao |
 | `.agents/PLAN-TASKS/ACTIVE.md` | `a58ee0c60bbca8c26c719d641329fc14d885b74198a4c9bccd16bedced783042` | nao |
 
@@ -95,8 +103,8 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 ## Secoes nao decodificadas
 
-- Organizacao De Artefatos E Scripts -> `AGENTS.md#L168` (sem token de localizador)
-- Graphify local -> `AGENTS.md#L328` (sem token de localizador)
-- Bootstrap (toda janela nova, nesta ordem) -> `AGENTS.md#L361` (sem token de localizador)
-- Indexação (doutrina da casa) -> `AGENTS.md#L379` (sem token de localizador)
-- Envio a terceiros -> `AGENTS.md#L386` (sem token de localizador)
+- Organizacao De Artefatos E Scripts -> `AGENTS.md#L211` (sem token de localizador)
+- Graphify local -> `AGENTS.md#L371` (sem token de localizador)
+- Bootstrap (toda janela nova, nesta ordem) -> `AGENTS.md#L404` (sem token de localizador)
+- Indexação (doutrina da casa) -> `AGENTS.md#L422` (sem token de localizador)
+- Envio a terceiros -> `AGENTS.md#L429` (sem token de localizador)

@@ -366,6 +366,19 @@ FE-DEBT-005 e paga por este seam coeso, conforme `any_verified_shrink`.
 Provas: T26/T26b do engine, bateria fiscal adversarial e receipt do gate
 `check:flow-engine`; nenhum novo armazenamento ou dependencia.
 
+### FE-2026-11-05-VERDICT-LEARNING-FILTRO-FINDINGS (SHRINK)
+
+SHRINK (issue #5.2, Trilho 2026-11-05-verdict-learning-filtro-findings): a
+seleção de aprendizado do veredito (`deriveVerdictLearning` +
+`isStrongLearningText`) saiu da fachada como módulo puro e coeso
+`src/verdict-learning.ts` (tipos por import de mining-policy/domain; sem
+ciclo; fachada ganha só o import e a chamada de l.2767). Comportamento do
+corte: review_findings só viram gold_mining com texto forte (mesma regra do
+rationale); a promoção cega criava candidatos de confiança baixa (2 gerados
+ao vivo pelo flow 2950 — a prova do sintoma). RED 1/1 no baseline
+(`tests/verdict-learning-filter.test.ts`); guard `mining-policy` verde sem
+edição; porta explícita `verdict_gold_mining` inalterada.
+
 ### FE-2026-11-02-FISCAL-VERDICT-NAO-POSITIVO-INTEGRITY (EXCEPTION)
 
 EXCEPTION integrity (revisao em dupla do merge 2e63c8c): verdict_recorded de

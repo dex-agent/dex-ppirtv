@@ -764,6 +764,45 @@
       "debt": null,
       "commit": "6629f0fdb7618d928877cdd78ce7096838118260",
       "parent_commit": "2e63c8c0411ae96686f62cd5ea65d6b221117b32"
+    },
+    {
+      "id": "FE-2026-11-05-VERDICT-LEARNING-FILTRO-FINDINGS",
+      "date": "2026-11-05",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-05-verdict-learning-filtro-findings.md",
+      "responsibility": "Selecao de aprendizado do veredito (deriveVerdictLearning + isStrongLearningText) extraida como modulo puro src/verdict-learning.ts; findings seguem a mesma regra do rationale (texto forte) e a porta explicita verdict_gold_mining permanece.",
+      "owner": "$oraculo-refatoracao",
+      "mode": "SHRINK",
+      "red_base_blob": "569c774fc5aadeccaeb0eee829361b22134d32da",
+      "destination_module": "src/verdict-learning.ts",
+      "consumers": [
+        "src/flow-engine.ts"
+      ],
+      "evidence": [
+        "tests/verdict-learning-filter.test.ts",
+        "tests/engine.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/verdict-learning-filter.test.ts": "C-01/C-02: finding forte vira candidato; fraco fica evidencia",
+        "tests/engine.test.ts": "mines memory after the pipeline verdict so verdict gold_mining is visible"
+      },
+      "changelog_marker": "review_findings só viram mineração com texto forte",
+      "architecture_marker": "FE-2026-11-05-VERDICT-LEARNING-FILTRO-FINDINGS",
+      "base_blob": "569c774fc5aadeccaeb0eee829361b22134d32da",
+      "head_blob": "36e337c5fd393fa7448660cebcc29f4008118306",
+      "removed_symbols": [
+        "deriveVerdictLearning",
+        "isStrongLearningText"
+      ],
+      "symbol_mappings": {
+        "deriveVerdictLearning": "deriveVerdictLearning",
+        "isStrongLearningText": "isStrongLearningText"
+      },
+      "same_responsibility": true,
+      "behavior_preserved_by": [
+        "tests/verdict-learning-filter.test.ts",
+        "tests/engine.test.ts",
+        "tests/mining-policy.test.ts"
+      ]
     }
   ]
 }

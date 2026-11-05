@@ -96,10 +96,10 @@
     ]
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
-  "fotografia_id": "2026-11-05-snapshot-unborn-aninhado",
+  "fotografia_id": "2026-11-05-verdict-learning-shrink",
   "head": "fe3dc2144c78e483931761d2be263249c08dd84a",
   "tree_hash": null,
-  "generated_at": "2026-11-05T19:22:39.000Z",
+  "generated_at": "2026-11-05T19:35:34.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -705,6 +705,32 @@
       "push fora do corte",
       "comportamento gitlink/submodule registrado como ressalva do Trilho",
       "guards unborn adaptados com commit-base (provas preservadas)"
+    ]
+  },
+  "reavaliacao_verdict_learning": {
+    "date": "2026-11-05",
+    "base_sha": "4bd60bc296781bbbe4ea90f08dba59d1c31defba",
+    "scope": [
+      "src/flow-engine.ts",
+      "src/verdict-learning.ts",
+      "tests/verdict-learning-filter.test.ts",
+      "docs/architecture/flow-engine-evolution.json",
+      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+      "CHANGELOG.md",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json"
+    ],
+    "delta": "SHRINK: deriveVerdictLearning+isStrongLearningText extraidas p/ src/verdict-learning.ts; findings com filtro isStrongLearningText (simetria rationale). Camping SHRINK PASS.",
+    "evidence": ".agents/PLAN-TASKS/2026-11-05-verdict-learning-filtro-findings.md",
+    "suite": {
+      "passed": 782,
+      "failed": 0,
+      "skipped": 4,
+      "files": 61
+    },
+    "limits": [
+      "push fora do corte",
+      "filtro por keyword: porta explicita verdict_gold_mining segue disponivel"
     ]
   }
 }

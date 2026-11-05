@@ -3,29 +3,38 @@
   "generated_by": "tools/playbook/generate-playbook.py",
   "authority": "derived_projection",
   "repo_name": "dex-PPIRTV",
-  "sources_revision": "sha256:0660590113902ed5b094f0bb6d25436724063606afdfadfe19754e0c45e256fe",
+  "sources_revision": "sha256:5e204446384500a9aeb359c3b86d64953035213ef58aad46d8fd10a54b89d3cf",
   "sent_revision": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "rules": [
     {
-      "seal": "pb-dc9e879d",
+      "seal": "pb-b04ade35",
+      "locator": "PAINEL-DE-FERRAMENTAS",
+      "title": "Painel de Ferramentas",
+      "gatilho": "### 4. Memorias quentes (L1 vivos — completo em `.agents/GATILHOS-VIVOS.md`)",
+      "extrato": "(consultar ANTES de qualquer pesquisa web — molde de ecossistema",
+      "rotas": [],
+      "fonte": "AGENTS.md#L26-L68"
+    },
+    {
+      "seal": "pb-b2044664",
       "locator": "PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL",
       "title": "Regras locais",
       "gatilho": "Formato de ciclo: `Unreleased` ate decisao explicita de versao; gatilhos:",
       "extrato": "- Manter `CHANGELOG.md` atualizado. Owner: `$projeto-manter-changelog`.",
       "rotas": [],
-      "fonte": "AGENTS.md#L26-L167"
+      "fonte": "AGENTS.md#L69-L210"
     },
     {
-      "seal": "pb-085a874b",
+      "seal": "pb-2f3cd64d",
       "locator": "PPIRTV-CAPACITY-COMMIT-GATE",
       "title": "Validacao minima",
       "gatilho": "ndeclarado",
       "extrato": "```powershell",
       "rotas": [],
-      "fonte": "AGENTS.md#L197-L219"
+      "fonte": "AGENTS.md#L240-L262"
     },
     {
-      "seal": "pb-c82e689d",
+      "seal": "pb-9ffc90ab",
       "locator": "PPIRTV-CHATO-LIVE-PREFLIGHT",
       "title": "Ordens diretas do Comandante Owner o $chato 🗣️",
       "gatilho": "2. $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamento da $estacionamento ao lado da $garimpeiro e tudo que for achado MEMORÁVEL...",
@@ -36,19 +45,19 @@
         "Ative o fluxo visual PPIRTV com checklist visual dinâmico u...",
         "Sempre finalize o trabalho analisando \"com lentes dos espec..."
       ],
-      "fonte": "AGENTS.md#L220-L282"
+      "fonte": "AGENTS.md#L263-L325"
     },
     {
-      "seal": "pb-b3450f8f",
+      "seal": "pb-237bbf07",
       "locator": "PPIRTV-GIT-CONSOLIDACAO-SELETIVA-MAIN",
       "title": "Dex Agent Local",
       "gatilho": "- Antes de qualquer consolidacao Git deste repositorio, recupere o gatilho",
       "extrato": "- Projeto: `dex-PPIRTV`",
       "rotas": [],
-      "fonte": "AGENTS.md#L283-L327"
+      "fonte": "AGENTS.md#L326-L370"
     },
     {
-      "seal": "pb-b6ab4d64",
+      "seal": "pb-e87bdd29",
       "locator": "PENDENTES-LEDGER",
       "title": "Leitura obrigatoria (bootstrap)",
       "gatilho": "5. `.agents/PENDENTES.md` — ledger de pendências append-only (schema `dex.pendencias.v2`; gatilho `PENDENTES-LEDGER`)",
@@ -59,7 +68,7 @@
         "`.agents/HANDOFF.md`",
         "`.agents/PLAN-TASKS/ACTIVE.md`"
       ],
-      "fonte": "AGENTS.md#L406-L413"
+      "fonte": "AGENTS.md#L449-L456"
     }
   ],
   "mesa": {
@@ -73,29 +82,29 @@
   "nao_decodificadas": [
     {
       "titulo": "Organizacao De Artefatos E Scripts",
-      "ancora": "AGENTS.md#L168"
+      "ancora": "AGENTS.md#L211"
     },
     {
       "titulo": "Graphify local",
-      "ancora": "AGENTS.md#L328"
+      "ancora": "AGENTS.md#L371"
     },
     {
       "titulo": "Bootstrap (toda janela nova, nesta ordem)",
-      "ancora": "AGENTS.md#L361"
+      "ancora": "AGENTS.md#L404"
     },
     {
       "titulo": "Indexação (doutrina da casa)",
-      "ancora": "AGENTS.md#L379"
+      "ancora": "AGENTS.md#L422"
     },
     {
       "titulo": "Envio a terceiros",
-      "ancora": "AGENTS.md#L386"
+      "ancora": "AGENTS.md#L429"
     }
   ],
   "fontes": [
     {
       "caminho": "AGENTS.md",
-      "sha256": "644368d81dac6000091dc4f947a114c78cac37d9908072ae892594cdb024c76a",
+      "sha256": "3df541abf0995b32f6130a31f630ac75bd6d070b45504c07766a3636f713fa69",
       "enviado": false
     },
     {
