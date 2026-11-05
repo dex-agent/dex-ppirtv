@@ -283,10 +283,11 @@ export async function withCurrentImplementationFingerprint(flow: Flow): Promise<
   if (!workspace || flow.status === "complete" || flow.status === "archived") {
     return flow;
   }
-  const implementationFingerprint = await strictReviewSnapshotFingerprint(flow);
-  return implementationFingerprint === flow.implementation_fingerprint
-    ? flow
-    : { ...flow, implementation_fingerprint: implementationFingerprint };
+  const recovered = await recoverLegacyReviewScope(flow, workspace);
+  const implementationFingerprint = await strictReviewSnapshotFingerprint(recovered);
+  return implementationFingerprint === recovered.implementation_fingerprint
+    ? recovered
+    : { ...recovered, implementation_fingerprint: implementationFingerprint };
 }
 
 // PPIRTV-ENV-SNAPSHOT-001 (emenda barata 2): a rota CORRENTE e a rota ESTRITA
@@ -315,7 +316,7 @@ export async function strictReviewSnapshotFingerprint(
 // varrido pela corroboração legada — redigido no snapshot, nunca bloqueante.
 // Sensível declarado segue fail-closed: a diferença terceiro × produto é por
 // PROVENIÊNCIA de declaração (decisão explícita do owner, laudo §17).
-function redactableSensitivePaths(flow: Flow): string[] {
+function declaredReviewPaths(flow: Flow): Set<string> {
   const declared = new Set<string>();
   for (const gate of Object.values(flow.gates ?? {})) {
     const changed = (gate as { provided?: { changed_files?: unknown } }).provided?.changed_files;
@@ -333,6 +334,21 @@ function redactableSensitivePaths(flow: Flow): string[] {
       }
     }
   }
+  for (const event of flow.history ?? []) {
+    const provided = event.type === "flow_facts_updated"
+      ? event.data
+      : event.type === "gate_checked" ? event.data.provided : undefined;
+    if (provided && typeof provided === "object" && "changed_files" in provided && Array.isArray(provided.changed_files)) {
+      for (const item of provided.changed_files) {
+        if (typeof item === "string") declared.add(normalizeReviewPath(item));
+      }
+    }
+  }
+  return declared;
+}
+
+function redactableSensitivePaths(flow: Flow): string[] {
+  const declared = declaredReviewPaths(flow);
   // Leitura tolerante a dado persistido sujo (input-nunca-bloqueante): item
   // embrulhado/objeto vira string pela MESMA normalização do pipeline do
   // snapshot antes do casamento de sensibilidade — redigir só o que é path
@@ -344,14 +360,43 @@ function redactableSensitivePaths(flow: Flow): string[] {
       && !declared.has(normalized));
 }
 
-// Trilho 2026-11-05-snapshot-unborn-aninhado (issues #6 + #5.1): o merge de
-// corroboração deduplica por IDENTIDADE fs — win32 lowercases (INDEX.md e
-// index.md são o MESMO arquivo real; preserva o casing da 1ª ocorrência,
-// que é a declaração do flow) e Linux segue exato (lá são 2 arquivos de
-// verdade). Entrada com barra final (assinatura do coletor legado, nunca
-// revisável) é descartada de TODAS as fontes — saneia flows feridos na
-// próxima visita sem tocar o ledger: changed_files já é reescrito pelo
-// merge a cada chamada.
+async function isLegacyNestedRepository(workspace: string, relativePath: string): Promise<boolean> {
+  const normalized = normalizeReviewPath(relativePath);
+  if (!normalized.endsWith("/") || isSensitiveWorkspacePath(normalized)) return false;
+  const absolutePath = path.resolve(workspace, normalized);
+  assertInsideWorkspace(workspace, absolutePath, process.platform);
+  try {
+    if (!(await lstat(absolutePath)).isDirectory()) return false;
+    assertInsideWorkspace(await realpath(workspace), await realpath(absolutePath), process.platform);
+    const gitEntry = await lstat(path.join(absolutePath, ".git"));
+    return gitEntry.isDirectory() || gitEntry.isFile();
+  } catch (error) {
+    if (isMissingPathError(error)) return false;
+    throw error;
+  }
+}
+
+// Status only projects; existing mutators persist this scope and its recovery record.
+async function recoverLegacyReviewScope(flow: Flow, workspace: string): Promise<Flow> {
+  const declared = new Set([...declaredReviewPaths(flow), ...(flow.deleted_files ?? []).map(normalizeReviewPath)].map(item => item.replace(/\/+$/, "")));
+  const excluded: string[] = [];
+  const changedFiles: string[] = [];
+  for (const file of flow.changed_files) {
+    const identity = normalizeReviewPath(file).replace(/\/+$/, "");
+    if (!declared.has(identity) && await isLegacyNestedRepository(workspace, file)) excluded.push(normalizeReviewPath(file));
+    else changedFiles.push(file);
+  }
+  if (excluded.length === 0) return flow;
+  return {
+    ...flow,
+    changed_files: changedFiles,
+    review_scope_recovery: {
+      excluded_legacy_directories: [...new Set([...(flow.review_scope_recovery?.excluded_legacy_directories ?? []), ...excluded])]
+    }
+  };
+}
+
+// Identity deduplication preserves the first spelling; exclusion needs provenance.
 export function dedupeChangedFilesByFsIdentity(
   files: string[],
   platform: NodeJS.Platform = process.platform
@@ -360,7 +405,7 @@ export function dedupeChangedFilesByFsIdentity(
   const merged: string[] = [];
   for (const file of files) {
     const trimmed = file.trim();
-    if (trimmed.length === 0 || trimmed.endsWith("/")) continue;
+    if (trimmed.length === 0) continue;
     const identity = normalizeReviewPathForPlatform(trimmed, platform);
     if (seen.has(identity)) continue;
     seen.add(identity);
@@ -374,21 +419,20 @@ export function dedupeChangedFilesByFsIdentity(
 export async function withGitCorroboratedChangedFiles(flow: Flow): Promise<Flow> {
   const workspace = flow.goal_binding?.envelope.workspace;
   if (!workspace) return flow;
+  const recovered = await recoverLegacyReviewScope(flow, workspace);
   const [statusFiles, committed] = await Promise.all([
     gitChangedFiles(workspace),
     gitCommittedFilesSince(workspace, flow.git_head_base)
   ]);
-  const merged = dedupeChangedFilesByFsIdentity([...flow.changed_files, ...(statusFiles ?? []), ...(committed?.files ?? [])]);
+  const merged = dedupeChangedFilesByFsIdentity([...recovered.changed_files, ...(statusFiles ?? []), ...(committed?.files ?? [])]);
   const unresolved = committed?.diverged === true;
-  // Trilho 2026-11-05-snapshot-unborn-aninhado: contagem igual NÃO prova lista
-  // igual — o dedupe remove trailing-slash e o status soma untracked na mesma
-  // proporção (2===2) e o early-return devolvia o flow ferido intocado.
-  const unchanged = merged.length === flow.changed_files.length
-    && merged.every((item, index) => item === flow.changed_files[index]);
+  // Equal counts can hide a removed legacy entry and a newly discovered file.
+  const unchanged = merged.length === recovered.changed_files.length
+    && merged.every((item, index) => item === recovered.changed_files[index]);
   if (unchanged && unresolved === (flow.git_unresolved_commits === true)) {
-    return flow;
+    return recovered;
   }
-  return { ...flow, changed_files: merged, git_unresolved_commits: unresolved || undefined };
+  return { ...recovered, changed_files: merged, git_unresolved_commits: unresolved || undefined };
 }
 
 export function isSensitiveWorkspacePath(relativePath: string): boolean {
