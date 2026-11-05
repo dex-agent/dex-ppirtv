@@ -96,10 +96,10 @@
     ]
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
-  "fotografia_id": "2026-11-02-fiscal-verdict-nao-positivo",
-  "head": "6629f0fdb7618d928877cdd78ce7096838118260",
+  "fotografia_id": "2026-11-05-snapshot-unborn-aninhado",
+  "head": "fe3dc2144c78e483931761d2be263249c08dd84a",
   "tree_hash": null,
-  "generated_at": "2026-11-02T18:06:00.000Z",
+  "generated_at": "2026-11-05T19:08:33.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -681,5 +681,30 @@
     "Teto terminal muda o contrato do next_required_action do limite (open_decision_meeting -> close_flow_with_reservation); consumidores que parseavam o tipo antigo foram adaptados nos testes do repo.",
     "Contrato canonico do teto reescrito para rota terminal (2026-11-02): janelas com processo MCP antigo + contrato antigo ensinam o loop de reuniao — frota precisa pull+build+reconnect+contrato novo.",
     "Medidor CC correto na fonte 0.4.3 (2026-11-02): raws 0.4.2 dos receipts anteriores sao fotografia historica do motor quebrado — comparacoes de CC exigem motor 0.4.3+ (R13)."
-  ]
+  ],
+  "reavaliacao_snapshot_unborn": {
+    "date": "2026-11-05",
+    "base_sha": "fe3dc2144c78e483931761d2be263249c08dd84a",
+    "scope": [
+      "src/review-snapshot.ts",
+      "tests/git-corroboration-unborn.test.ts",
+      "tests/review-snapshot-redaction.test.ts",
+      "tests/git-porcelain-quoting.test.ts",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json"
+    ],
+    "delta": "Coletor unborn->null; parser descarta trailing-slash (repo aninhado); merge dedupe por identidade fs + saneamento trailing-slash; early-return por conteudo. Strict intocado.",
+    "evidence": ".agents/PLAN-TASKS/2026-11-05-snapshot-unborn-aninhado.md",
+    "suite": {
+      "passed": 781,
+      "failed": 0,
+      "skipped": 4,
+      "files": 60
+    },
+    "limits": [
+      "push fora do corte",
+      "comportamento gitlink/submodule registrado como ressalva do Trilho",
+      "guards unborn adaptados com commit-base (provas preservadas)"
+    ]
+  }
 }

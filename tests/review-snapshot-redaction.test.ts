@@ -39,6 +39,16 @@ describe("review snapshot redigir runtime de terceiro (Trilho 2026-10-23-snapsho
   it("corroboracao exclui untracked de dot-dirs de runtime de qualquer host (.codex/.zcode)", async () => {
     const workspace = await makeWorkspace();
     await execFileAsync("git", ["-C", workspace, "init"], { windowsHide: true });
+    await execFileAsync("git", ["-C", workspace, "config", "user.email", "test@fixture"], { windowsHide: true });
+    await execFileAsync("git", ["-C", workspace, "config", "user.name", "test"], { windowsHide: true });
+    // Trilho 2026-11-05-snapshot-unborn-aninhado: repos UNBORN nao tem mais
+    // corroboração por status (gitChangedFiles = null — sem HEAD nao ha diff
+    // atribuivel; issue #6). Este guard prova produto-untracked ENTRA e
+    // dot-dirs SAEM, o que agora exige HEAD: commit base preserva as
+    // expectativas originais ipsis literis.
+    await writeFile(path.join(workspace, "README.md"), "# base\n", "utf8");
+    await execFileAsync("git", ["-C", workspace, "add", "README.md"], { windowsHide: true });
+    await execFileAsync("git", ["-C", workspace, "commit", "-q", "-m", "base"], { windowsHide: true });
     await mkdir(path.join(workspace, ".codex"), { recursive: true });
     await mkdir(path.join(workspace, ".zcode"), { recursive: true });
     await mkdir(path.join(workspace, "src"), { recursive: true });

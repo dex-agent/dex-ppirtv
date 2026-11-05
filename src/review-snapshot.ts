@@ -185,6 +185,13 @@ export async function gitChangedFiles(workspace: string): Promise<string[] | nul
     return null;
   }
   try {
+    // Trilho 2026-11-05-snapshot-unborn-aninhado (issue #6): repo UNBORN (sem
+    // HEAD) não tem corroboração por status — em unborn TODO arquivo é
+    // untracked, então o status não discrimina produto de ruído e ingere o
+    // checkout inteiro (8.075 paths vs 105 declarados no consumidor). Sem base
+    // não há diff atribuível: mantém a declaração e registra a limitação
+    // (mesmo contrato do "sem .git / comando falhou" acima).
+    if (!(await gitHeadAt(workspaceRoot))) return null;
     const { stdout } = await execFileAsync(
       "git",
       ["-C", workspaceRoot, "status", "--porcelain", "-z", "--untracked-files=all"],
@@ -203,7 +210,12 @@ export async function gitChangedFiles(workspace: string): Promise<string[] | nul
     for (let index = 0; index < entries.length; index += 1) {
       const status = entries[index].slice(0, 2);
       const filePath = entries[index].slice(3).trim();
-      if (filePath.length > 0) files.push(filePath);
+      // Trilho 2026-11-05-snapshot-unborn-aninhado (issue #6): entrada com
+      // barra final é DIRETÓRIO no porcelain -z (repo aninhado untracked ou
+      // dir untracked) — nunca foi revisável, e o git do workspace jamais
+      // lista o conteúdo de um repo aninhado; sem o descarte o entry congela
+      // o verdict com REVIEW_SNAPSHOT_FILE_REQUIRED para sempre.
+      if (filePath.length > 0 && !filePath.endsWith("/")) files.push(filePath);
       if (status.includes("R") || status.includes("C")) index += 1;
     }
     return filterCorroborationFiles(files);
@@ -332,6 +344,31 @@ function redactableSensitivePaths(flow: Flow): string[] {
       && !declared.has(normalized));
 }
 
+// Trilho 2026-11-05-snapshot-unborn-aninhado (issues #6 + #5.1): o merge de
+// corroboração deduplica por IDENTIDADE fs — win32 lowercases (INDEX.md e
+// index.md são o MESMO arquivo real; preserva o casing da 1ª ocorrência,
+// que é a declaração do flow) e Linux segue exato (lá são 2 arquivos de
+// verdade). Entrada com barra final (assinatura do coletor legado, nunca
+// revisável) é descartada de TODAS as fontes — saneia flows feridos na
+// próxima visita sem tocar o ledger: changed_files já é reescrito pelo
+// merge a cada chamada.
+export function dedupeChangedFilesByFsIdentity(
+  files: string[],
+  platform: NodeJS.Platform = process.platform
+): string[] {
+  const seen = new Set<string>();
+  const merged: string[] = [];
+  for (const file of files) {
+    const trimmed = file.trim();
+    if (trimmed.length === 0 || trimmed.endsWith("/")) continue;
+    const identity = normalizeReviewPathForPlatform(trimmed, platform);
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    merged.push(trimmed);
+  }
+  return merged;
+}
+
 // SPT gate-integrity-hardening-3 (R6): aplica o diff Git ao flow antes da
 // decisao fiscal; o chamador nao ganha decisao propria.
 export async function withGitCorroboratedChangedFiles(flow: Flow): Promise<Flow> {
@@ -341,9 +378,14 @@ export async function withGitCorroboratedChangedFiles(flow: Flow): Promise<Flow>
     gitChangedFiles(workspace),
     gitCommittedFilesSince(workspace, flow.git_head_base)
   ]);
-  const merged = [...new Set([...flow.changed_files, ...(statusFiles ?? []), ...(committed?.files ?? [])])];
+  const merged = dedupeChangedFilesByFsIdentity([...flow.changed_files, ...(statusFiles ?? []), ...(committed?.files ?? [])]);
   const unresolved = committed?.diverged === true;
-  if (merged.length === flow.changed_files.length && unresolved === (flow.git_unresolved_commits === true)) {
+  // Trilho 2026-11-05-snapshot-unborn-aninhado: contagem igual NÃO prova lista
+  // igual — o dedupe remove trailing-slash e o status soma untracked na mesma
+  // proporção (2===2) e o early-return devolvia o flow ferido intocado.
+  const unchanged = merged.length === flow.changed_files.length
+    && merged.every((item, index) => item === flow.changed_files[index]);
+  if (unchanged && unresolved === (flow.git_unresolved_commits === true)) {
     return flow;
   }
   return { ...flow, changed_files: merged, git_unresolved_commits: unresolved || undefined };

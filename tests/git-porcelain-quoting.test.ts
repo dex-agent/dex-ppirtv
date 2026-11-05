@@ -40,6 +40,13 @@ async function makeQuotingWorkspace(): Promise<{ workspace: string; sptPath: str
   git(workspace, ["init", "-q"]);
   git(workspace, ["config", "user.email", "test@fixture"]);
   git(workspace, ["config", "user.name", "test"]);
+  // Trilho 2026-11-05-snapshot-unborn-aninhado: repos UNBORN nao tem mais
+  // corroboração por status (gitChangedFiles = null; issue #6). Este guard
+  // prova parser imune a C-quoting com untracked ESPACADO, o que exige HEAD —
+  // commit base preserva as expectativas originais ipsis literis.
+  await writeFile(path.join(workspace, "README.md"), "# base\n", "utf8");
+  git(workspace, ["add", "README.md"]);
+  git(workspace, ["commit", "-q", "-m", "base"]);
   // Fixture: untracked com ESPAÇO no nome (o gatilho do quoting no porcelain).
   await writeFile(path.join(workspace, "a b.txt"), "spaced real content\n", "utf8");
   await writeFile(path.join(workspace, "src", "a.ts"), "export const a = 1;\n", "utf8");

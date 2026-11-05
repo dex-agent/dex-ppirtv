@@ -9,6 +9,26 @@
 
 ## Identidade da fotografia
 
+## Reavaliação 2026-11-05 — snapshot unborn/aninhado/casing (issues #6 + #5.1)
+
+Coletor e merge de corroboração saneados em `src/review-snapshot.ts` (Trilho
+`2026-11-05-snapshot-unborn-aninhado`, flow `flow_20261105185901479_2950_0001`):
+(1) repo **unborn** (sem HEAD) não tem mais corroboração por status
+(`gitChangedFiles` = null — sem base não há diff atribuível; issue #6: 8.075
+paths vs 105 declarados); (2) entrada com barra final do porcelain -z
+(repo aninhado `book-to-skill/`) é descartada — diretório nunca foi revisável e
+congelava o verdict com `REVIEW_SNAPSHOT_FILE_REQUIRED`; (3) merge deduplica
+por identidade fs (`dedupeChangedFilesByFsIdentity`: win32 case-insensitive
+preservando casing da declaração, Linux exato — issue #5.1) e descarta
+trailing-slash de todas as fontes, saneando flows feridos na próxima visita;
+(4) early-return do merge compara CONTEÚDO (contagem igual escondia troca
+dir↔untracked 2===2). Strict do snapshot intocado: arquivo real ausente segue
+fail-closed. RED 4/4 provado no baseline; caracterização nova
+`tests/git-corroboration-unborn.test.ts` 5/5; 2 guards com fixture unborn por
+conveniência adaptados com commit-base (provas ipsis literis:
+`review-snapshot-redaction`, `git-porcelain-quoting`). Zero mudança em
+flow-engine/server. Push fora do corte (GO separado).
+
 ## Reavaliação 2026-11-02 — corte de manutenção 01 (assertToolEffectDeclaration)
 
 Retrofit do template (mesma sessao): global 1.2.0->1.2.1 (3 gotchas +
