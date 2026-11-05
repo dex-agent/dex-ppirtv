@@ -39,7 +39,8 @@ HEAD..HEAD vazio) — banco estava preso em `339e3ca`/agosto com receipts de
 falso verde; base DEFAULT (last_built) é a rota; pós-cura: built_at
 `ada0c0d`, 2536 nós, 130 arquivos. INDEX do CRG e napkin atualizados
 (superfícies locais). Gate que dependia de memória agora é engenharia
-(impossibilitar o erro).
+(impossibilitar o erro). Fechamento: flow 3022 **complete** (veredito
+`vrd_20261105195738696_3030_0001` **pronto**, sem ressalvas).
 
 ## Reavaliação 2026-11-05 — snapshot unborn/aninhado/casing (issues #6 + #5.1)
 
