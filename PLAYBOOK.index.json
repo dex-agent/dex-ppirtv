@@ -3,38 +3,29 @@
   "generated_by": "tools/playbook/generate-playbook.py",
   "authority": "derived_projection",
   "repo_name": "dex-PPIRTV",
-  "sources_revision": "sha256:1d24cde8ae68bb602e59db2af3954ab6157294f989db23115d32e444db6c0b39",
+  "sources_revision": "sha256:1fc24559b50958747d5a05996a31b1a86f13423f341c88cdd762800e6d22db58",
   "sent_revision": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "rules": [
     {
-      "seal": "pb-b04ade35",
-      "locator": "PAINEL-DE-FERRAMENTAS",
-      "title": "Painel de Ferramentas",
-      "gatilho": "### 4. Memorias quentes (L1 vivos — completo em `.agents/GATILHOS-VIVOS.md`)",
-      "extrato": "(consultar ANTES de qualquer pesquisa web — molde de ecossistema",
-      "rotas": [],
-      "fonte": "AGENTS.md#L26-L68"
-    },
-    {
-      "seal": "pb-b2044664",
-      "locator": "PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL",
+      "seal": "pb-8938be6d",
+      "locator": "PPIRTV-MANUTENCAO-CONTINUA-CRG",
       "title": "Regras locais",
       "gatilho": "Formato de ciclo: `Unreleased` ate decisao explicita de versao; gatilhos:",
-      "extrato": "- Manter `CHANGELOG.md` atualizado. Owner: `$projeto-manter-changelog`.",
+      "extrato": "- `PPIRTV-MANUTENCAO-CONTINUA-CRG`: antes de corte de manutencao/reuso, ler workflow/RULES.md e workflow/manutencao-iterativa-com-evidencia...",
       "rotas": [],
-      "fonte": "AGENTS.md#L69-L210"
+      "fonte": "AGENTS.md#L26-L163"
     },
     {
-      "seal": "pb-2f3cd64d",
+      "seal": "pb-97348542",
       "locator": "PPIRTV-CAPACITY-COMMIT-GATE",
       "title": "Validacao minima",
       "gatilho": "ndeclarado",
       "extrato": "```powershell",
       "rotas": [],
-      "fonte": "AGENTS.md#L240-L262"
+      "fonte": "AGENTS.md#L193-L215"
     },
     {
-      "seal": "pb-9ffc90ab",
+      "seal": "pb-f0d4ceb4",
       "locator": "PPIRTV-CHATO-LIVE-PREFLIGHT",
       "title": "Ordens diretas do Comandante Owner o $chato 🗣️",
       "gatilho": "2. $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamento da $estacionamento ao lado da $garimpeiro e tudo que for achado MEMORÁVEL...",
@@ -45,19 +36,19 @@
         "Ative o fluxo visual PPIRTV com checklist visual dinâmico u...",
         "Sempre finalize o trabalho analisando \"com lentes dos espec..."
       ],
-      "fonte": "AGENTS.md#L263-L325"
+      "fonte": "AGENTS.md#L216-L278"
     },
     {
-      "seal": "pb-237bbf07",
+      "seal": "pb-81fb4545",
       "locator": "PPIRTV-GIT-CONSOLIDACAO-SELETIVA-MAIN",
       "title": "Dex Agent Local",
       "gatilho": "- Antes de qualquer consolidacao Git deste repositorio, recupere o gatilho",
       "extrato": "- Projeto: `dex-PPIRTV`",
       "rotas": [],
-      "fonte": "AGENTS.md#L326-L370"
+      "fonte": "AGENTS.md#L279-L323"
     },
     {
-      "seal": "pb-e87bdd29",
+      "seal": "pb-cad80448",
       "locator": "PENDENTES-LEDGER",
       "title": "Leitura obrigatoria (bootstrap)",
       "gatilho": "5. `.agents/PENDENTES.md` — ledger de pendências append-only (schema `dex.pendencias.v2`; gatilho `PENDENTES-LEDGER`)",
@@ -68,7 +59,7 @@
         "`.agents/HANDOFF.md`",
         "`.agents/PLAN-TASKS/ACTIVE.md`"
       ],
-      "fonte": "AGENTS.md#L449-L456"
+      "fonte": "AGENTS.md#L402-L409"
     }
   ],
   "mesa": {
@@ -82,39 +73,39 @@
   "nao_decodificadas": [
     {
       "titulo": "Organizacao De Artefatos E Scripts",
-      "ancora": "AGENTS.md#L211"
+      "ancora": "AGENTS.md#L164"
     },
     {
       "titulo": "Graphify local",
-      "ancora": "AGENTS.md#L371"
+      "ancora": "AGENTS.md#L324"
     },
     {
       "titulo": "Bootstrap (toda janela nova, nesta ordem)",
-      "ancora": "AGENTS.md#L404"
+      "ancora": "AGENTS.md#L357"
     },
     {
       "titulo": "Indexação (doutrina da casa)",
-      "ancora": "AGENTS.md#L422"
+      "ancora": "AGENTS.md#L375"
     },
     {
       "titulo": "Envio a terceiros",
-      "ancora": "AGENTS.md#L429"
+      "ancora": "AGENTS.md#L382"
     }
   ],
   "fontes": [
     {
       "caminho": "AGENTS.md",
-      "sha256": "3df541abf0995b32f6130a31f630ac75bd6d070b45504c07766a3636f713fa69",
+      "sha256": "a80d3741c273d59ca5fd9dfa70648f245553a086155dffa9af1e7d8e80f73015",
       "enviado": false
     },
     {
       "caminho": ".agents/napkin.md",
-      "sha256": "e54020462ff836a9b393a403f14d3a30afe78b121d92a095fc1e97d9571f0d94",
+      "sha256": "fba7a9ec155e9421a227aa9e6459511f9ee4bc076bb1256e0af089acdf43cc1c",
       "enviado": false
     },
     {
       "caminho": ".agents/PLAN-TASKS/ACTIVE.md",
-      "sha256": "e1232f6246f50ae6d7782d48103a6f013de04ed9de91112f725ae019912e8a99",
+      "sha256": "9f3783bdefea6bfd28ad221f52b1c7ba74b25443b547acbf0e37ea8992ff6e7e",
       "enviado": false
     }
   ]

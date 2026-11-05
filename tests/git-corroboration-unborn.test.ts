@@ -89,9 +89,9 @@ describe("git corroboration: unborn / nested repo / casing (issues #6 + #5.1)", 
     expect(merged).toContain("src/a.ts");
   });
 
-  it("C-04: linux — INDEX.md e index.md permanecem 2 entradas distintas; trailing-slash descartado", () => {
+  it("C-04: linux mantém casings distintos; dedupe não decide exclusão de diretório", () => {
     expect(dedupeChangedFilesByFsIdentity(["INDEX.md", "index.md", "book-to-skill/"], "linux"))
-      .toEqual(["INDEX.md", "index.md"]);
+      .toEqual(["INDEX.md", "index.md", "book-to-skill/"]);
     expect(dedupeChangedFilesByFsIdentity(["INDEX.md", "index.md"], "win32"))
       .toEqual(["INDEX.md"]);
   });

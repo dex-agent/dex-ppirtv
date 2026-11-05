@@ -9,6 +9,20 @@
 
 ## Identidade da fotografia
 
+## Reavaliação 2026-11-05 — recuperação pública do snapshot (#6)
+
+Base `ada0c0d`, Trilho `2026-11-05-recuperacao-snapshot-publica`.
+Delta focal em `src/review-snapshot.ts` e no tipo Flow: status projeta o escopo
+recuperado sem escrita; evidencia aceita persiste a mesma lista e o registro
+de exclusoes legadas. Declaracoes, delecoes e fronteiras continuam estritas.
+RED preservado em `.agents/receipts/snapshot-publica-20261105/red.log`;
+GREEN e replay em `tests/review-snapshot-recovery.test.ts`.
+Validacao final: 17 focais; `npm run check` com 794 passed/4 skipped/62 arquivos;
+MCP novo com 32 tools. Uma rodada anterior falhou por EPERM no lock de reuniao;
+log preservado e bateria isolada 24/24, sem alterar o lock neste corte.
+Limite: recuperacao sintetica nao certifica fechamento do consumidor externo;
+runtime persistente exige carregar o build final. Matriz historica abaixo preservada.
+
 ## Reavaliação 2026-11-05 — verdict-learning SHRINK (issue #5.2)
 
 Trilho `2026-11-05-verdict-learning-filtro-findings` (flow

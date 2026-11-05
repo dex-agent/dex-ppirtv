@@ -1,5 +1,14 @@
 {
   "schema": "dex.capacity.snapshot.v1",
+  "reavaliacao_snapshot_publica": {
+    "date": "2026-11-05",
+    "base_sha": "ada0c0d",
+    "scope": ["src/review-snapshot.ts", "src/domain.ts", "tests/review-snapshot-recovery.test.ts", "tests/git-corroboration-unborn.test.ts", "tests/INDEX.md"],
+    "delta": "Projecao read-only do escopo legado e persistencia pela evidencia aceita; dedupe separado da exclusao com proveniencia.",
+    "evidence": ["tests/review-snapshot-recovery.test.ts", ".agents/receipts/snapshot-publica-20261105/red.log", ".agents/receipts/snapshot-publica-20261105/check.log", ".agents/receipts/snapshot-publica-20261105/green.log"],
+    "observed": {"suite_passed": 794, "suite_skipped": 4, "suite_files": 62, "focal_passed": 17, "mcp_tools": 32},
+    "limits": ["fixture MCP nao certifica aceite do consumidor externo", "runtime persistente precisa carregar o build final", "EPERM intermitente no lock de reuniao observado em rodada anterior; isolado 24/24"]
+  },
   "reavaliacao_workflow_portability": {
     "date": "2026-11-02",
     "base_sha": "f6daafa8f7fa09010ae73faab75c0171d66967b2",

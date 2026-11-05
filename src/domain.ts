@@ -608,6 +608,7 @@ export type Flow = {
   changed_files: string[];
   deleted_files?: string[];
   implementation_fingerprint?: string;
+  review_scope_recovery?: { excluded_legacy_directories: string[] };
   // Head Git congelado no primeiro goal_start; o verdict corrobora commits
   // posteriores via diff base..HEAD e fail-close se a base virar orfa.
   git_head_base?: string;

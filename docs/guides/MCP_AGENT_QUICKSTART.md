@@ -276,6 +276,20 @@ cover the current implementation fingerprint, use a review-like `kind`, name
 reviewed targets and declare material review claims. Free text or a verdict
 does not satisfy the review gate.
 
+### How do I recover a legacy nested-repository review snapshot?
+
+After loading the current build, call `goal_status` with `detail: "full"`,
+review the projected targets and submit `evidence_add` with that fingerprint.
+The shared snapshot projection excludes only undeclared legacy directory
+entries that still identify a nested Git repository inside the workspace.
+Status does not persist the recovery. An accepted evidence mutation saves the
+projected scope and `review_scope_recovery.excluded_legacy_directories`;
+previous history stays intact. A stale fingerprint rejects the evidence.
+Explicit declarations (including historical gate/facts, proof paths and
+declared deletions), ordinary/missing directories, sensitive paths and escapes
+are not silently removed. Files already incorporated into an old scope remain
+review targets; this recovery does not infer their authorship.
+
 ### Why does a correct file on disk not change what my client sees?
 
 The MCP process may be persistent. Rebuild if necessary, restart/reconnect the
