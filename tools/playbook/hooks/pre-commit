@@ -7,3 +7,21 @@ python -B tools/playbook/generate-playbook.py --repo . --check || exit 1
 # PPIRTV-CAPACITY-COMMIT-GATE - capability-bearing changes require a fresh
 # CAPACITY.md re-evaluation staged in the same commit.
 node scripts/check-capacity.mjs --staged || exit 1
+
+# PPIRTV-CRG-FRESH-GATE (GO do dono 2026-11-05: "nao depender da memoria — hook
+# que cobra o gate pra seguir"): todo commit que toca codigo (src/tests/scripts)
+# atualiza o banco estrutural CRG no mesmo instante — ninguem "esquece" porque o
+# hook cura. BARATA MORTA 2026-11-05: `update --base HEAD` e NO-OP (diff
+# HEAD..HEAD vazio) e o banco ficou preso em 339e3ca/agosto com receipts de
+# falso verde — NUNCA passar --base HEAD aqui; a base default (last_built) e o
+# incremental correto. Maquina sem a CLI (frota): aviso nao-bloqueante (o gate
+# endurece onde a ferramenta existe; travar commit por falta de ferramenta e
+# autossabotagem P10).
+if git diff --cached --name-only | grep -qE '^(src|tests|scripts)/'; then
+  if command -v code-review-graph >/dev/null 2>&1; then
+    code-review-graph update --repo . --data-dir .agents/CODE-REVIEW-GRAPH -q \
+      || { echo "CRG GATE FAIL: update incremental falhou (rode sem --base; confira .agents/CODE-REVIEW-GRAPH)"; exit 1; }
+  else
+    echo "CRG GATE (aviso): code-review-graph ausente no PATH — banco CRG nao conferido neste commit (frota: instale a CLI para o gate cheio)"
+  fi
+fi

@@ -96,10 +96,10 @@
     ]
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
-  "fotografia_id": "2026-11-05-verdict-learning-shrink",
+  "fotografia_id": "2026-11-05-crg-gate-precommit",
   "head": "fe3dc2144c78e483931761d2be263249c08dd84a",
   "tree_hash": null,
-  "generated_at": "2026-11-05T19:45:08.000Z",
+  "generated_at": "2026-11-05T19:56:08.000Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -731,6 +731,21 @@
     "limits": [
       "push fora do corte",
       "filtro por keyword: porta explicita verdict_gold_mining segue disponivel"
+    ]
+  },
+  "reavaliacao_crg_gate": {
+    "date": "2026-11-05",
+    "base_sha": "ada0c0d08a5cccbaf358ebd5870a80e750c0c750",
+    "scope": [
+      "tools/playbook/hooks/pre-commit",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json"
+    ],
+    "delta": "Bloco CRG-FRESH-GATE no pre-commit (auto-curativo, aviso se CLI ausente); barata --base HEAD NO-OP morta e documentada.",
+    "evidence": ".agents/PLAN-TASKS/2026-11-05-crg-gate-precommit.md",
+    "limits": [
+      "push fora do corte",
+      "no-op --base HEAD reportado por feedback a skill owner"
     ]
   }
 }

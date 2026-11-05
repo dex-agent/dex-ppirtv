@@ -29,6 +29,18 @@ Fechamento (mesma sessão): flow 2993 **complete** (veredito
 mining 2 nuggets); ressava do dono: onda DENSA do cluster learning estacionada
 (EST-20261105-ONDA-DENSA-VERDICT-LEARNING).
 
+## Reavaliação 2026-11-05 — CRG-FRESH-GATE no pre-commit (diretriz do dono)
+
+Trilho `2026-11-05-crg-gate-precommit` (flow 3022): hook pre-commit ganha
+bloco CRG-FRESH-GATE — todo commit tocando src/tests/scripts atualiza o banco
+CRG automaticamente (auto-curativo; CLI ausente = aviso não-bloqueante,
+frota/P10). BARATA MORTA ao vivo: `update --base HEAD` é NO-OP (diff
+HEAD..HEAD vazio) — banco estava preso em `339e3ca`/agosto com receipts de
+falso verde; base DEFAULT (last_built) é a rota; pós-cura: built_at
+`ada0c0d`, 2536 nós, 130 arquivos. INDEX do CRG e napkin atualizados
+(superfícies locais). Gate que dependia de memória agora é engenharia
+(impossibilitar o erro).
+
 ## Reavaliação 2026-11-05 — snapshot unborn/aninhado/casing (issues #6 + #5.1)
 
 Fechamento (mesma sessão): flow 2950 **complete** (veredito
