@@ -1,8 +1,10 @@
 # MOLDE SPT v3 — preencher, nunca interpretar
 
-Regras: `RULES.md` (R1-R08). Ordem e gate: `GUIA.md`. Copie o bloco para
-`<workspace>\.agents\PLAN-TASKS\YYYY-MM-DD-<slug>.md`, preencha cada marcador
-com UMA linha e rode o preflight antes de qualquer goal_start.
+Regras: `RULES.md` (R1-R08). Ordem e gate: `GUIA.md`. Copie o BLOCO YAML abaixo
+(da primeira linha `---` ate a ultima linha `---`) para
+`<workspace>\.agents\PLAN-TASKS\YYYY-MM-DD-<slug>.md` — este header de prosa
+NAO faz parte do trilho (copiar o arquivo integral gera S00). Preencha cada
+marcador com UMA linha e rode o preflight antes de qualquer goal_start.
 
 ---
 dex_contract: spt

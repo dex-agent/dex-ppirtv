@@ -9,6 +9,26 @@
 
 ## Identidade da fotografia
 
+## Reavaliação — spt-kit cobertura total, 2026-11-06
+
+Owner spt-kit: preflight S00 agora diagnostica causa (bytes de abertura + causas
+provaveis) e tolera BOM UTF-8 (alinhado ao parser oficial); novo S10 antecipa
+presenca/shape dos 21 campos do dex.spt.v3 (campo ausente, plan array de
+strings, tasks objetos, uncertainties>=1, chave desconhecida citando validas;
+lista espelhada do SCHEMA). Instrucao de copia curada (GUIA/MOLDE/contratos:
+copiar o BLOCO YAML, nunca o arquivo integral). 5 fixtures adversariais
+RED->GREEN (falso verde x3 provado); suite 799|0|4 com npm run check exit 0;
+sha256 do MOLDE bumpado (.schm.md rev 3) no mesmo commit. Escopo: spt-kit/ +
+SCHEMA + docs/contracts; nenhum arquivo de src/ ou tests/ tocado por este corte.
+
+## Reavaliação — arquivos unborn legados, 2026-11-05
+
+Owner review-snapshot: recuperacao publica de arquivos regulares automaticos
+nao declarados em repo ainda unborn e flow sem base; declaracoes historicas,
+delecoes, HEAD/base e paths invalidos preservados. RED causal1/14GREEN antes
+do reparo, focal20/20 depois; provas em .agents/receipts/snapshot-publica-20261105/.
+Consumidor real workflows em validacao nesta sessao; nao antecipar verdict.
+
 ## Reavaliação 2026-11-05 — recuperação pública do snapshot (#6)
 
 Base `ada0c0d`, Trilho `2026-11-05-recuperacao-snapshot-publica`.

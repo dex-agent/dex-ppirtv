@@ -1,5 +1,48 @@
 {
   "schema": "dex.capacity.snapshot.v1",
+  "reavaliacao_spt_kit_cobertura_total": {
+    "date": "2026-11-06",
+    "scope": [
+      "spt-kit/preflight.mjs",
+      "spt-kit/GUIA.md",
+      "spt-kit/MOLDE.md",
+      "spt-kit/RULES.md",
+      "SCHEMA/dex.spt.v3.schm.md",
+      "docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md"
+    ],
+    "delta": "S00 com diagnostico (bytes de abertura + causas provaveis), tolerancia a BOM UTF-8 e S10 de shape dos 21 campos do dex.spt.v3; instrucao de copia curada (bloco YAML, nunca o arquivo integral); GUIA ensina proof_skeletons.",
+    "evidence": [
+      ".agents/receipts/2026-11-06-spt-kit-red-fixtures.log"
+    ],
+    "observed": {
+      "suite": "799|0|4",
+      "npm_run_check_exit": 0,
+      "fixtures_red_green": "5/5"
+    },
+    "limits": [
+      "S10 e antecipacao local de presenca/shape; o schema estrito e a semantica permanecem autoridade do spt_validate",
+      "atomicidade de criterio (R3) segue sentinela lexical declarada"
+    ]
+  },
+  "reavaliacao_unborn_files": {
+    "date": "2026-11-05",
+    "scope": [
+      "src/review-snapshot.ts",
+      "src/domain.ts",
+      "tests/review-snapshot-recovery.test.ts"
+    ],
+    "delta": "Recuperacao publica de arquivos regulares nao declarados ingeridos por corroboracao unborn legada, com registro e dedupe por identidade.",
+    "evidence": [
+      ".agents/receipts/snapshot-publica-20261105/unborn-files-red-causal.txt",
+      ".agents/receipts/snapshot-publica-20261105/unborn-files-green.txt"
+    ],
+    "observed": {
+      "focal_passed": 20
+    },
+    "limits": [
+      "HEAD/base, falta de proveniencia e paths invalidos nao sao excluidos por esta recuperacao"
+    ]
+  },
   "reavaliacao_snapshot_publica": {
     "date": "2026-11-05",
     "base_sha": "ada0c0d",

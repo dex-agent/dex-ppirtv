@@ -10,9 +10,11 @@ Este contrato define o formato canonico para criar prompts `/GOAL`,
 ## Kit de criacao (emenda 2026-10-30)
 
 Trilho/SPT v3 NOVO nasce do KIT `spt-kit/` do repo dono `dex-PPIRTV`
-(localizavel por `es.exe preflight.mjs`, filtro `spt-kit`): COPIE o `MOLDE.md`
-(21 slots `TODO-PREENCHER`; nunca redija front matter do zero), obedeca as
-`RULES.md` (R1-R08/S01-S09) e rode `node preflight.mjs <trilho>` ate
+(localizavel por `es.exe preflight.mjs`, filtro `spt-kit`): COPIE o BLOCO YAML
+do `MOLDE.md` (da primeira linha `---` ate a ultima `---`, nunca o arquivo
+integral — o header de prosa gera S00; 21 slots `TODO-PREENCHER`; nunca
+redija front matter do zero), obedeca as
+`RULES.md` (R1-R08/S01-S10) e rode `node preflight.mjs <trilho>` ate
 `achados=0` ANTES do `spt_validate`. Schema registrado:
 `dex.spt.v3` no tema schema-padrao e `SCHEMA/dex.spt.v3.schm.md` no repo dono.
 

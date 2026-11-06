@@ -5,10 +5,11 @@
 2. Dependência: Node com o pacote `yaml` (já presente no repo dex-PPIRTV).
 
 ## Criar um SPT (ordem)
-1. Copie `MOLDE.md` para `<workspace>\.agents\PLAN-TASKS\YYYY-MM-DD-<slug>.md`.
+1. Copie o BLOCO YAML do `MOLDE.md` (da primeira linha `---` ate a ultima `---`) para `<workspace>\.agents\PLAN-TASKS\YYYY-MM-DD-<slug>.md` — nunca o arquivo integral: o header de prosa do molde gera S00.
 2. Preencha TODO-PREENCHER na ordem: goal → escopo → requisitos/critérios → tasks → ER.
 3. Um critério = UMA condição; toda prova cita critério do próprio done_when.
 4. Expectation tipada; comando literal com exit esperado.
+5. Após o `spt_validate` verde, copie os `proof_skeletons` da saída para junto dos `evidence_requirements` do seu trilho: é o payload exato do `evidence_add`.
 
 ## Gate único (antes de qualquer goal_start)
 ```

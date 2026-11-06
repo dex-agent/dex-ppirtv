@@ -39,13 +39,31 @@ const achados = [];
 const add = (code, msg) => achados.push(`${code}: ${msg}`);
 
 function loadFront(file) {
-  const raw = readFileSync(file, "utf8");
+  let raw = readFileSync(file, "utf8");
+  if (raw.startsWith("\uFEFF")) raw = raw.slice(1); // BOM UTF-8: o parser oficial tolera; aqui tambem ignora
   if (raw.includes("\r\n")) add("S07", "arquivo usa CRLF; use apenas LF (R7)");
   const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!m) { add("S00", "front matter ausente"); return null; }
+  if (!m) {
+    const abertura = JSON.stringify(raw.slice(0, 40));
+    add("S00", `front matter ausente — o arquivo inicia com: ${abertura}; esperado '---' na linha 1 (titulo antes do bloco? BOM UTF-8? use o bloco do MOLDE)`);
+    return null;
+  }
   const doc = parseDocument(m[1]).toJS({ maxAliasCount: 100 });
   if (!doc || typeof doc !== "object" || Array.isArray(doc)) { add("S00", "front matter invalido"); return null; }
   return doc;
+}
+
+// S10: shape dos 21 campos — lista espelha SCHEMA/dex.spt.v3.schm.md (bump junto quando o schema mudar)
+const REQUIRED_FIELDS = ["dex_contract", "version", "status", "owner", "date", "workspace", "origin", "goal", "context", "problem", "decision", "scope", "requirements", "plan", "tasks", "closure_gates", "risks", "uncertainties", "gates", "validation", "execution_prompt"];
+
+function checkRequiredShape(d) {
+  const ausentes = REQUIRED_FIELDS.filter((k) => d[k] === undefined || d[k] === null);
+  if (ausentes.length) add("S10", `campo obrigatorio ausente: ${ausentes.join(", ")}`);
+  if (!Array.isArray(d.plan) || d.plan.some((p) => typeof p !== "string")) add("S10", "plan deve ser array de strings");
+  if (!Array.isArray(d.tasks) || d.tasks.some((t) => typeof t !== "object" || t === null)) add("S10", "tasks devem ser array de objetos");
+  if (!Array.isArray(d.uncertainties) || d.uncertainties.length < 1) add("S10", "uncertainties exige no minimo 1 item");
+  const desconhecidas = Object.keys(d).filter((k) => !REQUIRED_FIELDS.includes(k));
+  if (desconhecidas.length) add("S10", `chave desconhecida: ${desconhecidas.join(", ")}; validas: ${REQUIRED_FIELDS.join(", ")}`);
 }
 
 function checkGraph(d) {
@@ -106,7 +124,7 @@ if (args[0] === "--checksum") {
   else if (m[1] !== sha) add("S09", `checksum divergente: arquivo ${sha.slice(0, 12)} x registro ${m[1].slice(0, 12)}`);
 } else if (args[0]) {
   const d = loadFront(args[0]);
-  if (d) checkGraph(d);
+  if (d) { checkRequiredShape(d); checkGraph(d); }
 } else {
   console.error("uso: node preflight.mjs <spt.md> | node preflight.mjs --checksum <molde.md>");
   process.exit(2);

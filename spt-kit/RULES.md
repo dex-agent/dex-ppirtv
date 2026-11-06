@@ -49,3 +49,11 @@ Verificação: preflight confere o padrão e a unicidade e acusa **S08**.
 ## S09: anti-drift do molde (fora da numeração R)
 O sha256 de `MOLDE.md` é registrado em `SCHEMA/dex.spt.v3.schm.md`.
 Verificação: `preflight.mjs --checksum <arquivo>` compara e acusa **S09** em divergência.
+
+## S10: shape dos 21 campos (fora da numeração R)
+Presença e shape dos 21 campos do `dex.spt.v3` (lista espelhada de
+`SCHEMA/dex.spt.v3.schm.md`; bump junto quando o schema mudar). Campo obrigatório
+ausente, `plan` fora de array de strings, `tasks` sem objetos, `uncertainties`
+com menos de 1 item e chave desconhecida acusam **S10**.
+Verificação: preflight confere a lista, os 3 shapes e as chaves; `spt_validate`
+permanece a autoridade do schema estrito.
