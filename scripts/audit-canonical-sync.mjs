@@ -2,6 +2,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { canonicalPairs } from "./canonical-pairs.mjs";
 
 const repoRoot = process.cwd();
 const userProfile = process.env.USERPROFILE ?? process.env.HOME;
@@ -21,29 +22,7 @@ function main() {
     return;
   }
 
-  assertFilePairsInSync([
-    {
-      label: "GOAL/SPT canonical contract",
-      global: path.join(userProfile, ".agents", "contracts", "GOAL_SPT_CANONICAL_CONTRACT.md"),
-      local: path.join(repoRoot, "docs", "contracts", "GOAL_SPT_CANONICAL_CONTRACT.md")
-    },
-    {
-      label: "GOAL execution bridge",
-      global: path.join(userProfile, ".agents", "contracts", "GOAL_EXECUTION_BRIDGE.md"),
-      local: path.join(repoRoot, "docs", "contracts", "GOAL_EXECUTION_BRIDGE.md")
-    },
-    {
-      label: "PRINCIPLES.md",
-      global: path.join(userProfile, ".agents", "memories", "principles", "PRINCIPLES.md"),
-      local: path.join(repoRoot, "principles", "PRINCIPLES.md")
-    },
-    {
-      label: "operational-contract.json",
-      global: path.join(userProfile, ".agents", "memories", "principles", "operational-contract.json"),
-      local: path.join(repoRoot, "principles", "operational-contract.json"),
-      json: true
-    }
-  ]);
+  assertFilePairsInSync(canonicalPairs(repoRoot, userProfile));
 
   assertLocalAuthorityPointers();
   assertNoLocalContractCopyClaimedAsCanonical();

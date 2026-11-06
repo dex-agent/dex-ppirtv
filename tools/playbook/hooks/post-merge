@@ -1,0 +1,4 @@
+#!/bin/sh
+# post-merge (wrapper): git exige nome exato sem extensao; a implementacao
+# Node vive em post-merge.impl.mjs (ESM).
+exec node "$(dirname "$0")/post-merge.impl.mjs" "$@"

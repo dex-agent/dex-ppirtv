@@ -9,6 +9,17 @@
 
 ## Identidade da fotografia
 
+## Reavaliação — hook post-merge paridade contratos, 2026-11-06
+
+Owner playbook/hooks: hook post-merge auto-curativo sincroniza os 4 pares
+globais (repo -> ~/.agents) apos pull; RECUSA sobrescrever global divergente
+de ORIG_HEAD e de HEAD (edicao local viva). Lista de pares extraida para
+scripts/canonical-pairs.mjs (fonte unica com o audit). Self-test 4/4
+(COPIADO/JA-OK/RECUSADO/INALTERADO) RED->GREEN (receipt
+.agents/receipts/2026-11-06-postmerge-selftest.log); audit:canonical e npm run
+check verdes. Escopo: tools/playbook/hooks/post-merge(.impl.mjs) +
+scripts/canonical-pairs.mjs + audit-canonical-sync.mjs (import).
+
 ## Reavaliação — spt-kit cobertura total, 2026-11-06
 
 Owner spt-kit: preflight S00 agora diagnostica causa (bytes de abertura + causas

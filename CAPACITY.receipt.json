@@ -1,5 +1,25 @@
 {
   "schema": "dex.capacity.snapshot.v1",
+  "reavaliacao_post_merge_paridade": {
+    "date": "2026-11-06",
+    "scope": [
+      "tools/playbook/hooks/post-merge",
+      "tools/playbook/hooks/post-merge.impl.mjs",
+      "scripts/canonical-pairs.mjs",
+      "scripts/audit-canonical-sync.mjs"
+    ],
+    "delta": "Hook post-merge auto-curativo dos 4 pares globais (repo->~/.agents) com protecao anti-sobrescrever; lista de pares extraida para modulo compartilhado com o audit.",
+    "evidence": [
+      ".agents/receipts/2026-11-06-postmerge-selftest.log"
+    ],
+    "observed": {
+      "self_test": "4/4 (COPIADO, JA-OK, RECUSADO, INALTERADO)",
+      "hook_real_no_repo": "INALTERADO (correto: ORIG_HEAD..HEAD sem par tocado)"
+    },
+    "limits": [
+      "Maquinas sem core.hooksPath ativado nao executam o hook (rito de ativacao no playbook-pointer)"
+    ]
+  },
   "reavaliacao_spt_kit_cobertura_total": {
     "date": "2026-11-06",
     "scope": [
