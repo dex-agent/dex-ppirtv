@@ -9,6 +9,20 @@
 
 ## Identidade da fotografia
 
+## Reavaliação — faxina dívidas estacionadas, 2026-11-06
+
+Owner workflow/executor: workflow novo 1.0.0
+`workflow/fechamento-goal-worktree-compartilhado/` (pacote 6 irmãos
+dex.workflow.v1) capturando a receita do flow 3086 — review estrutural cobre
+o COLETADO do worktree vivo, commit seletivo por proveniência, fechamento de
+coerência com a janela irmã via receipt real. Fiscal `check-workflow.py` OK;
+`check-schemas.py workflow/` 2 schemas, 0 findings. Dívidas locais
+(`.agents/` gitignored) pagas no mesmo corte: 37/37 espelhos dex-memoria,
+resíduo `.code-review-graph/` na LIXEIRA com MANIFEST, `PENDENTES.md` VALIDO
+(3 abertas = decisão humana, roteadas), 11 seções 5-campos no
+GATILHOS-VIVOS (15 E SE??), rota absoluta do fulltext clean-code no oráculo
+global + fonte AC (commit `499ed2bb`). Escopo: workflow/ + INDEX + CHANGELOG.
+
 ## Reavaliação — hook post-merge paridade contratos, 2026-11-06
 
 Owner playbook/hooks: hook post-merge auto-curativo sincroniza os 4 pares

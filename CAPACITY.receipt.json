@@ -870,5 +870,27 @@
     "limits": [
       "3 lapidações menores registradas (idioma, doc domain, recover 2x)"
     ]
+  },
+  "reavaliacao_faxina_dividas": {
+    "date": "2026-11-06",
+    "scope": [
+      "workflow/fechamento-goal-worktree-compartilhado/",
+      "workflow/INDEX.md",
+      "CHANGELOG.md"
+    ],
+    "delta": "Workflow novo 1.0.0 (pacote 6 irmaos dex.workflow.v1) capturando a receita do flow 3086: review cobre o COLETADO do worktree vivo, commit seletivo por proveniencia, fechamento de coerencia com a janela irma. Dividas locais (.agents gitignored) pagas: 37 espelhos dex, LIXEIRA .code-review-graph, pendencias VALIDO, 11 secoes 5-campos GATILHOS-VIVOS, rota absoluta fulltext clean-code (oraculo global + fonte AC commit 499ed2bb).",
+    "evidence": [
+      ".agents/receipts/2026-11-06-espelhos-lote.log",
+      ".agents/receipts/2026-11-06-garimpo-ok.json"
+    ],
+    "observed": {
+      "check_workflow": "fechamento-goal-worktree-compartilhado: OK",
+      "check_schemas_workflow": "2 schemas .schm.md, 0 findings",
+      "er_provas": "ER-01..ER-07 exit 0 (ER-04 com ressalva de case: rg -c 'E SE\\?\\?|E se\\?\\?' = 15 >= 15)"
+    },
+    "limits": [
+      "Superficies .agents/ sao gitignored: provas dos criterios C-01..C-04 vivem em receipts locais, nao no clone",
+      "Achado lateral: pacote irmao manutencao-iterativa-com-evidencia tem finding pre-existente [meta-analise] ausente (fora deste corte, estacionado)"
+    ]
   }
 }
