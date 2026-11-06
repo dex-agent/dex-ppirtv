@@ -28,6 +28,11 @@ nao declarados em repo ainda unborn e flow sem base; declaracoes historicas,
 delecoes, HEAD/base e paths invalidos preservados. RED causal1/14GREEN antes
 do reparo, focal20/20 depois; provas em .agents/receipts/snapshot-publica-20261105/.
 Consumidor real workflows em validacao nesta sessao; nao antecipar verdict.
+Fechamento 2026-11-06 (janela ZCode, commit de coerencia): o codigo dos 3
+arquivos foi commitado apos suite focal 17/17 e suite completa 799|0|4 verdes;
+receipts reais em
+C:\Users\Administrator\.agents\skills\.agents\SYNC-LAB\Sincronizacao_2026.11.05\evidencias\ppirtv\
+(o path .agents/receipts/snapshot-publica-20261105 citado acima estava desatualizado).
 
 ## Reavaliação 2026-11-05 — recuperação pública do snapshot (#6)
 

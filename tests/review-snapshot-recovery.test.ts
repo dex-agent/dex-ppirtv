@@ -42,6 +42,53 @@ function reviewInput(flowId: string, fingerprint: string) {
 }
 
 describe("public legacy snapshot recovery", () => {
+  it("recovers undeclared regular files ingested by legacy unborn corroboration through public review", async () => {
+    const { engine, flow } = await fixture();
+    await writeFile(path.join(workspace, "unrelated.txt"), "preexisting unrelated file\n");
+    flow.changed_files.push("unrelated.txt");
+    await engine.store.saveFlow(flow);
+    const before = await readFile(engine.store.flowPath(flow.flow_id), "utf8");
+    const status = await engine.goalStatus({ flow_id: flow.flow_id, detail: "lean" });
+    expect(await readFile(engine.store.flowPath(flow.flow_id), "utf8")).toBe(before);
+    expect((await withCurrentImplementationFingerprint(flow)).changed_files).toEqual(["mission.txt"]);
+    await engine.attachEvidence(reviewInput(flow.flow_id, String(status.implementation_fingerprint)));
+    const saved = await engine.store.loadFlow(flow.flow_id);
+    expect(saved.changed_files).toEqual(["mission.txt"]);
+    expect(saved.review_scope_recovery).toMatchObject({ excluded_legacy_unborn_files: ["unrelated.txt"] });
+    expect(saved.history.slice(0, flow.history.length)).toEqual(flow.history);
+  });
+
+  it("preserves undeclared files when the repository has acquired a HEAD", async () => {
+    const { flow } = await fixture();
+    await writeFile(path.join(workspace, "unrelated.txt"), "real delta\n");
+    execFileSync("git", ["-C", workspace, "add", "mission.txt"], { windowsHide: true });
+    execFileSync("git", ["-C", workspace, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "base"], { windowsHide: true });
+    flow.changed_files.push("unrelated.txt");
+    expect((await withCurrentImplementationFingerprint(flow)).changed_files).toContain("unrelated.txt");
+  });
+
+  it("preserves an undeclared file without declaration provenance", async () => {
+    const { flow } = await fixture();
+    flow.history = [];
+    expect((await withCurrentImplementationFingerprint(flow)).changed_files).toContain("mission.txt");
+  });
+
+  it("preserves declarations from historical gates when current gates were replaced", async () => {
+    const { flow } = await fixture();
+    await writeFile(path.join(workspace, "extra.txt"), "authorized\n");
+    flow.changed_files.push("extra.txt");
+    flow.history.push({ at: new Date().toISOString(), type: "gate_checked", data: { provided: { changed_files: ["extra.txt"] } } });
+    expect((await withCurrentImplementationFingerprint(flow)).changed_files).toContain("extra.txt");
+  });
+
+  it("preserves legacy files when a frozen base exists even if HEAD disappears", async () => {
+    const { flow } = await fixture();
+    await writeFile(path.join(workspace, "extra.txt"), "unresolved base\n");
+    flow.git_head_base = "a".repeat(40);
+    flow.changed_files.push("extra.txt");
+    expect((await withCurrentImplementationFingerprint(flow)).changed_files).toContain("extra.txt");
+  });
+
   it("projects without writing and persists recovery only with an accepted review", async () => {
     const { engine, flow } = await fixture();
     const file = engine.store.flowPath(flow.flow_id);

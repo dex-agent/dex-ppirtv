@@ -34,14 +34,17 @@
     "delta": "Recuperacao publica de arquivos regulares nao declarados ingeridos por corroboracao unborn legada, com registro e dedupe por identidade.",
     "evidence": [
       ".agents/receipts/snapshot-publica-20261105/unborn-files-red-causal.txt",
-      ".agents/receipts/snapshot-publica-20261105/unborn-files-green.txt"
+      ".agents/receipts/snapshot-publica-20261105/unborn-files-green.txt",
+      "C:\\Users\\Administrator\\.agents\\skills\\.agents\\SYNC-LAB\\Sincronizacao_2026.11.05\\evidencias\\ppirtv\\unborn-files-red-causal.txt",
+      "C:\\Users\\Administrator\\.agents\\skills\\.agents\\SYNC-LAB\\Sincronizacao_2026.11.05\\evidencias\\ppirtv\\unborn-files-green.txt"
     ],
     "observed": {
       "focal_passed": 20
     },
     "limits": [
       "HEAD/base, falta de proveniencia e paths invalidos nao sao excluidos por esta recuperacao"
-    ]
+    ],
+    "closure": "2026-11-06: codigo commitado no fechamento de coerencia (suite focal 17/17; completa 799|0|4)"
   },
   "reavaliacao_snapshot_publica": {
     "date": "2026-11-05",

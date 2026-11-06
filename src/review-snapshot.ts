@@ -376,22 +376,57 @@ async function isLegacyNestedRepository(workspace: string, relativePath: string)
   }
 }
 
+async function isUnbornGitWorkspace(workspace: string): Promise<boolean> {
+  if (await gitHeadAt(workspace)) return false;
+  try {
+    const { stdout } = await execFileAsync("git", ["-C", workspace, "rev-parse", "--is-inside-work-tree"], { windowsHide: true });
+    return stdout.trim() === "true";
+  } catch {
+    return false;
+  }
+}
+
+async function isLegacyUnbornFile(workspace: string, relativePath: string): Promise<boolean> {
+  const normalized = normalizeReviewPath(relativePath);
+  if (isSensitiveWorkspacePath(normalized)) return false;
+  const absolutePath = path.resolve(workspace, normalized);
+  assertInsideWorkspace(workspace, absolutePath, process.platform);
+  try {
+    if (!(await lstat(absolutePath)).isFile()) return false;
+    assertInsideWorkspace(await realpath(workspace), await realpath(absolutePath), process.platform);
+    return true;
+  } catch (error) {
+    if (isMissingPathError(error)) return false;
+    throw error;
+  }
+}
+
 // Status only projects; existing mutators persist this scope and its recovery record.
 async function recoverLegacyReviewScope(flow: Flow, workspace: string): Promise<Flow> {
-  const declared = new Set([...declaredReviewPaths(flow), ...(flow.deleted_files ?? []).map(normalizeReviewPath)].map(item => item.replace(/\/+$/, "")));
+  const identityOf = (item: string) => normalizeReviewPathForPlatform(item, process.platform).replace(/\/+$/, "");
+  const declared = new Set([...declaredReviewPaths(flow), ...(flow.deleted_files ?? [])].map(identityOf));
+  // No Git base means status never identified this flow's delta. Recover only
+  // while still unborn, with positive declaration provenance; invalid paths stay visible.
+  const recoverUnbornFiles = declared.size > 0 && !flow.git_head_base && await isUnbornGitWorkspace(workspace);
   const excluded: string[] = [];
+  const excludedFiles: string[] = [];
   const changedFiles: string[] = [];
   for (const file of flow.changed_files) {
-    const identity = normalizeReviewPath(file).replace(/\/+$/, "");
+    const identity = identityOf(file);
     if (!declared.has(identity) && await isLegacyNestedRepository(workspace, file)) excluded.push(normalizeReviewPath(file));
+    else if (!declared.has(identity) && recoverUnbornFiles && await isLegacyUnbornFile(workspace, file)) excludedFiles.push(normalizeReviewPath(file));
     else changedFiles.push(file);
   }
-  if (excluded.length === 0) return flow;
+  const uniqueChangedFiles = dedupeChangedFilesByFsIdentity(changedFiles.map(normalizeReviewPath));
+  if (excluded.length === 0 && excludedFiles.length === 0 && uniqueChangedFiles.length === flow.changed_files.length) return flow;
   return {
     ...flow,
-    changed_files: changedFiles,
+    changed_files: uniqueChangedFiles,
     review_scope_recovery: {
-      excluded_legacy_directories: [...new Set([...(flow.review_scope_recovery?.excluded_legacy_directories ?? []), ...excluded])]
+      excluded_legacy_directories: [...new Set([...(flow.review_scope_recovery?.excluded_legacy_directories ?? []), ...excluded])],
+      ...(excludedFiles.length > 0 || flow.review_scope_recovery?.excluded_legacy_unborn_files
+        ? { excluded_legacy_unborn_files: [...new Set([...(flow.review_scope_recovery?.excluded_legacy_unborn_files ?? []), ...excludedFiles])] }
+        : {})
     }
   };
 }
