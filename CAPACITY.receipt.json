@@ -1,5 +1,12 @@
 {
   "schema": "dex.capacity.snapshot.v1",
+  "reavaliacao_issue11_attribution": {
+    "date": "2026-11-07",
+    "scope": ["src/review-scope-attribution.ts", "src/review-snapshot.ts", "src/flow-engine.ts", "src/spt-traceability.ts", "src/server.ts", "tests/git-corroboration-commits.test.ts"],
+    "delta": "Atribuicao de escopo registrada por evidencia e revalidada na entrada publica MCP. Conjunto fiscal e snapshot gravado coerentes. Integracao preserva a Onda 1 e o ledger historico publicado em main.",
+    "evidence": ["npm run build", "npx vitest run tests/git-corroboration-commits.test.ts", "npm run check"],
+    "limits": ["Proveniencia semantica e atestada pelo revisor; o runtime verifica identidade, declaracao e vinculos.", "Flow real do consumidor preservado; prova publica executada em fixtures sinteticas."]
+  },
   "reavaliacao_playbook_localizadores": {
     "date": "2026-11-07",
     "scope": [
@@ -264,15 +271,27 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 818,
+    "passed": 825,
     "failed": 0,
     "skipped": 4,
     "files": 64,
-    "total": 822,
-    "command": "npx vitest run (inalterada no commit da diretriz ESCOTEIRO-ONDA: docs/regua apenas — AGENTS local + CHANGELOG + PLAYBOOK regen)"
+    "total": 829,
+    "command": "npm run check (issue11-attribution integrado a main 0bdd375; exit 0)"
   },
   "tools_count": 32,
   "capabilities": [
+    {
+      "id": "CAP-36",
+      "capability": "Atribuicao fiscal auditavel em checkout compartilhado",
+      "owner": "review-scope-attribution",
+      "consumer": "evidence_add e goal_verdict via MCP stdio",
+      "trigger": "scope_attribution_evidence_ids seleciona evidencias review_scope_attribution",
+      "behavior": "Servidor vincula e revalida base e identidade, protege declaracoes, exige atribuicao de novos caminhos e grava o snapshot avaliado junto aos IDs utilizados.",
+      "oracle": "tests/git-corroboration-commits.test.ts: seis cenarios pela entrada MCP stdio",
+      "evidence": ["tests/git-corroboration-commits.test.ts", "src/review-scope-attribution.ts"],
+      "state": "comprovada",
+      "limits": ["Origem semantica declarada pelo revisor; identidade e vinculos verificados pelo servidor.", "Flow consumidor original preservado durante as fixtures."]
+    },
     {
       "id": "CAP-35",
       "capability": "Recorrencia fiscal por declaracao tipada com historico preservado",

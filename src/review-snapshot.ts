@@ -316,7 +316,7 @@ export async function strictReviewSnapshotFingerprint(
 // varrido pela corroboração legada — redigido no snapshot, nunca bloqueante.
 // Sensível declarado segue fail-closed: a diferença terceiro × produto é por
 // PROVENIÊNCIA de declaração (decisão explícita do owner, laudo §17).
-function declaredReviewPaths(flow: Flow): Set<string> {
+export function declaredReviewPaths(flow: Flow): Set<string> {
   const declared = new Set<string>();
   for (const gate of Object.values(flow.gates ?? {})) {
     const changed = (gate as { provided?: { changed_files?: unknown } }).provided?.changed_files;

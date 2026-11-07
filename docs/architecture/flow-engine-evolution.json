@@ -941,6 +941,29 @@
       "architecture_marker": "FE-2026-11-07-ONDA1-GOAL-START-SSOT",
       "commit": "115d7e5",
       "parent_commit": "05e8563"
+    },
+    {
+      "id": "FE-2026-11-07-ISSUE11-ATTRIBUTION",
+      "date": "2026-11-07",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-07-issue11-attribution.md",
+      "responsibility": "Atribuicao explicita do escopo de revisao vinculada a evidencia do flow, base Git e fingerprint. Politica em review-scope-attribution.ts; requisito SPT requiresGoalEvidence extraido inteiro para spt-traceability.ts; fachada conserva orquestracao.",
+      "owner": "$oraculo-refatoracao",
+      "mode": "SHRINK",
+      "destination_module": "src/spt-traceability.ts",
+      "consumers": ["src/flow-engine.ts"],
+      "evidence": ["tests/git-corroboration-commits.test.ts", "tests/spt-verdict-coverage-diagnostics.test.ts"],
+      "evidence_selectors": {
+        "tests/git-corroboration-commits.test.ts": "NOVO-1: commit-then-verdict de codigo nao passa de doc-only (worktree limpo)"
+      },
+      "removed_symbols": ["requiresGoalEvidence"],
+      "symbol_mappings": {"requiresGoalEvidence": "requiresGoalEvidence"},
+      "same_responsibility": true,
+      "behavior_preserved_by": ["tests/git-corroboration-commits.test.ts", "tests/spt-verdict-coverage-diagnostics.test.ts"],
+      "pays_debt_id": "FE-DEBT-006",
+      "changelog_marker": "FE-2026-11-07-ISSUE11-ATTRIBUTION",
+      "architecture_marker": "FE-2026-11-07-ISSUE11-ATTRIBUTION",
+      "base_blob": "75727db4d041e7566de5f51c65dd95500a4b366b",
+      "head_blob": "3be809aeca4b829d37cad0e14e715a170cafa5e8"
     }
   ]
 }
