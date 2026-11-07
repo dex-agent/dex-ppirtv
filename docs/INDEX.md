@@ -1,5 +1,7 @@
 # Documentation Index
 
+- [Regras publicadas no PLAYBOOK](PLAYBOOK-RULES.md) — fonte versionada do painel e da descoberta documental.
+
 Public documentation for `dex-PPIRTV`. Runtime schemas exposed by MCP
 `tools/list` are authoritative for tool invocation; documents explain the
 workflow, invariants and failure recovery without replacing those schemas.

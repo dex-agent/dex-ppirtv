@@ -9,6 +9,20 @@
 
 ## Identidade da fotografia
 
+## Reavaliação — localizadores publicados no PLAYBOOK, 2026-11-07
+
+Owner playbook: fonte versionada para os dois localizadores do PR #9.
+Escopo: lista de fontes, projeção gerada e índice documental. A prova usa
+`--check` local, `--check-sent` em cópia entregue e busca em Markdown e JSON.
+O painel aponta para `docs/INDEX.md`, que acompanha a entrega.
+
+## Reavaliação — anuncio S10 do preflight, 2026-11-06
+
+Owner spt-kit: `--schema` anuncia S00..S10, alinhado ao shape S10 ja
+implementado. Somente texto e comentario; nenhum algoritmo alterado.
+Fixture `plan-objeto.md`: achados=1/S10. Check anterior:799passed/4skipped;
+revalidacao focal na base bc3f9b6 antes do envio. Escopo: preflight e CHANGELOG.
+
 ## Reavaliação — faxina dívidas estacionadas, 2026-11-06
 
 Owner workflow/executor: workflow novo 1.0.0

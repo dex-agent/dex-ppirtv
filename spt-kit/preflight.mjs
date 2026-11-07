@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// preflight SPT v3 — regras R1-R08 (S01..S08) + anti-drift S09.
+// preflight SPT v3 — regras R1-R08 (S01..S08) + anti-drift S09 + shape S10.
 // Uso: node preflight.mjs <spt.md> | node preflight.mjs --checksum <molde.md>
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -17,7 +17,7 @@ const PRE_FLIGHT_DOC = {
   ],
   schema: {
     contract: "dex.spt.preflight.doc.v1",
-    checks: "S00..S09 (forma local; spt_validate MCP permanece a autoridade)",
+    checks: "S00..S10 (forma local; spt_validate MCP permanece a autoridade)",
     exit: "0 = achados=0; 1 = achados>0"
   },
   examples: [
