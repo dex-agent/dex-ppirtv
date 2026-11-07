@@ -245,7 +245,7 @@
   "fotografia_id": "2026-11-05-merge-pr7",
   "head": "5b66f564e4b27aca7527e3d10d7fe4b5cf86319c",
   "tree_hash": null,
-  "generated_at": "2026-11-07T22:24:33.032260+00:00",
+  "generated_at": "2026-11-07T22:49:04.264217+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1044,5 +1044,13 @@
       "PLAYBOOK.index.json"
     ],
     "suite": "sem mudanca de codigo (818+4=822 continua valendo)"
+  },
+  "reavaliacao_workflow_desmontagem_ondas": {
+    "commit_escopo": "workflow/desmontagem-monolito-ondas + workflow/INDEX.md + PLAYBOOK regen",
+    "validador": "check-workflow.py exit 0 (pacote OK)",
+    "suite": "818 passed + 4 skipped = 822 (sem mudanca de codigo)",
+    "fotografia_antes": "desmontagem-antes-4d75dd2 captured, CRG 2618n/39471a/58com",
+    "historico": "MAPAS/HISTORICO-DESMONTAGEM.md retroativo (12 ondas)",
+    "fila": "Onda 1 = 3a copia goal_start flow-engine:6087 -> SSOT error-envelope (flow 3464)"
   }
 }

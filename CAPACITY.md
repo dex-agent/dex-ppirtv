@@ -1,3 +1,13 @@
+## Reavaliação — pacote workflow desmontagem-monolito-ondas, 2026-11-07
+
+Owner $oraculo-refatoracao/executor: nascimento do pacote local (dex.workflow.v1
+rev 1.7 — WORKFLOW/RULES/SCHEMA/USAGE/CHANGELOG/CAPACITY; validador
+check-workflow.py OK exit 0). Sem mudança de código: suíte 818+4=822/64 segue
+valendo. Fotografia ANTES da desmontagem registrada no corte 4d75dd2 (CRG
+2618n/39471a/58com, receipt captured built_at==HEAD) + MAPAS/INDEX.md +
+HISTORICO-DESMONTAGEM.md retroativo (12 ondas com símbolos→destino→commit→prova).
+Onda 1 (3ª cópia goal_start → SSOT error-envelope) fica na fila do flow 3464.
+
 ## Reavaliação — diretriz ESCOTEIRO-ONDA (docs/régua), 2026-11-07
 
 Owner AGENTS local: emenda à cláusula de maratona — ondas densas executam A
