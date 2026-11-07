@@ -8,6 +8,8 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- 2026-11-07 — Preserva `PAINEL-DE-FERRAMENTAS` e `PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL` no PLAYBOOK a partir de uma fonte versionada que acompanha o clone.
+
 - 2026-11-06 — Faxina das dívidas estacionadas do dia (Trilho `.agents/PLAN-TASKS/2026-11-06-faxina-dividas-estacionadas.md`, flow 3171): novo workflow `workflow/fechamento-goal-worktree-compartilhado/` 1.0.0 (pacote 6 irmãos dex.workflow.v1; fiscal `check-workflow.py` OK, `check-schemas.py` 0 findings) capturando a receita do flow 3086 — review estrutural cobre o COLETADO do worktree vivo (`reviewed_targets` superconjunto de `flow.changed_files`), commit seletivo por proveniência e fechamento de coerência com a janela irmã via receipt real dela. Dívidas locais pagas no mesmo corte (superfícies `.agents/` gitignored): 37/37 espelhos dex-memoria COMMITTED (log `.agents/receipts/2026-11-06-espelhos-lote.log`), resíduo `.code-review-graph/` raiz removido com MANIFEST na LIXEIRA, ledger `PENDENTES.md` VALIDO com as 3 pendências abertas auditadas (todas de decisão humana, roteadas), 11 seções 5-campos no GATILHOS-VIVOS (15 campos E SE??), rota absoluta do fulltext clean-code no SKILL global do oráculo + fonte canônica no AprendizadoConsultado (commit lá `499ed2bb`, pathspec seletivo). Ressalva ER-04: procedure literal `grep -c E.se` (case-sensitive) não casa o molde "E SE??" da casa; contagem provada com `rg -c 'E SE\?\?|E se\?\?'` = 15 ≥ 15.
 
 - 2026-11-06 — Atualizacao de frota em a8f90e0: corrige a cobertura anunciada por `spt-kit/preflight.mjs --schema` para S00..S10; S10 ja era executado. Fixture existente `plan-objeto.md` confirma rejeicao causal; provas em `.agents/receipts/frota-20261106/`.

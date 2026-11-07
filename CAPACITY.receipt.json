@@ -1,5 +1,12 @@
 {
   "schema": "dex.capacity.snapshot.v1",
+  "reavaliacao_playbook_localizadores": {
+    "date": "2026-11-07",
+    "scope": ["tools/playbook/playbook-sources.txt", "docs/PLAYBOOK-RULES.md", "docs/INDEX.md", "PLAYBOOK.md", "PLAYBOOK.index.json", ".gitattributes", "CHANGELOG.md"],
+    "delta": "Fonte versionada dos dois localizadores publicados no PLAYBOOK, com rota do painel para docs/INDEX.md entregue no Git.",
+    "evidence": ["python -B tools/playbook/generate-playbook.py --repo . --check", "python -B tools/playbook/generate-playbook.py --repo . --check-sent"],
+    "limits": ["As fontes locais opcionais continuam fora da entrega."]
+  },
   "reavaliacao_preflight_schema_s10": {
     "date": "2026-11-06",
     "scope": ["spt-kit/preflight.mjs", "CHANGELOG.md"],

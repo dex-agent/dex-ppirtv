@@ -4,8 +4,8 @@ description: "Regras de decisao e procedimentos deste projeto - projecao gerada 
 type: playbook
 generated_by: "tools/playbook/generate-playbook.py"
 authority: derived_projection
-sources_revision: "sha256:281b9623e59fbb3ab0c1314d36ccbfeec0781d00364bcb5342a87fbc933eb1e9"
-sent_revision: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+sources_revision: "sha256:eb3fd8dbf8186fdca9c96793cb83f19310a6d8323fc2a9e52f3703a11f9be422"
+sent_revision: "sha256:c3fe3900353785713ca9fdb1d0ff4a840d2eade60eadca73b9a4ac228bd6dc0f"
 do_not_edit: true
 ---
 # Playbook - dex-PPIRTV
@@ -20,6 +20,28 @@ Ativar trava de commit: `git config core.hooksPath tools/playbook/hooks`.
 Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 ## Regras de decisao (plaquinhas)
+
+### Painel de Ferramentas
+
+- Localizador: `PAINEL-DE-FERRAMENTAS`
+- Gatilho: - Gatilho: na retomada e antes de implementar, consulte as ferramentas e rotas de conhecimento já disponíveis para o projeto.
+- Extrato: - `PAINEL-DE-FERRAMENTAS`
+- Rotas (nomes, na ordem):
+  - Abra [o índice de documentação](INDEX.md) para localizar fe...
+  - No ambiente de trabalho, consulte o painel local em `AGENTS...
+- Fonte: `docs/PLAYBOOK-RULES.md#L3-L8`
+- Selo: `pb-72414c9b`
+
+### Documentação publicada e localizável
+
+- Localizador: `PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL`
+- Gatilho: - Gatilho: ao publicar guia, FAQ, runbook ou contrato explicativo, confira se o destinatário consegue encontrá-lo.
+- Extrato: - `PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL`
+- Rotas (nomes, na ordem):
+  - Vincule o documento no README, no índice de documentação e...
+  - Valide a busca pelo título ou localizador e confira os link...
+- Fonte: `docs/PLAYBOOK-RULES.md#L9-L13`
+- Selo: `pb-e48a5b0f`
 
 ### Regras locais
 
@@ -83,6 +105,7 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 | caminho | sha256 | Enviado? |
 | --- | --- | --- |
+| `docs/PLAYBOOK-RULES.md` | `3aebb8df98b19a4c1042973c59e14b0a8cfc728777839caa2f2c40c80e76f92c` | sim |
 | `AGENTS.md` | `a80d3741c273d59ca5fd9dfa70648f245553a086155dffa9af1e7d8e80f73015` | nao |
 | `.agents/napkin.md` | `fba7a9ec155e9421a227aa9e6459511f9ee4bc076bb1256e0af089acdf43cc1c` | nao |
 | `.agents/PLAN-TASKS/ACTIVE.md` | `528091d38293c9a950527ad7cb35b02cc49dc2e77c34fc58ccc683f444a05a38` | nao |
