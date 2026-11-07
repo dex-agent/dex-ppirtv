@@ -953,5 +953,32 @@
     "limits": [
       "A projecao PLAYBOOK continua dependendo de fontes .agents locais: drift entre maquinas e inerente ate a fonte .agents viajar ou sair da projecao (fora deste corte)"
     ]
+  },
+  "reavaliacao_issue10_verdict_diagnostico": {
+    "date": "2026-11-07",
+    "scope": [
+      "src/spt-traceability.ts",
+      "src/flow-engine.ts",
+      "tests/spt-verdict-coverage-diagnostics.test.ts",
+      "docs/architecture/flow-engine-evolution.json",
+      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+      "workflow/manutencao-iterativa-com-evidencia/WORKFLOW.md",
+      "workflow/manutencao-iterativa-com-evidencia/CHANGELOG.md"
+    ],
+    "delta": "Issue #10 rotas A+B: SPT_V3_CRITERION_COVERAGE_REQUIRED detalha por criterio (proof_not_passed com evaluation literal / no_criterion_proof com rota); goal_status expoe spt_contract_version+spt_traceability_present; re-bind reata traceability de orfao. Camping EXCEPTION urgent_hotfix com SHRINK-material embutido: gate SPT v3 do verdict extraido INTEIRO p/ assertSptV3PositiveVerdictCoverage (engine -6 linhas, -2 decisions; missingCriterionCoverage vira wrapper). Workflow pacote 1.0.3: regua anti-escoteiro-minusculo no passo 6 + Meta-analise (cura finding fiscal).",
+    "evidence": [
+      ".agents/receipts/2026-11-07-issue10-baseline.log",
+      "docs/architecture/flow-engine-evolution.json"
+    ],
+    "observed": {
+      "red_baseline": "4 failed em 25275b0",
+      "green": "4 passed",
+      "camping": "check:flow-engine PASS mode EXCEPTION reasons=[]",
+      "suite": "ver fechamento (check completo apos CAPACITY)"
+    },
+    "limits": [
+      "Rota C da issue (re-bind com contrato diferente) permanece pendencia do contrato de idempotencia",
+      "Onda densa EST-20261105-ONDA-DENSA-VERDICT-LEARNING segue pendente: proximo bloco de decomposicao (compromisso 2026-11-07)"
+    ]
   }
 }

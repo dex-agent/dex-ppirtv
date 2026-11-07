@@ -1,3 +1,4 @@
+- 2026-11-07 — 1.0.3: régua anti-escoteiro-minúsculo no passo 6 (contar cluster antes de extrair; fix declara EST-* na mesma sessão; Trilho de decomposição extrai responsabilidade inteira com Onda 0; dívida preterida por 2+ blocos vira o próximo bloco) + gotcha novo + seção Meta-analise questionadora (cura finding [meta-analise] do fiscal check-workflow). Origem: correção do dono 2026-11-05 + auto-análise anti-autossabotagem 2026-11-07.
 # CHANGELOG — manutencao PPIRTV
 
 - 2026-11-02 — versao local1.0.1: retrofit seletivo global1.2.0, dependencias/preflight e contato owner; regua/escopo preservados por hash. Hub/Amaze delegam simulacao ao owner, mantendo request_id legado; RED5falhas/6 -> GREEN29/29 no conjunto. Sem produto/flows.

@@ -803,6 +803,37 @@
         "tests/engine.test.ts",
         "tests/mining-policy.test.ts"
       ]
+    },
+    {
+      "id": "FE-2026-11-07-ISSUE10-VERDICT-DIAGNOSTICO",
+      "date": "2026-11-07",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-07-issue10-verdict-diagnostico.md",
+      "responsibility": "Diagnostico de cobertura de criterios SPT v3 (criterionCoverageDiagnostics pura em src/spt-traceability.ts consumida pelo verdict; missingCriterionCoverage vira wrapper fino sem duplicacao) + exposicao de spt_contract_version/spt_traceability_present no goal_status + cura de flow orfao de traceability no re-bind. Issue #10 (rotas A+B; rota C fica registrada como pendencia do contrato de idempotencia).",
+      "owner": "$oraculo-refatoracao",
+      "mode": "EXCEPTION",
+      "exception_reason": "urgent_hotfix",
+      "rollback": "revert do commit do corte (tests + src voltam ao baseline 25275b0); gate SPT v3 volta inline ao goalVerdict e o erro de cobertura volta a listar apenas missing=",
+      "expires": "2026-11-14",
+      "red_evidence": "tests/spt-verdict-coverage-diagnostics.test.ts::prova citada com passed=false: erro traz criterion_id, marca proof_not_passed e a evaluation literal",
+      "red_base_blob": "36e337c5fd393fa7448660cebcc29f4008118306",
+      "red_observed_failure": "4 testes falham no baseline: erro de cobertura sem proof_not_passed/no_criterion_proof; goal_status sem spt_contract_version/spt_traceability_present; re-bind deixa orfao sem traceability (receipt .agents/receipts/2026-11-07-issue10-baseline.log)",
+      "red_command": "npx vitest run tests/spt-verdict-coverage-diagnostics.test.ts -t \"prova citada com passed=false: erro traz criterion_id, marca proof_not_passed e a evaluation literal\"",
+      "base_blob": "36e337c5fd393fa7448660cebcc29f4008118306",
+      "head_blob": "ba4bd883c8eab4d37e0dc4953a7fa741da4991a8",
+      "destination_module": "src/spt-traceability.ts",
+      "consumers": [
+        "src/flow-engine.ts"
+      ],
+      "evidence": [
+        "tests/spt-verdict-coverage-diagnostics.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/spt-verdict-coverage-diagnostics.test.ts": "prova citada com passed=false: erro traz criterion_id, marca proof_not_passed e a evaluation literal"
+      },
+      "behavior_preserved_by": "RED 4/4 no baseline 25275b0 (receipt .agents/receipts/2026-11-07-issue10-baseline.log) -> GREEN 4/4; mensagem de erro preserva prefixo SPT_V3_CRITERION_COVERAGE_REQUIRED e lista missing= (detalhe vem depois de ponto-e-virgula); aprovacao/STALE/declarative inalterados; suite completa conferida no fechamento",
+      "anti_escoteiro": "corte de fix com seam seguro: funcao nova em modulo JA extraido (spt-traceability.ts, cluster de politica SPT morando fora desde 66ac042); onda densa EST-20261105-ONDA-DENSA-VERDICT-LEARNING segue pendente e e o proximo bloco de decomposicao (compromisso 2026-11-07)",
+      "changelog_marker": "FE-2026-11-07-ISSUE10-VERDICT-DIAGNOSTICO",
+      "architecture_marker": "FE-2026-11-07-ISSUE10-VERDICT-DIAGNOSTICO"
     }
   ]
 }

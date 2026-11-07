@@ -109,9 +109,8 @@ import {
   assertCriterionProofRevisionCurrent,
   criterionProjection,
   evidenceRequirementProjection,
-  missingCriterionCoverage,
+  assertSptV3PositiveVerdictCoverage,
   qualifyCriterionProof,
-  staleSelectedCriterionProofPaths,
   taskProjection,
   traceabilityFromContract
 } from "./spt-traceability.js";
@@ -700,6 +699,12 @@ export class FlowEngine {
     if (!previousBinding) {
       flow.spt_contract_version = validation.contract_version ?? undefined;
       flow.spt_traceability = validation.traceability;
+    } else if (!flow.spt_traceability && validation.contract_version === 3) {
+      // Issue #10: cura de flow orfao — re-bind do mesmo SPT v3 reata a
+      // traceability perdida (sem isso o flow ficava cego para sempre: o
+      // criterion_proof exigia traceability que nenhuma rota regravava).
+      flow.spt_contract_version = flow.spt_contract_version ?? validation.contract_version;
+      flow.spt_traceability = validation.traceability;
     }
     await freezeGitHeadBase(flow, boundEnvelope.workspace);
     assertNoSecretLikeItems(parsedValidationItems(validation), "spt_validation");
@@ -1065,6 +1070,10 @@ export class FlowEngine {
       can_retry_verdict: blockers.length === 0,
       current_verdict: currentVerdict,
       goal_envelope: flow.goal_binding?.envelope ?? null,
+      // Issue #10: diagnostico de binding SPT visivel no status — sem isso o
+      // consumidor nao distingue flow v3 com traceability de flow orfao.
+      spt_contract_version: flow.spt_contract_version ?? null,
+      spt_traceability_present: Boolean(flow.spt_traceability),
       aliases: checklistStatus.aliases,
       display: {
         ...checklistStatus.display,
@@ -2708,25 +2717,10 @@ export class FlowEngine {
     }
     const positiveVerdict = input.status === "pronto" || input.status === "pronto_com_ressalvas";
     if (positiveVerdict && flow.spt_contract_version === 3) {
-      if (!flow.spt_traceability) {
-        throw new Error("SPT_V3_TRACEABILITY_MISSING: flow is bound to v3 without its canonical traceability map");
-      }
-      const staleCriterionProofPaths = await staleSelectedCriterionProofPaths(
-        flow.evidence,
-        evidenceIds,
-        flow.goal_binding!.envelope.workspace
-      );
-      if (staleCriterionProofPaths.length > 0) {
-        throw new Error(
-          `SPT_V3_EVIDENCE_STALE: selected criterion proof revision differs from current files; paths=${staleCriterionProofPaths.join(",")}`
-        );
-      }
-      const uncoveredCriteria = missingCriterionCoverage(flow.spt_traceability, flow.evidence, evidenceIds);
-      if (uncoveredCriteria.length > 0) {
-        throw new Error(
-          `SPT_V3_CRITERION_COVERAGE_REQUIRED: positive verdict requires passed evidence for every minimum criterion; missing=${uncoveredCriteria.join(",")}`
-        );
-      }
+      // FE-2026-11-07-ISSUE10-VERDICT-DIAGNOSTICO: gate SPT v3 do verdict
+      // (traceability + stale + cobertura com diagnostico por criterio)
+      // extraido inteiro para a politica SPT em spt-traceability.ts.
+      await assertSptV3PositiveVerdictCoverage(flow, evidenceIds);
     }
     let fiscalFlow = await withCurrentImplementationFingerprint(await this.store.loadFlow(input.flow_id));
     // SPT gate-integrity-hardening-3 (R6): o diff Git entra como colaborador;

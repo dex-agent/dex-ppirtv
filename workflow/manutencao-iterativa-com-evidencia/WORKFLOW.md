@@ -1,11 +1,11 @@
 ---
 schema: dex.workflow.v1
 slug: manutencao-iterativa-com-evidencia
-version: 1.0.2
+version: 1.0.3
 status: ativo
 owner: executor PPIRTV; owner do comportamento; reviewer
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-07
 origem: template global manutencao-iterativa-com-evidencia@1.1.0
 ---
 
@@ -76,7 +76,8 @@ python -B -m unittest discover -s workflow/manutencao-iterativa-com-evidencia/te
    Verificação: comportamento requerido passa, e falhas/limites não foram omitidos.
 
 6. Refatore o bloco para responsabilidades coesas, interfaces claras, baixo acoplamento e reuso adequado, preservando o comportamento aprovado. Reaplique a decisão reutilizar/adaptar/criar se a implementação revelou contrato incompatível. Repita por blocos; não encerre somente porque a primeira versão funciona.
-   Verificação: testes de comportamento continuam cobrindo o contrato; a abstração tem nome, fronteira e dependências justificadas.
+   **Anti-escoteiro-minúsculo** (régua do dono 2026-11-05, cláusula de maratona do `AGENTS.md`): a menor fatia coesa NÃO é 1 função isolada de um cluster. Antes de extrair, conte o cluster (menções/funções/tipos da MESMA responsabilidade): extração em corte de fix extrai o que o seam segura E declara a dívida da onda densa (id `EST-*`, owner, quando) na mesma sessão; Trilho dedicado de decomposição extrai a responsabilidade INTEIRA (cluster + tipos + suite de rede, rito Onda 0: mapa símbolo→cluster→suite→destino). Meio-cluster é proibido nas duas modalidades. Dívida declarada que nunca vence é autossabotagem por adiamento: se mais de um bloco de fix passou na frente da mesma `EST-*`, o próximo bloco é a onda — escalone ao owner.
+   Verificação: testes de comportamento continuam cobrindo o contrato; a abstração tem nome, fronteira e dependências justificadas; o corte declara escoteiro-com-dívida (`EST-*`) ou onda densa (mapa Onda 0 no receipt).
 
 7. Rode novamente os mesmos testes e as verificações de segurança/qualidade aplicáveis. Registre comparação antes/depois, revisão do diff e comportamento preservado. Não interprete mera queda de CC como benefício e não deixe aumento da soma vetar a abstração.
    Verificação: reteste passa sob o mesmo conjunto de casos; diferenças têm explicação ou ficam como pendência explícita.
@@ -93,8 +94,19 @@ python -B -m unittest discover -s workflow/manutencao-iterativa-com-evidencia/te
 11. Se o trabalho nasceu de instância local de workflow, registre linhagem do template e versão, adaptações locais e evidência do que funcionou. A instância é editável: ajuste local não é drift inválido por si só. Proponha melhoria local ao template somente quando houver ganho real evidenciado, generalização cross-repo, remoção de dados específicos, compatibilidade com schema, revisão e validação. Atualização do template pede merge/migração consciente na instância, mantendo histórico e rollback; nunca sobrescreva customizações automaticamente.
     Verificação: cada mudança está classificada como particularidade local ou melhoria promovível; qualquer promoção tem diff, justificativa, validação e versão/changelog global; o template atualizado não apagou alterações locais.
 
+## Meta-analise questionadora
+
+- quando: ao fechar qualquer corte que refatore ou extraia código (passo 6), e ao revisar corte alheio que tenha extraído.
+- perguntas: E SE?? a extração tirou só 1 função de um cluster de 6+ (contar menções — meio-cluster é proibido; declarar EST-* ou extrair a responsabilidade inteira) · E SE?? a dívida EST-* já foi preterida por 2+ blocos de fix (adiamento é autossabotagem — o próximo bloco é a onda, escalar ao owner) · E SE?? o corte diz "SHRINK" mas não mudou teste (comportamento preservado exige prova, não etiqueta) · E SE?? o destino da extração é módulo novo de 1 função (preferir módulo já extraído da mesma responsabilidade; novo módulo nasce com cluster mínimo viável).
+- oraculo: $oraculo-refatoracao (owner evolutivo do monolito) + $dex-anti-autossabotagem (adiamento estrutural) + $guarda-plaquinhas (drift da régua).
+- impacto: sem esta régua, 13 visitas extraíram 26 símbolos minúsculos (diagnóstico do Trilho monolito-maratona) e a dívida densa EST-20261105-ONDA-DENSA-VERDICT-LEARNING foi preterida por 3 blocos seguidos com a dívida "declarada".
+- retorno: extrações que fecham eixos de mudança inteiros (menos revisitas ao mesmo recorte), dívida de decomposição com vencimento real, monolito encolhendo por responsabilidade e não por função.
+- registro: régua nasce da correção do dono 2026-11-05 (memória regua-do-dono-extracao-densa-maratona-nao-coesa-min) + cláusula de maratona do AGENTS.md l.121-150 + auto-análise anti-autossabotagem 2026-11-07 (Explore: última onda densa 9797016 de 10-26; 5 funções do cluster learning ainda na fachada).
+- avanco: medir no fechamento de cada corte — símbolos extraídos vs tamanho do cluster de origem; a onda EST-20261105 vira o próximo bloco de decomposição com GO do dono (compromisso 2026-11-07).
+
 ## Gotchas
 
+- Extração de 1 função de um cluster de muitas → tropeço: escoteiro-minúsculo com cara de progresso; Faça em vez disso: conte o cluster (menções/funções/tipos), declare a dívida `EST-*` da onda densa na MESMA sessão (corte de fix) ou extraia a responsabilidade inteira com mapa Onda 0 (Trilho de decomposição). Dívida preterida por 2+ blocos → o próximo bloco é a onda.
 - Achado por similaridade sintática → compare comportamento e contrato antes de reutilizar; texto parecido não prova equivalência.
 - Busca vazia → declare somente “nenhum candidato no escopo/termos consultados”; não declare inexistência universal.
 - Nenhum consumidor atual → reuso potencial ainda pode ser intenção arquitetural legítima; não alegue reuso efetivo sem evidência.

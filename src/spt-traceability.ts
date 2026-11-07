@@ -80,16 +80,49 @@ export function missingCriterionCoverage(
   evidence: Evidence[],
   selectedEvidenceIds: string[]
 ): string[] {
+  return criterionCoverageDiagnostics(traceability, evidence, selectedEvidenceIds).map(
+    (diagnostic) => diagnostic.criterion_id
+  );
+}
+
+// Issue #10 (frota travada em tentativa-e-erro): o verdict cego listava apenas
+// os criterion_ids descobertos. O diagnostico por criterio diz POR QUE cada
+// um esta descoberto — prova citada reprovada (com a evaluation literal) ou
+// nenhuma prova de criterio citada — para o consumidor corrigir em 1 rodada.
+export type CriterionCoverageDiagnostic = {
+  criterion_id: string;
+  reason: string;
+};
+
+export function criterionCoverageDiagnostics(
+  traceability: SptV3Traceability,
+  evidence: Evidence[],
+  selectedEvidenceIds: string[]
+): CriterionCoverageDiagnostic[] {
   const selected = new Set(selectedEvidenceIds);
-  const covered = new Set(
+  const passedCriteria = new Set(
     evidence
       .filter((item) => selected.has(item.evidence_id) && item.criterion_proof?.passed === true)
       .map((item) => item.criterion_proof!.criterion_id)
   );
-  return traceability.requirements
-    .flatMap((requirement) => requirement.criteria)
-    .map((criterion) => criterion.id)
-    .filter((criterionId) => !covered.has(criterionId));
+  const diagnostics: CriterionCoverageDiagnostic[] = [];
+  for (const requirement of traceability.requirements) {
+    for (const criterion of requirement.criteria) {
+      if (passedCriteria.has(criterion.id)) continue;
+      const citedProofs = evidence.filter(
+        (item) =>
+          selected.has(item.evidence_id)
+          && item.criterion_proof?.criterion_id === criterion.id
+      );
+      const reason = citedProofs.length === 0
+        ? "no_criterion_proof: nenhuma evidencia citada carrega criterion_proof para este criterio (anexe declarative_proof ou criterion_proof e cite os evidence_ids no verdict)"
+        : `proof_not_passed: ${citedProofs
+            .map((item) => `${item.evidence_id} (${item.criterion_proof?.evaluation ?? "sem evaluation"})`)
+            .join("; ")}`;
+      diagnostics.push({ criterion_id: criterion.id, reason });
+    }
+  }
+  return diagnostics;
 }
 
 export async function assertCriterionProofRevisionCurrent(
@@ -99,6 +132,43 @@ export async function assertCriterionProofRevisionCurrent(
   const stalePaths = await staleRevisionPaths(proof, authorizedWorkspace);
   if (stalePaths.length > 0) {
     throw new Error(`SPT_V3_EVIDENCE_STALE: criterion proof revision differs from current files; paths=${stalePaths.join(",")}`);
+  }
+}
+
+// FE-2026-11-07-ISSUE10-VERDICT-DIAGNOSTICO (SHRINK): o gate SPT v3 do
+// verdict positivo inteiro (traceability presente + provas citadas frescas +
+// cobertura minima por criterio COM diagnostico do por que cada criterio esta
+// descoberto — issue #10) sai da fachada flow-engine e mora com o resto da
+// politica SPT. Erro que ensina: proof_not_passed carrega a evaluation
+// literal; no_criterion_proof nomeia a rota de correcao.
+export async function assertSptV3PositiveVerdictCoverage(
+  flow: {
+    spt_traceability?: SptV3Traceability;
+    evidence: Evidence[];
+    goal_binding?: { envelope: { workspace: string } };
+  },
+  evidenceIds: string[]
+): Promise<void> {
+  if (!flow.spt_traceability) {
+    throw new Error("SPT_V3_TRACEABILITY_MISSING: flow is bound to v3 without its canonical traceability map");
+  }
+  const staleCriterionProofPaths = await staleSelectedCriterionProofPaths(
+    flow.evidence,
+    evidenceIds,
+    flow.goal_binding!.envelope.workspace
+  );
+  if (staleCriterionProofPaths.length > 0) {
+    throw new Error(
+      `SPT_V3_EVIDENCE_STALE: selected criterion proof revision differs from current files; paths=${staleCriterionProofPaths.join(",")}`
+    );
+  }
+  const uncoveredCriteria = missingCriterionCoverage(flow.spt_traceability, flow.evidence, evidenceIds);
+  if (uncoveredCriteria.length > 0) {
+    const diagnostics = criterionCoverageDiagnostics(flow.spt_traceability, flow.evidence, evidenceIds);
+    const details = diagnostics.map((diagnostic) => `${diagnostic.criterion_id}: ${diagnostic.reason}`).join("; ");
+    throw new Error(
+      `SPT_V3_CRITERION_COVERAGE_REQUIRED: positive verdict requires passed evidence for every minimum criterion; missing=${uncoveredCriteria.join(",")}; details=[${details}]`
+    );
   }
 }
 

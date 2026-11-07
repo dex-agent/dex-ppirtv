@@ -1,3 +1,17 @@
+## Reavaliação — issue #10 verdict que ensina, 2026-11-07
+
+Owner spt-traceability/flow-engine: rotas A+B da issue #10 — erro de cobertura
+detalha por critério (`proof_not_passed` com evaluation literal /
+`no_criterion_proof` com rota de correção); `goal_status` expõe
+`spt_contract_version`/`spt_traceability_present`; re-bind do mesmo SPT v3
+reata traceability de flows órfãos. Camping `check:flow-engine` PASS
+(EXCEPTION urgent_hotfix com extração embutida: gate SPT v3 do verdict saiu
+inteiro para `assertSptV3PositiveVerdictCoverage`; engine −6 linhas, −2
+decisões; RED 4/4 → GREEN 4/4, receipt baseline). Pacote
+`manutencao-iterativa-com-evidencia` 1.0.3: régua anti-escoteiro-minúsculo
+(passo 6) + Meta-análise (cura finding do fiscal). Escopo: src (2) + teste +
+arquitetura (2) + workflow (2).
+
 # CAPACITY — Mapa de Capacidades dex-PPIRTV
 
 > Fotografia estática gerada pela skill `dex-mapa-capacidades` no corte

@@ -404,3 +404,7 @@ fica tabuada em PENDENTES (PPIRTV-FISCAL-MATERIALIDADE-LEXICAL-261102).
 - Update trigger: the same diff that touches `src/flow-engine.ts`.
 - Removal condition: only after another deterministic project gate produces
   all exclusive evidence above and all documented consumers migrate.
+
+## FE-2026-11-07-ISSUE10-VERDICT-DIAGNOSTICO — SHRINK (gate SPT v3 do verdict inteiro)
+
+Extração do bloco coeso completo `l.2710-2729` do `goalVerdict` (traceability presente + provas citadas frescas + cobertura mínima com diagnóstico por critério — issue #10) para `assertSptV3PositiveVerdictCoverage` em `src/spt-traceability.ts`, o módulo da política SPT (desde 66ac042). `missingCriterionCoverage` vira wrapper fino de `criterionCoverageDiagnostics` (zero duplicação). No mesmo corte (cola mínima): `goal_status` expõe `spt_contract_version`/`spt_traceability_present` e o re-bind do mesmo SPT v3 reata `spt_traceability` de flows órfãos. Anti-escoteiro: bloco de responsabilidade inteira, não símbolo solto; a onda densa EST-20261105-ONDA-DENSA-VERDICT-LEARNING segue como próximo bloco de decomposição.
