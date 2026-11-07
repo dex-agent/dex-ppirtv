@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   advanceGatesPending,
   fiscalBlockedAction,
+  goalStartRequiredAction,
   inputShapeEnvelope,
   normalizeFiscalBlockedMessage,
+  recoverTraceabilityRequiredAction,
   unblockFor,
   validateSequenceSteps,
   type SequenceSchemaIndex
@@ -324,6 +326,35 @@ describe("sequence oracle validates taught steps against live schemas", () => {
         detail: { type: "string", enum: ["lean", "compact", "full"] }
       }
     },
+    // P1 do workflow revisao-adversarial: index agora cobre goal_start e
+    // spt_validate (required do schema VIVO do server — goalEnvelopeSchema).
+    // Antes o index nao cobria essas tools e o defeito "args ensinados sem
+    // evidence_required" nascia verde (falso-verde programado, P1-1 do
+    // contrato). Manter sincronizado com src/server.ts ao evoluir o schema.
+    goal_start: {
+      required: ["workspace", "spt_path", "objective", "idempotency_key", "evidence_required", "source"],
+      properties: {
+        workspace: { type: "string" },
+        spt_path: { type: "string" },
+        objective: { type: "string" },
+        flow_id: { type: "string" },
+        idempotency_key: { type: "string" },
+        evidence_required: { type: "boolean" },
+        required_evidence: { type: "array" },
+        requested_verdict_policy: { type: "string" },
+        source: { type: "string" },
+        risk_level: { type: "string" },
+        mode: { type: "string" }
+      }
+    },
+    spt_validate: {
+      required: ["workspace", "spt_path"],
+      properties: {
+        workspace: { type: "string" },
+        spt_path: { type: "string" },
+        objective: { type: "string" }
+      }
+    },
     evidence_add: {
       required: ["flow_id", "title"],
       properties: {
@@ -387,6 +418,45 @@ describe("sequence oracle validates taught steps against live schemas", () => {
       [{ order: 2, tool: "goal_meeting_close", args: { flow_id: "f1", meeting_id: "<meeting_id retornado por goal_meeting_open>", decision: "ok" } }],
       schemas
     );
+    expect(errors).toEqual([]);
+  });
+
+  // Vacina do P1 do workflow revisao-adversarial (6 lentes, 2026-11-07):
+  // sequencia de goal_start SEM evidence_required (a forma que o schema vivo
+  // rejeitava com PPIRTV_INPUT_INVALID) e REPROVADA aqui; os builders curados
+  // em error-envelope.ts passam. RED documentado: esta e a forma que esteve
+  // em producao no commit 052304a (passo 3 do TRACEABILITY_MISSING e
+  // goalStartRequiredAction antigo).
+  it("REPROVA sequencia de goal_start sem evidence_required (forma do P1, forma antiga)", () => {
+    const oldShape = [
+      { order: 1, tool: "goal_status", args: { flow_id: "f1", detail: "full" } },
+      { order: 2, tool: "spt_validate", args: { workspace: "<workspace>", spt_path: "<spt_path>", objective: "<objective>" } },
+      {
+        order: 3,
+        tool: "goal_start",
+        args: {
+          workspace: "<workspace>",
+          spt_path: "<spt_path>",
+          objective: "<objective>",
+          idempotency_key: "<idempotency_key>",
+          source: "<source>",
+          flow_id: "f1"
+        }
+      }
+    ];
+    const errors = validateSequenceSteps(oldShape, schemas);
+    expect(errors.some((error) => error.problem.includes("evidence_required"))).toBe(true);
+  });
+
+  it("APROVA recoverTraceabilityRequiredAction contra o schema vivo (com evidence_required)", () => {
+    const action = recoverTraceabilityRequiredAction("flow-1");
+    const errors = validateSequenceSteps(action.required_tool_sequence ?? [], schemas);
+    expect(errors).toEqual([]);
+  });
+
+  it("APROVA goalStartRequiredAction contra o schema vivo (com evidence_required)", () => {
+    const action = goalStartRequiredAction("flow-1");
+    const errors = validateSequenceSteps(action.required_tool_sequence ?? [], schemas);
     expect(errors).toEqual([]);
   });
 });

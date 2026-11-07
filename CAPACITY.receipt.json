@@ -243,9 +243,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "fe3dc2144c78e483931761d2be263249c08dd84a",
+  "head": "052304a90279fbd6919bb784b769bb7729cca973",
   "tree_hash": null,
-  "generated_at": "2026-11-05T20:48:37.000Z",
+  "generated_at": "2026-11-07T20:19:51.213117+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -264,10 +264,12 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 776,
+    "passed": 813,
     "failed": 0,
     "skipped": 4,
-    "files": 59
+    "files": 59,
+    "total": 817,
+    "command": "npx vitest run (pos corte envelope-evidence-required: +3 testes vacina error-envelope)"
   },
   "tools_count": 32,
   "capabilities": [
@@ -1007,5 +1009,8 @@
       "FE-DEBT-006 aberta ate a onda densa EST-20261105 (GO do dono)",
       "Emenda de proveniencia do modulo (11d5eb0) vive so no MD (ledger imutavel)"
     ]
-  }
+  },
+  "observacoes": [
+    "2026-11-07 corte envelope-executavel-evidence-required: builders SSOT + vacina; +3 testes (813/817)."
+  ]
 }

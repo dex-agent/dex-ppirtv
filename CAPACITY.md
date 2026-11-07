@@ -1,3 +1,19 @@
+## Reavaliação — P1 workflow revisao-adversarial evidence_required, 2026-11-07
+
+Owner error-envelope/server: builders `recoverTraceabilityRequiredAction` +
+`goalStartRequiredAction` movidos para `src/error-envelope.ts` (SSOT curado:
+`evidence_required` nos args ensinados, origem de leitura no passo 1); server
+consome sem duplicata inline (bloco TRACEABILITY_MISSING e GOAL_NAO_ATIVO).
+Vacina: schema-index do `validateSequenceSteps` cobre `goal_start` (required
+vivo: workspace/spt_path/objective/idempotency_key/evidence_required/source) e
+`spt_validate`; RED documentado (forma do P1 REPROVADA em teste) + GREEN dos
+builders — 22/22 no arquivo. flow-engine.ts INTOCADO (3a copia l.6087 →
+FE-DEBT-006; camping NOT_APPLICABLE). Escopo: src/error-envelope.ts,
+src/server.ts, tests/error-envelope.test.ts, CHANGELOG, CAPACITY (2),
+FLOW_ENGINE_EVOLUTION.md, Trilho novo. Docs de fidelidade do corte anterior
+corrigidas (narrativa cappedCoverageDetails/missingCriterionCoverage; 810/814;
+2710-2730; 11d5eb0 no corpo; headings ###).
+
 ## Reavaliação — issue #10 review-fixes (+2ª revisão 9 lentes), 2026-11-07
 
 Owner engine/server: correções da revisão adversarial (6 lentes) — envelope
@@ -23,7 +39,7 @@ regex do misto ancorada no id real; jornada da cura (re-bind → prova →
 verdict) provada no teste do órfão. Delta medido: receipt goal_start
 5173→5229 chars (56 bytes dos 2 escalares de binding) — teto do teste de
 orçamento lean 5200→5300 com bump DECLARADO e comentário dono-do-gasto;
-suíte 809/814 (4 skip preexistentes). Docs: contrato separou `SPT_INVALIDO`
+suíte 810/814 (4 skip preexistentes; 809 era snapshot pre-6o-it — corrigido pela revisao do workflow). Docs: contrato separou `SPT_INVALIDO`
 (rota spt_validate); header corte anterior SHRINK→EXCEPTION (drift
 MD×ledger); FLOW_ENGINE_EVOLUTION com emenda da 2ª revisão. Refutado:
 `debt.responsibility === declaration.responsibility` é exigência do

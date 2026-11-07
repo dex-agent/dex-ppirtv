@@ -35,8 +35,10 @@ import {
   INPUT_FIELD_DESCRIPTIONS,
   advanceGatesPending,
   fiscalBlockedAction,
+  goalStartRequiredAction,
   inputShapeEnvelope,
   normalizeFiscalBlockedMessage,
+  recoverTraceabilityRequiredAction,
   unblockFor
 } from "./error-envelope.js";
 import { registerPpirtvTool } from "./mcp/tool-effects.js";
@@ -1187,7 +1189,9 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
       ...base,
       code: "GOAL_NAO_ATIVO",
       recoverable: true,
-      next_required_action: goalStartRequiredAction(errorContext)
+      next_required_action: goalStartRequiredAction(
+        typeof errorContext?.flow_id === "string" && errorContext.flow_id.length > 0 ? errorContext.flow_id : "<flow_id>"
+      )
     };
   }
   if (/SPT_V2_EXECUTION_MIGRATION_REQUIRED/i.test(message)) {
@@ -1220,44 +1224,12 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
       // reata o mapa canonico) — goal_resume apenas marca last_seen e nao
       // cura; apontar para ele mantinha o consumidor no loop da issue #10.
       recoverable: true,
-      // Revisao adversarial 9 lentes (P1 consenso architect+pragmatico+glm53):
-      // args {flow_id} sozinho nao executa — o schema de goal_start exige o
-      // envelope completo, e idempotency_key NOVA criaria flow duplicado em
-      // vez de reatar. A sequencia ensina a ler a key original em
-      // goal_status.goal_envelope ANTES do re-bind (args conferidos contra o
-      // schema vivo, regra do contrato do envelope).
+      // P1 do workflow revisao-adversarial (6 lentes, 2026-11-07): o passo 3
+      // omite evidence_required — obrigatorio no schema vivo. Builder SSOT em
+      // error-envelope.ts (curado + vacinado por validateSequenceSteps).
       next_required_action:
         code === "SPT_V3_TRACEABILITY_MISSING"
-          ? {
-              type: "recover_bound_spt_traceability",
-              tool: "goal_start",
-              reason: "re-bind com a MESMA idempotency_key do binding original reata o mapa canonico (key nova criaria flow duplicado); recupere-a em goal_status.goal_envelope e reenvie o envelope spt validado",
-              required_tool_sequence: [
-                {
-                  order: 1,
-                  tool: "goal_status",
-                  args: { flow_id: flowId ?? "<flow_id>", detail: "full" },
-                  only_if: "ler goal_envelope (idempotency_key/workspace/spt_path/objective) do binding original"
-                },
-                {
-                  order: 2,
-                  tool: "spt_validate",
-                  args: { workspace: "<workspace>", spt_path: "<spt_path>", objective: "<objective>" }
-                },
-                {
-                  order: 3,
-                  tool: "goal_start",
-                  args: {
-                    workspace: "<workspace>",
-                    spt_path: "<spt_path>",
-                    objective: "<objective>",
-                    idempotency_key: "<mesma lida no passo 1>",
-                    source: "<source>",
-                    flow_id: flowId ?? "<flow_id>"
-                  }
-                }
-              ]
-            }
+          ? recoverTraceabilityRequiredAction(flowId ?? "<flow_id>")
           : {
               type: "attach_bound_criterion_evidence",
               tool: "evidence_add",
@@ -1465,38 +1437,10 @@ export function memoryRequiredErrorAction(flowId: string) {
   };
 }
 
-function goalStartRequiredAction(errorContext?: ToolErrorContext) {
-  const flowId = typeof errorContext?.flow_id === "string" && errorContext.flow_id.length > 0 ? errorContext.flow_id : "<flow_id>";
-  const goalStartArgs = {
-    workspace: "<workspace>",
-    spt_path: "<spt_path>",
-    objective: "<objective>",
-    idempotency_key: "<idempotency_key>",
-    source: "<source>",
-    flow_id: flowId
-  };
-  return {
-    type: "goal_start_required",
-    tool: "goal_start",
-    reason: "wrappers goal_* exigem GOAL oficial iniciado por goal_start; flow_create sozinho nao cria goal_binding",
-    required_tool_sequence: [
-      {
-        order: 1,
-        tool: "spt_validate",
-        args: {
-          workspace: goalStartArgs.workspace,
-          spt_path: goalStartArgs.spt_path,
-          objective: goalStartArgs.objective
-        }
-      },
-      {
-        order: 2,
-        tool: "goal_start",
-        args: goalStartArgs
-      }
-    ]
-  };
-}
+// goalStartRequiredAction e recoverTraceabilityRequiredAction moram no SSOT
+// src/error-envelope.ts (curados com evidence_required e vacinados por
+// validateSequenceSteps no teste de error-envelope) — movidos no corte do P1
+// do workflow revisao-adversarial.
 
 function resourceResult(uri: string, value: unknown) {
   return {

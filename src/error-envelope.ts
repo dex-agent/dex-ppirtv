@@ -569,3 +569,74 @@ export function validateSequenceSteps(
   }
   return errors;
 }
+
+// P1 da revisao adversarial via workflow (2026-11-07, 6 lentes convergentes):
+// as sequencias que ensinam goal_start omitiam evidence_required — obrigatorio
+// no schema vivo (server goalEnvelopeSchema). SSOT: os builders de sequencia de
+// re-bind moram AQUI, exportados, para a vacina (validateSequenceSteps +
+// schema-index com goal_start) fechar a classe "args ensinados que o schema
+// rejeita" — sequencia copiavel com arg errado e falso-verde programado.
+
+/** Args canonicos de goal_start; tudo entre <> vem do goal_envelope lido no passo 1. */
+function goalStartTaughtArgs(flowId: string, originHint: string) {
+  return {
+    workspace: "<workspace>",
+    spt_path: "<spt_path>",
+    objective: "<objective>",
+    idempotency_key: `<idempotency_key ${originHint}>`,
+    evidence_required: "<evidence_required>",
+    source: "<source>",
+    flow_id: flowId
+  };
+}
+
+/** Sequencia de cura de flow orfao de spt_traceability (SPT_V3_TRACEABILITY_MISSING). */
+export function recoverTraceabilityRequiredAction(flowId = "<flow_id>"): NextRequiredAction {
+  return {
+    type: "recover_bound_spt_traceability",
+    tool: "goal_start",
+    reason:
+      "re-bind com a MESMA idempotency_key do binding original reata o mapa canonico (key nova criaria flow duplicado); leia o goal_envelope INTEIRO no passo 1 e reenvie no passo 3 todos os campos entre <> — inclusive evidence_required e source, obrigatorios no schema vivo",
+    required_tool_sequence: [
+      {
+        order: 1,
+        tool: "goal_status",
+        args: { flow_id: flowId, detail: "full" },
+        only_if:
+          "ler goal_envelope COMPLETO do binding original (idempotency_key, workspace, spt_path, objective, evidence_required, source) — o passo 3 reenvia exatamente esses campos"
+      },
+      {
+        order: 2,
+        tool: "spt_validate",
+        args: { workspace: "<workspace>", spt_path: "<spt_path>", objective: "<objective>" }
+      },
+      {
+        order: 3,
+        tool: "goal_start",
+        args: goalStartTaughtArgs(flowId, "lida no passo 1 (mesma do binding original)")
+      }
+    ]
+  };
+}
+
+/** Sequencia de abertura de GOAL oficial (GOAL_NAO_ATIVO) — movida do server, curada com evidence_required. */
+export function goalStartRequiredAction(flowId = "<flow_id>"): NextRequiredAction {
+  return {
+    type: "goal_start_required",
+    tool: "goal_start",
+    reason:
+      "wrappers goal_* exigem GOAL oficial iniciado por goal_start; flow_create sozinho nao cria goal_binding — inclua evidence_required e source, obrigatorios no schema vivo",
+    required_tool_sequence: [
+      {
+        order: 1,
+        tool: "spt_validate",
+        args: { workspace: "<workspace>", spt_path: "<spt_path>", objective: "<objective>" }
+      },
+      {
+        order: 2,
+        tool: "goal_start",
+        args: goalStartTaughtArgs(flowId, "do envelope que voce pretende bindar")
+      }
+    ]
+  };
+}
