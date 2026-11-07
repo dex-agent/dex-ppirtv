@@ -12,6 +12,8 @@ import { PpirtvStore } from "../src/store.js";
 import { exportRedactedDiagnosticBundle } from "../src/diagnostic-bundle.js";
 import type { Flow, LedgerEvent } from "../src/domain.js";
 import { fingerprintReviewedImplementation } from "../src/review-snapshot.js";
+import { validateSequenceSteps } from "../src/error-envelope.js";
+import { SEQUENCE_SCHEMA_INDEX } from "./helpers/sequence-schema-index.js";
 
 let tempRoot: string;
 let engine: FlowEngine;
@@ -5606,6 +5608,35 @@ describe("PPIRTV flow engine", () => {
         can_retry_verdict: false
       }
     });
+  });
+
+  it("T24b FE-DEBT-006 Onda 1: teto terminal ensina goal_start consumindo o SSOT (evidence_required + source) e a sequencia passa no oraculo", async () => {
+    const { flowId, evidenceId } = await startGoalWithEvidence("dex-code:test-teto-terminal-ssot-goal-start", "Teto terminal ensina goal_start pelo SSOT");
+    await engine.updateFlowFacts(flowId, { changed_files: ["src/flow-engine.ts"] });
+    await engine.returnTo({ flow_id: flowId, to: "pensamentos", reason: "regresso fiscal 1" });
+    await engine.returnTo({ flow_id: flowId, to: "pensamentos", reason: "regresso fiscal 2" });
+    await engine.returnTo({ flow_id: flowId, to: "pensamentos", reason: "regresso fiscal 3" });
+
+    await expect(
+      engine.goalVerdict({
+        flow_id: flowId,
+        status: "pronto_com_ressalvas",
+        rationale: "Risco material persistente apos os regressos.",
+        evidence_ids: [evidenceId],
+        residual_risks: ["mudanca de codigo sem review material"],
+        next_step: "tentar voltar de novo"
+      })
+    ).rejects.toThrow(/review_required/i);
+
+    const status = await engine.goalStatus({ flow_id: flowId });
+    const action = (status as { next_required_action?: { type?: string; required_tool_sequence?: Array<{ order: number; tool: string; args?: Record<string, unknown> }> } }).next_required_action;
+    expect(action?.type).toBe("close_flow_with_reservation");
+    const sequence = action?.required_tool_sequence ?? [];
+    const goalStartStep = sequence.find((step) => step.tool === "goal_start");
+    expect(goalStartStep?.args?.evidence_required).toBe(true);
+    expect(typeof goalStartStep?.args?.source).toBe("string");
+    const errors = validateSequenceSteps(sequence, SEQUENCE_SCHEMA_INDEX);
+    expect(errors).toEqual([]);
   });
 
   it("T25 requires a closed meeting id before retrying a material positive verdict", async () => {

@@ -872,6 +872,73 @@
         "payment_scope": "any_verified_shrink"
       },
       "guard_adaptation": "nenhuma guard nova: sptBindingStatus e fonte unica espalhada por spread nos returns lean/compact/full (a duplicata de ?? null virou 1 ocorrencia, igual ao base)"
+    },
+    {
+      "id": "FE-2026-11-07-ISSUE11-BLOCKED-VERDICT-SNAPSHOT",
+      "date": "2026-11-07",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-07-issue11-verdict-bloqueado-nao-persiste-ampliacao.md",
+      "responsibility": "Issue #11: no caminho de bloqueio do goal_verdict, o engine passa a colar restoreBlockedVerdictSnapshot + pendingReviewAdditionsFor (logica nova FORA do monolito, src/review-snapshot.ts) — a rejeicao restaura changed_files/deleted_files do ultimo gate aprovado com snapshot (sort por checked_at) e registra os acrescimos como pending_review_additions auditaveis no evento fiscal_policy_blocked (history+ledger, payload unico); goal_status expoe a recuperacao (lean=count+receita <5KB, full=array). A AVALIACAO do verdict permanece honesta com o conjunto corrente.",
+      "owner": "$oraculo-refatoracao",
+      "mode": "EXCEPTION",
+      "exception_reason": "integrity",
+      "commit": "5b66f56",
+      "rollback": "revert do 5b66f56: o bloqueio volta a persistir o conjunto ampliado (4->6.475 paths) e os 2 flows reais seguem presos",
+      "expires": "2026-11-14",
+      "red_evidence": "tests/git-corroboration-commits.test.ts::commit pos-base: rejeicao restaura o snapshot aprovado e registra os acrescimos como pending",
+      "red_base_blob": "b79e258cd36ae4051c3d2d7f27ae7b2dfced6c4e",
+      "red_observed_failure": "RED 2/2 no baseline (molde commit-then-verdict do relato da issue: commit pos-base + untracked pre-existente): a rejeicao persistia o conjunto ampliado no flow.changed_files (inflamacao permanente)",
+      "red_command": "npx vitest run tests/git-corroboration-commits.test.ts -t \"commit pos-base: rejeicao restaura o snapshot aprovado e registra os acrescimos como pending\"",
+      "base_blob": "b79e258cd36ae4051c3d2d7f27ae7b2dfced6c4e",
+      "head_blob": "3afa326bbfededbaa53708f5ae3f7417e720738c",
+      "destination_module": "src/review-snapshot.ts",
+      "consumers": [
+        "src/flow-engine.ts"
+      ],
+      "evidence": [
+        "tests/git-corroboration-commits.test.ts",
+        "tests/git-porcelain-quoting.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/git-corroboration-commits.test.ts": "commit pos-base: rejeicao restaura o snapshot aprovado e registra os acrescimos como pending"
+      },
+      "behavior_preserved_by": [
+        "RED 2/2 provado antes da cura -> GREEN 6/6 (molde commit-then-verdict, 2 casos + goal_status lean/full)",
+        "contrato sem aspas do git-porcelain preservado em conjunto (vizinho atualizado com intencao)",
+        "suite completa verde no fechamento do corte"
+      ],
+      "changelog_marker": "FE-2026-11-07-ISSUE11-BLOCKED-VERDICT-SNAPSHOT",
+      "architecture_marker": "FE-2026-11-07-ISSUE11-BLOCKED-VERDICT-SNAPSHOT"
+    },
+    {
+      "id": "FE-2026-11-07-ONDA1-GOAL-START-SSOT",
+      "date": "2026-11-07",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-07-desmontagem-flow-engine-ondas.md",
+      "responsibility": "Onda 1 da desmontagem (FE-DEBT-006 item 3a copia): a rota do teto terminal (close_flow_with_reservation) passa a ensinar goal_start consumindo o SSOT goalStartTaughtArgs exportado de src/error-envelope.ts — a copia local ensinava args sem evidence_required/source, reprovados pelo schema vivo (falso-verde programado para o consumidor que copia a sequencia).",
+      "owner": "$oraculo-refatoracao",
+      "mode": "EXCEPTION",
+      "exception_reason": "public_compatibility",
+      "rollback": "revert do commit da onda: o passo order 3 volta a ensinar args locais sem evidence_required/source e o teste T24b volta a falhar (RED ressuscita)",
+      "expires": "2026-11-14",
+      "red_evidence": "tests/engine.test.ts::T24b FE-DEBT-006 Onda 1: teto terminal ensina goal_start consumindo o SSOT (evidence_required + source) e a sequencia passa no oraculo",
+      "red_base_blob": "3afa326bbfededbaa53708f5ae3f7417e720738c",
+      "red_observed_failure": "T24b falha no baseline (copia local): expected true, received undefined em goalStartStep.args.evidence_required (linha do expect); oraculo validateSequenceSteps reprova a sequencia citando evidence_required e source",
+      "red_command": "npx vitest run tests/engine.test.ts -t \"T24b FE-DEBT-006 Onda 1: teto terminal ensina goal_start consumindo o SSOT (evidence_required + source) e a sequencia passa no oraculo\"",
+      "base_blob": "3afa326bbfededbaa53708f5ae3f7417e720738c",
+      "head_blob": "75727db4d041e7566de5f51c65dd95500a4b366b",
+      "destination_module": "src/error-envelope.ts",
+      "consumers": [
+        "src/flow-engine.ts"
+      ],
+      "evidence": [
+        "tests/engine.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/engine.test.ts": "T24b FE-DEBT-006 Onda 1: teto terminal ensina goal_start consumindo o SSOT (evidence_required + source) e a sequencia passa no oraculo"
+      },
+      "behavior_preserved_by": "T24b RED (evidence_required undefined na copia) -> GREEN consumindo o SSOT; T24 inalterado (mesma rota, mesmo setup); suite do cluster error-envelope + git-corroboration 31/31; diff liquido no monolito = 1 import + 1 linha de args",
+      "anti_escoteiro": "corte da Onda 1 do Trilho de decomposicao: unifica a rota NAO vacinada com o SSOT ja provado (a3d47c6); a fila segue no mapa de decisoes (sentinela 3792, evaluateExpectation, meetings)",
+      "changelog_marker": "FE-2026-11-07-ONDA1-GOAL-START-SSOT",
+      "architecture_marker": "FE-2026-11-07-ONDA1-GOAL-START-SSOT"
     }
   ]
 }

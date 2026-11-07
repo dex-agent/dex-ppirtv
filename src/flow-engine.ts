@@ -93,7 +93,7 @@ import { PpirtvStore, type RuntimeLayoutStatus } from "./store.js";
 import { assertPhaseInProfile, assertPhaseTransitionDirection, nextPhaseOrThrow, phaseAdvanceAllowed, profileFor, type GateRequirement } from "./phase-profile.js";
 import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured, sameRuntimePath } from "./config.js";
 import { fingerprintSptContract, parseSptDocument, sha256SptDocument } from "./spt-contract.js";
-import { fiscalStateSegment } from "./error-envelope.js";
+import { fiscalStateSegment, goalStartTaughtArgs } from "./error-envelope.js";
 import {
   missingValidationDiagnostic,
   runtimeWorkspaceMismatchDiagnostic,
@@ -6107,7 +6107,7 @@ function nextRequiredActionFor(
           order: 3,
           tool: "goal_start",
           purpose: "abrir flow novo com o aprendizado do flow arquivado",
-          args: { workspace: "<workspace>", spt_path: "<trilho do novo corte>", objective: "<objetivo do novo corte>", idempotency_key: "<chave>" }
+          args: goalStartTaughtArgs(flow.flow_id, "nova para o corte novo — nunca reusar a key do flow arquivado")
         }
       ]
     };

@@ -1,3 +1,17 @@
+## Reavaliação — Onda 1 desmontagem: teto terminal consome SSOT de goal_start, 2026-11-07
+
+Owner $oraculo-refatoracao (Trilho desmontagem-flow-engine-ondas, flow 3464):
+RED→GREEN T24b `tests/engine.test.ts` — motor REAL na rota `close_flow_with_reservation`,
+sequência validada pelo oráculo `validateSequenceSteps` + schema-index espelhado
+(RED: `evidence_required` undefined na cópia; GREEN: `true`+`source`+sequência
+aprovada). Diff líquido no monólito: 1 import + 1 linha; suíte 819+4=823/64
+(+1 teste). Camping EXCEPTION `public_compatibility` no ledger (record
+FE-2026-11-07-ONDA1-GOAL-START-SSOT) + selagem retroativa: FE-DEBT-006 item
+3ª cópia PAGO. Finding de classe registrado: CONSECUTIVE_EXCEPTION_FORBIDDEN
+não modela selagem retroativa (record ISSUE11 entrando depois do commit 5b66f56
+— cadeia quebrou no 5b66f56 sem record; validador precisa distinguir corte
+novo × selagem de histórico; estacionado com owner $oraculo-refatoracao).
+
 ## Reavaliação — pacote workflow desmontagem-monolito-ondas, 2026-11-07
 
 Owner $oraculo-refatoracao/executor: nascimento do pacote local (dex.workflow.v1

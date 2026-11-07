@@ -591,7 +591,7 @@ export function validateSequenceSteps(
  *  evidence_required vai literal true (z.boolean() no schema vivo): anexe as
  *  evidencias de produto ANTES de reenviar o goal_start — placeholder string
  *  em campo boolean reprova verbatim por tipo (P2#1 do smoke 261107). */
-function goalStartTaughtArgs(flowId: string, originHint: string) {
+export function goalStartTaughtArgs(flowId: string, originHint: string) {
   return {
     workspace: "<workspace>",
     spt_path: "<spt_path>",
