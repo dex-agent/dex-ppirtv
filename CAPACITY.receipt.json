@@ -2,18 +2,42 @@
   "schema": "dex.capacity.snapshot.v1",
   "reavaliacao_playbook_localizadores": {
     "date": "2026-11-07",
-    "scope": ["tools/playbook/playbook-sources.txt", "docs/PLAYBOOK-RULES.md", "docs/INDEX.md", "PLAYBOOK.md", "PLAYBOOK.index.json", ".gitattributes", "CHANGELOG.md"],
+    "scope": [
+      "tools/playbook/playbook-sources.txt",
+      "docs/PLAYBOOK-RULES.md",
+      "docs/INDEX.md",
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json",
+      ".gitattributes",
+      "CHANGELOG.md"
+    ],
     "delta": "Fonte versionada dos dois localizadores publicados no PLAYBOOK, com rota do painel para docs/INDEX.md entregue no Git.",
-    "evidence": ["python -B tools/playbook/generate-playbook.py --repo . --check", "python -B tools/playbook/generate-playbook.py --repo . --check-sent"],
-    "limits": ["As fontes locais opcionais continuam fora da entrega."]
+    "evidence": [
+      "python -B tools/playbook/generate-playbook.py --repo . --check",
+      "python -B tools/playbook/generate-playbook.py --repo . --check-sent"
+    ],
+    "limits": [
+      "As fontes locais opcionais continuam fora da entrega."
+    ]
   },
   "reavaliacao_preflight_schema_s10": {
     "date": "2026-11-06",
-    "scope": ["spt-kit/preflight.mjs", "CHANGELOG.md"],
+    "scope": [
+      "spt-kit/preflight.mjs",
+      "CHANGELOG.md"
+    ],
     "delta": "Anuncio documental S00..S10 alinhado ao validador existente, sem mudanca de algoritmo.",
-    "evidence": ["node spt-kit/preflight.mjs --schema", "node spt-kit/preflight.mjs spt-kit/fixtures/plan-objeto.md"],
-    "observed": {"schema_checks": "S00..S10", "fixture_findings": 1},
-    "limits": ["Correcao de texto; autoridade estrutural segue no spt_validate"]
+    "evidence": [
+      "node spt-kit/preflight.mjs --schema",
+      "node spt-kit/preflight.mjs spt-kit/fixtures/plan-objeto.md"
+    ],
+    "observed": {
+      "schema_checks": "S00..S10",
+      "fixture_findings": 1
+    },
+    "limits": [
+      "Correcao de texto; autoridade estrutural segue no spt_validate"
+    ]
   },
   "reavaliacao_post_merge_paridade": {
     "date": "2026-11-06",
@@ -906,6 +930,28 @@
     "limits": [
       "Superficies .agents/ sao gitignored: provas dos criterios C-01..C-04 vivem em receipts locais, nao no clone",
       "Achado lateral: pacote irmao manutencao-iterativa-com-evidencia tem finding pre-existente [meta-analise] ausente (fora deste corte, estacionado)"
+    ]
+  },
+  "reavaliacao_vacina_banner": {
+    "date": "2026-11-07",
+    "scope": [
+      "tests/spt-kit-banner.test.ts",
+      "spt-kit/preflight.mjs",
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json"
+    ],
+    "delta": "Vacina da classe Obsolete Comment (issue #8): teste na suite vitest casa o range anunciado no --schema do preflight com os checks emitidos no codigo (regex add(\"Snn\")) e o cabecalho com o shape maximo; RED provado por mutacao S00..S10->S00..S09 (2 failed) antes do GREEN 2/2. PLAYBOOK regenerado: projecao do PR #9 embutia fontes .agents locais da maquina de origem (drift esperado entre maquinas); regen local FRESCO.",
+    "evidence": [
+      ".agents/receipts/2026-11-07-banner-vacina.log",
+      ".agents/receipts/2026-11-07-pull-pr9.log"
+    ],
+    "observed": {
+      "red_mutation": "2 failed (check S10 fora do range; cabecalho shape menor)",
+      "green": "2 passed | suite apos: ver check final",
+      "pull_hook_postmerge": "INALTERADO (1a mediacao real em pull)"
+    },
+    "limits": [
+      "A projecao PLAYBOOK continua dependendo de fontes .agents locais: drift entre maquinas e inerente ate a fonte .agents viajar ou sair da projecao (fora deste corte)"
     ]
   }
 }

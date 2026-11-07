@@ -9,6 +9,19 @@
 
 ## Identidade da fotografia
 
+## Reavaliação — vacina banner + revisão PR #9, 2026-11-07
+
+Owner tests/spt-kit: vacina da classe Obsolete Comment (issue #8) — teste
+`tests/spt-kit-banner.test.ts` casa o range anunciado no `--schema` do
+preflight com os checks emitidos no código (`add("Snn"`) e o cabeçalho com o
+shape máximo. RED provado por mutação (banner S00..S10→S00..S09: 2 failed)
+antes do GREEN 2/2 (receipt `.agents/receipts/2026-11-07-banner-vacina.log`).
+Pull do PR #9 revisado pós-merge (banner confere; hook post-merge
+`INALTERADO` — 1ª medição real em pull; PLAYBOOK regen FRESCO — a projeção do
+PR #9 embutia fontes `.agents` locais da máquina de origem, drift entre
+máquinas declarado). Issues #5/#6/#8 fechadas com comentário de prova. Escopo:
+tests/spt-kit-banner.test.ts + PLAYBOOK regen.
+
 ## Reavaliação — localizadores publicados no PLAYBOOK, 2026-11-07
 
 Owner playbook: fonte versionada para os dois localizadores do PR #9.
