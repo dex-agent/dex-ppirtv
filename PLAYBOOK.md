@@ -4,7 +4,7 @@ description: "Regras de decisao e procedimentos deste projeto - projecao gerada 
 type: playbook
 generated_by: "tools/playbook/generate-playbook.py"
 authority: derived_projection
-sources_revision: "sha256:407af7e7710a8b5a75d6f4d6cd2750e7f9f54c4a6d71282c3ecc5f2ab1eb265e"
+sources_revision: "sha256:281b9623e59fbb3ab0c1314d36ccbfeec0781d00364bcb5342a87fbc933eb1e9"
 sent_revision: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 do_not_edit: true
 ---
@@ -21,29 +21,21 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 ## Regras de decisao (plaquinhas)
 
-### Painel de Ferramentas
-
-- Localizador: `PAINEL-DE-FERRAMENTAS`
-- Gatilho: ### 4. Memorias quentes (L1 vivos — completo em `.agents/GATILHOS-VIVOS.md`)
-- Extrato: (consultar ANTES de qualquer pesquisa web — molde de ecossistema
-- Fonte: `AGENTS.md#L26-L68`
-- Selo: `pb-b04ade35`
-
 ### Regras locais
 
-- Localizador: `PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL`
+- Localizador: `PPIRTV-MANUTENCAO-CONTINUA-CRG`
 - Gatilho: Formato de ciclo: `Unreleased` ate decisao explicita de versao; gatilhos:
-- Extrato: - Manter `CHANGELOG.md` atualizado. Owner: `$projeto-manter-changelog`.
-- Fonte: `AGENTS.md#L69-L210`
-- Selo: `pb-b2044664`
+- Extrato: - `PPIRTV-MANUTENCAO-CONTINUA-CRG`: antes de corte de manutencao/reuso, ler workflow/RULES.md e workflow/manutencao-iterativa-com-evidencia...
+- Fonte: `AGENTS.md#L26-L163`
+- Selo: `pb-8938be6d`
 
 ### Validacao minima
 
 - Localizador: `PPIRTV-CAPACITY-COMMIT-GATE`
 - Gatilho: ndeclarado
 - Extrato: ```powershell
-- Fonte: `AGENTS.md#L240-L262`
-- Selo: `pb-2f3cd64d`
+- Fonte: `AGENTS.md#L193-L215`
+- Selo: `pb-97348542`
 
 ### Ordens diretas do Comandante Owner o $chato 🗣️
 
@@ -55,16 +47,16 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
   - $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamen...
   - Ative o fluxo visual PPIRTV com checklist visual dinâmico u...
   - Sempre finalize o trabalho analisando "com lentes dos espec...
-- Fonte: `AGENTS.md#L263-L325`
-- Selo: `pb-9ffc90ab`
+- Fonte: `AGENTS.md#L216-L278`
+- Selo: `pb-f0d4ceb4`
 
 ### Dex Agent Local
 
 - Localizador: `PPIRTV-GIT-CONSOLIDACAO-SELETIVA-MAIN`
 - Gatilho: - Antes de qualquer consolidacao Git deste repositorio, recupere o gatilho
 - Extrato: - Projeto: `dex-PPIRTV`
-- Fonte: `AGENTS.md#L326-L370`
-- Selo: `pb-237bbf07`
+- Fonte: `AGENTS.md#L279-L323`
+- Selo: `pb-81fb4545`
 
 ### Leitura obrigatoria (bootstrap)
 
@@ -76,8 +68,8 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
   - `.agents/ACTIVE.md`
   - `.agents/HANDOFF.md`
   - `.agents/PLAN-TASKS/ACTIVE.md`
-- Fonte: `AGENTS.md#L449-L456`
-- Selo: `pb-e87bdd29`
+- Fonte: `AGENTS.md#L402-L409`
+- Selo: `pb-cad80448`
 
 ## Runbook <-> Playbook (procedimentos)
 
@@ -91,9 +83,9 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 | caminho | sha256 | Enviado? |
 | --- | --- | --- |
-| `AGENTS.md` | `3df541abf0995b32f6130a31f630ac75bd6d070b45504c07766a3636f713fa69` | nao |
-| `.agents/napkin.md` | `ce935076b7f78895742f1b02b568f86b8eb66647613f4e55599b82bf89ffb167` | nao |
-| `.agents/PLAN-TASKS/ACTIVE.md` | `b303b84bef37d4f99c8af96c8ba22a1f93c2dad6bca83ce84a75734fe3e0bf83` | nao |
+| `AGENTS.md` | `a80d3741c273d59ca5fd9dfa70648f245553a086155dffa9af1e7d8e80f73015` | nao |
+| `.agents/napkin.md` | `fba7a9ec155e9421a227aa9e6459511f9ee4bc076bb1256e0af089acdf43cc1c` | nao |
+| `.agents/PLAN-TASKS/ACTIVE.md` | `528091d38293c9a950527ad7cb35b02cc49dc2e77c34fc58ccc683f444a05a38` | nao |
 
 ## Superficie enviada vs local
 
@@ -103,8 +95,8 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 ## Secoes nao decodificadas
 
-- Organizacao De Artefatos E Scripts -> `AGENTS.md#L211` (sem token de localizador)
-- Graphify local -> `AGENTS.md#L371` (sem token de localizador)
-- Bootstrap (toda janela nova, nesta ordem) -> `AGENTS.md#L404` (sem token de localizador)
-- Indexação (doutrina da casa) -> `AGENTS.md#L422` (sem token de localizador)
-- Envio a terceiros -> `AGENTS.md#L429` (sem token de localizador)
+- Organizacao De Artefatos E Scripts -> `AGENTS.md#L164` (sem token de localizador)
+- Graphify local -> `AGENTS.md#L324` (sem token de localizador)
+- Bootstrap (toda janela nova, nesta ordem) -> `AGENTS.md#L357` (sem token de localizador)
+- Indexação (doutrina da casa) -> `AGENTS.md#L375` (sem token de localizador)
+- Envio a terceiros -> `AGENTS.md#L382` (sem token de localizador)

@@ -1,5 +1,13 @@
 {
   "schema": "dex.capacity.snapshot.v1",
+  "reavaliacao_preflight_schema_s10": {
+    "date": "2026-11-06",
+    "scope": ["spt-kit/preflight.mjs", "CHANGELOG.md"],
+    "delta": "Anuncio documental S00..S10 alinhado ao validador existente, sem mudanca de algoritmo.",
+    "evidence": ["node spt-kit/preflight.mjs --schema", "node spt-kit/preflight.mjs spt-kit/fixtures/plan-objeto.md"],
+    "observed": {"schema_checks": "S00..S10", "fixture_findings": 1},
+    "limits": ["Correcao de texto; autoridade estrutural segue no spt_validate"]
+  },
   "reavaliacao_post_merge_paridade": {
     "date": "2026-11-06",
     "scope": [
