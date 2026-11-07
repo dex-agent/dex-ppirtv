@@ -1,3 +1,11 @@
+## Reavaliação — diretriz ESCOTEIRO-ONDA (docs/régua), 2026-11-07
+
+Owner AGENTS local: emenda à cláusula de maratona — ondas densas executam A
+CADA AJUSTE (fix que toca cluster mapeado extrai a onda inteira; maratona
+contínua, não bloco). Sem mudança de código: suíte 818+4=822/64 continua
+valendo; superfícies: AGENTS.md local (gitignored, fonte do PLAYBOOK),
+CHANGELOG, PLAYBOOK regen.
+
 ## Reavaliação — issue #11: verdict bloqueado não persiste ampliação, 2026-11-07
 
 Owner review-snapshot/flow-engine: fix com RED real (molde commit-then-verdict

@@ -243,9 +243,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "a3d47c6adf18c9be018f02ed8d1dd502e487b3f3",
+  "head": "5b66f564e4b27aca7527e3d10d7fe4b5cf86319c",
   "tree_hash": null,
-  "generated_at": "2026-11-07T22:17:01.575684+00:00",
+  "generated_at": "2026-11-07T22:24:33.032260+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -269,7 +269,7 @@
     "skipped": 4,
     "files": 64,
     "total": 822,
-    "command": "npx vitest run (pos corte issue11-verdict-bloqueado: +2 vacina commit-then-verdict + goal_status pending; vizinho porcelain-quoting com observavel novo)"
+    "command": "npx vitest run (inalterada no commit da diretriz ESCOTEIRO-ONDA: docs/regua apenas — AGENTS local + CHANGELOG + PLAYBOOK regen)"
   },
   "tools_count": 32,
   "capabilities": [
@@ -1034,5 +1034,15 @@
     "suite_medida": "818 passed + 4 skipped = 822, 64 files, exit 0",
     "red_prova": "molde commit-then-verdict (commit pos-base + untracked pre-existente) RED 2/2 antes da cura",
     "camping": "EXCEPTION (fix com RED real); flow-engine so cola ~26 linhas; marker FE-2026-11-07-ISSUE11-BLOCKED-VERDICT-SNAPSHOT"
+  },
+  "reavaliacao_escoteiro_onda": {
+    "owner": "AGENTS.md local (régua da casa, gitignored por design)",
+    "delta": "diretriz ESCOTEIRO-ONDA do dono 2026-11-07: fix que tocar cluster mapeado extrai a onda inteira no mesmo corte; maratona contínua",
+    "arquivos": [
+      "CHANGELOG.md",
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json"
+    ],
+    "suite": "sem mudanca de codigo (818+4=822 continua valendo)"
   }
 }

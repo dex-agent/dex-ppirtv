@@ -4,7 +4,7 @@ description: "Regras de decisao e procedimentos deste projeto - projecao gerada 
 type: playbook
 generated_by: "tools/playbook/generate-playbook.py"
 authority: derived_projection
-sources_revision: "sha256:d9481abb91686dc20a9c9469fa3622fad2cea75c7a1d27b04c5351ccbe036ea3"
+sources_revision: "sha256:ba581b037e00ab75b6562adbbab9ecbfa5c192ee73ec82034495f2464892ef2e"
 sent_revision: "sha256:c3fe3900353785713ca9fdb1d0ff4a840d2eade60eadca73b9a4ac228bd6dc0f"
 do_not_edit: true
 ---
@@ -56,16 +56,16 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 - Localizador: `PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL`
 - Gatilho: Formato de ciclo: `Unreleased` ate decisao explicita de versao; gatilhos:
 - Extrato: - Manter `CHANGELOG.md` atualizado. Owner: `$projeto-manter-changelog`.
-- Fonte: `AGENTS.md#L69-L210`
-- Selo: `pb-b2044664`
+- Fonte: `AGENTS.md#L69-L217`
+- Selo: `pb-55fa02bf`
 
 ### Validacao minima
 
 - Localizador: `PPIRTV-CAPACITY-COMMIT-GATE`
 - Gatilho: ndeclarado
 - Extrato: ```powershell
-- Fonte: `AGENTS.md#L240-L262`
-- Selo: `pb-2f3cd64d`
+- Fonte: `AGENTS.md#L247-L269`
+- Selo: `pb-8400f4bd`
 
 ### Ordens diretas do Comandante Owner o $chato 🗣️
 
@@ -77,16 +77,16 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
   - $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamen...
   - Ative o fluxo visual PPIRTV com checklist visual dinâmico u...
   - Sempre finalize o trabalho analisando "com lentes dos espec...
-- Fonte: `AGENTS.md#L263-L325`
-- Selo: `pb-9ffc90ab`
+- Fonte: `AGENTS.md#L270-L332`
+- Selo: `pb-b1a34191`
 
 ### Dex Agent Local
 
 - Localizador: `PPIRTV-GIT-CONSOLIDACAO-SELETIVA-MAIN`
 - Gatilho: - Antes de qualquer consolidacao Git deste repositorio, recupere o gatilho
 - Extrato: - Projeto: `dex-PPIRTV`
-- Fonte: `AGENTS.md#L326-L370`
-- Selo: `pb-237bbf07`
+- Fonte: `AGENTS.md#L333-L377`
+- Selo: `pb-cbcc04af`
 
 ### Leitura obrigatoria (bootstrap)
 
@@ -98,8 +98,8 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
   - `.agents/ACTIVE.md`
   - `.agents/HANDOFF.md`
   - `.agents/PLAN-TASKS/ACTIVE.md`
-- Fonte: `AGENTS.md#L449-L456`
-- Selo: `pb-e87bdd29`
+- Fonte: `AGENTS.md#L456-L463`
+- Selo: `pb-1855d957`
 
 ## Runbook <-> Playbook (procedimentos)
 
@@ -114,9 +114,9 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 | caminho | sha256 | Enviado? |
 | --- | --- | --- |
 | `docs/PLAYBOOK-RULES.md` | `3aebb8df98b19a4c1042973c59e14b0a8cfc728777839caa2f2c40c80e76f92c` | sim |
-| `AGENTS.md` | `3df541abf0995b32f6130a31f630ac75bd6d070b45504c07766a3636f713fa69` | nao |
+| `AGENTS.md` | `fb908399a6d1c06221275b1537080368375dcf25c54b5f7ad32d8ad0f5075baa` | nao |
 | `.agents/napkin.md` | `7e91c842ff0aa9d0b1cbbad15b03184fba460e2c16dc01ebb1d8041e66611681` | nao |
-| `.agents/PLAN-TASKS/ACTIVE.md` | `559d02697ec581281e6308b4b4502f4ed3bae20c83fb0aa12647b405a7c48b3f` | nao |
+| `.agents/PLAN-TASKS/ACTIVE.md` | `c109136ae0e96b4e8f72098ce2fcd0d52a0aa7c178fed9213f405b9a4f120f5a` | nao |
 
 ## Superficie enviada vs local
 
@@ -126,8 +126,8 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 ## Secoes nao decodificadas
 
-- Organizacao De Artefatos E Scripts -> `AGENTS.md#L211` (sem token de localizador)
-- Graphify local -> `AGENTS.md#L371` (sem token de localizador)
-- Bootstrap (toda janela nova, nesta ordem) -> `AGENTS.md#L404` (sem token de localizador)
-- Indexação (doutrina da casa) -> `AGENTS.md#L422` (sem token de localizador)
-- Envio a terceiros -> `AGENTS.md#L429` (sem token de localizador)
+- Organizacao De Artefatos E Scripts -> `AGENTS.md#L218` (sem token de localizador)
+- Graphify local -> `AGENTS.md#L378` (sem token de localizador)
+- Bootstrap (toda janela nova, nesta ordem) -> `AGENTS.md#L411` (sem token de localizador)
+- Indexação (doutrina da casa) -> `AGENTS.md#L429` (sem token de localizador)
+- Envio a terceiros -> `AGENTS.md#L436` (sem token de localizador)
