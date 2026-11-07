@@ -245,7 +245,7 @@
   "fotografia_id": "2026-11-05-merge-pr7",
   "head": "5b66f564e4b27aca7527e3d10d7fe4b5cf86319c",
   "tree_hash": null,
-  "generated_at": "2026-11-07T23:10:30.847983+00:00",
+  "generated_at": "2026-11-07T23:52:43.165616+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1064,5 +1064,12 @@
   "reavaliacao_selagem_onda1": {
     "commit_escopo": "docs/architecture/flow-engine-evolution.json (selagem pos-commit)",
     "suite": "819+4=823 do corte 115d7e5 segue valendo (sem mudanca de codigo)"
+  },
+  "reavaliacao_path_attribution_c01": {
+    "commit_escopo": "src/review-snapshot.ts + src/flow-engine.ts (cola) + src/server.ts (schema) + tests + ledger/markers/CHANGELOG + SCHEMA status",
+    "suite": "821 passed + 4 skipped = 825 (64 files) — +2 (regressao C-01 + triagem)",
+    "red_green": "RED fiel ao roteiro do dono (motor direto, path_attribution inexistente) -> GREEN rota publica; triagem cobre sha divergente + caminho indeterminado sem aplicar nada",
+    "camping": "EXCEPTION public_compatibility — line/decision OK; resta CONSECUTIVE_EXCEPTION_FORBIDDEN (lacuna de classe estacionada)",
+    "schema_drift": "SCHEMA/dex.spt.v3.schm.md status vivo->ativo (check-schemas 0 findings)"
   }
 }

@@ -941,6 +941,42 @@
       "architecture_marker": "FE-2026-11-07-ONDA1-GOAL-START-SSOT",
       "commit": "115d7e5",
       "parent_commit": "05e8563"
+    },
+    {
+      "id": "FE-2026-11-07-PATH-ATTRIBUTION-REGRESSAO-C01",
+      "date": "2026-11-07",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-07-issue11-verdict-bloqueado-nao-persiste-ampliacao.md",
+      "responsibility": "Regressao C-01 da issue #11 (comentario do dono, RED confirmado em 05e8563): rota publica path_attribution no goal_verdict para aceitar inclusao legitima de pending_review_additions DENTRO do veredito — politica pura applyPathAttribution em src/review-snapshot.ts (sha256 por arquivo + justificativa + caminho nos pending; triagem em divergencia/indeterminado/sensivel), unblock extraido (applyPathAttributionUnblock + readWorkspaceFileAt, review-snapshot.ts) com cola minima no verdict que amplia o snapshot legitimamente, atualiza o implementation_fingerprint do conjunto ampliado, grava evento+ledger path_attribution_applied e anexa revisao derivada citada cobrindo o conjunto final. Sem atribuicao nada muda (fiscalizacao padrao preservada).",
+      "owner": "$oraculo-refatoracao",
+      "mode": "EXCEPTION",
+      "exception_reason": "public_compatibility",
+      "rollback": "revert do commit: path_attribution deixa de existir no verdict e a regressao C-01 volta a bloquear consumidores com pending_review_additions legitimos",
+      "expires": "2026-11-14",
+      "red_evidence": "tests/git-corroboration-commits.test.ts::regressao C-01 (issue #11): path_attribution no verdict aceita inclusao legitima e destrava review_required",
+      "red_base_blob": "75727db4d041e7566de5f51c65dd95500a4b366b",
+      "red_observed_failure": "RED reproduzido fiel ao roteiro do dono (fixture motor-direto, untracked pre-existente + declarado docs/note.md + path_attribution): PPIRTV_FISCAL_BLOCKED review_required com path_attribution ainda nao sendo campo do motor/schema",
+      "red_command": "npx vitest run tests/git-corroboration-commits.test.ts -t \"regressao C-01 (issue #11): path_attribution no verdict aceita inclusao legitima e destrava review_required\"",
+      "base_blob": "75727db4d041e7566de5f51c65dd95500a4b366b",
+      "head_blob": "9776382415dcc083a9228df9e97e987aaea8eb37",
+      "destination_module": "src/review-snapshot.ts",
+      "consumers": [
+        "src/flow-engine.ts",
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/git-corroboration-commits.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/git-corroboration-commits.test.ts": "regressao C-01 (issue #11): path_attribution no verdict aceita inclusao legitima e destrava review_required"
+      },
+      "behavior_preserved_by": [
+        "RED->GREEN regressao C-01 + teste de triagem (sha divergente e caminho indeterminado voltam a triagem SEM aplicar nada)",
+        "6 testes originais do arquivo inalterados (fiscalizacao padrao preservada)",
+        "suite completa 819+4=823 -> 821+4=825 (+2 novos) e build verde",
+        "corte final <= limite EXCEPTION: leitor de arquivo e unblock moram em review-snapshot.ts; engine so cola deps"
+      ],
+      "changelog_marker": "FE-2026-11-07-PATH-ATTRIBUTION-REGRESSAO-C01",
+      "architecture_marker": "FE-2026-11-07-PATH-ATTRIBUTION-REGRESSAO-C01"
     }
   ]
 }

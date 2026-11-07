@@ -1,3 +1,19 @@
+## Reavaliação — Regressão C-01 issue #11: path_attribution no goal_verdict, 2026-11-07
+
+Owner $oraculo-refatoracao (relato do dono, RED confirmado em 05e8563): rota
+pública `path_attribution` {path, sha256, justification} no verdict para aceitar
+inclusão legítima de pending_review_additions — política pura
+`applyPathAttribution` + `applyPathAttributionUnblock` + `readWorkspaceFileAt`
+em src/review-snapshot.ts (triagem sha divergente/indeterminado/sensível SEM
+aplicar; unblock lança PATH_ATTRIBUTION_TRIAGE); cola mínima no motor
+(helper deps); schema MCP com campo opcional documentado. RED→GREEN fiel ao
+roteiro do dono + teste de triagem: 8/8 no arquivo; suíte 821+4=825 (+2);
+build verde. Camping EXCEPTION public_compatibility: line/decision limits OK —
+resta apenas CONSECUTIVE_EXCEPTION_FORBIDDEN (lacuna de classe já estacionada:
+validador não modela selagem retroativa). Drift [status] do
+SCHEMA/dex.spt.v3.schm.md ('vivo'→'ativo') curado no mesmo commit
+(check-schemas 0 findings).
+
 ## Reavaliação — selagem pós-commit da Onda 1, 2026-11-07
 
 Selagem do record FE-2026-11-07-ONDA1-GOAL-START-SSOT no ledger (commit

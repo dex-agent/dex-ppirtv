@@ -3,7 +3,8 @@ import { FlowEngine } from "../src/flow-engine.js";
 import { PpirtvStore } from "../src/store.js";
 import { execFileSync } from "node:child_process";
 import { addDeclarativeEvidence, declarativeDefaults } from "../src/spt-declarative-proof.js";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { DexMemoriaV2Executor, DexMemoriaV2FlowWriterConfig } from "../src/memory/dex-memoria-v2-adapter.js";
@@ -254,5 +255,50 @@ describe("issue #11: verdict bloqueado nao persiste a ampliacao do snapshot", ()
     const blockEvent = lastBlockEvent(flow);
     const pending = (blockEvent?.data?.pending_review_additions as string[] | undefined) ?? [];
     expect(pending).toContain("src/preexisting.ts");
+  });
+
+  it("regressao C-01 (issue #11): path_attribution no verdict aceita inclusao legitima e destrava review_required", async () => {
+    const f = await fixtureGoalGit("Probe issue11 regressao C-01 path_attribution.", { gitignore: true });
+    const outside = path.join(f.workspace, "src", "outside.ts");
+    await writeFile(outside, "export const outside = 1;\n", "utf8");
+    const outsideSha = createHash("sha256").update(await readFile(outside, "utf8")).digest("hex");
+    const evidenceIds = await climbToVerdictInput(f, ["docs/note.md"]);
+    let attributed: Record<string, unknown> | null = null;
+    try {
+      attributed = (await f.engine.goalVerdict({
+        ...verdictInput(f, evidenceIds),
+        path_attribution: [{ path: "src/outside.ts", sha256: outsideSha, justification: "arquivo de terceiro pre-existente no worktree; parte do meu corte nao" }]
+      } as never)) as Record<string, unknown>;
+    } catch (err) {
+      const flowDbg = await f.engine.store.loadFlow(f.flowId);
+      const lastBlockDbg = flowDbg.history.filter((event) => event.type === "fiscal_policy_blocked").at(-1);
+      console.log("DBG_THROW:", (err as Error).message.slice(0, 160));
+      console.log("DBG_pending:", JSON.stringify(lastBlockDbg?.data?.pending_review_additions));
+      console.log("DBG_attribution_event:", flowDbg.history.some((event) => event.type === "path_attribution_applied"));
+      throw err;
+    }
+    expect((attributed as { status?: string }).status).not.toBe("error");
+    const flow = await f.engine.store.loadFlow(f.flowId);
+    expect(flow.changed_files).toContain("src/outside.ts");
+    const attributionEvent = flow.history.find((event) => event.type === "path_attribution_applied");
+    expect((attributionEvent?.data?.accepted as string[] | undefined)?.join(",")).toContain("src/outside.ts");
+  });
+
+  it("regressao C-01 triagem: sha divergente e caminho indeterminado voltam a triagem sem aplicar nada", async () => {
+    const f = await fixtureGoalGit("Probe issue11 triagem path_attribution.", { gitignore: true });
+    await writeFile(path.join(f.workspace, "src", "outside2.ts"), "export const o2 = 1;\n", "utf8");
+    const evidenceIds = await climbToVerdictInput(f, ["docs/note.md"]);
+    await expect(
+      f.engine.goalVerdict({
+        ...verdictInput(f, evidenceIds),
+        path_attribution: [
+          { path: "src/outside2.ts", sha256: "a".repeat(64), justification: "sha errado de proposito" },
+          { path: "src/nao-pendente.ts", sha256: "b".repeat(64), justification: "caminho que nao esta nos acrescimos" }
+        ]
+      } as never)
+    ).rejects.toThrow(/PATH_ATTRIBUTION_TRIAGE:.*conteudo mudou.*indeterminado/s);
+    const flow = await f.engine.store.loadFlow(f.flowId);
+    expect(flow.changed_files).not.toContain("src/outside2.ts");
+    expect(flow.history.some((event) => event.type === "path_attribution_applied")).toBe(false);
   });
 });

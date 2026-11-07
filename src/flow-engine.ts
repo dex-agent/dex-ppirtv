@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
   PHASES,
@@ -114,7 +115,7 @@ import {
   taskProjection,
   traceabilityFromContract
 } from "./spt-traceability.js";
-import { freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
+import { applyPathAttribution, applyPathAttributionUnblock, type PathAttributionUnblockDeps, freezeGitHeadBase, readWorkspaceFileAt, normalizeReviewPath, pendingReviewAdditionsFor, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
 import {
   normalizeRecallConsumptionInput,
   sameRecallReferences,
@@ -2664,6 +2665,7 @@ export class FlowEngine {
     meeting_id?: string;
     meeting_ids?: string[];
     next_step: string;
+    path_attribution?: Array<{ path: string; sha256: string; justification?: string }>;
   }): Promise<Record<string, unknown>> {
     requireText(input.flow_id, "flow_id");
     assertNoSecretLikeText(input.rationale, "rationale");
@@ -2700,6 +2702,7 @@ export class FlowEngine {
     meeting_id?: string;
     meeting_ids?: string[];
     next_step: string;
+    path_attribution?: Array<{ path: string; sha256: string; justification?: string }>;
   }): Promise<Record<string, unknown>> {
     let flow = await this.store.loadFlow(input.flow_id);
     assertGoalBinding(flow);
@@ -2749,10 +2752,23 @@ export class FlowEngine {
       );
     }
     if (positiveVerdict) {
-      const fiscal = evaluateFiscalPolicy(fiscalFlow, {
+      let fiscal = evaluateFiscalPolicy(fiscalFlow, {
         ...input,
         memory_mining: memoryMining
       });
+      // Issue #11 regressao C-01: rota publica path_attribution (sem atribuicao, nada muda).
+      if (fiscal.blocking_reasons.length > 0 && Array.isArray(input.path_attribution) && fiscal.blocking_reasons.includes("review_required")) {
+        const attribution = await applyPathAttributionUnblock({
+          flow, fiscalFlow, attribution: input.path_attribution,
+          deps: this.pathAttributionDeps(fiscalFlow)
+        });
+        if (attribution.kind === "applied") {
+          fiscalFlow.changed_files = attribution.changedFiles;
+          fiscalFlow.evidence.push(attribution.evidence as typeof fiscalFlow.evidence[number]);
+          evidenceIds.push(attribution.evidenceId);
+          fiscal = evaluateFiscalPolicy(fiscalFlow, { ...input, memory_mining: memoryMining });
+        }
+      }
       if (fiscal.blocking_reasons.length > 0) {
         // Issue #11: veredito REJEITADO nao persiste a ampliacao da corroboracao
         // git (worktree compartilhado engole commits alheios e trava o flow num
@@ -4315,6 +4331,17 @@ export class FlowEngine {
     await this.ledger(flow.flow_id, "fiscal_policy_blocked", blockData);
   }
 
+  /** Deps da rota publica path_attribution (logica em review-snapshot.ts). */
+  private pathAttributionDeps(fiscalFlow: Flow): PathAttributionUnblockDeps {
+    return {
+      saveFlow: async (flow) => this.store.saveFlow(flow as Flow),
+      ledger: async (flowId, type, data) => this.ledger(flowId, type, data as Record<string, unknown>),
+      attachEvidence: async (input) => (await this.attachEvidenceUnlocked(input as Parameters<typeof this.attachEvidenceUnlocked>[0])) as unknown as { evidence_id: string; [key: string]: unknown },
+      restore: (flow, ff) => restoreBlockedVerdictSnapshot(flow as Flow, ff as Flow),
+      strictFingerprint: async (ff) => strictReviewSnapshotFingerprint(ff as Flow, { requireReviewableFiles: true }),
+      readWorkspaceFile: (rel) => readWorkspaceFileAt(fiscalFlow.goal_binding?.envelope.workspace, rel)
+    };
+  }
   private async persistMemoryMiningVerdictBlock(flow: Flow, memoryMining: Record<string, unknown>, input: FiscalVerdictInput = {}): Promise<void> {
     const now = nowIso();
     const blockers = [MEMORY_MINING_BLOCKED_VERDICT_REASON];

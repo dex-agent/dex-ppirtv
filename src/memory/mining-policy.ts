@@ -693,6 +693,9 @@ export type FiscalVerdictInput = {
   meeting_id?: string;
   meeting_ids?: string[];
   memory_mining?: Record<string, unknown> | null;
+  /** Issue #11 regressao C-01 (aceite do dono 2026-11-07): rota publica de
+   *  atribuicao de acrescimos da corroboracao git no proprio veredito. */
+  path_attribution?: Array<{ path: string; sha256: string; justification?: string }>;
 };
 
 function memoryPolicyStringArray(value: unknown): string[] {

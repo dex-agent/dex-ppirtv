@@ -1,9 +1,11 @@
 import { createHash } from "node:crypto";
+import { readFileSync as readFileSyncSync } from "node:fs";
 import { execFile } from "node:child_process";
 import { lstat, readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { Flow, GateRecord } from "./domain.js";
+import { isSensitivePath } from "./spt-path-diagnostics.js";
 import { isClientValueWrapper } from "./input-unwrap.js";
 
 const execFileAsync = promisify(execFile);
@@ -586,4 +588,132 @@ export function pendingReviewAdditionsFor(
       "acrescimos da corroboracao git rejeitados no ultimo veredito: declare os legitimos como provided.changed_files no proximo gate_check; os alheios ao flow ficam aqui como registro auditavel",
     ...(detail === "full" ? { additions } : {})
   };
+}
+
+/** Issue #11 regressao C-01 (aceite do dono 2026-11-07): path_attribution no
+ *  goal_verdict e a rota publica para aceitar inclusao legitima de acrescimos
+ *  da corroboracao git (worktree compartilhado). Politica PURA: valida cada
+ *  atribuicao contra os pending_additions e o conteudo do arquivo; caminho
+ *  indeterminado, justificativa vazia ou sha divergente voltam à triagem.
+ *  Acrescimos sem atribuicao ficam como estao (fiscalizacao padrao). */
+export interface PathAttributionInput {
+  path: string;
+  sha256: string;
+  justification?: string;
+}
+
+export interface PathAttributionDecision {
+  accepted: string[];
+  triage: string[];
+  unattributed: string[];
+}
+
+export function applyPathAttribution(args: {
+  pendingAdditions: string[];
+  attribution: PathAttributionInput[];
+  readFile: (relativePath: string) => { content: string } | null;
+}): PathAttributionDecision {
+  const decision: PathAttributionDecision = { accepted: [], triage: [], unattributed: [...args.pendingAdditions] };
+  const pending = new Set(args.pendingAdditions);
+  for (const item of Array.isArray(args.attribution) ? args.attribution : []) {
+    const rel = typeof item?.path === "string" ? item.path.replace(/\\/g, "/") : "";
+    if (!rel || !pending.has(rel)) {
+      decision.triage.push(`indeterminado: ${rel || "<sem path>"} nao esta nos pending_review_additions`);
+      continue;
+    }
+    if (!item.justification || !String(item.justification).trim()) {
+      decision.triage.push(`sem justificativa: ${rel} exige justification nao vazia`);
+      continue;
+    }
+    if (!/^[a-f0-9]{64}$/i.test(String(item.sha256 ?? ""))) {
+      decision.triage.push(`sha256 invalido: ${rel}`);
+      continue;
+    }
+    const file = args.readFile(rel);
+    if (!file) {
+      decision.triage.push(`ilegivel ou sensivel: ${rel} nao pode ser atestado`);
+      continue;
+    }
+    const actual = createHash("sha256").update(file.content, "utf8").digest("hex");
+    if (actual !== String(item.sha256).toLowerCase()) {
+      decision.triage.push(`conteudo mudou desde a atribuicao: ${rel} (sha divergente — reveja e reenvie)`);
+      continue;
+    }
+    decision.accepted.push(rel);
+    decision.unattributed = decision.unattributed.filter((pendingPath) => pendingPath !== rel);
+  }
+  return decision;
+}
+
+export interface PathAttributionUnblockDeps {
+  saveFlow(flow: unknown): Promise<unknown>;
+  readWorkspaceFile(relativePath: string): { content: string } | null;
+  ledger(flowId: string, type: string, data: unknown): Promise<unknown>;
+  attachEvidence(input: Record<string, unknown>): Promise<{ evidence_id: string; [key: string]: unknown }>;
+  restore(flow: unknown, fiscalFlow: unknown): { changed_files: string[]; deleted_files?: string[]; pending_additions: string[]; restored_from: string | null };
+  strictFingerprint(flow: unknown): Promise<string>;
+}
+
+/** Issue #11 regressao C-01: aplica a rota publica de atribuicao de acrescimos
+ *  no veredito — valida por arquivo (applyPathAttribution), amplia o snapshot
+ *  legitimamente, atualiza o fingerprint do conjunto ampliado, grava
+ *  evento+ledger e anexa revisao derivada cobrindo o conjunto final. Retorna
+ *  triage|applied|not_applicable; o motor so cola. */
+export async function applyPathAttributionUnblock(args: {
+  flow: Record<string, unknown> & { history?: unknown[] };
+  fiscalFlow: Record<string, unknown> & { changed_files?: string[]; history?: unknown[]; implementation_fingerprint?: string; flow_id: string; evidence?: unknown[] };
+  attribution: PathAttributionInput[];
+  deps: PathAttributionUnblockDeps;
+}): Promise<{ kind: "applied"; changedFiles: string[]; evidenceId: string; evidence: unknown } | { kind: "not_applicable" }> {
+  const restoration = args.deps.restore(args.flow, args.fiscalFlow);
+  if (restoration.pending_additions.length === 0) return { kind: "not_applicable" };
+  const decision = applyPathAttribution({
+    pendingAdditions: restoration.pending_additions,
+    attribution: args.attribution,
+    readFile: args.deps.readWorkspaceFile
+  });
+  if (decision.triage.length > 0) {
+    throw new Error(`PATH_ATTRIBUTION_TRIAGE: ${decision.triage.join("; ")}`);
+  }
+  if (decision.unattributed.length > 0) return { kind: "not_applicable" };
+  const changedFiles = [...new Set([...restoration.changed_files, ...decision.accepted])];
+  args.fiscalFlow.changed_files = changedFiles;
+  const amplified = await args.deps.strictFingerprint(args.fiscalFlow);
+  args.fiscalFlow.implementation_fingerprint = amplified;
+  args.fiscalFlow.history = [...(args.fiscalFlow.history ?? []), {
+    at: new Date().toISOString(),
+    type: "path_attribution_applied",
+    data: { accepted: decision.accepted, restored_from: restoration.restored_from, attributed_by: "goal_verdict.path_attribution" }
+  }];
+  await args.deps.saveFlow(args.fiscalFlow);
+  await args.deps.ledger(args.fiscalFlow.flow_id, "path_attribution_applied", { accepted: decision.accepted, sha256: args.attribution, restored_from: restoration.restored_from });
+  const derived = await args.deps.attachEvidence({
+    flow_id: args.fiscalFlow.flow_id,
+    kind: "review",
+    title: `path_attribution: ${decision.accepted.length} acrescimo(s) legitimo(s) aceitos no veredito`,
+    scope_classification: "target",
+    scope_reference: decision.accepted[0],
+    satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+    observed_result: {
+      diff_reviewed: true,
+      reviewed_targets: changedFiles,
+      barata_scan: true,
+      searched_patterns: decision.accepted.map((rel) => `sha256 conferido por arquivo (${rel})`),
+      findings: [],
+      regression_risks: [`acrescimos atribuidos via path_attribution: ${decision.accepted.join(", ")}`]
+    },
+    reviewed_implementation_fingerprint: amplified
+  });
+  return { kind: "applied", changedFiles, evidenceId: derived.evidence_id, evidence: derived };
+}
+
+/** Leitor de arquivo do workspace para atestacao path_attribution: sensivel
+ *  nunca e lido (redacao por proveniencia); ausente/ilegivel devolve null. */
+export function readWorkspaceFileAt(workspaceRoot: string | undefined, relativePath: string): { content: string } | null {
+  if (isSensitivePath(relativePath)) return null;
+  try {
+    return { content: readFileSyncSync(path.join(workspaceRoot ?? process.cwd(), relativePath), "utf8") };
+  } catch {
+    return null;
+  }
 }

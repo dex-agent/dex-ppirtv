@@ -896,7 +896,12 @@ function registerTools(
         recurring_risk: z.boolean().optional().describe("Declare current recurring risk explicitly; prose never declares it. Omission preserves a pending declaration; false persists only when the verdict records (a rejected verdict writes no signal); only a recorded POSITIVE verdict (pronto/pronto_com_ressalvas) ends the report. Persisted regressions remain effective and the regress ceiling is terminal (close_flow_with_reservation)."),
         meeting_id: z.string().optional(),
         meeting_ids: z.array(z.string()).optional(),
-        next_step: z.string().min(1)
+        next_step: z.string().min(1),
+        path_attribution: z.array(z.object({
+          path: z.string().min(1),
+          sha256: z.string().regex(/^[a-f0-9]{64}$/i),
+          justification: z.string().min(1)
+        })).optional().describe("Issue #11: public route to accept legitimate pending_review_additions inside this verdict. Each item must match a pending addition, carry the file's current sha256 and a non-empty justification; divergent sha, undetermined path or unreadable/sensitive file returns PATH_ATTRIBUTION_TRIAGE and nothing is applied. Flows without attribution keep the standard fiscal review.")
       }
     },
     async (args) => toolResponse(() => engine.goalVerdict(args), args)
