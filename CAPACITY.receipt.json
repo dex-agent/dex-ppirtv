@@ -243,9 +243,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "2eed5f335d1e3a0ebb88c5477b9a725e180f3ecf",
+  "head": "a3d47c6adf18c9be018f02ed8d1dd502e487b3f3",
   "tree_hash": null,
-  "generated_at": "2026-11-07T21:42:01.282994+00:00",
+  "generated_at": "2026-11-07T22:17:01.575684+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -264,12 +264,12 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 816,
+    "passed": 818,
     "failed": 0,
     "skipped": 4,
     "files": 64,
-    "total": 820,
-    "command": "npx vitest run (pos corte envelope-familia-todas-rotas: +3 vacina rota terminal/replay/espelho; files 59->64 era contador congelado, achado P2#4 do smoke)"
+    "total": 822,
+    "command": "npx vitest run (pos corte issue11-verdict-bloqueado: +2 vacina commit-then-verdict + goal_status pending; vizinho porcelain-quoting com observavel novo)"
   },
   "tools_count": 32,
   "capabilities": [
@@ -1027,5 +1027,12 @@
       ".agents/PLAN-TASKS/2026-11-07-envelope-familia-todas-rotas.md"
     ],
     "flow_engine": "intocado; 3a copia flow-engine:6087 segue na FE-DEBT-006 (camping NOT_APPLICABLE)"
+  },
+  "reavaliacao_issue11_verdict_snapshot": {
+    "owner": "review-snapshot/flow-engine",
+    "delta": "verdict REJEITADO restaura snapshot do ultimo gate aprovado + pending_review_additions auditaveis (restoreBlockedVerdictSnapshot + pendingReviewAdditionsFor puras em review-snapshot.ts); goal_status expoe pending (lean count/full array); avaliacao continua honesta com conjunto corrente",
+    "suite_medida": "818 passed + 4 skipped = 822, 64 files, exit 0",
+    "red_prova": "molde commit-then-verdict (commit pos-base + untracked pre-existente) RED 2/2 antes da cura",
+    "camping": "EXCEPTION (fix com RED real); flow-engine so cola ~26 linhas; marker FE-2026-11-07-ISSUE11-BLOCKED-VERDICT-SNAPSHOT"
   }
 }

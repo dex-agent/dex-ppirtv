@@ -114,7 +114,7 @@ import {
   taskProjection,
   traceabilityFromContract
 } from "./spt-traceability.js";
-import { freezeGitHeadBase, normalizeReviewPath, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
+import { freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
 import {
   normalizeRecallConsumptionInput,
   sameRecallReferences,
@@ -910,6 +910,9 @@ export class FlowEngine {
         regress_count: regressCount,
         max_regressions: FISCAL_CONFIG.maxRegressions,
         regress_limit_reached: regressLimitReached,
+        // Issue #11: acrescimos da corroboracao git rejeitados no ultimo
+        // veredito — count + receita em lean (teto <5KB); array completo no full.
+        pending_review_additions: pendingReviewAdditionsFor(flow, "lean"),
         // barata_scan (auditoria vizinhos): counts e sinal, nao arrays.
         evidence_count: flow.evidence.length,
         meetings_count: flow.meetings.length,
@@ -984,6 +987,7 @@ export class FlowEngine {
     const resolutionGuidance = blockerResolutionGuidance(blockers, nextRequiredAction, loopMonitor);
     const runtimeLayoutStatus = await this.store.runtimeLayoutStatus();
     const workProgress = workProgressSummary(flow);
+    const pendingReview = pendingReviewAdditionsFor(flow, "full");
     return {
       flow_id: flow.flow_id,
       status: effectiveStatus,
@@ -992,6 +996,7 @@ export class FlowEngine {
       ppirtv_home: runtimeLayoutStatus.ppirtv_home,
       runtime_layout_status: runtimeLayoutStatus,
       memory_writer_runtime: memoryWriterRuntimeSummary(this.options.memory_writer, runtimeLayoutStatus.project_root),
+      pending_review_additions: pendingReview,
       phase_label: checklistStatus.display.phase_label,
       phase_emoji: checklistStatus.display.phase_emoji,
       checklist: checklistStatus,
@@ -2749,7 +2754,20 @@ export class FlowEngine {
         memory_mining: memoryMining
       });
       if (fiscal.blocking_reasons.length > 0) {
-        await this.persistFiscalBlock(fiscalFlow, fiscal, "goal_verdict", input);
+        // Issue #11: veredito REJEITADO nao persiste a ampliacao da corroboracao
+        // git (worktree compartilhado engole commits alheios e trava o flow num
+        // snapshot que nenhuma review viavel cobre). Restaura o snapshot do
+        // ultimo gate aprovado (evidencia historica) e registra os acrescimos
+        // como pending auditaveis no evento de bloqueio — a AVALIACAO acima
+        // continua honesta com o conjunto corrente corroborado.
+        const restoration = restoreBlockedVerdictSnapshot(flow, fiscalFlow);
+        await this.persistFiscalBlock(
+          { ...fiscalFlow, changed_files: restoration.changed_files, deleted_files: restoration.deleted_files },
+          fiscal,
+          "goal_verdict",
+          input,
+          { pending_review_additions: restoration.pending_additions, restored_changed_files_from: restoration.restored_from }
+        );
         const meetings = await this.store.listMeetings(fiscalFlow.flow_id);
         const cooperationDiagnostics = requiredCooperationDiagnostics(fiscalFlow, meetings, fiscal.blocking_reasons, input);
         const missingForVerdict = stringArray(cooperationDiagnostics.missing_for_verdict);
@@ -4257,7 +4275,13 @@ export class FlowEngine {
     };
   }
 
-  private async persistFiscalBlock(flow: Flow, fiscal: FiscalPolicyResult, source: string, input: FiscalVerdictInput = {}): Promise<void> {
+  private async persistFiscalBlock(
+    flow: Flow,
+    fiscal: FiscalPolicyResult,
+    source: string,
+    input: FiscalVerdictInput = {},
+    restoration?: { pending_review_additions: string[]; restored_changed_files_from: string | null }
+  ): Promise<void> {
     const now = nowIso();
     const loopId = blockerLoopId(fiscal.blocking_reasons);
     const loopSignature = blockerSignature(fiscal.blocking_reasons);
@@ -4267,30 +4291,28 @@ export class FlowEngine {
       explicit_meeting_trigger: explicitMeetingTrigger(fiscalText(flow, input))
     };
     flow.status = "blocked";
-    flow.history.push({
-      at: now,
-      type: "fiscal_policy_blocked",
-      data: {
-        source,
-        loop_id: loopId,
-        loop_signature: loopSignature,
-        blocking_reasons: fiscal.blocking_reasons,
-        memory_required: fiscal.blocking_reasons.includes("memory_required_but_empty"),
-        required_cooperation: fiscal.required_cooperation,
-        required_cooperation_diagnostics: requiredCooperation
-      }
-    });
-    flow.updated_at = now;
-    await this.store.saveFlow(flow);
-    await this.ledger(flow.flow_id, "fiscal_policy_blocked", {
+    // Issue #11: restauracao do snapshot aprovado + pending auditaveis entram
+    // no MESMO payload de history e ledger (uma fonte, dois canais).
+    const restorationData = restoration
+      ? {
+          pending_review_additions: restoration.pending_review_additions,
+          restored_changed_files_from: restoration.restored_changed_files_from
+        }
+      : {};
+    const blockData = {
       source,
       loop_id: loopId,
       loop_signature: loopSignature,
       blocking_reasons: fiscal.blocking_reasons,
       memory_required: fiscal.blocking_reasons.includes("memory_required_but_empty"),
       required_cooperation: fiscal.required_cooperation,
-      required_cooperation_diagnostics: requiredCooperation
-    });
+      required_cooperation_diagnostics: requiredCooperation,
+      ...restorationData
+    };
+    flow.history.push({ at: now, type: "fiscal_policy_blocked", data: blockData });
+    flow.updated_at = now;
+    await this.store.saveFlow(flow);
+    await this.ledger(flow.flow_id, "fiscal_policy_blocked", blockData);
   }
 
   private async persistMemoryMiningVerdictBlock(flow: Flow, memoryMining: Record<string, unknown>, input: FiscalVerdictInput = {}): Promise<void> {
@@ -5544,6 +5566,7 @@ function latestFiscalBlockEvent(flow: Flow): { event: Flow["history"][number]; i
   }
   return null;
 }
+
 
 function requiredCooperationNeedsMeetingIdRetry(flow: Flow, meetings: Meeting[]): boolean {
   const latest = latestFiscalBlockEvent(flow);

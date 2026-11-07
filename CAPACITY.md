@@ -1,3 +1,22 @@
+## Reavaliação — issue #11: verdict bloqueado não persiste ampliação, 2026-11-07
+
+Owner review-snapshot/flow-engine: fix com RED real (molde commit-then-verdict
+do relato da issue, 2 casos — RED 2/2 provado antes da cura, GREEN depois).
+Cura: `restoreBlockedVerdictSnapshot` + `pendingReviewAdditionsFor` (funções
+puras NOVAS em review-snapshot.ts, FORA do monólito) — o verdict REJEITADO
+restaura changed_files/deleted_files do último gate aprovado com snapshot e
+registra os acréscimos como `pending_review_additions` auditáveis no evento
+fiscal_policy_blocked (history+ledger, payload único fatorado); a avaliação
+continua honesta com o conjunto corrente. Recuperação pública: goal_status
+expõe pending (lean=count+receita <5KB; full=array). Vizinho atualizado com
+intenção preservada: git-porcelain-quoting C-2 agora observa o espaçado
+desquotado no PENDING (contrato sem-aspas vale em conjunto fiscal nenhum).
+Camping EXCEPTION (fix com RED real; flow-engine só cola ~26 linhas; marker
+FE-2026-11-07-ISSUE11-BLOCKED-VERDICT-SNAPSHOT no MD). Suíte medida:
+**818 passed + 4 skipped = 822, 64 files, exit 0**. Escopo:
+src/review-snapshot.ts, src/flow-engine.ts, tests/git-corroboration-commits.test.ts,
+tests/git-porcelain-quoting.test.ts, CHANGELOG, FLOW_ENGINE_EVOLUTION.md, Trilho.
+
 ## Reavaliação — envelope família todas as rotas (smoke de régua), 2026-11-07
 
 Owner error-envelope/tests: **P1** — 4ª cópia da sequência no próprio SSOT

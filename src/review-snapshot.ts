@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { lstat, readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
-import type { Flow } from "./domain.js";
+import type { Flow, GateRecord } from "./domain.js";
 import { isClientValueWrapper } from "./input-unwrap.js";
 
 const execFileAsync = promisify(execFile);
@@ -501,4 +501,89 @@ function isMissingPathError(error: unknown): boolean {
     && "code" in error
     && (error as NodeJS.ErrnoException).code === "ENOENT"
   );
+}
+
+export interface BlockedVerdictRestoration {
+  changed_files: string[];
+  deleted_files: string[];
+  pending_additions: string[];
+  restored_from: string | null;
+}
+
+/**
+ * Issue #11: um goal_verdict REJEITADO nao persiste o changed_files ampliado
+ * pela corroboracao git (em worktree compartilhado isso engole commits alheios
+ * e trava o flow num snapshot que nenhuma review viavel cobre). Restaura o
+ * snapshot do ultimo gate APROVADO como evidencia historica e devolve os
+ * acrescimos da corroboracao como pendentes auditaveis. Sem nenhum gate
+ * aprovado com snapshot, mantem o conjunto corroborado (nao inventa snapshot)
+ * e devolve pendentes vazios com restored_from nulo.
+ */
+export function restoreBlockedVerdictSnapshot(
+  persisted: Pick<Flow, "gates" | "deleted_files">,
+  corroborated: Pick<Flow, "changed_files" | "deleted_files">
+): BlockedVerdictRestoration {
+  const lastApproved = Object.values(persisted.gates ?? {})
+    .filter((gate): gate is GateRecord => gate?.status === "passed" && Array.isArray(gate.changed_files_snapshot))
+    .sort((a, b) => (a.checked_at < b.checked_at ? 1 : -1))[0];
+  if (!lastApproved) {
+    return {
+      changed_files: corroborated.changed_files ?? [],
+      deleted_files: corroborated.deleted_files ?? [],
+      pending_additions: [],
+      restored_from: null
+    };
+  }
+  const restored = [...(lastApproved.changed_files_snapshot ?? [])];
+  const pending = (corroborated.changed_files ?? []).filter((item) => !restored.includes(item));
+  return {
+    changed_files: restored,
+    deleted_files: persisted.deleted_files ?? [],
+    pending_additions: pending,
+    restored_from: `${lastApproved.phase}@${lastApproved.checked_at}`
+  };
+}
+
+/**
+ * Issue #11 (recuperacao publica no mesmo flow): expoe os acrescimos da
+ * corroboracao git que o ultimo veredito REJEITADO deixou como pending
+ * auditavel (evento fiscal_policy_blocked). Modo "lean" devolve count + receita
+ * (teto <5KB da frota); "full" inclui o array completo para atribuicao.
+ */
+export function pendingReviewAdditionsFor(
+  flow: Flow,
+  detail: "lean" | "full"
+): { count: number; restored_from: string | null; attribution_hint: string; additions?: string[] } | null {
+  let latestIndex = -1;
+  let latestEvent: Flow["history"][number] | null = null;
+  for (let index = flow.history.length - 1; index >= 0; index -= 1) {
+    const event = flow.history[index];
+    if (event.type === "fiscal_policy_blocked") {
+      latestEvent = event;
+      latestIndex = index;
+      break;
+    }
+  }
+  if (!latestEvent) {
+    return null;
+  }
+  const verdictRecordedAfterBlock = flow.history
+    .slice(latestIndex + 1)
+    .some((event) => event.type === "verdict_recorded");
+  if (verdictRecordedAfterBlock) {
+    return null;
+  }
+  const raw = latestEvent.data.pending_review_additions;
+  const additions = Array.isArray(raw) ? raw.filter((item): item is string => typeof item === "string") : [];
+  if (additions.length === 0) {
+    return null;
+  }
+  const restoredFrom = latestEvent.data.restored_changed_files_from;
+  return {
+    count: additions.length,
+    restored_from: typeof restoredFrom === "string" ? restoredFrom : null,
+    attribution_hint:
+      "acrescimos da corroboracao git rejeitados no ultimo veredito: declare os legitimos como provided.changed_files no proximo gate_check; os alheios ao flow ficam aqui como registro auditavel",
+    ...(detail === "full" ? { additions } : {})
+  };
 }

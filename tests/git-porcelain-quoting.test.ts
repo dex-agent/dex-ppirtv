@@ -142,14 +142,19 @@ describe("C-2: e2e strict — espaçado não congela entry quotada", () => {
     });
     const flowAfterProof = await engine.store.loadFlow(flowId);
     const proofId = flowAfterProof.evidence.at(-1)!.evidence_id;
-    // Verdict positivo bloqueado (review_required) persiste a união de
-    // corroboração: o espaçado entra — e o contrato é entrar SEM aspas.
+    // Verdict positivo bloqueado (review_required) — issue #11: a ampliação da
+    // corroboração NÃO persiste mais no changed_files; o espaçado entra como
+    // pending auditável do evento de bloqueio. O contrato do quoting segue:
+    // SEM aspas em conjunto fiscal nenhum (changed_files E pending).
     await expect(
       engine.goalVerdict({ flow_id: flowId, status: "pronto", rationale: "Fixture.", evidence_ids: [proofId] })
     ).rejects.toThrow(/review_required/);
     const persisted = await engine.store.loadFlow(flowId);
     expect(persisted.changed_files.some((file) => /^".*"$/s.test(file))).toBe(false);
-    expect(persisted.changed_files).toContain("a b.txt");
+    const blockData = persisted.history.filter((event) => event.type === "fiscal_policy_blocked").at(-1)?.data as Record<string, unknown> | undefined;
+    const pendingAdditions = (blockData?.pending_review_additions as string[] | undefined) ?? [];
+    expect(pendingAdditions).toContain("a b.txt");
+    expect(pendingAdditions.some((file) => /^".*"$/s.test(file))).toBe(false);
     // A review estrutural strict anexa sobre o fp corrente SEM FILE_REQUIRED
     // (o espaçado real é hasheado; nada de path impossível com aspas).
     const status = (await engine.goalStatus({ flow_id: flowId, detail: "full" })) as Record<string, unknown>;

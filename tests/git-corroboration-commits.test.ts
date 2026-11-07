@@ -206,3 +206,53 @@ describe("git corroboration: commits e runtime (NOVO-1/NOVO-2)", () => {
     ).rejects.toThrow(/review_required/);
   });
 });
+
+describe("issue #11: verdict bloqueado nao persiste a ampliacao do snapshot", () => {
+  const verdictInput = (f: Fixture, evidenceIds: string[]) => ({
+    flow_id: f.flowId,
+    status: "pronto",
+    rationale: "probe issue 11 ampliacao persistida",
+    evidence_ids: evidenceIds,
+    next_step: "concluir agora",
+    review_findings: ["none"]
+  } as never);
+
+  const lastBlockEvent = (flow: { history: Array<{ type: string; data?: Record<string, unknown> }> }) =>
+    flow.history.filter((event) => event.type === "fiscal_policy_blocked").at(-1);
+
+  it("commit pos-base: rejeicao restaura o snapshot aprovado e registra os acrescimos como pending", async () => {
+    const f = await fixtureGoalGit("Probe issue11 commit pos base.", { gitignore: true });
+    await writeFile(path.join(f.workspace, "src", "b.ts"), "export const b = 1;\n", "utf8");
+    git(f.workspace, ["add", "."]);
+    git(f.workspace, ["commit", "-m", "commit alheio pos base"]);
+    const evidenceIds = await climbToVerdictInput(f, ["docs/note.md"]);
+    await expect(f.engine.goalVerdict(verdictInput(f, evidenceIds))).rejects.toThrow(/review_required/);
+    const flow = await f.engine.store.loadFlow(f.flowId);
+    // O snapshot persistido apos a rejeicao e o do ultimo gate aprovado, nao o ampliado
+    expect(flow.changed_files).not.toContain("src/b.ts");
+    // A ampliacao da corroboracao fica registrada como pendente auditavel no evento de bloqueio
+    const blockEvent = lastBlockEvent(flow);
+    const pending = (blockEvent?.data?.pending_review_additions as string[] | undefined) ?? [];
+    expect(pending).toContain("src/b.ts");
+    // Recuperacao publica no mesmo flow (C-04/C-05): goal_status expoe o pending
+    const statusLean = (await f.engine.goalStatus({ flow_id: f.flowId, detail: "lean" } as never)) as Record<string, unknown>;
+    const pendingLean = statusLean.pending_review_additions as { count: number; attribution_hint: string } | null;
+    expect(pendingLean?.count).toBe(1);
+    expect(pendingLean?.attribution_hint).toContain("provided.changed_files");
+    const statusFull = (await f.engine.goalStatus({ flow_id: f.flowId, detail: "full" } as never)) as Record<string, unknown>;
+    const pendingFull = statusFull.pending_review_additions as { count: number; additions: string[] } | null;
+    expect(pendingFull?.additions).toContain("src/b.ts");
+  });
+
+  it("untracked pre-existente: rejeicao nao persiste o untracked como conjunto aprovado", async () => {
+    const f = await fixtureGoalGit("Probe issue11 untracked pre-existente.", { gitignore: true });
+    await writeFile(path.join(f.workspace, "src", "preexisting.ts"), "export const pre = 1;\n", "utf8");
+    const evidenceIds = await climbToVerdictInput(f, ["docs/note.md"]);
+    await expect(f.engine.goalVerdict(verdictInput(f, evidenceIds))).rejects.toThrow(/review_required/);
+    const flow = await f.engine.store.loadFlow(f.flowId);
+    expect(flow.changed_files).not.toContain("src/preexisting.ts");
+    const blockEvent = lastBlockEvent(flow);
+    const pending = (blockEvent?.data?.pending_review_additions as string[] | undefined) ?? [];
+    expect(pending).toContain("src/preexisting.ts");
+  });
+});
