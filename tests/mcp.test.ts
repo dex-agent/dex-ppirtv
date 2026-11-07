@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport, getDefaultEnvironment } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { REQUIRED_PROMPTS, REQUIRED_TOOLS } from "../src/domain.js";
+import { SEQUENCE_SCHEMA_INDEX } from "./helpers/sequence-schema-index.js";
 
 let tempRoot: string;
 let mcpWorkspace: string;
@@ -107,6 +108,35 @@ describe("PPIRTV MCP stdio server", () => {
     const goalStartProperties = (goalStartTool?.inputSchema as { properties?: Record<string, Record<string, unknown>> }).properties;
     expect(goalStartProperties?.flow_role?.enum).toEqual(["execution", "reconciliation", "recovery"]);
     expect(goalStartTool?.description).toContain("new execution requires SPT v3");
+
+    // ESPELHO (Trilho envelope-familia-todas-rotas-261107, C-07): o
+    // schema-index que o oraculo validateSequenceSteps usa para validar os
+    // args ensinados e conferido aqui contra o inputSchema REAL do
+    // tools/list — required e type/enum de cada campo. Drift do servidor
+    // (campo novo obrigatorio, enum que evoluiu) reprova a SUITE na mesma
+    // hora, nunca a frota em producao (P2#2 do smoke, 3 lentes convergentes).
+    const mirror = new Map(
+      tools.tools.map((tool) => [
+        tool.name,
+        tool.inputSchema as { required?: string[]; properties?: Record<string, Record<string, unknown>> }
+      ])
+    );
+    for (const [toolName, entry] of Object.entries(SEQUENCE_SCHEMA_INDEX)) {
+      const live = mirror.get(toolName);
+      expect(live, `espelho: tool ${toolName} do index ausente no tools/list`).toBeDefined();
+      expect([...(live?.required ?? [])].sort(), `espelho: required de ${toolName} divergiu do index`).toEqual(
+        [...(entry.required ?? [])].sort()
+      );
+      for (const [field, shapeUntyped] of Object.entries(entry.properties ?? {})) {
+        const shape = shapeUntyped as { type?: string; enum?: unknown[] };
+        const liveField = live?.properties?.[field];
+        expect(liveField, `espelho: ${toolName}.${field} do index ausente no schema real`).toBeDefined();
+        expect(liveField?.type, `espelho: ${toolName}.${field} tipo divergente`).toBe(shape.type);
+        if (shape.enum) {
+          expect(liveField?.enum, `espelho: ${toolName}.${field} enum divergente`).toEqual(shape.enum);
+        }
+      }
+    }
     expect(goalStartTool?.description).toContain("same canonical spt_path");
     expect(goalStartTool?.description).toContain("dex_ppirtv");
     expect(goalStartTool?.description).toContain("does not promise MCP idempotence");

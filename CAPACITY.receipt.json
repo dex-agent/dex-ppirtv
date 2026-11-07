@@ -243,9 +243,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "052304a90279fbd6919bb784b769bb7729cca973",
+  "head": "2eed5f335d1e3a0ebb88c5477b9a725e180f3ecf",
   "tree_hash": null,
-  "generated_at": "2026-11-07T20:19:51.213117+00:00",
+  "generated_at": "2026-11-07T21:42:01.282994+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -264,12 +264,12 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 813,
+    "passed": 816,
     "failed": 0,
     "skipped": 4,
-    "files": 59,
-    "total": 817,
-    "command": "npx vitest run (pos corte envelope-evidence-required: +3 testes vacina error-envelope)"
+    "files": 64,
+    "total": 820,
+    "command": "npx vitest run (pos corte envelope-familia-todas-rotas: +3 vacina rota terminal/replay/espelho; files 59->64 era contador congelado, achado P2#4 do smoke)"
   },
   "tools_count": 32,
   "capabilities": [
@@ -1012,5 +1012,20 @@
   },
   "observacoes": [
     "2026-11-07 corte envelope-executavel-evidence-required: builders SSOT + vacina; +3 testes (813/817)."
-  ]
+  ],
+  "reavaliacao_familia_todas_rotas": {
+    "owner": "error-envelope/tests",
+    "delta": "terminalReservationTail com evidence_required true + source (4a copia curada, P1 do smoke); builders com true literal (P2#1); schema-index em tests/helpers + espelho contra tools/list real no mcp.test.ts (P2#2); index completado (enums goal_start, flow_role, goal_verdict integral, flow_archive)",
+    "suite_medida": "816 passed + 4 skipped = 820, 64 files (antes 813/817; files 59 era congelado)",
+    "arquivos": [
+      "src/error-envelope.ts",
+      "tests/error-envelope.test.ts",
+      "tests/helpers/sequence-schema-index.ts",
+      "tests/mcp.test.ts",
+      "CHANGELOG.md",
+      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+      ".agents/PLAN-TASKS/2026-11-07-envelope-familia-todas-rotas.md"
+    ],
+    "flow_engine": "intocado; 3a copia flow-engine:6087 segue na FE-DEBT-006 (camping NOT_APPLICABLE)"
+  }
 }

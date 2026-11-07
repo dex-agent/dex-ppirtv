@@ -122,7 +122,17 @@ export function fiscalBlockedAction(message: string, flowId = "<flow_id>"): Next
     {
       order: startOrder + 3,
       tool: "goal_start",
-      args: { workspace: "<workspace>", spt_path: "<trilho do novo corte>", objective: "<objetivo do novo corte>", idempotency_key: "<chave>" }
+      // P1 do smoke 261107 (4a copia da classe): evidence_required e source sao
+      // required no schema vivo — true literal exige evidencias anexadas no flow
+      // novo antes do goal_start (mesma semantica dos builders SSOT).
+      args: {
+        workspace: "<workspace>",
+        spt_path: "<trilho do novo corte>",
+        objective: "<objetivo do novo corte>",
+        idempotency_key: "<chave>",
+        evidence_required: true,
+        source: "<fonte do GO/trilho que originou o novo corte>"
+      }
     }
   ];
   if (/review_required/i.test(message)) {
@@ -577,14 +587,17 @@ export function validateSequenceSteps(
 // schema-index com goal_start) fechar a classe "args ensinados que o schema
 // rejeita" — sequencia copiavel com arg errado e falso-verde programado.
 
-/** Args canonicos de goal_start; tudo entre <> vem do goal_envelope lido no passo 1. */
+/** Args canonicos de goal_start; tudo entre <> vem do goal_envelope lido no passo 1.
+ *  evidence_required vai literal true (z.boolean() no schema vivo): anexe as
+ *  evidencias de produto ANTES de reenviar o goal_start — placeholder string
+ *  em campo boolean reprova verbatim por tipo (P2#1 do smoke 261107). */
 function goalStartTaughtArgs(flowId: string, originHint: string) {
   return {
     workspace: "<workspace>",
     spt_path: "<spt_path>",
     objective: "<objective>",
     idempotency_key: `<idempotency_key ${originHint}>`,
-    evidence_required: "<evidence_required>",
+    evidence_required: true,
     source: "<source>",
     flow_id: flowId
   };

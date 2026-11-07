@@ -11,6 +11,7 @@ import {
   type SequenceSchemaIndex
 } from "../src/error-envelope.js";
 import { parseSptDocument } from "../src/spt-contract.js";
+import { SEQUENCE_SCHEMA_INDEX } from "./helpers/sequence-schema-index.js";
 
 describe("error envelope contract (PPIRTV-ERRO-QUE-ENSINA-ENVELOPE)", () => {
   it("fiscal blocked envelope teaches the insufficient-attempts branch with state numbers and the cooperation sequence", () => {
@@ -289,86 +290,12 @@ describe("error envelope contract (PPIRTV-ERRO-QUE-ENSINA-ENVELOPE)", () => {
 });
 
 describe("sequence oracle validates taught steps against live schemas", () => {
-  const schemas: SequenceSchemaIndex = {
-    goal_meeting_open: {
-      required: ["flow_id", "question"],
-      properties: {
-        flow_id: { type: "string" },
-        question: { type: "string" },
-        type: { type: "string", enum: ["divergent", "convergent", "transversal", "decision"] },
-        suggested_cooperators: { type: "array" }
-      }
-    },
-    goal_meeting_close: {
-      required: ["flow_id", "meeting_id", "decision"],
-      properties: {
-        flow_id: { type: "string" },
-        meeting_id: { type: "string" },
-        decision: { type: "string" },
-        participants_present: { type: "array" },
-        satisfies_blockers: { type: "array" }
-      }
-    },
-    goal_verdict: {
-      required: ["flow_id", "status", "rationale", "next_step"],
-      properties: {
-        flow_id: { type: "string" },
-        status: { type: "string", enum: ["pronto", "pronto_com_ressalvas", "nao_pronto", "bloqueado"] },
-        rationale: { type: "string" },
-        evidence_ids: { type: "array" },
-        meeting_id: { type: "string" },
-        next_step: { type: "string" }
-      }
-    },
-    goal_status: {
-      properties: {
-        flow_id: { type: "string" },
-        detail: { type: "string", enum: ["lean", "compact", "full"] }
-      }
-    },
-    // P1 do workflow revisao-adversarial: index agora cobre goal_start e
-    // spt_validate (required do schema VIVO do server — goalEnvelopeSchema).
-    // Antes o index nao cobria essas tools e o defeito "args ensinados sem
-    // evidence_required" nascia verde (falso-verde programado, P1-1 do
-    // contrato). Manter sincronizado com src/server.ts ao evoluir o schema.
-    goal_start: {
-      required: ["workspace", "spt_path", "objective", "idempotency_key", "evidence_required", "source"],
-      properties: {
-        workspace: { type: "string" },
-        spt_path: { type: "string" },
-        objective: { type: "string" },
-        flow_id: { type: "string" },
-        idempotency_key: { type: "string" },
-        evidence_required: { type: "boolean" },
-        required_evidence: { type: "array" },
-        requested_verdict_policy: { type: "string" },
-        source: { type: "string" },
-        risk_level: { type: "string" },
-        mode: { type: "string" }
-      }
-    },
-    spt_validate: {
-      required: ["workspace", "spt_path"],
-      properties: {
-        workspace: { type: "string" },
-        spt_path: { type: "string" },
-        objective: { type: "string" }
-      }
-    },
-    evidence_add: {
-      required: ["flow_id", "title"],
-      properties: {
-        flow_id: { type: "string" },
-        kind: { type: "string" },
-        title: { type: "string" },
-        scope_classification: { type: "string", enum: ["target", "declared_dependency", "outside"] },
-        scope_reference: { type: "string" },
-        satisfies: { type: "array" },
-        observed_result: { type: "object" },
-        reviewed_implementation_fingerprint: { type: "string" }
-      }
-    }
-  };
+  // Index movido para tests/helpers/sequence-schema-index.ts (compartilhado
+  // com o espelho do mcp.test.ts, que o valida contra o tools/list REAL do
+  // servidor — drift de required/enum reprova a suite, nao a frota) e
+  // completado neste corte: enums de requested_verdict_policy/risk_level/mode,
+  // flow_role e tool flow_archive (P2#2 do smoke 261107, 3 lentes convergentes).
+  const schemas: SequenceSchemaIndex = SEQUENCE_SCHEMA_INDEX;
 
   it("accepts the taught meeting sequence when every required field and enum matches the live schema", () => {
     const action = fiscalBlockedAction(
@@ -458,5 +385,65 @@ describe("sequence oracle validates taught steps against live schemas", () => {
     const action = goalStartRequiredAction("flow-1");
     const errors = validateSequenceSteps(action.required_tool_sequence ?? [], schemas);
     expect(errors).toEqual([]);
+  });
+
+  // Vacina da rota do teto terminal (P1 do smoke 261107, 4a copia da classe):
+  // a rota composta review_required + attempt_regress_limit_reached ensina a
+  // sequencia do probe real do adversario [goal_status, evidence_add,
+  // goal_verdict, flow_archive, goal_start] — o goal_start do tail omitia os
+  // 2 campos obrigatorios. Curada com evidence_required true + source, a
+  // sequencia INTEIRA passa no oraculo (antes: probe esbuild + oraculo
+  // reprovava; nenhum teste cobria esta rota).
+  it("VACINA teto terminal: composto review_required + attempt_regress_limit_reached produz sequencia inteira aprovada pelo oraculo", () => {
+    const action = fiscalBlockedAction(
+      "PPIRTV_FISCAL_BLOCKED: review_required, attempt_regress_count, attempt_regress_limit_reached; attempt_count=4, regress_count=3, max=3, meetings=2"
+    );
+    const sequence = action.required_tool_sequence ?? [];
+    expect(sequence.some((step) => step.tool === "flow_archive")).toBe(true);
+    expect(sequence.some((step) => step.tool === "goal_start")).toBe(true);
+    const errors = validateSequenceSteps(sequence, schemas);
+    expect(errors).toEqual([]);
+  });
+
+  it("RED documentado: goal_start do teto terminal na forma antiga (sem evidence_required e sem source) reprova citando os 2 campos", () => {
+    const oldShape = [
+      {
+        order: 3,
+        tool: "goal_start",
+        args: {
+          workspace: "<workspace>",
+          spt_path: "<trilho do novo corte>",
+          objective: "<objetivo do novo corte>",
+          idempotency_key: "<chave>"
+        }
+      }
+    ];
+    const errors = validateSequenceSteps(oldShape, schemas);
+    expect(errors.some((error) => error.problem.includes("evidence_required"))).toBe(true);
+    expect(errors.some((error) => error.problem.includes("source"))).toBe(true);
+  });
+
+  // P2#1 do smoke (contratos + adversario convergentes): placeholder string em
+  // campo boolean reprova verbatim POR TIPO. A prova e composta: o espelho do
+  // mcp.test.ts garante index == inputSchema real do servidor, e este teste
+  // garante que o valor ENSINADO (true literal) bate com o tipo do index —
+  // logo a chamada verbatim passa no schema vivo.
+  it("replay verbatim-por-tipo: evidence_required ensinado como true literal (boolean) nas 3 rotas de goal_start", () => {
+    const recover = recoverTraceabilityRequiredAction("flow-1").required_tool_sequence?.find(
+      (step) => step.tool === "goal_start"
+    );
+    const direct = goalStartRequiredAction("flow-1").required_tool_sequence?.find(
+      (step) => step.tool === "goal_start"
+    );
+    const terminal = fiscalBlockedAction(
+      "PPIRTV_FISCAL_BLOCKED: review_required, attempt_regress_count, attempt_regress_limit_reached; attempt_count=4, regress_count=3, max=3, meetings=2"
+    ).required_tool_sequence?.find((step) => step.tool === "goal_start");
+    const goalStartProps = schemas.goal_start?.properties as Record<string, { type: string }> | undefined;
+    for (const step of [recover, direct, terminal]) {
+      expect(step).toBeDefined();
+      const taught = (step?.args as Record<string, unknown>).evidence_required;
+      expect(taught).toBe(true);
+      expect(typeof taught).toBe(goalStartProps?.evidence_required?.type);
+    }
   });
 });

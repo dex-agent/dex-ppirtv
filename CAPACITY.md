@@ -1,3 +1,24 @@
+## Reavaliação — envelope família todas as rotas (smoke de régua), 2026-11-07
+
+Owner error-envelope/tests: **P1** — 4ª cópia da sequência no próprio SSOT
+curada: `terminalReservationTail` agora ensina `goal_start` com
+`evidence_required: true` + `source` (rota composta do teto terminal;
+vacina da rota `attempt_regress_limit_reached` com GREEN da sequência
+inteira + RED documentado da forma antiga). **P2#1** — builders com `true`
+literal (placeholder string em `z.boolean()` falhava verbatim por tipo);
+replay verbatim-por-tipo nas 3 rotas. **P2#2** — schema-index movido para
+`tests/helpers/sequence-schema-index.ts` e espelhado contra o tools/list
+REAL no `mcp.test.ts` (required+type+enum por campo; index completado com
+enums de goal_start, `flow_role`, `goal_verdict` integral, `flow_archive`;
+espelho caçou 2 drifts do index velho: `flow_id` das meetings é optional).
+Suíte medida: **816 passed + 4 skipped = 820, 64 files** (antes 813/817 —
+o contador `files: 59` do receipt anterior estava congelado; achado P2#4
+do smoke corrigido de passagem). +3 testes (error-envelope 22→25).
+flow-engine.ts INTOCADO (3ª cópia l.6087 segue na FE-DEBT-006;
+camping NOT_APPLICABLE). Escopo: src/error-envelope.ts,
+tests/error-envelope.test.ts, tests/helpers/sequence-schema-index.ts (novo),
+tests/mcp.test.ts, CHANGELOG, FLOW_ENGINE_EVOLUTION.md, Trilho novo.
+
 ## Reavaliação — P1 workflow revisao-adversarial evidence_required, 2026-11-07
 
 Owner error-envelope/server: builders `recoverTraceabilityRequiredAction` +
