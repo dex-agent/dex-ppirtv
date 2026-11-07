@@ -980,5 +980,32 @@
       "Rota C da issue (re-bind com contrato diferente) permanece pendencia do contrato de idempotencia",
       "Onda densa EST-20261105-ONDA-DENSA-VERDICT-LEARNING segue pendente: proximo bloco de decomposicao (compromisso 2026-11-07)"
     ]
+  },
+  "reavaliacao_issue10_review_fixes": {
+    "date": "2026-11-07",
+    "scope": [
+      "src/server.ts",
+      "src/flow-engine.ts",
+      "src/spt-traceability.ts",
+      "tests/spt-verdict-coverage-diagnostics.test.ts",
+      "docs/architecture/flow-engine-evolution.json",
+      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+      "docs/contracts/MCP_TOOL_ERROR_ENVELOPE_CONTRACT.md",
+      "CHANGELOG.md"
+    ],
+    "delta": "Correcoes da revisao adversarial 6 lentes do c2e22a2: envelope TRACEABILITY_MISSING aponta goal_start (rota que cura; goal_resume nao curava); goal_status lean expoe binding via sptBindingStatus unico (spread lean/compact/full); reason 1-rodada (ER/task dona, ids citados, aprovada nao citada, pipe, cap 4000); 1 passada de diagnostics (wrapper morto removido); estreitamento goal_binding no call-site; +5 testes (9/9). P1 da revisao refutado na fonte (fingerprint = contrato inteiro). Camping CONTAIN PASS com FE-DEBT-006 aberta (sentinelas v3, evento spt_traceability_reattached, O(C+E), saneamento) pagavel pela onda densa EST-20261105.",
+    "evidence": [
+      ".agents/TMP/camping-fixes2.json",
+      "docs/architecture/flow-engine-evolution.json"
+    ],
+    "observed": {
+      "testes_fix": "9/9 (4 originais + 5 novos)",
+      "camping": "PASS CONTAIN reasons=[] (10 linhas, 0 decisoes, 0 guards added)",
+      "p1_refutado": "fingerprintSptContract = sha256(JSON.stringify(contract)) inteiro"
+    },
+    "limits": [
+      "FE-DEBT-006 aberta ate a onda densa EST-20261105 (GO do dono)",
+      "Emenda de proveniencia do modulo (11d5eb0) vive so no MD (ledger imutavel)"
+    ]
   }
 }

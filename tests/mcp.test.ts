@@ -1381,7 +1381,12 @@ describe("PPIRTV MCP stdio server", () => {
     const checkoutResult = resultOf(leanCheckout);
 
     expect(resultOf(started)).toMatchObject({ phase: "concepcao", mode: "compact", goal_envelope: { mode: "compact" } });
-    expect(JSON.stringify(resultOf(started)).length).toBeLessThan(5200);
+    // Bump declarado (review-fixes issue #10): o receipt do goal_start ganhou
+    // os 2 escalares de binding (spt_contract_version/spt_traceability_present
+    // — a entrega da issue #10: frota enxerga o binding no caminho lean).
+    // 5173 -> 5229 chars com os 56 bytes do remédio; teto segue guardiao de
+    // orcamento (nao e piso — se os campos sumirem, o limite nao grita).
+    expect(JSON.stringify(resultOf(started)).length).toBeLessThan(5300);
     expect((leanStatus as { isError?: boolean }).isError).not.toBe(true);
     expect((leanCheckout as { isError?: boolean }).isError).not.toBe(true);
     expect(JSON.stringify(leanStatus)).not.toContain("PPIRTV_TOOL_ERROR");

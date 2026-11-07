@@ -798,6 +798,13 @@ export class FlowEngine {
     let flow = await this.resolveGoalFlow(input);
     flow = await withCurrentImplementationFingerprint(flow);
     const detail = input.detail === "lean" ? "lean" : input.detail === "compact" ? "compact" : "full";
+    // Issue #10 review-fixes: diagnostico de binding SPT v3 em UMA fonte
+    // (SRP) compartilhada por lean (default da frota) e compact/full — 2
+    // escalares, sem PII; sem isso o consumidor natural nao distingue orfao.
+    const sptBindingStatus = {
+      spt_contract_version: flow.spt_contract_version ?? null,
+      spt_traceability_present: Boolean(flow.spt_traceability)
+    };
     // DT-04 (pragmatic/chato): detail "lean" retorna apenas nucleo do status
     // (fase, status, blockers, next_step, display, aliases) sem montar
     // checkout, checkin, checklist ou fiscal_policy. Target: <5KB.
@@ -909,6 +916,7 @@ export class FlowEngine {
         meeting_outcome_summary: meetingOutcomeCounts(flow),
         current_verdict: currentVerdict ? { verdict_id: currentVerdict.verdict_id, status: currentVerdict.status } : null,
         current_verdict_status: currentVerdict?.status ?? null,
+        ...sptBindingStatus,
         work_progress: workProgress,
         loop_monitor: loopMonitor ? { count: loopMonitor.count, signature: loopMonitor.signature, escalation_active: loopMonitor.escalation?.active ?? false } : null,
         aliases: {
@@ -1070,10 +1078,7 @@ export class FlowEngine {
       can_retry_verdict: blockers.length === 0,
       current_verdict: currentVerdict,
       goal_envelope: flow.goal_binding?.envelope ?? null,
-      // Issue #10: diagnostico de binding SPT visivel no status — sem isso o
-      // consumidor nao distingue flow v3 com traceability de flow orfao.
-      spt_contract_version: flow.spt_contract_version ?? null,
-      spt_traceability_present: Boolean(flow.spt_traceability),
+      ...sptBindingStatus,
       aliases: checklistStatus.aliases,
       display: {
         ...checklistStatus.display,
@@ -2719,8 +2724,13 @@ export class FlowEngine {
     if (positiveVerdict && flow.spt_contract_version === 3) {
       // FE-2026-11-07-ISSUE10-VERDICT-DIAGNOSTICO: gate SPT v3 do verdict
       // (traceability + stale + cobertura com diagnostico por criterio)
-      // extraido inteiro para a politica SPT em spt-traceability.ts.
-      await assertSptV3PositiveVerdictCoverage(flow, evidenceIds);
+      // extraido inteiro para a politica SPT em spt-traceability.ts. O `!` do
+      // goal_binding e o estreitamento do invariant garantido pelo
+      // assertGoalBinding acima — a politica exportada exige binding presente.
+      await assertSptV3PositiveVerdictCoverage(
+        { spt_traceability: flow.spt_traceability, evidence: flow.evidence, goal_binding: flow.goal_binding! },
+        evidenceIds
+      );
     }
     let fiscalFlow = await withCurrentImplementationFingerprint(await this.store.loadFlow(input.flow_id));
     // SPT gate-integrity-hardening-3 (R6): o diff Git entra como colaborador;

@@ -86,7 +86,7 @@ describe("goal_verdict SPT v3 coverage: o erro ensina por que cada criterio esta
       rationale: "cobertura ausente",
       evidence_ids: [noteId],
       next_step: "diagnostico visivel"
-    })).rejects.toThrow(/C-01.*no_criterion_proof/s);
+    })).rejects.toThrow(/C-01.*no_criterion_proof.*via ER-01 na task A-01/s);
   });
 
   it("goal_status full expoe spt_contract_version e spt_traceability_present do binding", async () => {
@@ -117,6 +117,126 @@ describe("goal_verdict SPT v3 coverage: o erro ensina por que cada criterio esta
     const after = JSON.parse(await readFile(orphan, "utf8"));
     expect(after.spt_traceability?.tasks?.length).toBeGreaterThan(0);
     expect(after.spt_traceability?.requirements?.length).toBeGreaterThan(0);
+
+    // review adversarial (glm53 P2): a jornada COMPLETA da cura — depois do
+    // re-bind, prova passed citada no verdict passa. A promessa central da
+    // issue #10 (re-bind reata E o verdict segue) deixa de ser prosa.
+    const cured = await addDeclarativeEvidence(engine, engine, {
+      flow_id: flowId,
+      title: "prova aprovada pos re-bind",
+      kind: "goal_evidence",
+      declarative_proof: { task_id: "A-01", evidence_requirement_id: "ER-01", observed_value: true, paths: ["src/example.ts"] }
+    }, declarativeDefaults());
+    const verdict = await engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto_com_ressalvas",
+      rationale: "cura completa do orfao",
+      evidence_ids: cured.evidence_ids,
+      next_step: "re-bind reatou o mapa e o verdict passou"
+    });
+    expect((verdict.verdict as Record<string, unknown>).status).toBe("pronto_com_ressalvas");
+  });
+
+  // review-fixes: lean e o default da CAMADA MCP (server aplica detail ?? "lean");
+  // revisao adversarial (P2 consenso 3 lentes): o teste anterior chamava sem
+  // detail e exercia o branch full do engine — spread lean sem guarda.
+  it("goal_status lean (default do MCP) expoe spt_contract_version e spt_traceability_present", async () => {
+    const status = await engine.goalStatus({ flow_id: flowId, detail: "lean" }) as Record<string, unknown>;
+    expect(status.spt_contract_version).toBe(3);
+    expect(status.spt_traceability_present).toBe(true);
+  });
+
+  // review-fixes: o ramo TRACEABILITY_MISSING-at-verdict sem cura previa —
+  // o erro ensina a ROTA que cura (goal_start re-bind) e o status enxerga o orfao.
+  it("orfao sem cura: verdict grita TRACEABILITY_MISSING com rota goal_start e status ve presente=false", async () => {
+    const orphan = path.join(workspace, ".ppirtv", "flows", `${flowId}.json`);
+    const { readFile, writeFile } = await import("node:fs/promises");
+    const raw = JSON.parse(await readFile(orphan, "utf8"));
+    delete raw.spt_traceability;
+    await writeFile(orphan, JSON.stringify(raw), "utf8");
+    const status = await engine.goalStatus({ flow_id: flowId }) as Record<string, unknown>;
+    expect(status.spt_traceability_present).toBe(false);
+    const nota = await engine.addGoalEvidence({
+      flow_id: flowId,
+      title: "nota do orfao",
+      kind: "note",
+      note: "citar para passar do gate de evidence_ids vazio"
+    }) as Record<string, unknown>;
+    await expect(engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto_com_ressalvas",
+      rationale: "orfao de proposito",
+      evidence_ids: [typeof nota.evidence_id === "string" ? nota.evidence_id : ""],
+      next_step: "rota que cura"
+    })).rejects.toThrow(/SPT_V3_TRACEABILITY_MISSING.*goal_start/s);
+  });
+
+  // review-fixes: misto — prova aprovada existe no flow mas NAO foi citada,
+  // prova reprovada foi citada; a reason nomeia a aprovada (acao-primeiro:
+  // "cite a prova ja aprovada") e a ER/task dona. Revisao adversarial
+  // (minimax+agnes): regex ancorada no evidence_id REAL da aprovada — a
+  // regex anterior com .* /s podia atravessar a fronteira entre criterios.
+  it("reason de 1 rodada: misto ensina a citar a prova aprovada pelo id real", async () => {
+    const approved = await addDeclarativeEvidence(engine, engine, {
+      flow_id: flowId,
+      title: "aprovada (nao sera citada)",
+      kind: "goal_evidence",
+      declarative_proof: { task_id: "A-01", evidence_requirement_id: "ER-01", observed_value: true, paths: ["src/example.ts"] }
+    }, declarativeDefaults());
+    const failed = await addDeclarativeEvidence(engine, engine, {
+      flow_id: flowId,
+      title: "reprovada (citada)",
+      kind: "goal_evidence",
+      declarative_proof: { task_id: "A-01", evidence_requirement_id: "ER-01", observed_value: false, paths: ["src/example.ts"] }
+    }, declarativeDefaults());
+    const approvedId = String(approved.evidence_ids[0]).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    await expect(engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto_com_ressalvas",
+      rationale: "misto de proposito",
+      evidence_ids: failed.evidence_ids,
+      next_step: "reason que fecha em 1 rodada"
+    })).rejects.toThrow(
+      new RegExp(`C-01: proof_not_passed: [^;]*boolean false equals true[^;]*; cite a prova ja aprovada ${approvedId}`, "s")
+    );
+  });
+
+  // review-fixes: ancora de formato compativel — prefixo + missing= antes de
+  // details= na MESMA linha (consumers de regex/substring continuam casando).
+  it("ancora de formato: prefixo com missing= antes de details= na mesma linha", async () => {
+    const failed = await addDeclarativeEvidence(engine, engine, {
+      flow_id: flowId,
+      title: "ancora",
+      kind: "goal_evidence",
+      declarative_proof: { task_id: "A-01", evidence_requirement_id: "ER-01", observed_value: false, paths: ["src/example.ts"] }
+    }, declarativeDefaults());
+    const verdictPromise = engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto_com_ressalvas",
+      rationale: "ancora",
+      evidence_ids: failed.evidence_ids,
+      next_step: "formato"
+    });
+    await expect(verdictPromise).rejects.toThrow(/^SPT_V3_CRITERION_COVERAGE_REQUIRED: [^;]+; missing=C-01,C-02; details=\[/);
+  });
+
+  // review-fixes: caminho verde do multi-criterio-por-prova — prova unica
+  // passed cobrindo C-01 e C-02 aprova o verdict (semantica central do ER com proves multiplos).
+  it("verde multi-criterio: prova unica passed cobrindo C-01 e C-02 aprova o verdict", async () => {
+    const passed = await addDeclarativeEvidence(engine, engine, {
+      flow_id: flowId,
+      title: "verde multi",
+      kind: "goal_evidence",
+      declarative_proof: { task_id: "A-01", evidence_requirement_id: "ER-01", observed_value: true, paths: ["src/example.ts"] }
+    }, declarativeDefaults());
+    const verdict = await engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto_com_ressalvas",
+      rationale: "multi-criterio verde",
+      evidence_ids: passed.evidence_ids,
+      next_step: "cobertura por prova unica"
+    });
+    expect((verdict.verdict as Record<string, unknown>).status).toBe("pronto_com_ressalvas");
   });
 });
 

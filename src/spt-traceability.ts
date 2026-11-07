@@ -75,24 +75,17 @@ export function qualifyCriterionProof(
   };
 }
 
-export function missingCriterionCoverage(
-  traceability: SptV3Traceability,
-  evidence: Evidence[],
-  selectedEvidenceIds: string[]
-): string[] {
-  return criterionCoverageDiagnostics(traceability, evidence, selectedEvidenceIds).map(
-    (diagnostic) => diagnostic.criterion_id
-  );
-}
-
 // Issue #10 (frota travada em tentativa-e-erro): o verdict cego listava apenas
 // os criterion_ids descobertos. O diagnostico por criterio diz POR QUE cada
-// um esta descoberto — prova citada reprovada (com a evaluation literal) ou
-// nenhuma prova de criterio citada — para o consumidor corrigir em 1 rodada.
+// um esta descoberto e COMO fechar em 1 rodada — prova citada reprovada (com
+// a evaluation literal e aviso quando existe prova aprovada nao citada) ou
+// nenhuma prova de criterio citada (nomeando a ER/task dona e os ids citados).
 export type CriterionCoverageDiagnostic = {
   criterion_id: string;
   reason: string;
 };
+
+const DETAILS_MAX_LENGTH = 4000;
 
 export function criterionCoverageDiagnostics(
   traceability: SptV3Traceability,
@@ -106,6 +99,12 @@ export function criterionCoverageDiagnostics(
       .map((item) => item.criterion_proof!.criterion_id)
   );
   const diagnostics: CriterionCoverageDiagnostic[] = [];
+  // Revisao adversarial (P2 consenso): invariante do loop hoisted — recalcula-
+  // lo por criterio inflava o cap 4000 em N x citados sem informacao nova.
+  const citedIds = evidence
+    .filter((item) => selected.has(item.evidence_id))
+    .map((item) => item.evidence_id);
+  const citedList = citedIds.length ? citedIds.join(", ") : "nenhum";
   for (const requirement of traceability.requirements) {
     for (const criterion of requirement.criteria) {
       if (passedCriteria.has(criterion.id)) continue;
@@ -114,15 +113,37 @@ export function criterionCoverageDiagnostics(
           selected.has(item.evidence_id)
           && item.criterion_proof?.criterion_id === criterion.id
       );
+      const ownerTask = traceability.tasks.find((task) =>
+        task.done_when.includes(criterion.id)
+        && task.evidence_requirements.some((er) => er.proves.includes(criterion.id))
+      );
+      const ownerEr = ownerTask?.evidence_requirements.find((er) => er.proves.includes(criterion.id));
+      const ownerHint = ownerTask && ownerEr ? ` via ${ownerEr.id} na task ${ownerTask.id}` : "";
+      const approvedNotCited = evidence
+        .filter((item) => !selected.has(item.evidence_id) && item.criterion_proof?.criterion_id === criterion.id && item.criterion_proof?.passed === true)
+        .map((item) => item.evidence_id);
+      // Revisao adversarial (glm53 P2): acao-primeiro — quando existe prova
+      // aprovada nao citada, CITAR e o caminho de 1 rodada; "anexe" primeiro
+      // induzia o re-anexo duplicado (o proprio loop da issue #10).
+      const approvedHint = approvedNotCited.length
+        ? `; cite a prova ja aprovada ${approvedNotCited.join(", ")} no verdict (anexe nova declarative_proof${ownerHint} apenas se a aprovada estiver stale)`
+        : "";
       const reason = citedProofs.length === 0
-        ? "no_criterion_proof: nenhuma evidencia citada carrega criterion_proof para este criterio (anexe declarative_proof ou criterion_proof e cite os evidence_ids no verdict)"
+        ? `no_criterion_proof: nenhuma evidencia citada carrega criterion_proof para este criterio${ownerHint}; citados neste verdict: ${citedList}${approvedHint || `; anexe declarative_proof${ownerHint} e cite o evidence_id no verdict`}`
         : `proof_not_passed: ${citedProofs
             .map((item) => `${item.evidence_id} (${item.criterion_proof?.evaluation ?? "sem evaluation"})`)
-            .join("; ")}`;
+            .join(" | ")}${approvedHint}`;
       diagnostics.push({ criterion_id: criterion.id, reason });
     }
   }
   return diagnostics;
+}
+
+// Issue #10 review-fixes: cap defensivo — details cresce com criterios x
+// provas citadas; truncagem declarada na propria mensagem.
+function cappedCoverageDetails(details: string): string {
+  if (details.length <= DETAILS_MAX_LENGTH) return details;
+  return `${details.slice(0, DETAILS_MAX_LENGTH)}…[truncado em ${DETAILS_MAX_LENGTH} caracteres]`;
 }
 
 export async function assertCriterionProofRevisionCurrent(
@@ -145,27 +166,31 @@ export async function assertSptV3PositiveVerdictCoverage(
   flow: {
     spt_traceability?: SptV3Traceability;
     evidence: Evidence[];
-    goal_binding?: { envelope: { workspace: string } };
+    goal_binding: { envelope: { workspace: string } };
   },
   evidenceIds: string[]
 ): Promise<void> {
   if (!flow.spt_traceability) {
-    throw new Error("SPT_V3_TRACEABILITY_MISSING: flow is bound to v3 without its canonical traceability map");
+    throw new Error("SPT_V3_TRACEABILITY_MISSING: flow is bound to v3 without its canonical traceability map (recover: goal_start re-bind com a mesma idempotency_key do binding reata o mapa)");
   }
   const staleCriterionProofPaths = await staleSelectedCriterionProofPaths(
     flow.evidence,
     evidenceIds,
-    flow.goal_binding!.envelope.workspace
+    flow.goal_binding.envelope.workspace
   );
   if (staleCriterionProofPaths.length > 0) {
     throw new Error(
       `SPT_V3_EVIDENCE_STALE: selected criterion proof revision differs from current files; paths=${staleCriterionProofPaths.join(",")}`
     );
   }
-  const uncoveredCriteria = missingCriterionCoverage(flow.spt_traceability, flow.evidence, evidenceIds);
-  if (uncoveredCriteria.length > 0) {
-    const diagnostics = criterionCoverageDiagnostics(flow.spt_traceability, flow.evidence, evidenceIds);
-    const details = diagnostics.map((diagnostic) => `${diagnostic.criterion_id}: ${diagnostic.reason}`).join("; ");
+  // review-fixes: uma unica passada de diagnostics (o wrapper duplo era
+  // computacao repetida); a lista de descobertos deriva do proprio diagnostico.
+  const diagnostics = criterionCoverageDiagnostics(flow.spt_traceability, flow.evidence, evidenceIds);
+  if (diagnostics.length > 0) {
+    const uncoveredCriteria = diagnostics.map((diagnostic) => diagnostic.criterion_id);
+    const details = cappedCoverageDetails(
+      diagnostics.map((diagnostic) => `${diagnostic.criterion_id}: ${diagnostic.reason}`).join("; ")
+    );
     throw new Error(
       `SPT_V3_CRITERION_COVERAGE_REQUIRED: positive verdict requires passed evidence for every minimum criterion; missing=${uncoveredCriteria.join(",")}; details=[${details}]`
     );

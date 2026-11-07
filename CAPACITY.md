@@ -1,3 +1,34 @@
+## Reavaliação — issue #10 review-fixes (+2ª revisão 9 lentes), 2026-11-07
+
+Owner engine/server: correções da revisão adversarial (6 lentes) — envelope
+`SPT_V3_TRACEABILITY_MISSING` aponta `goal_start` (única rota que reata;
+`goal_resume` não curava — mantinha o loop original da issue); `goal_status`
+lean (default) expõe binding via `sptBindingStatus` único (spread nos 3
+details, SRP); reason fecha em 1 rodada (ER/task dona, ids citados, aprovada
+não citada, pipe entre provas, cap 4000); 1 passada de diagnostics (wrapper
+morto removido); estreitamento de `goal_binding` no call-site. 9/9 testes (4+5
+novos: órfão, misto, âncora, lean, verde-multi). Camping CONTAIN PASS
+(FE-DEBT-006 aberta — sentinelas/evento de auditoria/O(C+E)/saneamento —
+pagável pela onda densa). P1 da revisão refutado na fonte (fingerprint cobre
+contrato inteiro). Escopo: src (3) + teste + arquitetura (2) + contrato (1).
+
+2ª revisão adversarial (9 lentes, 8 relatórios; mimo cancelada pelo dono)
+aplicada no mesmo corte: envelope agora com `required_tool_sequence`
+executável (goal_status lê `goal_envelope.idempotency_key` → spt_validate →
+goal_start completo — `args:{flow_id}` sozinho falhava no schema e key nova
+criaria flow duplicado); teste lean exercita o branch lean real
+(`detail:"lean"` explícito); reason ação-primeiro (cite a aprovada antes de
+anexe); `citedIds` hoisted; export de `cappedCoverageDetails` removido;
+regex do misto ancorada no id real; jornada da cura (re-bind → prova →
+verdict) provada no teste do órfão. Delta medido: receipt goal_start
+5173→5229 chars (56 bytes dos 2 escalares de binding) — teto do teste de
+orçamento lean 5200→5300 com bump DECLARADO e comentário dono-do-gasto;
+suíte 809/814 (4 skip preexistentes). Docs: contrato separou `SPT_INVALIDO`
+(rota spt_validate); header corte anterior SHRINK→EXCEPTION (drift
+MD×ledger); FLOW_ENGINE_EVOLUTION com emenda da 2ª revisão. Refutado:
+`debt.responsibility === declaration.responsibility` é exigência do
+validador (l.323).
+
 ## Reavaliação — issue #10 verdict que ensina, 2026-11-07
 
 Owner spt-traceability/flow-engine: rotas A+B da issue #10 — erro de cobertura

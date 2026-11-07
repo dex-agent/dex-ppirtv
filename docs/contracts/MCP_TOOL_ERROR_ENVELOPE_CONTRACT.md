@@ -71,8 +71,9 @@ nunca repetir `goal_verdict` com `locked_by_limit=true`.
 | `PPIRTV_FISCAL_BLOCKED` | flow-engine:2729 | `goal_status` (**circular** — relê o mesmo blocker) | **P1: split + números + sequência ramificada (T-2)** |
 | `MEMORY_MINING_BLOCKED_VERDICT` | flow-engine:2711 | sequência completa em texto (mm_memory_mining → resolve → verdict) | ✅ padrão bom |
 | `memory_required_but_empty` (via fiscal) | flow-engine:6360+ | `required_tool_sequence` com args exatas | ✅ padrão-ouro da casa |
-| `SPT_V3_TRACEABILITY_MISSING` / `SPT_INVALIDO` | spt engine | `spt_validate` + owner | ✅ |
-| `SPT_V3_CRITERION_COVERAGE_REQUIRED` | flow-engine:2702 | lista critérios faltantes | ✅ |
+| `SPT_V3_TRACEABILITY_MISSING` | spt-traceability (desde issue #10) | `goal_start` re-bind com a MESMA idempotency_key do binding original (key nova criaria flow duplicado — recupere-a em `goal_status.goal_envelope`); envelope com `required_tool_sequence` goal_status→spt_validate→goal_start (2ª revisão: args antes ensinavam payload que o schema rejeita) | ✅ |
+| `SPT_INVALIDO` | server (validação de entrada do `goal_start`) | `corrigir_spt` → `spt_validate` (não é `goal_start` — o SPT precisa ser corrigido antes) | ✅ |
+| `SPT_V3_CRITERION_COVERAGE_REQUIRED` | spt-traceability (`assertSptV3PositiveVerdictCoverage`) | lista critérios faltantes + `details=[...]` por critério: `proof_not_passed` com evaluation literal e aviso de prova aprovada não citada, ou `no_criterion_proof` nomeando ER/task dona e ids citados (cap 4000) | ✅ |
 | `SPT_V3_EVIDENCE_INVALID` / `SPT_V3_EVIDENCE_STALE` | spt-traceability | campo + motivo | ✅ |
 | `SPT_V3_DECLARATIVE_OBSERVED_TYPE` | spt-declarative-proof | "send observed_value as X; received Y" | ✅ padrão para erros de input |
 | `GOAL_BINDING_MISMATCH`, `GOAL_NAO_ATIVO`, `EVIDENCIA_AUSENTE`, `SENSITIVE_CONTENT_BLOCKED`, `MEETING_ALREADY_CLOSED`, `MEETING_NOT_CLOSED`, `MEETING_BLOCKER_NOT_OWNED`, `MEETING_CONCURRENT_MUTATION`, `MEMORY_MINING_INPUT_INVALID`, `PROGRESS_AFTER_TERMINAL`, `REVIEW_ATTESTATION_CLAIMS_REQUIRED`, `GRAPHIFY_CONSUMPTION_UNKNOWN_REFERENCES`, `SPT_V2_EXECUTION_MIGRATION_REQUIRED`, `PPIRTV_TOOL_ERROR` (fallback) | vários | tool + reason por código | ✅ traduzidos (T-5 re-verifica args) |

@@ -1215,12 +1215,54 @@ function classifyToolError(error: unknown, errorContext?: ToolErrorContext) {
     return {
       ...base,
       code,
-      recoverable: code !== "SPT_V3_TRACEABILITY_MISSING",
-      next_required_action: {
-        type: code === "SPT_V3_TRACEABILITY_MISSING" ? "recover_bound_spt_traceability" : "attach_bound_criterion_evidence",
-        tool: code === "SPT_V3_TRACEABILITY_MISSING" ? "goal_resume" : "evidence_add",
-        ...(flowId ? { args: { flow_id: flowId } } : {})
-      }
+      // Issue #10 review-fixes: a cura de flow orfao de traceability e o
+      // RE-BIND via goal_start (mesma idempotency_key do binding original
+      // reata o mapa canonico) — goal_resume apenas marca last_seen e nao
+      // cura; apontar para ele mantinha o consumidor no loop da issue #10.
+      recoverable: true,
+      // Revisao adversarial 9 lentes (P1 consenso architect+pragmatico+glm53):
+      // args {flow_id} sozinho nao executa — o schema de goal_start exige o
+      // envelope completo, e idempotency_key NOVA criaria flow duplicado em
+      // vez de reatar. A sequencia ensina a ler a key original em
+      // goal_status.goal_envelope ANTES do re-bind (args conferidos contra o
+      // schema vivo, regra do contrato do envelope).
+      next_required_action:
+        code === "SPT_V3_TRACEABILITY_MISSING"
+          ? {
+              type: "recover_bound_spt_traceability",
+              tool: "goal_start",
+              reason: "re-bind com a MESMA idempotency_key do binding original reata o mapa canonico (key nova criaria flow duplicado); recupere-a em goal_status.goal_envelope e reenvie o envelope spt validado",
+              required_tool_sequence: [
+                {
+                  order: 1,
+                  tool: "goal_status",
+                  args: { flow_id: flowId ?? "<flow_id>", detail: "full" },
+                  only_if: "ler goal_envelope (idempotency_key/workspace/spt_path/objective) do binding original"
+                },
+                {
+                  order: 2,
+                  tool: "spt_validate",
+                  args: { workspace: "<workspace>", spt_path: "<spt_path>", objective: "<objective>" }
+                },
+                {
+                  order: 3,
+                  tool: "goal_start",
+                  args: {
+                    workspace: "<workspace>",
+                    spt_path: "<spt_path>",
+                    objective: "<objective>",
+                    idempotency_key: "<mesma lida no passo 1>",
+                    source: "<source>",
+                    flow_id: flowId ?? "<flow_id>"
+                  }
+                }
+              ]
+            }
+          : {
+              type: "attach_bound_criterion_evidence",
+              tool: "evidence_add",
+              ...(flowId ? { args: { flow_id: flowId } } : {})
+            }
     };
   }
   if (/goal_verdict requires traceable evidence_ids|Unknown evidence_ids/i.test(message)) {
