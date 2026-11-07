@@ -245,7 +245,7 @@
   "fotografia_id": "2026-11-05-merge-pr7",
   "head": "5b66f564e4b27aca7527e3d10d7fe4b5cf86319c",
   "tree_hash": null,
-  "generated_at": "2026-11-07T23:09:57.095529+00:00",
+  "generated_at": "2026-11-07T23:10:30.847983+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1060,5 +1060,9 @@
     "camping": "EXCEPTION public_compatibility — record FE-2026-11-07-ONDA1-GOAL-START-SSOT + selagem retroativa FE-2026-11-07-ISSUE11-BLOCKED-VERDICT-SNAPSHOT (commit 5b66f56)",
     "finding_classe": "CONSECUTIVE_EXCEPTION_FORBIDDEN nao modela selagem retroativa de record (cadeia quebrou no 5b66f56 sem record no JSON; marker MD existia)",
     "fila": "sentinela engine:3792 -> evaluateExpectation -> meetings (mapa de decisoes)"
+  },
+  "reavaliacao_selagem_onda1": {
+    "commit_escopo": "docs/architecture/flow-engine-evolution.json (selagem pos-commit)",
+    "suite": "819+4=823 do corte 115d7e5 segue valendo (sem mudanca de codigo)"
   }
 }

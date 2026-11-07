@@ -938,7 +938,9 @@
       "behavior_preserved_by": "T24b RED (evidence_required undefined na copia) -> GREEN consumindo o SSOT; T24 inalterado (mesma rota, mesmo setup); suite do cluster error-envelope + git-corroboration 31/31; diff liquido no monolito = 1 import + 1 linha de args",
       "anti_escoteiro": "corte da Onda 1 do Trilho de decomposicao: unifica a rota NAO vacinada com o SSOT ja provado (a3d47c6); a fila segue no mapa de decisoes (sentinela 3792, evaluateExpectation, meetings)",
       "changelog_marker": "FE-2026-11-07-ONDA1-GOAL-START-SSOT",
-      "architecture_marker": "FE-2026-11-07-ONDA1-GOAL-START-SSOT"
+      "architecture_marker": "FE-2026-11-07-ONDA1-GOAL-START-SSOT",
+      "commit": "115d7e5",
+      "parent_commit": "05e8563"
     }
   ]
 }

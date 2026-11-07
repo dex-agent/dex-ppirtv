@@ -1,3 +1,10 @@
+## Reavaliação — selagem pós-commit da Onda 1, 2026-11-07
+
+Selagem do record FE-2026-11-07-ONDA1-GOAL-START-SSOT no ledger (commit
+115d7e5, parent 05e8563) — sem mudança de código; suíte 819+4=823/64 do
+corte segue valendo. Ritual do ledger: o sha só existe depois do commit
+(stripSeal do validador permite append de commit/parent_commit).
+
 ## Reavaliação — Onda 1 desmontagem: teto terminal consome SSOT de goal_start, 2026-11-07
 
 Owner $oraculo-refatoracao (Trilho desmontagem-flow-engine-ondas, flow 3464):
