@@ -876,6 +876,157 @@ describe("flow-engine responsibility balance", () => {
     expect(removedReceipt.reasons.some((reason: string) => reason.includes("COMMIT_SEAL_PARENT_REMOVED:seal-cura3"))).toBe(true);
   });
 
+
+  // Cura-4 (P1-1 adversarial cura-3, RED B1): motor-laundering — parent_commit
+  // REMOVIDO de record selado passava quando o diff tocava o motor (stripSeal
+  // isenta parent; LEDGER_PREFIX so conferia quando commit mudava; seal-diff
+  // exige motor intocado). A conferencia de linhagem e INCONDICIONAL a janela.
+  it("motor-laundering: parent removido de record selado reprova mesmo em diff de motor", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "flow-engine-seal4-b1-"));
+    tempRoots.push(root);
+    await mkdir(path.join(root, "src"), { recursive: true });
+    await mkdir(path.join(root, "docs", "architecture"), { recursive: true });
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 1; } }\n");
+    await writeFile(path.join(root, "CHANGELOG.md"), "# Changelog\n\n## [Unreleased]\nseal4-marker\n");
+    await writeFile(path.join(root, "docs", "architecture", "FLOW_ENGINE_EVOLUTION.md"), "# Architecture\nseal4-marker\n");
+    execFileSync("git", ["init"], { cwd: root });
+    execFileSync("git", ["config", "user.email", "fixture@example.invalid"], { cwd: root });
+    execFileSync("git", ["config", "user.name", "Fixture"], { cwd: root });
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "c0"], { cwd: root });
+    const blobV1 = execFileSync("git", ["rev-parse", "HEAD:src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    const ledgerBase = {
+      ...baseDeclaration,
+      id: "seal-cura4-b1",
+      mode: "EXCEPTION",
+      destination_module: undefined,
+      changelog_marker: "seal4-marker",
+      architecture_marker: "seal4-marker",
+      base_blob: blobV1,
+      head_blob: blobV1,
+      consumers: ["src/server.ts"]
+    };
+    const manifestOf = (recs: Record<string, unknown>[]) => JSON.stringify({
+      contract: "dex.flow-engine.evolution-ledger.v1",
+      target: "src/flow-engine.ts",
+      owner: "$refactoring-fowler-rich",
+      records: recs
+    });
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), manifestOf([ledgerBase]));
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "ledger base"], { cwd: root });
+    const baseSha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    // selo honesto: commit real + parent real
+    execFileSync("git", ["commit", ["--allow-empty"], "-m", "seal"].flat(), { cwd: root });
+    const sealCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"),
+      manifestOf([{ ...ledgerBase, commit: sealCommit, parent_commit: baseSha }]));
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "selo honesto"], { cwd: root });
+    const sealBase = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    // laundry: diff TOCA O MOTOR, ANEXA declaration EXCEPTION legitima cobrindo o
+    // corte E remove o parent do record selado (commit inalterado) — antes da
+    // cura-4 passava porque o LEDGER_PREFIX so olhava commit mudado.
+    const blobV2 = execFileSync("git", ["hash-object", "-w", "--stdin"], { cwd: root, input: "export class FlowEngine { run() { return 2; } }\n", encoding: "utf8" }).trim();
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 2; } }\n");
+    const declarationCover = {
+      ...baseDeclaration,
+      id: "seal-cura4-b1-cover",
+      mode: "EXCEPTION",
+      exception_reason: "integrity",
+      expires: "2026-11-15",
+      base_blob: blobV1,
+      head_blob: blobV2,
+      evidence: ["tests/flow-engine-boundary.test.ts"],
+      changelog_marker: "seal4-marker",
+      architecture_marker: "seal4-marker",
+      consumers: ["src/server.ts"]
+    };
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"),
+      manifestOf([{ ...ledgerBase, commit: sealCommit }, declarationCover]));
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "motor + declaration + parent removido"], { cwd: root });
+    const run = runBoundaryCli({ cwd: root, argv: ["--base", sealBase] });
+    const receipt = JSON.parse(run.output);
+    expect(run.exitCode).toBe(1);
+    expect(receipt.reasons.some((reason: string) => reason.includes("COMMIT_SEAL_PARENT_REMOVED:seal-cura4-b1"))).toBe(true);
+  });
+
+  // Cura-4 (P1-1, RED B2): record NOVO nascendo com parent fabricado passava
+  // no path de declaracao (loop LEDGER_PREFIX so cobria records da base).
+  it("record novo com parent fabricado reprova no path de declaracao", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "flow-engine-seal4-b2-"));
+    tempRoots.push(root);
+    await mkdir(path.join(root, "src"), { recursive: true });
+    await mkdir(path.join(root, "docs", "architecture"), { recursive: true });
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 1; } }\n");
+    await writeFile(path.join(root, "CHANGELOG.md"), "# Changelog\n\n## [Unreleased]\nseal4-marker\n");
+    await writeFile(path.join(root, "docs", "architecture", "FLOW_ENGINE_EVOLUTION.md"), "# Architecture\nseal4-marker\n");
+    execFileSync("git", ["init"], { cwd: root });
+    execFileSync("git", ["config", "user.email", "fixture@example.invalid"], { cwd: root });
+    execFileSync("git", ["config", "user.name", "Fixture"], { cwd: root });
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "c0"], { cwd: root });
+    const blobV1 = execFileSync("git", ["rev-parse", "HEAD:src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 2; } }\n");
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "motor muda"], { cwd: root });
+    const headCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    const headBlob = execFileSync("git", ["rev-parse", "HEAD:src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    const fabricated = { ...baseDeclaration, id: "seal-cura4-b2", mode: "EXCEPTION", destination_module: undefined, changelog_marker: "seal4-marker", architecture_marker: "seal4-marker", base_blob: blobV1, head_blob: headBlob, consumers: ["src/server.ts"], commit: headCommit, parent_commit: "f000000000000000000000000000000000000000" };
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), JSON.stringify({
+      contract: "dex.flow-engine.evolution-ledger.v1",
+      target: "src/flow-engine.ts",
+      owner: "$refactoring-fowler-rich",
+      records: [fabricated]
+    }));
+    // worktree sujo pelo manifest; base = HEAD (motor ja mudou no HEAD)
+    const run = runBoundaryCli({ cwd: root, argv: ["--base", "HEAD~1"] });
+    const receipt = JSON.parse(run.output);
+    expect(run.exitCode).toBe(1);
+    expect(receipt.reasons.some((reason: string) => reason.includes("COMMIT_SEAL_PARENT_MISMATCH:seal-cura4-b2") || reason.includes("COMMIT_SEAL_PARENT_MISSING:seal-cura4-b2"))).toBe(true);
+  });
+
+  // Cura-4 (P1-2/P2, RED C): bootstrap com ledger legado de seletor com
+  // parenteses era vermelho POR CONSTRUCAO — grandfathering declarado torna
+  // o replay verde com a isencao visivel no codigo.
+  it("bootstrap com seletor legado de parenteses e verde por grandfathering declarado", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "flow-engine-seal4-c-"));
+    tempRoots.push(root);
+    await mkdir(path.join(root, "src"), { recursive: true });
+    await mkdir(path.join(root, "docs", "architecture"), { recursive: true });
+    await mkdir(path.join(root, "tests"), { recursive: true });
+    await mkdir(path.join(root, ".agents", "PLAN-TASKS"), { recursive: true });
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return true; } }\n");
+    await writeFile(path.join(root, "docs", "architecture", "FLOW_ENGINE_EVOLUTION.md"), "# Architecture\nseal4-marker\n");
+    await writeFile(path.join(root, "CHANGELOG.md"), "# Changelog\n\n## [Unreleased]\nseal4-marker\n");
+    await writeFile(path.join(root, "src", "server.ts"), 'import { FlowEngine } from "./flow-engine.js";\nexport const engine = new FlowEngine();\n');
+    await writeFile(path.join(root, ".agents", "PLAN-TASKS", "fixture.md"), "# fixture\n");
+    const titulo = "selo vivo reprova parent_commit mentiroso do record selado (COMMIT_SEAL_PARENT_MISMATCH)";
+    await writeFile(path.join(root, "tests", "fixture-evidence.test.ts"), 'import { describe, expect, it } from "vitest";\ndescribe("g", () => { it(' + JSON.stringify(titulo) + ', () => { expect(true).toBe(true); }); });\n');
+    execFileSync("git", ["init"], { cwd: root });
+    execFileSync("git", ["config", "user.email", "fixture@example.invalid"], { cwd: root });
+    execFileSync("git", ["config", "user.name", "Fixture"], { cwd: root });
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "c0"], { cwd: root });
+    const blob = execFileSync("git", ["rev-parse", "HEAD:src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    execFileSync("git", ["commit", ["--allow-empty"], "-m", "c1"].flat(), { cwd: root });
+    const c0 = execFileSync("git", ["rev-parse", "HEAD~1"], { cwd: root, encoding: "utf8" }).trim();
+    const c1 = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    const legacy = { ...baseDeclaration, id: "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO", mode: "EXCEPTION", exception_reason: "integrity", expires: "2026-11-15", destination_module: undefined, changelog_marker: "seal4-marker", architecture_marker: "seal4-marker", base_blob: blob, head_blob: blob, consumers: ["src/server.ts"], evidence: ["tests/fixture-evidence.test.ts"], evidence_selectors: { "tests/fixture-evidence.test.ts": titulo }, red_evidence: `tests/fixture-evidence.test.ts::${titulo}`, red_base_blob: blob, commit: c1, parent_commit: c0, rollback: "reverte o commit", red_observed_failure: "RED provado no baseline", red_command: `npx vitest run tests/fixture-evidence.test.ts -t "${titulo}"` };
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), JSON.stringify({
+      contract: "dex.flow-engine.evolution-ledger.v1",
+      target: "src/flow-engine.ts",
+      owner: "$refactoring-fowler-rich",
+      records: [legacy]
+    }));
+    // base SEM manifest -> bootstrap roda; motor intocado
+    const run = runBoundaryCli({ cwd: root, argv: ["--base", "HEAD", "--head", "WORKTREE"] });
+    const receipt = JSON.parse(run.output);
+    expect(run.exitCode).toBe(0);
+    expect(receipt.reasons).toEqual([]);
+  });
+
   it("keeps the living architecture public and discoverable", async () => {
     const [readme, agents, rootIndex, docsIndex, gitignore, architecture, ledger] = await Promise.all([
       readFile("README.md", "utf8"),

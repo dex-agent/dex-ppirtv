@@ -261,6 +261,44 @@ export function selectorRunsAsRegex(selector, titles) {
   }
 }
 
+// Cura-4 (P2 adversarial cura-3): self-match fecha o irmão colidente — uma
+// regex pode casar um título IRMÃO sem casar o próprio seletor (a+b casa aab,
+// não a+b); o replay do vitest -t tem que rodar o teste PRETENDIDO.
+export function selectorIsReplayable(selector, titles) {
+  try {
+    return new RegExp(selector).test(selector) && selectorRunsAsRegex(selector, titles);
+  } catch {
+    return false;
+  }
+}
+
+// Cura-4 (grandfathering declarado): seletores selados ANTES do gate de regex
+// (2026-11-08, cura-3) são isentos na revalidação de replay — a emenda
+// documental vive no MD e o gate vigia os FUTUROS. ISENÇÃO É EXCEÇÃO
+// DECLARADA, nunca silêncio.
+const LEGACY_SELECTOR_EXEMPT = new Set([
+  "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO"
+]);
+
+// Cura-4 (P1-1 adversarial cura-3): helper ÚNICO de linhagem de selagem —
+// consumido pelo LEDGER_PREFIX (record que entra ou muda no diff), pelo path
+// de declaração (record novo) e pelo seal-diff. Sem janela de diff escapa.
+export function sealLineageReasons(after, before, parents) {
+  const reasons = [];
+  if (!nonEmptyString(after.parent_commit)) {
+    reasons.push(
+      nonEmptyString(before?.parent_commit)
+        ? `COMMIT_SEAL_PARENT_REMOVED:${after.id}`
+        : `COMMIT_SEAL_PARENT_MISSING:${after.id}`
+    );
+    return reasons;
+  }
+  if (!parentMatchesCommit(parents, after.parent_commit)) {
+    reasons.push(`COMMIT_SEAL_PARENT_MISMATCH:${after.id}`);
+  }
+  return reasons;
+}
+
 function validExceptionExpiry(value) {
   if (!nonEmptyString(value)) return false;
   if (value === "next diff that touches src/flow-engine.ts") return true;
@@ -484,31 +522,20 @@ function evaluateCommitSealDiff({ cwd, baseManifest, headManifest }) {
       reasons.push(`COMMIT_SEAL_COMMIT_MISSING:${after.id}`);
       continue;
     }
-    // Cura-3 (P2 adversarial cura-2): selar commit exige a linhagem — o campo
-    // não pode faltar (opt-in por omissão fechado) nem sumir de um selo antigo.
-    if (!nonEmptyString(after.parent_commit)) {
-      reasons.push(
-        nonEmptyString(before.parent_commit)
-          ? `COMMIT_SEAL_PARENT_REMOVED:${after.id}`
-          : `COMMIT_SEAL_PARENT_MISSING:${after.id}`
-      );
-      continue;
-    }
+    // Cura-4: parent ausente NÃO pula a conferência de blob — a mentira mais
+    // grave (commit que não contém o blob declarado) não pode ficar mascarada.
+    const blobReasons = [];
     try {
       const sealedBlob = git(["rev-parse", `${after.commit}:${TARGET_PATH}`], cwd);
-      if (sealedBlob !== after.head_blob) {
-        reasons.push(`COMMIT_SEAL_BLOB_MISMATCH:${after.id}`);
-        continue;
-      }
-      // Cura-2 (P1 adversarial da cura): o selo VIVO confere a linhagem — o
-      // parent_commit armazenado tem que casar um pai real do commit selado
-      // (o replay de bootstrap nunca roda com manifesto pre-existente).
-      if (nonEmptyString(after.parent_commit)
-        && sealedParentReasons(after, git(["rev-list", "--parents", "-n", "1", after.commit], cwd).split(/\s+/).slice(1)).length > 0) {
-        reasons.push(`COMMIT_SEAL_PARENT_MISMATCH:${after.id}`);
-      }
+      if (sealedBlob !== after.head_blob) blobReasons.push(`COMMIT_SEAL_BLOB_MISMATCH:${after.id}`);
     } catch {
-      reasons.push(`COMMIT_SEAL_COMMIT_NOT_FOUND:${after.id}`);
+      blobReasons.push(`COMMIT_SEAL_COMMIT_NOT_FOUND:${after.id}`);
+    }
+    reasons.push(...blobReasons);
+    // Cura-4: linhagem pelo helper ÚNICO (P1 da cura-2 + selo vivo da cura-2
+    // agora são a mesma fonte).
+    reasons.push(...sealLineageReasons(after, before, git(["rev-list", "--parents", "-n", "1", after.commit], cwd).split(/\s+/).slice(1)));
+    if (blobReasons.length > 0 || !nonEmptyString(after.parent_commit)) {
       continue;
     }
     sealedIds.push(after.id);
@@ -600,7 +627,12 @@ function validateBootstrapRecords({ cwd, records, manifest, headBlob }) {
     for (const consumer of record.consumers ?? []) {
       try {
         const imports = usedRuntimeImports(readFileSync(path.join(cwd, consumer), "utf8"));
-        if (!imports.includes(importSpecifier(consumer, TARGET_PATH)) && !imports.includes(importSpecifier(consumer, record.destination_module))) {
+        // Cura-4: EXCEPTION sem destination_module confere só o import do TARGET —
+        // importSpecifier(consumer, undefined) lançava no catch e virava falso
+        // PRODUCT_CONSUMER_NOT_FOUND (assimetria com a isenção de edges da cura-2).
+        const specifiers = [importSpecifier(consumer, TARGET_PATH)];
+        if (nonEmptyString(record.destination_module)) specifiers.push(importSpecifier(consumer, record.destination_module));
+        if (!specifiers.some((specifier) => imports.includes(specifier))) {
           add(record, `PRODUCT_CONSUMER_EDGE_NOT_FOUND:${consumer}`);
         }
       } catch {
@@ -618,10 +650,11 @@ function validateBootstrapRecords({ cwd, records, manifest, headBlob }) {
         const titles = declaredTestTitles(readFileSync(path.join(cwd, evidenceFile), "utf8"));
         if (!evidence.includes(evidenceFile) || !nonEmptyString(selector)) return false;
         if (!titles.includes(selector)) return false;
-        // Cura-3 (P1 adversarial cura-2): vitest -t interpreta o seletor como
-        // regex — título declarado com metacaracteres (o caso dos parênteses)
-        // roda 0 testes com exit 0 no replay. Substring achou, regex casa.
-        if (!selectorRunsAsRegex(selector, titles)) {
+        // Cura-3: vitest -t interpreta o seletor como regex. Cura-4: self-match
+        // fecha o irmão colidente — a regex tem que casar o PRÓPRIO seletor, não
+        // só um título irmão. Records legados pré-gate são isentos por
+        // grandfathering DECLARADO (LEGACY_SELECTOR_EXEMPT), nunca silêncio.
+        if (!LEGACY_SELECTOR_EXEMPT.has(record.id) && !selectorIsReplayable(selector, titles)) {
           add(record, `EVIDENCE_SELECTOR_REGEX_INVALID:${evidenceFile}`);
           return false;
         }
@@ -857,6 +890,18 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
     }
   }
 
+  // Cura-4 (B2): record NOVO que nasce com commit no diff tem a linhagem
+  // conferida na hora, COM ou SEM base manifest — não existe "selo de
+  // nascimento" sem conferência (o LEDGER_PREFIX só cobre records pré-existentes).
+  if (declaration?.commit) {
+    try {
+      receipt.reasons.push(...sealLineageReasons(declaration, null,
+        git(["rev-list", "--parents", "-n", "1", declaration.commit], cwd).split(/\s+/).slice(1)));
+    } catch {
+      receipt.reasons.push(`LEDGER_PREFIX_COMMIT_SEAL_MISMATCH:${declaration.id}`);
+    }
+  }
+
   if (receipt.flow_engine_changed && !declaration) receipt.reasons.push("MATCHING_DECLARATION_REQUIRED");
   if (receipt.flow_engine_changed && declaration) {
     if (manifest.contract !== "dex.flow-engine.evolution-ledger.v1" || manifest.target !== TARGET_PATH || !CAMPING_OWNERS.has(manifest.owner ?? "")) {
@@ -885,22 +930,23 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
             && JSON.stringify(stripSeal(after)) === JSON.stringify(stripSeal(before));
         });
         if (!preservedPrefix) receipt.reasons.push("LEDGER_HISTORY_MUTATED");
+        // Cura-4 (P1-1 adversarial cura-3, motor-laundering): a conferência de
+        // selo dispara quando o record ENTRA ou MUDA no diff — não só quando o
+        // commit muda. Record selado inalterado no diff é a selagem legada
+        // aceita no seu tempo (grandfathering por imutabilidade); qualquer
+        // mutação (inclusive remover parent com commit inalterado) é conferida
+        // contra o git real pelo helper ÚNICO.
         for (let index = 0; index < baseRecords.length; index += 1) {
           const after = records[index];
-          if (after.commit && after.commit !== baseRecords[index].commit) {
+          const before = baseRecords[index];
+          const recordChanged = JSON.stringify(after) !== JSON.stringify(before);
+          if (after.commit && recordChanged) {
             try {
               if (git(["rev-parse", `${after.commit}:${TARGET_PATH}`], cwd) !== after.head_blob) {
                 receipt.reasons.push(`LEDGER_PREFIX_COMMIT_SEAL_MISMATCH:${after.id}`);
               }
-              // Cura-3 (P2 adversarial cura-2): selagem no MESMO diff do motor
-              // não pode escapar da conferência de linhagem — blob confere,
-              // parent_commit também (presente E pai real do commit).
-              const parents = git(["rev-list", "--parents", "-n", "1", after.commit], cwd).split(/\s+/).slice(1);
-              if (!nonEmptyString(after.parent_commit)) {
-                receipt.reasons.push(`COMMIT_SEAL_PARENT_MISSING:${after.id}`);
-              } else if (sealedParentReasons(after, parents).length > 0) {
-                receipt.reasons.push(`COMMIT_SEAL_PARENT_MISMATCH:${after.id}`);
-              }
+              receipt.reasons.push(...sealLineageReasons(after, before,
+                git(["rev-list", "--parents", "-n", "1", after.commit], cwd).split(/\s+/).slice(1)));
             } catch {
               receipt.reasons.push(`LEDGER_PREFIX_COMMIT_SEAL_MISMATCH:${after.id}`);
             }
@@ -1001,9 +1047,9 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
         const titles = declaredTestTitles(readFileSync(path.join(cwd, evidence), "utf8"));
         if (!titles.includes(selector)) {
           receipt.reasons.push(`EVIDENCE_SELECTOR_NOT_FOUND:${evidence}::${selector}`);
-        } else if (!selectorRunsAsRegex(selector, titles)) {
-          // Cura-3: mesma classe do gate de record — o seletor precisa casar
-          // como regex para o replay do vitest -t rodar os testes declarados.
+        } else if (!selectorIsReplayable(selector, titles)) {
+          // Cura-3/4: mesma classe do gate de record + self-match (irmão
+          // colidente não prova o teste pretendido).
           receipt.reasons.push(`EVIDENCE_SELECTOR_REGEX_INVALID:${evidence}::${selector}`);
         } else {
           validSelectors.push(evidence);
@@ -1022,9 +1068,9 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
           const redTitles = declaredTestTitles(readFileSync(path.join(cwd, redPath), "utf8"));
           if (!redTitles.includes(redSelector)) {
             receipt.reasons.push(`RED_SELECTOR_NOT_FOUND:${redPath}::${redSelector}`);
-          } else if (!selectorRunsAsRegex(redSelector, redTitles)) {
-            // Cura-3: mesma classe do gate de record aplicada ao RED — o
-            // red_command referencia este seletor no replay.
+          } else if (!selectorIsReplayable(redSelector, redTitles)) {
+            // Cura-3/4: mesma classe do gate de record + self-match aplicada ao
+            // RED — o red_command referencia este seletor no replay.
             receipt.reasons.push(`RED_SELECTOR_REGEX_INVALID:${redPath}::${redSelector}`);
           }
         } catch {

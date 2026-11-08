@@ -43,6 +43,8 @@ import {
   type WorkProgressSummary
 } from "./domain.js";
 import { canonicalVerdictChangedFiles, changedFilesContainCode, changedFilesMatchReview, hasRequirement, invalidateStaleDownstreamGates, isStructuredReviewEvidence, mergePathFacts, officialGoalNeedsCanonicalVerdict, providedRequirementDiagnostic, resolveGateRequirements, reviewCurrencyAppliesToPhase, reviewCurrencyMissing, reviewedChangedFilesForVerdict, reviewEvidenceDiagnostics, reviewEvidenceRequested, reviewEvidenceValidity, reviewRemainsCurrent, savedGateReusable, strictPathArray, structuredReviewAttestationRequested, type GateRequirementResolution } from "./gate-resolution.js";
+import { reviewRequiredSequence, LoopMonitor, requiredCooperationStillActive, requiredCooperationMeetingIdMissingForPositiveVerdict, requiredCooperationMeetingSignal, explicitMeetingTriggerClearedByFactsUpdate, hasOpenRequiredCooperationMeetingSignal, hasInsufficientRequiredCooperationMeetingSignal, liveOpenMeetingIds, historyAfter, hasClosedMeetingSatisfying, inputMeetingIds, requiredCooperationDiagnostics, missingParticipantsFor, requiredCooperationMeetingMaterial, meetingHasRequiredCooperationParticipants, meetingLinkedToFiscalBlock, meetingOpenedIndex, meetingClosedIndex, previousFiscalBlockIndex, meetingConsumedByLaterVerdict, meetingOutcomeSummaries, meetingOutcomeSummary, meetingOutcomeCounts, hasVerdictRecordedAfterIndex, requiredCooperationNeedsMeetingIdRetry, meetingKindForType, meetingTypeForKind, requiredMeetingKind, hasClosedMeetingKind, requiredMeetingParticipants, meetingClosedLedgerData, applyClosedMeetingToFlow, assertMeetingClosed, latestOpenMeeting, requiredCooperationSequence, loopEscalationAction, loopMeetingSequence, cooperationCheckoutAccountability, suggestedCooperatorsForFlow } from "./meeting-policy.js";
+import { evaluateFiscalPolicyWithDeps, countHistory, countRegressions, explicitMeetingTrigger, fiscalResultWithDeps, fiscalText, hasReviewEvidenceWithDeps, latestFiscalBlockEvent, MEMORY_MINING_BLOCKED_VERDICT_REASON, reportFiscalSignals, reportRecurringRiskCleared, requiredCooWithDeps, type FiscalPolicyDeps, type FiscalPolicyResult } from "./verdict-fiscal-policy.js";
 import { sanitizePersistedProvided } from "./input-unwrap.js";
 import { assertNoSecretLikeItems, assertNoSecretLikePayload, assertNoSecretLikeText } from "./security/secret-redaction.js";
 import {
@@ -116,9 +118,6 @@ import {
   traceabilityFromContract
 } from "./spt-traceability.js";
 import { requiresGoalEvidence } from "./spt-traceability.js";
-import { latestFiscalBlockEvent, MEMORY_MINING_BLOCKED_VERDICT_REASON } from "./verdict-fiscal-policy.js";
-import { reviewRequiredSequence, LoopMonitor } from "./meeting-policy.js";
-import { requiredCooperationStillActive, requiredCooperationMeetingIdMissingForPositiveVerdict, requiredCooperationMeetingSignal, explicitMeetingTriggerClearedByFactsUpdate, hasOpenRequiredCooperationMeetingSignal, hasInsufficientRequiredCooperationMeetingSignal, liveOpenMeetingIds, historyAfter, hasClosedMeetingSatisfying, inputMeetingIds, requiredCooperationDiagnostics, missingParticipantsFor, requiredCooperationMeetingMaterial, meetingHasRequiredCooperationParticipants, meetingLinkedToFiscalBlock, meetingOpenedIndex, meetingClosedIndex, previousFiscalBlockIndex, meetingConsumedByLaterVerdict, meetingOutcomeSummaries, meetingOutcomeSummary, meetingOutcomeCounts, hasVerdictRecordedAfterIndex, requiredCooperationNeedsMeetingIdRetry, meetingKindForType, meetingTypeForKind, requiredMeetingKind, hasClosedMeetingKind, requiredMeetingParticipants, meetingClosedLedgerData, applyClosedMeetingToFlow, assertMeetingClosed, latestOpenMeeting, requiredCooperationSequence, loopEscalationAction, loopMeetingSequence, cooperationCheckoutAccountability, suggestedCooperatorsForFlow } from "./meeting-policy.js";
 import { unique, truthy, stringArray, uniqueCooperators } from "./lang-utils.js";
 import { freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
 import { applyReviewScopeAttributions, attributedVerdictSnapshot, bindReviewScopeAttribution, prepareVerdictSnapshot, type GoalVerdictInput } from "./review-scope-attribution.js";
@@ -142,17 +141,6 @@ import {
   type FiscalVerdictInput
 } from "./memory/mining-policy.js";
 import { deriveVerdictLearning } from "./verdict-learning.js";
-import {
-  evaluateFiscalPolicyWithDeps,
-  countHistory, countRegressions, reportFiscalSignals, reportRecurringRiskCleared,
-  explicitMeetingTrigger,
-  fiscalResultWithDeps,
-  fiscalText,
-  hasReviewEvidenceWithDeps,
-  requiredCooWithDeps,
-  type FiscalPolicyDeps,
-  type FiscalPolicyResult
-} from "./verdict-fiscal-policy.js";
 
 export {
   boundedRecallErrorReferences,
@@ -634,32 +622,7 @@ export class FlowEngine {
     }
     assertLegacyFlowCanReceiveFirstGoalBinding(flow, envelope);
     if (reused && flowIsTerminal(flow)) {
-      await ensureLedgerTransitionRecorded(this.store, flow, {
-        originalType: "flow_created",
-        recoveredType: "flow_created_recovered",
-        originalAt: flow.created_at,
-        data: { goal: flow.goal, phase: flow.history.find((event) => event.type === "flow_created")?.data.phase ?? flow.phase }
-      });
-      await ensureLedgerTransitionRecorded(this.store, flow, {
-        originalType: "goal_started",
-        recoveredType: "goal_started_recovered",
-        originalAt: flow.goal_binding!.started_at,
-        data: goalLedgerData(flow.goal_binding!, flow),
-        actor: "dex-code"
-      });
-      // Cura-3 (P2 adversarial cura-2): o early-return terminal ganha o mesmo
-      // backfill do re-attach do branch reused comum — a trilha do ledger nao
-      // pode depender de qual caminho devolveu o status.
-      const reattachHistory = flow.history.find((event) => event.type === "spt_traceability_reattached");
-      if (reattachHistory) {
-        await ensureLedgerTransitionRecorded(this.store, flow, {
-          originalType: "spt_traceability_reattached",
-          recoveredType: "spt_traceability_reattached_recovered",
-          originalAt: reattachHistory.at,
-          data: reattachHistory.data,
-          actor: "dex-code"
-        });
-      }
+      await backfillReattachLedger(this.store, flow, flow.goal_binding!);
       return {
         ...(await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })),
         started: false,
@@ -777,33 +740,10 @@ export class FlowEngine {
       const hasGoalStarted = existingLedger.some(
         (event) => event.type === "goal_started" || event.type === "goal_started_recovered"
       );
-      // Cura-2 (P2 adversarial da cura): backfill do re-attach — o history
-      // persistiu o evento com o save, mas o append do ledger pode ter falhado
-      // depois (IO); o reuso nao re-dispara o re-bind, entao a trilha ausente
-      // e completada aqui pelo mecanismo generico de recuperacao.
-      const reattachHistory = flow.history.find((event) => event.type === "spt_traceability_reattached");
-      if (reattachHistory) {
-        await ensureLedgerTransitionRecorded(this.store, flow, {
-          originalType: "spt_traceability_reattached",
-          recoveredType: "spt_traceability_reattached_recovered",
-          originalAt: reattachHistory.at,
-          data: reattachHistory.data,
-          actor: "dex-code"
-        });
-      }
-      await ensureLedgerTransitionRecorded(this.store, flow, {
-        originalType: "flow_created",
-        recoveredType: "flow_created_recovered",
-        originalAt: flow.created_at,
-        data: { goal: flow.goal, phase: flow.history.find((event) => event.type === "flow_created")?.data.phase ?? flow.phase }
-      });
-      await ensureLedgerTransitionRecorded(this.store, flow, {
-        originalType: "goal_started",
-        recoveredType: "goal_started_recovered",
-        originalAt: flow.goal_binding.started_at,
-        data: goalLedgerData(flow.goal_binding, flow),
-        actor: "dex-code"
-      });
+      // Cura-2/4: backfill do re-attach — o history persistiu o evento com o
+      // save, mas o append do ledger pode ter falhado depois (IO); helper UNICO
+      // com ordem unificada (reattach -> flow_created -> goal_started).
+      await backfillReattachLedger(this.store, flow, flow.goal_binding);
       if (hasGoalStarted) {
         await this.ledger(flow.flow_id, "goal_reused", goalLedgerData(flow.goal_binding, flow), "dex-code");
       }
@@ -4931,6 +4871,40 @@ function assertFlowAcceptsMutation(flow: Flow): void {
   if (flowIsTerminal(flow)) {
     throw new Error(`FLOW_IMMUTABLE_AFTER_COMPLETION: ${flow.flow_id} is ${flow.status}`);
   }
+}
+
+// Cura-4 (G5, ordem aceita pelo dono): backfill do re-attach UNICO — a trilha
+// de recuperacao nao depende de qual caminho de retorno do startGoal a executou
+// (early-return terminal e branch reused comum). Ordem unificada: reattach ->
+// flow_created -> goal_started.
+async function backfillReattachLedger(
+  store: FlowEngine["store"],
+  flow: Flow,
+  goalBinding: NonNullable<Flow["goal_binding"]>
+): Promise<void> {
+  const reattachHistory = flow.history.find((event) => event.type === "spt_traceability_reattached");
+  if (reattachHistory) {
+    await ensureLedgerTransitionRecorded(store, flow, {
+      originalType: "spt_traceability_reattached",
+      recoveredType: "spt_traceability_reattached_recovered",
+      originalAt: reattachHistory.at,
+      data: reattachHistory.data,
+      actor: "dex-code"
+    });
+  }
+  await ensureLedgerTransitionRecorded(store, flow, {
+    originalType: "flow_created",
+    recoveredType: "flow_created_recovered",
+    originalAt: flow.created_at,
+    data: { goal: flow.goal, phase: flow.history.find((event) => event.type === "flow_created")?.data.phase ?? flow.phase }
+  });
+  await ensureLedgerTransitionRecorded(store, flow, {
+    originalType: "goal_started",
+    recoveredType: "goal_started_recovered",
+    originalAt: goalBinding.started_at,
+    data: goalLedgerData(goalBinding, flow),
+    actor: "dex-code"
+  });
 }
 
 function flowIsTerminal(flow: Flow): boolean {

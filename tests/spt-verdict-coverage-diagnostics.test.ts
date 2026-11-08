@@ -349,6 +349,18 @@ describe("goal_verdict SPT v3 coverage: o erro ensina por que cada criterio esta
       .map((line) => JSON.parse(line) as { type?: string })
       .filter((event) => event.type === "spt_traceability_reattached_recovered");
     expect(recovered).toHaveLength(1);
+    // Cura-4 (ordem unificada aceita pelo dono): UM helper so com uma sequencia
+    // unica (reattach -> flow_created -> goal_started) serve os DOIS caminhos —
+    // a ordem nao pode mais divergir por construcao. Neste fixture os irmãos
+    // _recovered sao deduplicados (ledger ja tem os eventos originais), entao a
+    // caracterizacao pina o que ele produz: reattach PRIMEIRO entre os presentes.
+    const recoveredTypes = (await readFile(ledgerPath, "utf8"))
+      .split("\n")
+      .filter((line) => line.trim().length > 0)
+      .map((line) => JSON.parse(line) as { type?: string })
+      .filter((event) => (event.type === "spt_traceability_reattached_recovered" || event.type === "flow_created_recovered" || event.type === "goal_started_recovered"))
+      .map((event) => event.type);
+    expect(recoveredTypes.indexOf("spt_traceability_reattached_recovered")).toBe(0);
   });
 
   // review-fixes: lean e o default da CAMADA MCP (server aplica detail ?? "lean");

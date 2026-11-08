@@ -1,3 +1,14 @@
+## Reavaliação — Cura-4: linhagem incondicional + rede antes da pá, 2026-11-08
+
+Owner $oraculo-refatoracao (Trilho cura4-seal-lineage-unico, flow 3778; GO do
+dono aceitando recomendação $oraculo-clean-code): sealLineageReasons helper
+único nos 3 gates (motor-laundering B1 + fabricado B2 fechados);
+selectorIsReplayable com self-match + grandfathering LEGACY_SELECTOR_EXEMPT
+(C); providedSatisfied enterrado (F4); backfillReattachLedger único com ordem
+unificada (G5); dialetos pinados; guard importSpecifier(consumer, undefined).
+4 REDs no baseline 7d5b67b -> GREEN; suíte 839+4=843 sem editar teste. Camping
+EXCEPTION; selagem pós-commit COM parent_commit.
+
 ## Reavaliação — Emenda adversarial Onda 4 (0 P1 consolidada), 2026-11-08
 
 Owner $projeto-manter-changelog: conferência na sessão dona — 62/62 eram as 3

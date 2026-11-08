@@ -6,7 +6,9 @@ import type { Evidence, Flow } from "../src/domain.js";
 import {
   evidenceSatisfiesRequirement,
   resolveGateRequirements,
-  reviewEvidenceDiagnostics
+  reviewedChangedFilesForVerdict,
+  reviewEvidenceDiagnostics,
+  strictPathArray
 } from "../src/gate-resolution.js";
 import {
   fingerprintReviewedImplementation,
@@ -14,6 +16,30 @@ import {
 } from "../src/review-snapshot.js";
 
 describe("gate requirement resolution", () => {
+  // Cura-4 (Rule 1, rede antes da pa): pinagem dos DIALETOS changed-files que
+  // coabitam no modulo — a "unificacao PROIBIDA" vira contrato executavel.
+  // Dialeto VERDICT: toStringArray coercivo (123 vira "123" no snapshot).
+  // Dialeto DECLARACAO/EVIDENCE: strictPathArray rejeita input nao-string.
+  // Unificar um no outro mudaria comportamento medido (laudo 2026-10-17).
+  it("dialetos changed-files coabitam com coercoes distintas para o mesmo input misto", () => {
+    const misto = [123, "a.ts"];
+    const flow = {
+      flow_id: "f-dialects",
+      history: [
+        { at: "2026-11-08T00:00:00.000Z", type: "flow_facts_updated", data: { changed_files: misto } },
+        { at: "2026-11-08T00:00:01.000Z", type: "verdict_recorded", data: { verdict_id: "v1" } }
+      ],
+      changed_files: [],
+      created_at: "2026-11-08T00:00:00.000Z",
+      updated_at: "2026-11-08T00:00:01.000Z"
+    } as unknown as Flow;
+    const verdict = { verdict_id: "v1" } as never;
+    // dialeto VERDICT: o escalar e coagido e preservado como pseudo-path
+    expect(reviewedChangedFilesForVerdict(flow, verdict)).toEqual(["123", "a.ts"]);
+    // dialeto DECLARACAO: o mesmo escalar e REJEITADO com erro explicito
+    expect(() => strictPathArray({ changed_files: misto })).toThrow(/PPIRTV_INPUT_INVALID/);
+  });
+
   it("accepts only exact structured review satisfactions", () => {
     const flow = flowWithEvidence(reviewEvidence({ satisfies: ["diff_reviewed", "barata_scan"] }));
     const resolved = resolveGateRequirements({

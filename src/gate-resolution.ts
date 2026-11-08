@@ -553,15 +553,6 @@ function sameReviewPaths(left: string[], right: string[]): boolean {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
-// Dialeto PROVIDED (nao confundir com lang-utils.truthy, que devolve false para
-// array vazio): aqui array presente — mesmo vazio — conta como satisfeito;
-// contrato medido no laudo 2026-10-17 (T-2 gate-integrity).
-function providedSatisfied(value: unknown): boolean {
-  if (Array.isArray(value)) return true;
-  if (typeof value === "string") return value.trim().length > 0;
-  return Boolean(value);
-}
-
 // SPT gate-integrity-hardening (T-2, laudo F1): requisito de source=provided
 // tem tipo contratado. O mapa substitui a interpretacao "truthy" que aceitava
 // "false", "no", [] e {} como prova de execucao (divergencia gate-resolution
