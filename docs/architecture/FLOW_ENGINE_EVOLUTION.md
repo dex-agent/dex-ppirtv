@@ -6,6 +6,10 @@ This is the living public map for editing `src/flow-engine.ts`. It explains
 where responsibilities belong, how earlier extractions were performed and what
 proof every future editor must provide.
 
+### FE-2026-11-08-CURA-ADVERSARIAL-LINHAGEM-LEDGER — EXCEPTION integrity
+
+Corte de cura dos achados CONFIRMADOS das adversariais Onda 2 (5/5) e Onda 2b (10/10), conferidos por checagem determinística na sessão dona (Trilho `2026-11-08-cura-adversarial-linhagem-ledger`, flow 3637): **P1 2b** — o ledger do evento `spt_traceability_reattached` era escrito ANTES de `assertNoSecretLikeItems` e `saveFlow` (quebrando a invariante dos irmãos `goal_started`/`goal_reused`), deixando trilha falsa de re-attach que nunca persistiu e duplicando em retry; agora SOMENTE o `this.ledger` (append-only, sem compensação) move para depois do `saveFlow` (flag `reattachLedgerData`, actor `dex-code`) — o `history.push` permanece no bloco do re-bind, persistindo atomicamente com o flow. **P1 Onda 2** — helper puro `sealedParentReasons` no validador reprova `COMMIT_PARENT_MISMATCH` quando o pai armazenado não casa nenhum pai real, **inclusive em commit de pai único** (o ponto cego `parents[0]` vencia), aceitando prefixo não-ambíguo (≥7 hex, selos legados); **linhagem do ledger corrigida** em campos isentos de `stripSeal`: PATH-ATTRIBUTION `parent_commit` `5b66f56`→`0bdd375` full (pai real cujo blob é o próprio `base_blob` do record), CONVERGENCIA `parent_commit` e commit do ONDA2B em full sha. **Correção documental**: a prosa do record ONDA2B diz "(FE-DEBT-006 fechada)" mas o estado-machine da dívida é `open` até o SHRINK pagador — o JSON é imutável (LEDGER_HISTORY_MUTATED); a verdade é a entrada de dívida + este MD. Higiene: CAPACITY dedup, 3 gaps de teste, hoist `traceIndexFor`, un-export `SptTraceIndex`. 2 REDs provados → GREEN 33/33.
+
 ## Exact trigger
 
 > Any diff that changes one line of `src/flow-engine.ts` enters the camping

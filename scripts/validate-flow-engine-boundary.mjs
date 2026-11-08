@@ -227,6 +227,22 @@ function failureAction() {
   };
 }
 
+// Corte de cura (P1 adversarial Onda 2): o selo parent_commit era ignorado em
+// commit de pai unico (parents[0] vencia) — fato git falso passava em silencio.
+// Puro e testavel: devolve COMMIT_PARENT_MISMATCH quando o pai armazenado nao
+// casa NENHUM pai real; prefixo nao-ambiguo (>= 7 hex) aceito por compat com
+// selos legados de sha curto.
+export function sealedParentReasons(record, parents) {
+  const reasons = [];
+  const stored = nonEmptyString(record?.parent_commit) ? record.parent_commit : null;
+  if (!stored) return reasons;
+  const matchesAnyParent = parents.some(
+    (parent) => parent === stored || (stored.length >= 7 && parent.startsWith(stored))
+  );
+  if (!matchesAnyParent) reasons.push("COMMIT_PARENT_MISMATCH");
+  return reasons;
+}
+
 function validExceptionExpiry(value) {
   if (!nonEmptyString(value)) return false;
   if (value === "next diff that touches src/flow-engine.ts") return true;
@@ -494,8 +510,14 @@ function validateBootstrapRecords({ cwd, records, manifest, headBlob }) {
       }
       const commitLine = git(["rev-list", "--parents", "-n", "1", record.commit], cwd).split(/\s+/);
       const parents = commitLine.slice(1);
-      const selectedParent = parents.length === 1 ? parents[0] : record.parent_commit;
-      if (!selectedParent || !parents.includes(selectedParent)) {
+      for (const reason of sealedParentReasons(record, parents)) add(record, reason);
+      const storedParent = nonEmptyString(record.parent_commit) ? record.parent_commit : null;
+      const isParent = (candidate) =>
+        parents.some((parent) => parent === candidate || (candidate.length >= 7 && parent.startsWith(candidate)));
+      const selectedParent = parents.length === 1
+        ? parents[0]
+        : (storedParent && isParent(storedParent) ? storedParent : null);
+      if (!selectedParent) {
         add(record, "COMMIT_PARENT_REQUIRED");
       } else if (git(["rev-parse", `${selectedParent}:${TARGET_PATH}`], cwd) !== record.base_blob) {
         add(record, "COMMIT_PARENT_BASE_BLOB_MISMATCH");

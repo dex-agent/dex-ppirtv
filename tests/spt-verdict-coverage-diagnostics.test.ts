@@ -170,19 +170,76 @@ describe("goal_verdict SPT v3 coverage: o erro ensina por que cada criterio esta
     expect(events[0].data.flow_id).toBe(flowId);
     expect(events[0].data.recovered_by).toBe("goal_start_rebind");
     const fingerprint = String(events[0].data.spt_contract_fingerprint ?? "");
-    expect(fingerprint.length).toBeGreaterThan(0);
-    if (fingerprintBefore.length > 0) {
-      expect(fingerprint).toBe(fingerprintBefore);
-    }
+    // Corte de cura (gap adversarial 2b): igualdade incondicional — o binding
+    // desta fixture SEMPRE carrega fingerprint (goal_start o computa).
+    expect(fingerprintBefore.length).toBeGreaterThan(0);
+    expect(fingerprint).toBe(fingerprintBefore);
     const ledgerPath = path.join(workspace, ".ppirtv", "ledger.ndjson");
     const ledgerRaw = await readFile(ledgerPath, "utf8");
     const ledgerEvents = ledgerRaw
       .split("\n")
       .filter((line) => line.trim().length > 0)
       .map((line) => JSON.parse(line) as { type?: string; data?: Record<string, unknown> });
-    const reattachLedger = ledgerEvents.filter((event) => event.type === "spt_traceability_reattached");
+    // Corte de cura (gap adversarial 2b): contagem escopada ao flow dono.
+    const reattachLedger = ledgerEvents.filter(
+      (event) => event.type === "spt_traceability_reattached" && event.data?.flow_id === flowId
+    );
     expect(reattachLedger).toHaveLength(1);
     expect(reattachLedger[0].data?.flow_id).toBe(flowId);
+  });
+
+  // Corte de cura (P1 adversarial Onda 2b): o ledger e append-only e sem
+  // compensacao — o evento do re-attach so pode entrar DEPOIS de saveFlow
+  // persistir o flow. RED primeiro: no baseline 9df1304 o evento grava antes
+  // do save e sobrevive a falha (trilha falsa).
+  it("saveFlow falhando apos o re-bind deixa o ledger SEM spt_traceability_reattached e o retry grava 1x", async () => {
+    const orphan = path.join(workspace, ".ppirtv", "flows", `${flowId}.json`);
+    const { readFile, writeFile } = await import("node:fs/promises");
+    const raw = JSON.parse(await readFile(orphan, "utf8"));
+    delete raw.spt_traceability;
+    await writeFile(orphan, JSON.stringify(raw), "utf8");
+
+    const engineInternals = engine as unknown as { store: { saveFlow: () => Promise<void> } };
+    const originalSave = engineInternals.store.saveFlow;
+    engineInternals.store.saveFlow = async () => {
+      throw new Error("simulated IO failure");
+    };
+    try {
+      await expect(engine.startGoal({
+        flow_id: flowId,
+        workspace,
+        spt_path: path.join(workspace, ".agents", "PLAN-TASKS", "fixture-v3.md"),
+        objective: "Provar diagnostico de cobertura",
+        idempotency_key: "coverage-diag-fixture",
+        evidence_required: true,
+        required_evidence: [],
+        requested_verdict_policy: "evidence_required",
+        source: "test"
+      })).rejects.toThrow(/simulated IO failure/);
+    } finally {
+      engineInternals.store.saveFlow = originalSave;
+    }
+
+    const ledgerAfterFailure = await readFile(path.join(workspace, ".ppirtv", "ledger.ndjson"), "utf8");
+    expect(ledgerAfterFailure.includes("spt_traceability_reattached")).toBe(false);
+
+    // disco segue orfao: o retry bem-sucedido grava o evento exatamente 1x
+    // (sem fantasma do tentativa-falha, sem duplicacao).
+    await engine.startGoal({
+      flow_id: flowId,
+      workspace,
+      spt_path: path.join(workspace, ".agents", "PLAN-TASKS", "fixture-v3.md"),
+      objective: "Provar diagnostico de cobertura",
+      idempotency_key: "coverage-diag-fixture",
+      evidence_required: true,
+      required_evidence: [],
+      requested_verdict_policy: "evidence_required",
+      source: "test"
+    });
+    const ledgerLines = (await readFile(path.join(workspace, ".ppirtv", "ledger.ndjson"), "utf8"))
+      .split("\n")
+      .filter((line) => line.includes("spt_traceability_reattached"));
+    expect(ledgerLines).toHaveLength(1);
   });
 
   // review-fixes: lean e o default da CAMADA MCP (server aplica detail ?? "lean");
@@ -370,7 +427,9 @@ describe("Onda 2: sentinela de admissao v3 mora no SSOT (assertCriterionProofAdm
       requirements: [{ id: "REQ-01", criteria: [{ id: "C-01" }] }]
     } } as never;
     const admitted = assertCriterionProofAdmission(flowV3ComMapa, { criterion_proof: proofInput });
-    expect(admitted).toBeDefined();
+    // Corte de cura (gap adversarial 2b): conteudo da admissao, nao apenas presenca.
+    expect(admitted).toMatchObject({ criterion_id: "C-01", passed: true });
+    expect(String(admitted?.evaluation ?? "")).toContain("true");
     expect(() => assertCriterionProofAdmission(flowV3ComMapa, { criterion_proof: undefined })).not.toThrow();
   });
 });

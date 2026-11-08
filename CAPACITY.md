@@ -1,3 +1,13 @@
+## Reavaliação — Corte de cura adversarial 2/2b: ordem do evento + linhagem do ledger, 2026-11-08
+
+Owner $oraculo-refatoracao (Trilho cura-adversarial-linhagem-ledger, flow 3637;
+GO PADRAO do dono): P1 2b — ledger de spt_traceability_reattached só após
+saveFlow (flag reattachLedgerData, actor dex-code; history atômico com o save);
+P1 Onda 2 — sealedParentReasons no validador confere pai armazenado inclusive
+em pai único (COMMIT_PARENT_MISMATCH, prefixo ≥7); linhagem do ledger corrigida
+(0bdd375 full / full shas). Higiene: CAPACITY dedup, 3 gaps de teste, hoist,
+un-export. 2 REDs → GREEN 33/33; suíte 830+4=834.
+
 ## Reavaliação — Onda 2b: evento de re-attach + pré-indexação SptTraceIndex, 2026-11-08
 
 Owner $oraculo-refatoracao (Trilho onda2b-fecha-fe-debt-006, flow 3601; GO
@@ -8,8 +18,6 @@ qualificação; shape persistido inalterado (índice lazy para flows antigos).
 RED→GREEN 11/11 (+1 teste); suíte 828+4=832; camping EXCEPTION integrity
  reasons []; record selado pós-commit em 145ac4e; pagamento do record FE-DEBT-006
 agendado no SHRINK verificado da Onda 3.
-reasons [] (pagamento do record FE-DEBT-006 agendado no SHRINK da Onda 3).
-
 ## Reavaliação — Onda 2: sentinela de admissão v3 no SSOT, 2026-11-08
 
 Owner $oraculo-refatoracao (Trilho onda2-sentinela-admissao-v3, flow 3570;

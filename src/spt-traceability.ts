@@ -29,7 +29,7 @@ export function requiresGoalEvidence(flow: Flow): boolean {
 // shape persistido {requirements, tasks} e contrato publico): vive num cache
 // WeakMap — flows antigos lidos do disco ganham o indice lazy na 1a consulta,
 // sem migracao de disco.
-export type SptTraceIndex = {
+type SptTraceIndex = {
   taskById: Map<string, SptV3Task>;
   criteriaByRequirementId: Map<string, Set<string>>;
   evidenceRequirementById: Map<string, SptV3EvidenceRequirement>;
@@ -199,6 +199,8 @@ export function criterionCoverageDiagnostics(
       .map((item) => item.criterion_proof!.criterion_id)
   );
   const diagnostics: CriterionCoverageDiagnostic[] = [];
+  // Corte de cura (P3 adversarial 2b): indice hoistado — uma consulta, nao uma por criterio.
+  const traceIndex = traceIndexFor(traceability);
   // Revisao adversarial (P2 consenso): invariante do loop hoisted — recalcula-
   // lo por criterio inflava o cap 4000 em N x citados sem informacao nova.
   const citedIds = evidence
@@ -213,7 +215,7 @@ export function criterionCoverageDiagnostics(
           selected.has(item.evidence_id)
           && item.criterion_proof?.criterion_id === criterion.id
       );
-      const ownerHintPair = traceIndexFor(traceability).ownerHintByCriterionId.get(criterion.id);
+      const ownerHintPair = traceIndex.ownerHintByCriterionId.get(criterion.id);
       const ownerHint = ownerHintPair
         ? ` via ${ownerHintPair.evidenceRequirementId} na task ${ownerHintPair.taskId}`
         : "";

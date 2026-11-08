@@ -681,6 +681,9 @@ export class FlowEngine {
     const previousBinding = flow.goal_binding;
     const previousMode = flow.mode;
     const previousPhase = flow.phase;
+    // Corte de cura P1 (adversarial Onda 2b): o ledger do re-attach e append-only
+    // — so pode ser escrito depois que saveFlow persiste o flow.
+    let reattachLedgerData: Record<string, unknown> | null = null;
     const incomingMode = envelope.mode ?? (reused ? flow.mode ?? "compact" : "compact");
     const flowRole = previousBinding?.flow_role ?? envelope.flow_role ?? "execution";
     const { flow_role: _inputFlowRole, ...envelopeWithoutFlowRole } = envelope;
@@ -708,14 +711,16 @@ export class FlowEngine {
       // criterion_proof exigia traceability que nenhuma rota regravava).
       flow.spt_contract_version = flow.spt_contract_version ?? validation.contract_version;
       flow.spt_traceability = validation.traceability;
-      // Onda 2b (FE-DEBT-006): re-attach deixa trilha de auditoria — o evento
-      // carrega flow_id e fingerprint do contrato no history e no ledger.
+      // Onda 2b (FE-DEBT-006): re-attach deixa trilha de auditoria. O history
+      // persiste atomicamente com o saveFlow; o ledger (append-only, sem
+      // compensacao) so entra DEPOIS do salvamento — corte de cura P1
+      // adversarial: trilha falsa impossivel quando saveFlow falha.
       const reattachData = sptTraceabilityReattachedEventData(
         flow.flow_id,
         flow.goal_binding?.spt_contract_fingerprint ?? validation.contract_fingerprint ?? undefined
       );
       flow.history.push({ at: now, type: "spt_traceability_reattached", data: reattachData });
-      await this.ledger(flow.flow_id, "spt_traceability_reattached", reattachData);
+      reattachLedgerData = reattachData;
     }
     await freezeGitHeadBase(flow, boundEnvelope.workspace);
     assertNoSecretLikeItems(parsedValidationItems(validation), "spt_validation");
@@ -757,6 +762,11 @@ export class FlowEngine {
       flow.mode = previousMode;
       flow.phase = previousPhase;
       throw saveError;
+    }
+    if (reattachLedgerData) {
+      // Corte de cura P1: o flow persistiu — agora sim a trilha de auditoria
+      // do re-attach entra no ledger (ator engine-autorado como os irmaos).
+      await this.ledger(flow.flow_id, "spt_traceability_reattached", reattachLedgerData, "dex-code");
     }
     const existingLedger = await this.store.readLedger(flow.flow_id);
     if (newlyCreated) {

@@ -693,6 +693,31 @@ describe("flow-engine responsibility balance", () => {
     expect(receipt.reasons.some((reason: string) => reason.includes("COMMIT_PARENT_REQUIRED"))).toBe(true);
   });
 
+  // Corte de cura (P1 adversarial Onda 2): selo parent_commit mentiroso em
+  // commit de PAI ÚNICO passava em silêncio (l.495 usava parents[0] e ignorava
+  // o campo armazenado). RED primeiro: sealedParentReasons não existe no
+  // baseline 9df1304.
+  it("sealedParentReasons reprova parent_commit que não casa nenhum pai real — inclusive em pai único — e aceita prefixo não-ambíguo", async () => {
+    const module = await import("../scripts/validate-flow-engine-boundary.mjs") as unknown as Record<string, unknown>;
+    const sealedParentReasons = module.sealedParentReasons as
+      ((record: Record<string, unknown>, parents: string[]) => string[]) | undefined;
+    expect(typeof sealedParentReasons).toBe("function");
+
+    const realParent = "0bdd37598e86f0f8f8cf8f0f8f8cf8f0f8f8cf8f";
+    // pai único + pai armazenado que não é pai (o caso 5b66f56 do PATH-ATTRIBUTION)
+    expect(sealedParentReasons!({ parent_commit: "5b66f564e4b27aca7527e3d10d7fe4b5cf86319c" }, [realParent]))
+      .toEqual(["COMMIT_PARENT_MISMATCH"]);
+    // prefixo não-ambíguo (sha curto legado) aceita
+    expect(sealedParentReasons!({ parent_commit: "0bdd375" }, [realParent])).toEqual([]);
+    // pai cheio aceita
+    expect(sealedParentReasons!({ parent_commit: realParent }, [realParent])).toEqual([]);
+    // sem parent_commit armazenado: helper sem opinião (COMMIT_PARENT_REQUIRED cuida do merge)
+    expect(sealedParentReasons!({}, [realParent])).toEqual([]);
+    // merge com pai armazenado que não casa nenhum dos pais reais
+    expect(sealedParentReasons!({ parent_commit: "abc1234def567890abc1234def567890abc1234d" }, [realParent, "080abdd4e7c688265d8389e1d84c3480a8aa72fc"]))
+      .toEqual(["COMMIT_PARENT_MISMATCH"]);
+  });
+
   it("keeps the living architecture public and discoverable", async () => {
     const [readme, agents, rootIndex, docsIndex, gitignore, architecture, ledger] = await Promise.all([
       readFile("README.md", "utf8"),

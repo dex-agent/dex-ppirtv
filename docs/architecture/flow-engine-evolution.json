@@ -978,7 +978,7 @@
       "changelog_marker": "FE-2026-11-07-PATH-ATTRIBUTION-REGRESSAO-C01",
       "architecture_marker": "FE-2026-11-07-PATH-ATTRIBUTION-REGRESSAO-C01",
       "commit": "080abdd",
-      "parent_commit": "5b66f56"
+      "parent_commit": "0bdd37598e867e3e859206121da9c834270d8afa"
     },
     {
       "id": "FE-2026-11-07-CONVERGENCIA-PR12",
@@ -1018,7 +1018,7 @@
       "changelog_marker": "FE-2026-11-07-CONVERGENCIA-PR12",
       "architecture_marker": "FE-2026-11-07-CONVERGENCIA-PR12",
       "commit": "4005482",
-      "parent_commit": "080abdd"
+      "parent_commit": "080abdd4cea963c54e407e4d711c5064fc5ac4a8"
     },
     {
       "id": "FE-2026-11-08-ONDA2-SENTINELA-ADMISSAO-V3",
@@ -1092,7 +1092,43 @@
       ],
       "changelog_marker": "FE-2026-11-08-ONDA2B-REATTACH-EVENTO-INDICE",
       "architecture_marker": "FE-2026-11-08-ONDA2B-REATTACH-EVENTO-INDICE",
-      "commit": "145ac4e"
+      "commit": "145ac4e61fdce5cd65b8ec94d48ec2aa30f60e28"
+    },
+    {
+      "id": "FE-2026-11-08-CURA-ADVERSARIAL-LINHAGEM-LEDGER",
+      "date": "2026-11-08",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-08-cura-adversarial-linhagem-ledger.md",
+      "responsibility": "Corte de cura dos achados CONFIRMADOS das adversariais Onda 2/2b: (P1 2b) o ledger do evento spt_traceability_reattached passa a ser escrito somente DEPOIS de saveFlow persistir o flow (flag reattachLedgerData + chamada pos-save com actor dex-code) — trilha falsa impossivel quando saveFlow ou o secret-gate falham; (P1 Onda 2) helper puro sealedParentReasons no validador reprova COMMIT_PARENT_MISMATCH para pai armazenado que nao casa nenhum pai real inclusive em pai unico (ponto cego), prefixo >=7 aceito; linhagem do ledger corrigida (PATH-ATTRIBUTION parent_commit=0bdd37598e86... pai real dono do base_blob; CONVERGENCIA e commit do ONDA2B em full sha). Historia preservada: prosa do record ONDA2B imutavel (stripSeal), correcao documental no MD.",
+      "owner": "$oraculo-refatoracao",
+      "mode": "EXCEPTION",
+      "exception_reason": "integrity",
+      "rollback": "revert do commit: o ledger do re-attach volta a gravar antes do saveFlow (teste da trilha falsa falha) e o validador volta cego ao pai unico (teste do sealedParentReasons falha)",
+      "expires": "2026-11-15",
+      "red_evidence": "tests/spt-verdict-coverage-diagnostics.test.ts::saveFlow falhando apos o re-bind deixa o ledger SEM spt_traceability_reattached e o retry grava 1x",
+      "red_base_blob": "f438188eec87f13a13dfa3c589349ac4c59c91f9",
+      "red_observed_failure": "RED provado no baseline 9df1304: com saveFlow lancando apos o re-bind, o ledger.ndjson JA continha spt_traceability_reattached (trilha falsa de re-attach que nunca persistiu; o retry gravaria o segundo). RED irmão: sealedParentReasons inexistente (validador cego ao pai unico).",
+      "red_command": "npx vitest run tests/spt-verdict-coverage-diagnostics.test.ts -t \"saveFlow falhando apos o re-bind deixa o ledger SEM spt_traceability_reattached e o retry grava 1x\" (RED irmão: npx vitest run tests/flow-engine-boundary.test.ts -t \"sealedParentReasons reprova parent_commit que nao casa nenhum pai real\")",
+      "base_blob": "f438188eec87f13a13dfa3c589349ac4c59c91f9",
+      "head_blob": "a114fec680ec3c4fa2cba2530aae666065b4d150",
+      "evidence": [
+        "tests/spt-verdict-coverage-diagnostics.test.ts",
+        "tests/flow-engine-boundary.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/spt-verdict-coverage-diagnostics.test.ts": "saveFlow falhando apos o re-bind deixa o ledger SEM spt_traceability_reattached e o retry grava 1x",
+        "tests/flow-engine-boundary.test.ts": "sealedParentReasons reprova parent_commit que não casa nenhum pai real — inclusive em pai único — e aceita prefixo não-ambíguo"
+      },
+      "behavior_preserved_by": [
+        "GREEN 33/33 nos 2 arquivos (12 + 21), incluindo os 2 REDs curados",
+        "history.push permanece no bloco do re-bind (persiste atomicamente com o saveFlow); SOMENTE o ledger append-only mudou de lugar",
+        "dados de linhagem corrigidos sao campos isentos de stripSeal (commit/parent_commit) — prosa e resto do record intocados (LEDGER_HISTORY_MUTATED preservado)",
+        "suíte completa conferida no fechamento"
+      ],
+      "changelog_marker": "FE-2026-11-08-CURA-ADVERSARIAL-LINHAGEM-LEDGER",
+      "architecture_marker": "FE-2026-11-08-CURA-ADVERSARIAL-LINHAGEM-LEDGER",
+      "consumers": [
+        "src/server.ts"
+      ]
     }
   ]
 }
