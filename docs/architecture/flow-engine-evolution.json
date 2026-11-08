@@ -1302,6 +1302,43 @@
       "architecture_marker": "FE-2026-11-08-ONDA3-MEETINGS-POLICY-SHRINK",
       "commit": "9ad23eec2beba01dc94ddfe159213026deaedf36",
       "parent_commit": "e809b054051741785d9df465cab9e680b1440ffa"
+    },
+    {
+      "id": "FE-2026-11-08-CURA3-SELO-PARENT-OBRIGATORIO",
+      "date": "2026-11-08",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-08-cura3-selo-parent-obrigatorio.md",
+      "owner": "$oraculo-refatoracao",
+      "mode": "EXCEPTION",
+      "exception_reason": "integrity",
+      "expires": "2026-11-15",
+      "red_evidence": "tests/spt-verdict-coverage-diagnostics.test.ts::retry de flow TERMINAL completa a trilha do re-attach com evento recuperado",
+      "red_base_blob": "221052fa474392698bd6adf474192d9006ce02ea",
+      "red_observed_failure": "REDs provados no baseline d46a415: (1) seletor com parenteses literais passava no gate (substring acha) mas vitest -t casa 0 testes com exit 0 — falso verde de replay (o seletor do record CURA2 rodava 22 skipped/0); (2) selagem sem parent_commit passava no evaluateCommitSealDiff e a remocao do campo em seal-diff tambem (opt-in por omissao); (3) o early-return reused&&terminal do startGoal nao completava a trilha do re-attach no ledger (o backfill so existia no branch reused comum).",
+      "red_command": "npx vitest run tests/spt-verdict-coverage-diagnostics.test.ts -t \"retry de flow TERMINAL completa a trilha do re-attach com evento recuperado\"",
+      "base_blob": "221052fa474392698bd6adf474192d9006ce02ea",
+      "head_blob": "defb1f8358dd1770f74d0cb8ee45547a4d334572",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/flow-engine-boundary.test.ts",
+        "tests/spt-verdict-coverage-diagnostics.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/flow-engine-boundary.test.ts": "selectorRunsAsRegex detecta seletor que substring-acha mas regex não casa o título",
+        "tests/spt-verdict-coverage-diagnostics.test.ts": "retry de flow TERMINAL completa a trilha do re-attach com evento recuperado"
+      },
+      "responsibility": "Cura-3 dos P1/P2s da adversarial da cura-2 (10/10): o gate de seletores passa a validar que o seletor, COMO REGEX, casa titulo declarado (helper selectorRunsAsRegex integrado aos 2 gates de record e ao path de declaracao — EVIDENCE_SELECTOR_REGEX_INVALID e RED_SELECTOR_REGEX_INVALID, reprovando somente quando substring acha E regex nao casa); a selagem vira opt-out fechado (COMMIT_SEAL_PARENT_MISSING em record que ganha commit sem parent_commit; COMMIT_SEAL_PARENT_REMOVED em seal-diff que remove o campo) e o LEDGER_PREFIX do path de declaracao confere a LINHAGEM same-commit de records selados no mesmo diff do motor (sealedParentReasons com pais do rev-list — a rota que validava so blob fechou). No motor: o early-return reused&&terminal ganha o backfill do re-attach do branch comum (ensureLedgerTransitionRecorded alimentado pelo history persistido). Higiene: assert do backfill comum pina _recovered, typo P2/P2, prosa truncada do MD curada.",
+      "behavior_preserved_by": [
+        "motores de producao intocados alem do backfill do early-return terminal: mensagens e contratos publicos preservados",
+        "vitest run tests/flow-engine-boundary.test.ts tests/spt-verdict-coverage-diagnostics.test.ts: 38 passed",
+        "npm test completo: 835 passed | 4 skipped (839), exit 0"
+      ],
+      "rollback": "reverter o commit de selagem e o commit do corte cb0b4aa restaura o gate antigo (seletor por substring, selagem opt-in, backfill so no branch comum); os 3 REDs documentados no record reproduzem cada defeito no baseline d46a415",
+      "changelog_marker": "FE-2026-11-08-CURA3-SELO-PARENT-OBRIGATORIO",
+      "architecture_marker": "FE-2026-11-08-CURA3-SELO-PARENT-OBRIGATORIO",
+      "commit": "cb0b4aa17154d77c1be2b58614e7616771699251",
+      "parent_commit": "d46a4154ddb533c5d0db2eb6b6dbfafc4086a008"
     }
   ]
 }

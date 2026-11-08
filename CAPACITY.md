@@ -6,8 +6,9 @@ literais rodavam 0 testes com exit 0 — falso verde de replay); selagem exige
 parent_commit (MISSING/REMOVED) e o path de declaração confere linhagem
 same-commit (LEDGER_PREFIX + sealedParentReasons); early-return terminal ganha
 o backfill do re-attach. Suíte 835+4=839 (3 REDs provados no baseline d46a415).
-Camping EXCEPTION integrity; selagem pós-commit COM parent_commit (exigido pelo
-próprio gate novo).
+Camping EXCEPTION integrity PASS reasons []; selagem pós-commit em cb0b4aa COM
+parent_commit d46a415 (full) — exigido pelo próprio gate novo; decision_sites +1
+(reattachHistory no early-return terminal).
 
 ## Reavaliação — Onda 3: política de meetings fora do monólito (SHRINK paga FE-DEBT-006), 2026-11-08
 

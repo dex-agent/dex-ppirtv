@@ -266,7 +266,7 @@
  "fotografia_id": "2026-11-05-merge-pr7",
  "head": "d46a415",
  "tree_hash": "c4d95961344c0abe7a96ab3cee3d041a98368c97",
- "generated_at": "2026-11-08T22:14:26.240179+00:00",
+ "generated_at": "2026-11-08T22:16:34.555973+00:00",
  "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
  "escopo": [
   "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1161,7 +1161,7 @@
    "CHANGELOG.md",
    "docs/architecture/FLOW_ENGINE_EVOLUTION.md"
   ],
-  "selagem": "pos-commit COM parent_commit (exigido pelo proprio gate novo)",
+  "selagem": "cb0b4aa selado pos-commit COM parent_commit d46a415 (full); camping EXCEPTION PASS reasons []; decision_sites +1 (reattachHistory no early-return terminal)",
   "gates": "EVIDENCE_SELECTOR_REGEX_INVALID + RED_SELECTOR_REGEX_INVALID + COMMIT_SEAL_PARENT_MISSING/REMOVED + linhagem no LEDGER_PREFIX",
   "suite": {
    "passed": 835,
