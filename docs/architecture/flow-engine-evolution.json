@@ -1091,7 +1091,8 @@
         "prova rg executada na sessao (exit 1 = zero matches): find linear eliminado do caminho de qualificacao dos modulos spt-traceability e spt-declarative-proof"
       ],
       "changelog_marker": "FE-2026-11-08-ONDA2B-REATTACH-EVENTO-INDICE",
-      "architecture_marker": "FE-2026-11-08-ONDA2B-REATTACH-EVENTO-INDICE"
+      "architecture_marker": "FE-2026-11-08-ONDA2B-REATTACH-EVENTO-INDICE",
+      "commit": "145ac4e"
     }
   ]
 }

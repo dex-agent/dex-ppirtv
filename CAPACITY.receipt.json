@@ -266,7 +266,7 @@
   "fotografia_id": "2026-11-05-merge-pr7",
   "head": "217c3894e7c688265d8389e1d84c3480a8aa72fc",
   "tree_hash": "8ff605c86c37da557bbff772043c905d9244d01a",
-  "generated_at": "2026-11-08T13:54:59.416023+00:00",
+  "generated_at": "2026-11-08T13:55:56.736334+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1127,6 +1127,7 @@
     "commit_escopo": "src/spt-traceability.ts (indice SptTraceIndex + helper evento) + src/flow-engine.ts (cola evento) + src/spt-declarative-proof.ts (indice) + tests + ledger/markers/CHANGELOG",
     "suite": "828 passed + 4 skipped = 832 — +1 teste do evento de re-attach",
     "camping": "FE-2026-11-08-ONDA2B-REATTACH-EVENTO-INDICE EXCEPTION integrity — reasons []; pagamento do record FE-DEBT-006 agendado no SHRINK da Onda 3 (decisao do desenho)",
-    "motor": "evento spt_traceability_reattached (history+ledger) no re-bind de orfao; zero .find linear no caminho de qualificacao (rg exit 1 em spt-traceability e spt-declarative-proof)"
+    "motor": "evento spt_traceability_reattached (history+ledger) no re-bind de orfao; zero .find linear no caminho de qualificacao (rg exit 1 em spt-traceability e spt-declarative-proof)",
+    "selagem": "record selado pos-commit em 145ac4e (commit: 145ac4e) no commit de selagem seguinte"
   }
 }
