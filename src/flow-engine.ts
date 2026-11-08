@@ -647,6 +647,19 @@ export class FlowEngine {
         data: goalLedgerData(flow.goal_binding!, flow),
         actor: "dex-code"
       });
+      // Cura-3 (P2 adversarial cura-2): o early-return terminal ganha o mesmo
+      // backfill do re-attach do branch reused comum — a trilha do ledger nao
+      // pode depender de qual caminho devolveu o status.
+      const reattachHistory = flow.history.find((event) => event.type === "spt_traceability_reattached");
+      if (reattachHistory) {
+        await ensureLedgerTransitionRecorded(this.store, flow, {
+          originalType: "spt_traceability_reattached",
+          recoveredType: "spt_traceability_reattached_recovered",
+          originalAt: reattachHistory.at,
+          data: reattachHistory.data,
+          actor: "dex-code"
+        });
+      }
       return {
         ...(await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })),
         started: false,

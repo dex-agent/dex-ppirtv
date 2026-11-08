@@ -248,6 +248,19 @@ export function sealedParentReasons(record, parents) {
   return reasons;
 }
 
+// Cura-3 (P1 adversarial cura-2): vitest -t trata o seletor como REGEX — um
+// seletor que é substring exata do título mas contém metacaracteres (o caso
+// canônico: parênteses literais) casa 0 testes com exit 0 (falso verde de
+// replay). O gate passa a exigir que o seletor, COMO REGEX, case algum título
+// declarado no arquivo de evidência.
+export function selectorRunsAsRegex(selector, titles) {
+  try {
+    return titles.some((title) => new RegExp(selector).test(title));
+  } catch {
+    return false;
+  }
+}
+
 function validExceptionExpiry(value) {
   if (!nonEmptyString(value)) return false;
   if (value === "next diff that touches src/flow-engine.ts") return true;
@@ -471,6 +484,16 @@ function evaluateCommitSealDiff({ cwd, baseManifest, headManifest }) {
       reasons.push(`COMMIT_SEAL_COMMIT_MISSING:${after.id}`);
       continue;
     }
+    // Cura-3 (P2 adversarial cura-2): selar commit exige a linhagem — o campo
+    // não pode faltar (opt-in por omissão fechado) nem sumir de um selo antigo.
+    if (!nonEmptyString(after.parent_commit)) {
+      reasons.push(
+        nonEmptyString(before.parent_commit)
+          ? `COMMIT_SEAL_PARENT_REMOVED:${after.id}`
+          : `COMMIT_SEAL_PARENT_MISSING:${after.id}`
+      );
+      continue;
+    }
     try {
       const sealedBlob = git(["rev-parse", `${after.commit}:${TARGET_PATH}`], cwd);
       if (sealedBlob !== after.head_blob) {
@@ -592,9 +615,17 @@ function validateBootstrapRecords({ cwd, records, manifest, headBlob }) {
     const selectors = record.evidence_selectors && typeof record.evidence_selectors === "object" ? record.evidence_selectors : {};
     const selectorValid = Object.entries(selectors).some(([evidenceFile, selector]) => {
       try {
-        return evidence.includes(evidenceFile)
-          && nonEmptyString(selector)
-          && declaredTestTitles(readFileSync(path.join(cwd, evidenceFile), "utf8")).includes(selector);
+        const titles = declaredTestTitles(readFileSync(path.join(cwd, evidenceFile), "utf8"));
+        if (!evidence.includes(evidenceFile) || !nonEmptyString(selector)) return false;
+        if (!titles.includes(selector)) return false;
+        // Cura-3 (P1 adversarial cura-2): vitest -t interpreta o seletor como
+        // regex — título declarado com metacaracteres (o caso dos parênteses)
+        // roda 0 testes com exit 0 no replay. Substring achou, regex casa.
+        if (!selectorRunsAsRegex(selector, titles)) {
+          add(record, `EVIDENCE_SELECTOR_REGEX_INVALID:${evidenceFile}`);
+          return false;
+        }
+        return true;
       } catch {
         return false;
       }
@@ -861,6 +892,15 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
               if (git(["rev-parse", `${after.commit}:${TARGET_PATH}`], cwd) !== after.head_blob) {
                 receipt.reasons.push(`LEDGER_PREFIX_COMMIT_SEAL_MISMATCH:${after.id}`);
               }
+              // Cura-3 (P2 adversarial cura-2): selagem no MESMO diff do motor
+              // não pode escapar da conferência de linhagem — blob confere,
+              // parent_commit também (presente E pai real do commit).
+              const parents = git(["rev-list", "--parents", "-n", "1", after.commit], cwd).split(/\s+/).slice(1);
+              if (!nonEmptyString(after.parent_commit)) {
+                receipt.reasons.push(`COMMIT_SEAL_PARENT_MISSING:${after.id}`);
+              } else if (sealedParentReasons(after, parents).length > 0) {
+                receipt.reasons.push(`COMMIT_SEAL_PARENT_MISMATCH:${after.id}`);
+              }
             } catch {
               receipt.reasons.push(`LEDGER_PREFIX_COMMIT_SEAL_MISMATCH:${after.id}`);
             }
@@ -958,8 +998,16 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
     for (const [evidence, selector] of Object.entries(evidenceSelectors)) {
       if (!evidencePaths.includes(evidence) || !nonEmptyString(selector)) continue;
       try {
-        if (declaredTestTitles(readFileSync(path.join(cwd, evidence), "utf8")).includes(selector)) validSelectors.push(evidence);
-        else receipt.reasons.push(`EVIDENCE_SELECTOR_NOT_FOUND:${evidence}::${selector}`);
+        const titles = declaredTestTitles(readFileSync(path.join(cwd, evidence), "utf8"));
+        if (!titles.includes(selector)) {
+          receipt.reasons.push(`EVIDENCE_SELECTOR_NOT_FOUND:${evidence}::${selector}`);
+        } else if (!selectorRunsAsRegex(selector, titles)) {
+          // Cura-3: mesma classe do gate de record — o seletor precisa casar
+          // como regex para o replay do vitest -t rodar os testes declarados.
+          receipt.reasons.push(`EVIDENCE_SELECTOR_REGEX_INVALID:${evidence}::${selector}`);
+        } else {
+          validSelectors.push(evidence);
+        }
       } catch {
         receipt.reasons.push(`EVIDENCE_NOT_FOUND:${evidence}`);
       }
@@ -971,8 +1019,13 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
       const [redPath, redSelector] = declaration.red_evidence.split("::", 2);
       if (nonEmptyString(redPath) && nonEmptyString(redSelector)) {
         try {
-          if (!declaredTestTitles(readFileSync(path.join(cwd, redPath), "utf8")).includes(redSelector)) {
+          const redTitles = declaredTestTitles(readFileSync(path.join(cwd, redPath), "utf8"));
+          if (!redTitles.includes(redSelector)) {
             receipt.reasons.push(`RED_SELECTOR_NOT_FOUND:${redPath}::${redSelector}`);
+          } else if (!selectorRunsAsRegex(redSelector, redTitles)) {
+            // Cura-3: mesma classe do gate de record aplicada ao RED — o
+            // red_command referencia este seletor no replay.
+            receipt.reasons.push(`RED_SELECTOR_REGEX_INVALID:${redPath}::${redSelector}`);
           }
         } catch {
           receipt.reasons.push(`EVIDENCE_NOT_FOUND:${redPath}`);

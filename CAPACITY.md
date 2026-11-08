@@ -1,3 +1,14 @@
+## Reavaliação — Cura-3: seletor-regex + parent obrigatório + backfill terminal, 2026-11-08
+
+Owner $oraculo-refatoracao (Trilho cura3-selo-parent-obrigatorio, flow 3719; GO
+do dono): gate de seletores valida REGEX de fato (selectorRunsAsRegex; parens
+literais rodavam 0 testes com exit 0 — falso verde de replay); selagem exige
+parent_commit (MISSING/REMOVED) e o path de declaração confere linhagem
+same-commit (LEDGER_PREFIX + sealedParentReasons); early-return terminal ganha
+o backfill do re-attach. Suíte 835+4=839 (3 REDs provados no baseline d46a415).
+Camping EXCEPTION integrity; selagem pós-commit COM parent_commit (exigido pelo
+próprio gate novo).
+
 ## Reavaliação — Onda 3: política de meetings fora do monólito (SHRINK paga FE-DEBT-006), 2026-11-08
 
 Owner $oraculo-refatoracao (Trilho onda3-meetings-policy, flow 3693; GO do

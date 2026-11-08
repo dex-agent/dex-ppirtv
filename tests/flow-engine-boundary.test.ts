@@ -787,6 +787,95 @@ describe("flow-engine responsibility balance", () => {
     expect(receipt.reasons.some((reason: string) => reason.includes("COMMIT_SEAL_PARENT_MISMATCH:seal-cura2"))).toBe(true);
   });
 
+  // Cura-3 (P1 adversarial cura-2, confirmado por comando): seletor que o
+  // vitest -t (REGEX) não executa passava no gate (substring acha, regex não
+  // casa — parênteses literais). RED primeiro: helper não existe no baseline.
+  it("selectorRunsAsRegex detecta seletor que substring-acha mas regex não casa o título", async () => {
+    const module = await import("../scripts/validate-flow-engine-boundary.mjs") as unknown as Record<string, unknown>;
+    const selectorRunsAsRegex = module.selectorRunsAsRegex as
+      ((selector: string, titles: string[]) => boolean) | undefined;
+    expect(typeof selectorRunsAsRegex).toBe("function");
+    const title = "selo vivo reprova parent_commit mentiroso do record selado (COMMIT_SEAL_PARENT_MISMATCH)";
+    // o caso canônico: seletor idêntico ao título com parênteses — substring acha, regex não casa
+    expect(selectorRunsAsRegex!(title, [title])).toBe(false);
+    // seletor sem parênteses casa
+    expect(selectorRunsAsRegex!("selo vivo reprova parent_commit mentiroso", [title])).toBe(true);
+    // regex inválida não derruba (fail-safe: false)
+    expect(selectorRunsAsRegex!("(", [title])).toBe(false);
+  });
+
+  // Cura-3 (P2 convergente 4 revisores): selagem SEM parent_commit passava em
+  // silêncio (opt-in por omissão) e REMOÇÃO do campo em seal-diff idem.
+  it("selagem exige parent_commit (MISSING) e reprova remoção do campo (REMOVED)", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "flow-engine-seal3-"));
+    tempRoots.push(root);
+    await mkdir(path.join(root, "src"), { recursive: true });
+    await mkdir(path.join(root, "docs", "architecture"), { recursive: true });
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return true; } }\n");
+    await writeFile(path.join(root, "CHANGELOG.md"), "# Changelog\n\n## [Unreleased]\nseal3-marker\n");
+    await writeFile(path.join(root, "docs", "architecture", "FLOW_ENGINE_EVOLUTION.md"), "# Architecture\nseal3-marker\n");
+    execFileSync("git", ["init"], { cwd: root });
+    execFileSync("git", ["config", "user.email", "fixture@example.invalid"], { cwd: root });
+    execFileSync("git", ["config", "user.name", "Fixture"], { cwd: root });
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "c0"], { cwd: root });
+    const blob = execFileSync("git", ["rev-parse", "HEAD:src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    const baseRecord = {
+      ...baseDeclaration,
+      id: "seal-cura3",
+      mode: "EXCEPTION",
+      changelog_marker: "seal3-marker",
+      architecture_marker: "seal3-marker",
+      base_blob: blob,
+      head_blob: blob,
+      consumers: ["src/server.ts"]
+    };
+    const manifestOf = (record: Record<string, unknown>) => JSON.stringify({
+      contract: "dex.flow-engine.evolution-ledger.v1",
+      target: "src/flow-engine.ts",
+      owner: "$refactoring-fowler-rich",
+      records: [record]
+    });
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), manifestOf(baseRecord));
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "ledger sem selo"], { cwd: root });
+    const baseSha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    const parent = baseSha;
+
+    // selagem SEM parent_commit: hoje passa (RED espera COMMIT_SEAL_PARENT_MISSING)
+    execFileSync("git", ["commit", ["--allow-empty"], "-m", "selagem sem parent"].flat(), { cwd: root });
+    const sealCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    await writeFile(
+      path.join(root, "docs", "architecture", "flow-engine-evolution.json"),
+      manifestOf({ ...baseRecord, commit: sealCommit })
+    );
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "selo sem parent"], { cwd: root });
+    const missingRun = runBoundaryCli({ cwd: root, argv: ["--base", baseSha] });
+    const missingReceipt = JSON.parse(missingRun.output);
+    expect(missingRun.exitCode).toBe(1);
+    expect(missingReceipt.reasons.some((reason: string) => reason.includes("COMMIT_SEAL_PARENT_MISSING:seal-cura3"))).toBe(true);
+
+    // remocao do campo em seal-diff: base com parent honesto, head sem
+    await writeFile(
+      path.join(root, "docs", "architecture", "flow-engine-evolution.json"),
+      manifestOf({ ...baseRecord, commit: sealCommit, parent_commit: parent })
+    );
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "selo com parent"], { cwd: root });
+    const withParentBase = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    await writeFile(
+      path.join(root, "docs", "architecture", "flow-engine-evolution.json"),
+      manifestOf({ ...baseRecord, commit: sealCommit })
+    );
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "remove parent"], { cwd: root });
+    const removedRun = runBoundaryCli({ cwd: root, argv: ["--base", withParentBase] });
+    const removedReceipt = JSON.parse(removedRun.output);
+    expect(removedRun.exitCode).toBe(1);
+    expect(removedReceipt.reasons.some((reason: string) => reason.includes("COMMIT_SEAL_PARENT_REMOVED:seal-cura3"))).toBe(true);
+  });
+
   it("keeps the living architecture public and discoverable", async () => {
     const [readme, agents, rootIndex, docsIndex, gitignore, architecture, ledger] = await Promise.all([
       readFile("README.md", "utf8"),

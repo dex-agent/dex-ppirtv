@@ -242,7 +242,7 @@ describe("goal_verdict SPT v3 coverage: o erro ensina por que cada criterio esta
     expect(ledgerLines).toHaveLength(1);
   });
 
-  // Cura-2 (P2/P2 adversarial da cura): appendLedger falhando DEPOIS do save
+  // Cura-2 (P2 adversarial da cura): appendLedger falhando DEPOIS do save
   // bem-sucedido deixava o ledger permanentemente sem o evento (trilha
   // AUSENTE — history persistiu, ledger não, e o retry não regrava porque o
   // flow já tem spt_traceability). RED primeiro: no baseline 665bb5f o retry
@@ -291,7 +291,64 @@ describe("goal_verdict SPT v3 coverage: o erro ensina por que cada criterio esta
       .filter((line) => line.trim().length > 0)
       .map((line) => JSON.parse(line) as { type?: string; data?: Record<string, unknown> })
       .filter((event) => (event.type === "spt_traceability_reattached" || event.type === "spt_traceability_reattached_recovered"));
-    expect(reattachEvents.length).toBeGreaterThanOrEqual(1);
+    // Higiene cura-3: o assert pina o tipo _recovered — retry comum completa a
+    // trilha COM o evento recuperado, não apenas com o original.
+    const recoveredEvents = reattachEvents.filter((event) => event.type === "spt_traceability_reattached_recovered");
+    expect(recoveredEvents).toHaveLength(1);
+  });
+
+  // Cura-3 (P2 adversarial cura-2): o early-return reused&&terminal não
+  // completava a trilha do re-attach (history persistiu, ledger perdeu o
+  // append). RED primeiro: no baseline o retry terminal deixa o ledger sem o
+  // evento recuperado.
+  it("retry de flow TERMINAL completa a trilha do re-attach com evento recuperado", async () => {
+    const orphan = path.join(workspace, ".ppirtv", "flows", `${flowId}.json`);
+    const { readFile, writeFile } = await import("node:fs/promises");
+    // flow órfão curado e TERMINAL: history tem o re-attach, ledger perdeu
+    const raw = JSON.parse(await readFile(orphan, "utf8"));
+    delete raw.spt_traceability;
+    await writeFile(orphan, JSON.stringify(raw), "utf8");
+    const rebound = await engine.startGoal({
+      flow_id: flowId,
+      workspace,
+      spt_path: path.join(workspace, ".agents", "PLAN-TASKS", "fixture-v3.md"),
+      objective: "Provar diagnostico de cobertura",
+      idempotency_key: "coverage-diag-fixture",
+      evidence_required: true,
+      required_evidence: [],
+      requested_verdict_policy: "evidence_required",
+      source: "test"
+    });
+    expect(rebound.flow_id).toBe(flowId);
+    const cured = JSON.parse(await readFile(orphan, "utf8"));
+    // flowIsTerminal exige status archived OU evento flow_completed no history
+    cured.status = "archived";
+    cured.history.push({ at: new Date().toISOString(), type: "flow_completed", data: {} });
+    await writeFile(orphan, JSON.stringify(cured), "utf8");
+    // ledger perde o append do re-attach (simula IO falho pós-save)
+    const ledgerPath = path.join(workspace, ".ppirtv", "ledger.ndjson");
+    const kept = (await readFile(ledgerPath, "utf8"))
+      .split("\n")
+      .filter((line) => line.trim().length > 0 && !line.includes("spt_traceability_reattached"));
+    await writeFile(ledgerPath, kept.join("\n") + "\n", "utf8");
+
+    await engine.startGoal({
+      flow_id: flowId,
+      workspace,
+      spt_path: path.join(workspace, ".agents", "PLAN-TASKS", "fixture-v3.md"),
+      objective: "Provar diagnostico de cobertura",
+      idempotency_key: "coverage-diag-fixture",
+      evidence_required: true,
+      required_evidence: [],
+      requested_verdict_policy: "evidence_required",
+      source: "test"
+    });
+    const recovered = (await readFile(ledgerPath, "utf8"))
+      .split("\n")
+      .filter((line) => line.trim().length > 0)
+      .map((line) => JSON.parse(line) as { type?: string })
+      .filter((event) => event.type === "spt_traceability_reattached_recovered");
+    expect(recovered).toHaveLength(1);
   });
 
   // review-fixes: lean e o default da CAMADA MCP (server aplica detail ?? "lean");
