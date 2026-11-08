@@ -834,7 +834,7 @@ function registerTools(
       description: "Add traceable evidence without recording secret-like payloads. The operation can replace the implementation fingerprint used by review-coherence gates, so tools/list classifies its maximum effect as state-changing. For SPT v3, criterion_proof binds the observed value to one task, requirement, criterion and evidence requirement; expected/operator are derived from the bound SPT and cannot be supplied by the caller. Preferred lighter route: declarative_proof sends only task_id, evidence_requirement_id, the crude observed_value the expectation kind requires and relative paths; the server derives requirement/criterion, hashes the revision_set, stamps the ISO timestamp, applies overridable environment/producer/limits defaults and expands one declaration into one passed-or-failed criterion_proof per criterion in evidence_requirement.proves (see proof_skeletons in spt_validate for ready payloads). declarative_proof and criterion_proof are mutually exclusive. In criterion_proof, environment is a root sibling of revision_set; each strict revision_set item accepts only workspace, optional head, and paths. A structured code_review attestation must cite the exact implementation_fingerprint observed by the reviewer; when reviewed_implementation_fingerprint is supplied, kind must be code_review or review and satisfies must contain diff_reviewed, barata_scan, or regression_risks, otherwise the request fails with REVIEW_ATTESTATION_CLAIMS_REQUIRED. When satisfies claims diff_reviewed, barata_scan or regression_risks, observed_result must carry the six review keys FLAT at the top level (diff_reviewed: true, barata_scan: true, reviewed_targets: string[] covering all changed files, searched_patterns: string[], findings: string[], regression_risks: string[]); single-key {\"value\": X} wrappers are unwrapped automatically at the input boundary for every tool, and any remaining shape issue NEVER rejects the call — the receipt returns review_input_ressalvas (field, received, expected and a per-field reference to fix the caller serialization). The verdict gate still requires the substantive review keys, so unrecoverable input surfaces as review_required with the field-level diagnostic instead of an input loop. The server rejects stale snapshots and verdict text alone never satisfies review_required. Status receipt defaults to lean; use detail:'full' only for a complete diagnostic.",
       inputSchema: {
         flow_id: z.string().min(1),
-        kind: z.string().default("goal_evidence"),
+        kind: z.string().default("goal_evidence").describe("For review_scope_attribution, use scope_classification outside and observed_result {reviewer, excluded_paths:[{path,reason,source}]}. The server binds file identities and git_head_base. This records a reviewer attribution, not inferred ownership; declared flow paths cannot be excluded."),
         title: z.string().min(1),
         uri: z.string().optional(),
         content: z.string().optional(),
@@ -891,17 +891,13 @@ function registerTools(
         review_findings: z.array(z.string()).optional(),
         verdict_parking_lot: z.array(z.string()).optional(),
         verdict_gold_mining: z.array(z.string()).optional(),
+        scope_attribution_evidence_ids: z.array(z.string().min(1)).optional().describe("Flow-owned review_scope_attribution evidence IDs recorded via evidence_add. Revalidates file identities and base before excluding corroborated external paths. New paths still require review. Selected IDs remain in the verdict evidence_ids audit trail."),
         attempt_count: z.number().int().nonnegative().optional(),
         regress_count: z.number().int().nonnegative().optional(),
         recurring_risk: z.boolean().optional().describe("Declare current recurring risk explicitly; prose never declares it. Omission preserves a pending declaration; false persists only when the verdict records (a rejected verdict writes no signal); only a recorded POSITIVE verdict (pronto/pronto_com_ressalvas) ends the report. Persisted regressions remain effective and the regress ceiling is terminal (close_flow_with_reservation)."),
         meeting_id: z.string().optional(),
         meeting_ids: z.array(z.string()).optional(),
         next_step: z.string().min(1),
-        path_attribution: z.array(z.object({
-          path: z.string().min(1),
-          sha256: z.string().regex(/^[a-f0-9]{64}$/i),
-          justification: z.string().min(1)
-        })).optional().describe("Issue #11: public route to accept legitimate pending_review_additions inside this verdict. Each item must match a pending addition, carry the file's current sha256 and a non-empty justification; divergent sha, undetermined path or unreadable/sensitive file returns PATH_ATTRIBUTION_TRIAGE and nothing is applied. Flows without attribution keep the standard fiscal review.")
       }
     },
     async (args) => toolResponse(() => engine.goalVerdict(args), args)

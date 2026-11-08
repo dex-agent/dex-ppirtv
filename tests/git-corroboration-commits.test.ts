@@ -4,10 +4,13 @@ import { PpirtvStore } from "../src/store.js";
 import { execFileSync } from "node:child_process";
 import { addDeclarativeEvidence, declarativeDefaults } from "../src/spt-declarative-proof.js";
 import { createHash } from "node:crypto";
+import { statSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { DexMemoriaV2Executor, DexMemoriaV2FlowWriterConfig } from "../src/memory/dex-memoria-v2-adapter.js";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport, getDefaultEnvironment } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 let tempRoot = "";
 
@@ -48,7 +51,12 @@ function git(workspace: string, args: string[]) {
 
 // Git inicial ANTES do startGoal: a base congelada (git_head_base) e o head
 // do commit base — pre-condicao do fix NOVO-1.
-async function fixtureGoalGit(objective: string, options: { gitignore: boolean }) {
+function statSyncIdentity(target: string): { dev: number; ino: number } {
+  const stats = statSync(target);
+  return { dev: stats.dev, ino: stats.ino };
+}
+
+async function fixtureGoalGit(objective: string, options: { gitignore: boolean; preexistingOutside?: boolean }) {
   tempRoot = await mkdtemp(path.join(os.tmpdir(), "git-corroboration-"));
   const workspace = path.join(tempRoot, "workspace");
   await mkdir(path.join(workspace, ".agents", "PLAN-TASKS"), { recursive: true });
@@ -64,6 +72,9 @@ async function fixtureGoalGit(objective: string, options: { gitignore: boolean }
   git(workspace, ["config", "user.name", "Fixture"]);
   git(workspace, ["add", "."]);
   git(workspace, ["commit", "-m", "base"]);
+  if (options.preexistingOutside) {
+    await writeFile(path.join(workspace, "src", "outside.ts"), "export {};\n", "utf8");
+  }
   const engine = new FlowEngine(
     new PpirtvStore(path.join(workspace, ".ppirtv")),
     undefined,
@@ -135,6 +146,91 @@ afterEach(async () => {
 });
 
 describe("git corroboration: commits e runtime (NOVO-1/NOVO-2)", () => {
+  it.each(["accept", "excluded_changed", "new_path", "declared_path", "bad_review", "target_changed"])("attribution MCP stdio: %s", async (scenario) => {
+    const f = await fixtureGoalGit("Issue 11 attribution MCP.", { gitignore: true, preexistingOutside: true });
+    await writeFile(path.join(f.workspace, "src", "a.ts"), "export const a = 2;\n", "utf8");
+    const evidenceIds = await climbToVerdictInput(f, ["src/a.ts"]);
+    const client = new Client({ name: "issue11-consumer", version: "1.0.0" });
+    const transport = new StdioClientTransport({
+      command: process.execPath,
+      args: [path.join(process.cwd(), "dist", "index.js")],
+      cwd: f.workspace,
+      env: { ...getDefaultEnvironment(), PPIRTV_HOME: path.join(f.workspace, ".ppirtv"), PPIRTV_WORKSPACE: f.workspace },
+      stderr: "pipe"
+    });
+    const call = async (name: string, args: Record<string, unknown>) => {
+      const response = await client.callTool({ name, arguments: args });
+      return (response.structuredContent as { result: Record<string, any> }).result;
+    };
+    try {
+      await client.connect(transport);
+      const probeRoot = String((await call("runtime_probe", {})).project_root);
+      const probeStat = statSyncIdentity(probeRoot);
+      const expectedStat = statSyncIdentity(f.workspace);
+      expect(probeStat.dev === expectedStat.dev && probeStat.ino === expectedStat.ino).toBe(true);
+      const status = await call("goal_status", { flow_id: f.flowId, detail: "full" });
+      const review = await call("evidence_add", {
+        flow_id: f.flowId, kind: "code_review", title: "Review of the declared code change",
+        scope_classification: "target", scope_reference: "src/a.ts",
+        satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+        reviewed_implementation_fingerprint: scenario === "bad_review" ? `sha256:${"0".repeat(64)}` : status.implementation_fingerprint,
+        observed_result: { diff_reviewed: true, barata_scan: true, reviewed_targets: ["src/a.ts"], searched_patterns: ["export const a"], findings: [], regression_risks: [] }
+      });
+      if (scenario === "bad_review") {
+        expect(JSON.stringify(review)).toContain("REVIEW_SNAPSHOT_FINGERPRINT_MISMATCH");
+        return;
+      }
+      expect(review.error).toBeUndefined();
+      const attribution = await call("evidence_add", {
+        flow_id: f.flowId, kind: "review_scope_attribution", title: "Preexisting fixture work attributed outside this flow",
+        scope_classification: "outside",
+        observed_result: {
+          reviewer: "fixture-reviewer",
+          attribution_binding: { version: 1, git_head_base: "client-forgery", fingerprint: "sha256:client-forgery" },
+          excluded_paths: [{ path: scenario === "declared_path" ? "docs/../src/a.ts" : "src/outside.ts", reason: "Independent fixture work predates this mission", source: "fixtureGoalGit creates outside.ts before startGoal" }]
+        }
+      });
+      if (scenario === "declared_path") {
+        expect(attribution.error).toBeDefined();
+        return;
+      }
+      expect(attribution.error).toBeUndefined();
+      expect(attribution.evidence_id).toBeTruthy();
+      const persisted = await f.engine.store.loadFlow(f.flowId);
+      const bound = persisted.evidence.find((item) => item.evidence_id === attribution.evidence_id)!;
+      expect((bound.observed_result!.attribution_binding as { git_head_base: string }).git_head_base).not.toBe("client-forgery");
+      if (scenario === "excluded_changed") await writeFile(path.join(f.workspace, "src", "outside.ts"), "export const changed = true;\n");
+      if (scenario === "new_path") await writeFile(path.join(f.workspace, "docs", "new.md"), "# Unassigned\n");
+      if (scenario === "target_changed") await writeFile(path.join(f.workspace, "src", "a.ts"), "export const a = 3;\n");
+      const verdict = await call("goal_verdict", {
+        flow_id: f.flowId, status: "pronto", rationale: "Reviewed mission with explicit, recorded external attribution",
+        evidence_ids: [...evidenceIds, review.evidence_id], scope_attribution_evidence_ids: [attribution.evidence_id],
+        next_step: "Upon acceptance, close the synthetic flow", review_findings: []
+      });
+      const after = await call("goal_status", { flow_id: f.flowId, detail: "lean" });
+      expect(after.flow_id).toBe(f.flowId);
+      if (scenario === "accept") {
+        expect(verdict.error).toBeUndefined();
+        expect(verdict.verdict.status).toMatch(/^pronto/);
+        expect(verdict.verdict.evidence_ids).toContain(attribution.evidence_id);
+        expect(after.current_verdict_status).toMatch(/^pronto/);
+        expect(after.closure_blockers).not.toContain("review_required");
+      } else {
+        expect(verdict.error).toBeDefined();
+        const expectedError = {
+          excluded_changed: "REVIEW_SCOPE_ATTRIBUTION_STALE",
+          new_path: "REVIEW_SCOPE_UNATTRIBUTED_PATH",
+          target_changed: "SPT_V3_EVIDENCE_STALE"
+        }[scenario];
+        expect(JSON.stringify(verdict.error)).toContain(expectedError);
+        expect(after.current_verdict_status).toBeNull();
+      }
+    } finally {
+      await client.close();
+      await transport.close();
+    }
+  }, 30_000);
+
   it("NOVO-2: runtime .ppirtv/ nao conta como code no veredito doc-only (sem .gitignore)", async () => {
     const f = await fixtureGoalGit("Probe NOVO-2 .ppirtv runtime.", { gitignore: false });
     await writeFile(path.join(f.workspace, "docs", "note.md"), "# note atualizada\n", "utf8");
@@ -257,48 +353,4 @@ describe("issue #11: verdict bloqueado nao persiste a ampliacao do snapshot", ()
     expect(pending).toContain("src/preexisting.ts");
   });
 
-  it("regressao C-01 (issue #11): path_attribution no verdict aceita inclusao legitima e destrava review_required", async () => {
-    const f = await fixtureGoalGit("Probe issue11 regressao C-01 path_attribution.", { gitignore: true });
-    const outside = path.join(f.workspace, "src", "outside.ts");
-    await writeFile(outside, "export const outside = 1;\n", "utf8");
-    const outsideSha = createHash("sha256").update(await readFile(outside, "utf8")).digest("hex");
-    const evidenceIds = await climbToVerdictInput(f, ["docs/note.md"]);
-    let attributed: Record<string, unknown> | null = null;
-    try {
-      attributed = (await f.engine.goalVerdict({
-        ...verdictInput(f, evidenceIds),
-        path_attribution: [{ path: "src/outside.ts", sha256: outsideSha, justification: "arquivo de terceiro pre-existente no worktree; parte do meu corte nao" }]
-      } as never)) as Record<string, unknown>;
-    } catch (err) {
-      const flowDbg = await f.engine.store.loadFlow(f.flowId);
-      const lastBlockDbg = flowDbg.history.filter((event) => event.type === "fiscal_policy_blocked").at(-1);
-      console.log("DBG_THROW:", (err as Error).message.slice(0, 160));
-      console.log("DBG_pending:", JSON.stringify(lastBlockDbg?.data?.pending_review_additions));
-      console.log("DBG_attribution_event:", flowDbg.history.some((event) => event.type === "path_attribution_applied"));
-      throw err;
-    }
-    expect((attributed as { status?: string }).status).not.toBe("error");
-    const flow = await f.engine.store.loadFlow(f.flowId);
-    expect(flow.changed_files).toContain("src/outside.ts");
-    const attributionEvent = flow.history.find((event) => event.type === "path_attribution_applied");
-    expect((attributionEvent?.data?.accepted as string[] | undefined)?.join(",")).toContain("src/outside.ts");
-  });
-
-  it("regressao C-01 triagem: sha divergente e caminho indeterminado voltam a triagem sem aplicar nada", async () => {
-    const f = await fixtureGoalGit("Probe issue11 triagem path_attribution.", { gitignore: true });
-    await writeFile(path.join(f.workspace, "src", "outside2.ts"), "export const o2 = 1;\n", "utf8");
-    const evidenceIds = await climbToVerdictInput(f, ["docs/note.md"]);
-    await expect(
-      f.engine.goalVerdict({
-        ...verdictInput(f, evidenceIds),
-        path_attribution: [
-          { path: "src/outside2.ts", sha256: "a".repeat(64), justification: "sha errado de proposito" },
-          { path: "src/nao-pendente.ts", sha256: "b".repeat(64), justification: "caminho que nao esta nos acrescimos" }
-        ]
-      } as never)
-    ).rejects.toThrow(/PATH_ATTRIBUTION_TRIAGE:.*conteudo mudou.*indeterminado/s);
-    const flow = await f.engine.store.loadFlow(f.flowId);
-    expect(flow.changed_files).not.toContain("src/outside2.ts");
-    expect(flow.history.some((event) => event.type === "path_attribution_applied")).toBe(false);
-  });
 });

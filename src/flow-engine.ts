@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
-import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
   PHASES,
@@ -115,7 +114,9 @@ import {
   taskProjection,
   traceabilityFromContract
 } from "./spt-traceability.js";
-import { applyPathAttribution, applyPathAttributionUnblock, type PathAttributionUnblockDeps, freezeGitHeadBase, readWorkspaceFileAt, normalizeReviewPath, pendingReviewAdditionsFor, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
+import { requiresGoalEvidence } from "./spt-traceability.js";
+import { freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
+import { applyReviewScopeAttributions, attributedVerdictSnapshot, bindReviewScopeAttribution, prepareVerdictSnapshot, type GoalVerdictInput } from "./review-scope-attribution.js";
 import {
   normalizeRecallConsumptionInput,
   sameRecallReferences,
@@ -2649,24 +2650,7 @@ export class FlowEngine {
     };
   }
 
-  async goalVerdict(input: {
-    flow_id: string;
-    status: VerdictStatus;
-    rationale: string;
-    evidence_ids?: string[];
-    residual_risks?: string[];
-    review_artifact_path?: string;
-    review_findings?: string[];
-    verdict_parking_lot?: string[];
-    verdict_gold_mining?: string[];
-    attempt_count?: number;
-    regress_count?: number;
-    recurring_risk?: boolean;
-    meeting_id?: string;
-    meeting_ids?: string[];
-    next_step: string;
-    path_attribution?: Array<{ path: string; sha256: string; justification?: string }>;
-  }): Promise<Record<string, unknown>> {
+  async goalVerdict(input: GoalVerdictInput): Promise<Record<string, unknown>> {
     requireText(input.flow_id, "flow_id");
     assertNoSecretLikeText(input.rationale, "rationale");
     assertNoSecretLikeText(input.next_step, "next_step");
@@ -2686,24 +2670,7 @@ export class FlowEngine {
     return this.store.withFlowLock(input.flow_id, () => this.goalVerdictUnlocked(input));
   }
 
-  private async goalVerdictUnlocked(input: {
-    flow_id: string;
-    status: VerdictStatus;
-    rationale: string;
-    evidence_ids?: string[];
-    residual_risks?: string[];
-    review_artifact_path?: string;
-    review_findings?: string[];
-    verdict_parking_lot?: string[];
-    verdict_gold_mining?: string[];
-    attempt_count?: number;
-    regress_count?: number;
-    recurring_risk?: boolean;
-    meeting_id?: string;
-    meeting_ids?: string[];
-    next_step: string;
-    path_attribution?: Array<{ path: string; sha256: string; justification?: string }>;
-  }): Promise<Record<string, unknown>> {
+  private async goalVerdictUnlocked(input: GoalVerdictInput): Promise<Record<string, unknown>> {
     let flow = await this.store.loadFlow(input.flow_id);
     assertGoalBinding(flow);
     assertFlowAcceptsMutation(flow);
@@ -2719,7 +2686,7 @@ export class FlowEngine {
       }
       assertMeetingClosed(meeting);
     }
-    const evidenceIds = input.evidence_ids ?? [];
+    const evidenceIds = unique([...(input.evidence_ids ?? []), ...(input.scope_attribution_evidence_ids ?? [])]);
     const existingEvidenceIds = new Set(flow.evidence.map((evidence) => evidence.evidence_id));
     const missingEvidence = evidenceIds.filter((evidenceId) => !existingEvidenceIds.has(evidenceId));
     if (missingEvidence.length > 0) {
@@ -2744,6 +2711,7 @@ export class FlowEngine {
     // SPT gate-integrity-hardening-3 (R6): o diff Git entra como colaborador;
     // sem .git o flow permanece como esta e a limitacao fica documentada.
     fiscalFlow = await withGitCorroboratedChangedFiles(fiscalFlow);
+    fiscalFlow = await applyReviewScopeAttributions(flow, fiscalFlow, input.scope_attribution_evidence_ids);
     const memoryMining: Record<string, unknown> | null = positiveVerdict && hasMemoryMiningRun(fiscalFlow) ? (fiscalFlow.memory_mining ?? null) : null;
     if (positiveVerdict && memoryMining?.blocked_verdict === true) {
       await this.persistMemoryMiningVerdictBlock(fiscalFlow, memoryMining, input);
@@ -2752,23 +2720,10 @@ export class FlowEngine {
       );
     }
     if (positiveVerdict) {
-      let fiscal = evaluateFiscalPolicy(fiscalFlow, {
+      const fiscal = evaluateFiscalPolicy(fiscalFlow, {
         ...input,
         memory_mining: memoryMining
       });
-      // Issue #11 regressao C-01: rota publica path_attribution (sem atribuicao, nada muda).
-      if (fiscal.blocking_reasons.length > 0 && Array.isArray(input.path_attribution) && fiscal.blocking_reasons.includes("review_required")) {
-        const attribution = await applyPathAttributionUnblock({
-          flow, fiscalFlow, attribution: input.path_attribution,
-          deps: this.pathAttributionDeps(fiscalFlow)
-        });
-        if (attribution.kind === "applied") {
-          fiscalFlow.changed_files = attribution.changedFiles;
-          fiscalFlow.evidence.push(attribution.evidence as typeof fiscalFlow.evidence[number]);
-          evidenceIds.push(attribution.evidenceId);
-          fiscal = evaluateFiscalPolicy(fiscalFlow, { ...input, memory_mining: memoryMining });
-        }
-      }
       if (fiscal.blocking_reasons.length > 0) {
         // Issue #11: veredito REJEITADO nao persiste a ampliacao da corroboracao
         // git (worktree compartilhado engole commits alheios e trava o flow num
@@ -2818,7 +2773,10 @@ export class FlowEngine {
       gold_mining: verdictLearning.gold_mining,
       meeting_ids: meetingIds,
       next_step: input.next_step
-    }, { allowOfficialGoal: true });
+    }, {
+      allowOfficialGoal: true,
+      validatedFlow: attributedVerdictSnapshot(input, fiscalFlow)
+    });
     if (input.recurring_risk === false) {
       await reportRecurringRiskCleared(this.store, await this.store.loadFlow(input.flow_id), this.ledger.bind(this));
     }
@@ -3841,7 +3799,11 @@ export class FlowEngine {
       content: input.content,
       note: input.note,
       satisfies: input.satisfies,
-      observed_result: input.observed_result,
+      observed_result: await bindReviewScopeAttribution(flow, {
+        kind: input.kind || "note",
+        scope_classification: input.scope_classification,
+        observed_result: input.observed_result
+      }),
       criterion_proof: criterionProof,
       scope_classification: input.scope_classification,
       scope_reference: input.scope_reference,
@@ -4089,8 +4051,8 @@ export class FlowEngine {
     active_credits?: string[];
     meeting_ids?: string[];
     next_step: string;
-  }, options: { allowOfficialGoal?: boolean } = {}): Promise<Verdict & PresentationEnvelope> {
-    const flow = await withCurrentImplementationFingerprint(await this.store.loadFlow(input.flow_id));
+  }, options: { allowOfficialGoal?: boolean; validatedFlow?: Flow } = {}): Promise<Verdict & PresentationEnvelope> {
+    const flow = await prepareVerdictSnapshot(await this.store.loadFlow(input.flow_id), options.validatedFlow);
     assertFlowAcceptsMutation(flow);
     if (flow.goal_binding && options.allowOfficialGoal !== true) {
       throw new Error("OFFICIAL_GOAL_REQUIRES_GOAL_VERDICT: verdict_record is legacy/advisory; use goal_verdict");
@@ -4331,17 +4293,6 @@ export class FlowEngine {
     await this.ledger(flow.flow_id, "fiscal_policy_blocked", blockData);
   }
 
-  /** Deps da rota publica path_attribution (logica em review-snapshot.ts). */
-  private pathAttributionDeps(fiscalFlow: Flow): PathAttributionUnblockDeps {
-    return {
-      saveFlow: async (flow) => this.store.saveFlow(flow as Flow),
-      ledger: async (flowId, type, data) => this.ledger(flowId, type, data as Record<string, unknown>),
-      attachEvidence: async (input) => (await this.attachEvidenceUnlocked(input as Parameters<typeof this.attachEvidenceUnlocked>[0])) as unknown as { evidence_id: string; [key: string]: unknown },
-      restore: (flow, ff) => restoreBlockedVerdictSnapshot(flow as Flow, ff as Flow),
-      strictFingerprint: async (ff) => strictReviewSnapshotFingerprint(ff as Flow, { requireReviewableFiles: true }),
-      readWorkspaceFile: (rel) => readWorkspaceFileAt(fiscalFlow.goal_binding?.envelope.workspace, rel)
-    };
-  }
   private async persistMemoryMiningVerdictBlock(flow: Flow, memoryMining: Record<string, unknown>, input: FiscalVerdictInput = {}): Promise<void> {
     const now = nowIso();
     const blockers = [MEMORY_MINING_BLOCKED_VERDICT_REASON];
@@ -4953,11 +4904,6 @@ function goalLedgerData(binding: GoalBinding, flow?: Flow): Record<string, unkno
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function requiresGoalEvidence(flow: Flow): boolean {
-  const envelope = flow.goal_binding?.envelope;
-  return envelope?.requested_verdict_policy === "evidence_required" || envelope?.evidence_required === true;
 }
 
 function assertGoalBinding(flow: Flow): void {

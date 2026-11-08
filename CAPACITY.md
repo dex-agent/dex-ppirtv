@@ -1,3 +1,15 @@
+## Reavaliação — Convergência PR12 (rota canônica única) + cura do validador de camping, 2026-11-08
+
+Owner $oraculo-refatoracao (Trilho convergencia-pr12, flow 3501; GO do dono no
+veredito do $oraculo-pragmatico): review_scope_attribution é a ÚNICA rota
+canônica — merge do PR12 (binding v1 revisor+base+fp, tipo extraído, motor
+-26) + revert do path_attribution (supersede record; preservados T24b/Onda 1,
+records, schema-status). RED real: 6 cenários MCP stdio falhavam por forma de
+path 8.3×longo — assert curada por identidade fs (dev+ino). Validador de
+camping curado em 2 classes com RED (20/20): sealed_retroactive (marcado em
+cópia pelo CLI via merge-base) + supersedes_record — regra-mãe preservada.
+Camping da convergência VERDE (reasons: []). Suíte 826+4=830 (65 files; +5).
+
 ## Reavaliação — Regressão C-01 issue #11: path_attribution no goal_verdict, 2026-11-07
 
 Owner $oraculo-refatoracao (relato do dono, RED confirmado em 05e8563): rota
@@ -34,6 +46,19 @@ FE-2026-11-07-ONDA1-GOAL-START-SSOT) + selagem retroativa: FE-DEBT-006 item
 não modela selagem retroativa (record ISSUE11 entrando depois do commit 5b66f56
 — cadeia quebrou no 5b66f56 sem record; validador precisa distinguir corte
 novo × selagem de histórico; estacionado com owner $oraculo-refatoracao).
+## Reavaliação — issue 11, atribuição fiscal, 2026-11-07
+
+O runtime recebe a atribuição explícita por `evidence_add`, vincula a evidência
+à base Git e aos arquivos observados, e revalida essa identidade no veredito.
+O teste público usa MCP stdio com código legítimo, exclusão externa, alterações
+posteriores, caminho novo, alias de caminho protegido e fingerprint divergente.
+O veredito registra os IDs usados e o conjunto efetivamente avaliado.
+Proveniência semântica continua sendo atestação do revisor. O flow real do
+consumidor foi preservado durante a prova em fixtures sintéticas.
+Build e `npm run check` passaram após integração a `main` em `0bdd375`:
+**825 passed + 4 skipped = 829, 64 files, exit 0**. Gate do motor: SHRINK,
+26 linhas não vazias removidas, zero novas decisões. Seis cenários MCP stdio
+passaram. Os scripts do gate histórico permanecem iguais aos de `main`.
 
 ## Reavaliação — pacote workflow desmontagem-monolito-ondas, 2026-11-07
 
@@ -865,6 +890,7 @@ R7 per-commit é exceção documentada; sem `.git` não há corroboração de di
 | CAP-33 | Gate de reavaliação de capacidades antes de commit | **comprovada** | `npm run check:capacity` + hook pre-commit desta visita |
 | CAP-34 | Help/schema/usage read-only por tool MCP (entrypoint + harness) | **comprovada** | `dist/index.js --describe/--schema/--usage` + `tests/tool-cli-entrypoint.test.ts` 4/4 |
 | CAP-35 | Recorrencia fiscal por fatos tipados | **comprovada** | 24 casos engine e schema MCP real; outros eixos fora do corte |
+| CAP-36 | Atribuicao fiscal auditavel em checkout compartilhado | **comprovada** | Seis cenarios MCP stdio em git-corroboration-commits.test.ts; origem semantica atestada pelo revisor |
 
 ## Mapa relacional estático
 

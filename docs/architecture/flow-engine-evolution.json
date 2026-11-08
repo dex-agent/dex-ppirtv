@@ -977,6 +977,44 @@
       ],
       "changelog_marker": "FE-2026-11-07-PATH-ATTRIBUTION-REGRESSAO-C01",
       "architecture_marker": "FE-2026-11-07-PATH-ATTRIBUTION-REGRESSAO-C01"
+    },
+    {
+      "id": "FE-2026-11-07-CONVERGENCIA-PR12",
+      "date": "2026-11-08",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-07-convergencia-pr12-atribuicao-escopo.md",
+      "responsibility": "Convergencia PR12 (GO do dono, veredito oraculo-pragmatico NSR l.832): review_scope_attribution vira a UNICA rota canonica de atribuicao — merge do PR12 (evidence_add kind review_scope_attribution scope outside com binding v1 revisor+git_head_base+fp; goal_verdict.scope_attribution_evidence_ids; GoalVerdictInput extraido) + revert do path_attribution do 080abdd (bloco+helper+imports+campo schema+tipo removidos; supersede o record FE-2026-11-07-PATH-ATTRIBUTION-REGRESSAO-C01) preservando T24b (Onda 1 SSOT), records do ledger e cura schema-status. Validador de fronteira curado nas 2 classes (selagem retroativa + supersedes_record) com RED.",
+      "owner": "$oraculo-refatoracao",
+      "mode": "EXCEPTION",
+      "exception_reason": "public_compatibility",
+      "supersedes_record": "FE-2026-11-07-PATH-ATTRIBUTION-REGRESSAO-C01",
+      "rollback": "revert do commit de convergencia: path_attribution volta a coexistir (rota duplicada) e o PR12 volta a conflitar com main",
+      "expires": "2026-11-15",
+      "red_evidence": "tests/flow-engine-boundary.test.ts::RED classe selagem retroativa + convergencia: EXCEPTION apos record retroativo selado ou que supersede passa; sem isso falha",
+      "red_base_blob": "9776382415dcc083a9228df9e97e987aaea8eb37",
+      "red_observed_failure": "RED real no merge: os 6 cenarios MCP stdio do PR12 (accept/excluded_changed/new_path/declared_path/bad_review/target_changed) falhavam nesta maquina por comparacao de forma de path (ADMINI~1 8.3 x longo) — assert curada por identidade fs (dev+ino) preservando a intencao 'server enxerga o mesmo workspace'",
+      "red_command": "npx vitest run tests/flow-engine-boundary.test.ts -t \"RED classe selagem retroativa + convergencia: EXCEPTION apos record retroativo selado ou que supersede passa; sem isso falha\"",
+      "base_blob": "9776382415dcc083a9228df9e97e987aaea8eb37",
+      "head_blob": "3be809aeca4b829d37cad0e14e715a170cafa5e8",
+      "destination_module": "src/review-scope-attribution.ts",
+      "consumers": [
+        "src/flow-engine.ts",
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/git-corroboration-commits.test.ts",
+        "tests/flow-engine-boundary.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/git-corroboration-commits.test.ts": "commit pos-base: rejeicao restaura o snapshot aprovado e registra os acrescimos como pending",
+        "tests/flow-engine-boundary.test.ts": "RED classe selagem retroativa + convergencia: EXCEPTION apos record retroativo selado ou que supersede passa; sem isso falha"
+      },
+      "behavior_preserved_by": [
+        "12/12 no git-corroboration (6 cenarios MCP stdio da irma VERDES + 6 originais da issue #11)",
+        "20/20 no flow-engine-boundary (RED->GREEN das 2 classes de cura; regra-mae preservada: EXCEPTION consecutivo sem retroatividade/supersedes continua FAIL)",
+        "Onda 1 preservada (import goalStartTaughtArgs + passo order:3 intactos no merge)"
+      ],
+      "changelog_marker": "FE-2026-11-07-CONVERGENCIA-PR12",
+      "architecture_marker": "FE-2026-11-07-CONVERGENCIA-PR12"
     }
   ]
 }

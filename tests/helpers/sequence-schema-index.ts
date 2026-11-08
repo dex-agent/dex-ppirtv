@@ -49,7 +49,8 @@ export const SEQUENCE_SCHEMA_INDEX: SequenceSchemaIndex = {
       recurring_risk: { type: "boolean" },
       meeting_id: { type: "string" },
       meeting_ids: { type: "array" },
-      next_step: { type: "string" }
+      next_step: { type: "string" },
+      scope_attribution_evidence_ids: { type: "array" }
     }
   },
   goal_status: {

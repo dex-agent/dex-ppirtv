@@ -205,6 +205,43 @@ describe("flow-engine responsibility balance", () => {
     expect(rejected.reasons).toContain("CONSECUTIVE_EXCEPTION_FORBIDDEN");
   });
 
+
+  it("RED classe selagem retroativa + convergencia: EXCEPTION apos record retroativo selado ou que supersede passa; sem isso falha", () => {
+    const baseSource = `export class FlowEngine { run(value: boolean) { return value; } }`;
+    const headSource = `export class FlowEngine { run(value: boolean) { if (!value) throw new Error("integrity"); return value; } }`;
+    const declaration = {
+      ...baseDeclaration,
+      mode: "EXCEPTION",
+      exception_reason: "integrity",
+      rollback: "Revert the isolated guard commit.",
+      expires: "next diff that touches src/flow-engine.ts",
+      red_evidence: "tests/engine.test.ts::integrity",
+      red_base_blob: "a".repeat(40),
+      red_observed_failure: "integrity guard absent at the base revision",
+      red_command: "vitest tests/engine.test.ts -t integrity"
+    } satisfies FlowEngineChangeDeclaration;
+
+    const retroactiveSeal = evaluateFlowEngineChange({
+      baseSource, headSource, declaration,
+      history: [{ mode: "EXCEPTION", id: "sealed-old-cut", commit: "5b66f56", sealed_retroactive: true }]
+    });
+    expect(retroactiveSeal.status).toBe("PASS");
+
+    const superseded = evaluateFlowEngineChange({
+      baseSource, headSource,
+      declaration: { ...declaration, supersedes_record: "recent-exception" },
+      history: [{ mode: "EXCEPTION", id: "recent-exception" }]
+    });
+    expect(superseded.status).toBe("PASS");
+
+    const plain = evaluateFlowEngineChange({
+      baseSource, headSource, declaration,
+      history: [{ mode: "EXCEPTION", id: "recent-exception" }]
+    });
+    expect(plain.status).toBe("FAIL");
+    expect(plain.reasons).toContain("CONSECUTIVE_EXCEPTION_FORBIDDEN");
+  });
+
   it("blocks a second CONTAIN while debt is open and accepts SHRINK that pays it", () => {
     const history = [{
       id: "previous-containment",

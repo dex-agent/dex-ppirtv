@@ -309,6 +309,29 @@ SPT or implementation authorization.
 
 ## Safety
 
+### Recover a review scope expanded by a shared checkout
+
+After a rejected verdict restores the approved snapshot, inspect
+`goal_status` with `detail: "full"` and its `pending_review_additions`.
+Declare legitimate additions through the existing gate and review that scope.
+For unrelated Git additions, call `evidence_add` with
+`kind: "review_scope_attribution"`, `scope_classification: "outside"`, and
+`observed_result` containing a named `reviewer` and `excluded_paths`.
+Each entry supplies `path`, `reason` and `source`, referencing the provenance
+that the reviewer actually inspected. The server records the current base and
+file identities. This is a reviewer's auditable attribution of ownership.
+
+Pass the returned IDs in `goal_verdict.scope_attribution_evidence_ids` alongside
+the existing criterion and code-review evidence. The verdict rechecks the
+binding, protects declared paths and requires every remaining Git addition to
+be attributed to the flow. Changed exclusions require renewed attribution.
+New legitimate paths require declaration and a fresh review. Attribution IDs
+are retained in the accepted verdict's `evidence_ids`.
+
+Use the original flow throughout recovery. Acceptance requires a recorded
+verdict in the subsequent `goal_status`; an empty `closure_blockers` array
+after a rejected verdict only reflects the restored snapshot.
+
 Never place tokens, cookies, authorization headers, passwords, `.env` values
 or private payloads in evidence, reports, examples or logs. Prefer a synthetic
 fixture and declare which categories were sanitized.
