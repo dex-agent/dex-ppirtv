@@ -201,8 +201,11 @@ function requiredDeclarationReasons(declaration) {
   return reasons;
 }
 
-function latestMaterialHistory(history) {
-  return [...(history ?? [])].reverse().find((entry) => entry && entry.mode !== "NOT_APPLICABLE");
+function latestMaterialHistory(history, declaration) {
+  return [...(history ?? [])].reverse().find((entry) => entry
+    && entry.mode !== "NOT_APPLICABLE"
+    && entry.sealed_retroactive !== true
+    && entry.id !== declaration?.supersedes_record);
 }
 
 function openDebt(history) {
@@ -339,7 +342,7 @@ export function evaluateFlowEngineChange({ baseSource, headSource, declaration, 
     if (!nonEmptyString(declaration?.red_command)) reasons.push("EXCEPTION_REQUIRES_RED_COMMAND");
     if (metrics.nonblank_lines.delta > 30) reasons.push("EXCEPTION_EXCEEDS_LINE_LIMIT");
     if (metrics.decision_points.delta > 2) reasons.push("EXCEPTION_EXCEEDS_DECISION_LIMIT");
-    if (latestMaterialHistory(history)?.mode === "EXCEPTION") reasons.push("CONSECUTIVE_EXCEPTION_FORBIDDEN");
+    if (latestMaterialHistory(history, declaration)?.mode === "EXCEPTION") reasons.push("CONSECUTIVE_EXCEPTION_FORBIDDEN");
   }
 
   if (mode !== "SHRINK" && nonEmptyString(declaration?.pays_debt_id)) {
@@ -706,6 +709,21 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
     }
   }
   const history = declaration ? records.slice(0, records.indexOf(declaration)) : records;
+  // Classe selagem retroativa (issue #11 convergencia, 2026-11-07): record com
+  // commit selado ancestral do base do diff atual e HISTORIA (selou corte
+  // passado), nao corte novo — nao conta para CONSECUTIVE_EXCEPTION.
+  if (history.length > 0 && comparison?.base && typeof git === "function") {
+    for (let index = 0; index < history.length; index += 1) {
+      const entry = history[index];
+      if (!entry?.commit || entry.sealed_retroactive === true) continue;
+      try {
+        git(["merge-base", "--is-ancestor", String(entry.commit), String(comparison.base)]);
+        history[index] = { ...entry, sealed_retroactive: true };
+      } catch {
+        // nao ancestral: corte novo, segue material
+      }
+    }
+  }
   const flowEngineChanged = comparison.source === "ledger-worktree" ? false : baseBlob !== headBlob;
   // Na cadeia coberta, cada janela carrega suas proprias metricas: o evaluate
   // principal aplica a declaracao do ULTIMO record sobre a janela DELE (blobs do

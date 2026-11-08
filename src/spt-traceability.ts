@@ -8,12 +8,18 @@ import type {
   CriterionProofInput,
   Evidence,
   EvidenceRevision,
+  Flow,
   SptEvidenceExpectation,
   SptV3Contract,
   SptV3Traceability
 } from "./domain.js";
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
+
+export function requiresGoalEvidence(flow: Flow): boolean {
+  const envelope = flow.goal_binding?.envelope;
+  return envelope?.requested_verdict_policy === "evidence_required" || envelope?.evidence_required === true;
+}
 
 export function traceabilityFromContract(contract: SptV3Contract): SptV3Traceability {
   return {
