@@ -1,16 +1,16 @@
 import type { AnyPhase, Cooperator, Flow, Meeting, MeetingKind, MeetingType } from "./domain.js";
 import type { FiscalVerdictInput } from "./memory/mining-policy.js";
-import { explicitMeetingTrigger, fiscalText, MEMORY_MINING_BLOCKED_VERDICT_REASON } from "./verdict-fiscal-policy.js";
-import { latestFiscalBlockEvent } from "./verdict-fiscal-policy.js";
+import { explicitMeetingTrigger, fiscalText, latestFiscalBlockEvent, MEMORY_MINING_BLOCKED_VERDICT_REASON } from "./verdict-fiscal-policy.js";
 import { stringArray, truthy, unique, uniqueCooperators } from "./lang-utils.js";
 
 // Onda 3 da maratona (Trilho 2026-11-08-onda3-meetings-policy): a politica
 // PURA de meetings/required_cooperation sai do monolito flow-engine e mora
 // aqui — sinais, material, diagnostico, participantes, kind/type, ledger-data,
-// apply/assert e as sequencias de unblock de meeting/loop-escalation. A
-// fachada (metodos da classe) fica no motor como cola; mensagens preservadas
-// byte a byte. Sequencias de OUTROS eixos (review/research/emergency/bad-loop)
-// ficam no motor — corte futuro do eixo delas.
+// apply/assert e a familia sequencer COMPLETA (requiredCooperation/loop/
+// research/emergency/badLoop/reviewRequired — a dependencia cruzada de
+// loopMeetingSequence com as irmas refutou a exclusao por eixo: separar seria
+// meio-cluster). A fachada (metodos da classe) fica no motor como cola;
+// mensagens preservadas byte a byte.
 
 
 export function requiredCooperationStillActive(flow: Flow, input: FiscalVerdictInput = {}): boolean {
@@ -100,15 +100,6 @@ export function historyAfter(flow: Flow, index: number): Flow["history"] {
   return flow.history.slice(index + 1);
 }
 
-export function hasMaterialMeeting(flow: Flow): boolean {
-  return flow.cooperators.some((cooperator) => cooperator.material) || flow.active_credits.length > 0;
-}
-
-export function hasMaterialMeetingOrRegress(flow: Flow): boolean {
-  const recordedMeeting = flow.history.some((event) => event.type === "meeting_recorded");
-  const returned = flow.history.some((event) => event.type === "phase_returned");
-  return returned || (recordedMeeting && hasMaterialMeeting(flow));
-}
 
 export function hasClosedMeetingSatisfying(flow: Flow, input: FiscalVerdictInput, blocker: string): boolean {
   const meetingIds = inputMeetingIds(input);
@@ -699,7 +690,7 @@ export type LoopMonitor = {
 };
 
 
-export function researchLoopSequence(flow: Flow, loopMonitor: LoopMonitor): Array<Record<string, unknown>> {
+function researchLoopSequence(flow: Flow, loopMonitor: LoopMonitor): Array<Record<string, unknown>> {
   const workspace = flow.goal_binding?.envelope.workspace ?? "<WORKSPACE>";
   return [
     {
@@ -731,7 +722,7 @@ export function researchLoopSequence(flow: Flow, loopMonitor: LoopMonitor): Arra
   ];
 }
 
-export function emergencyLoopSequence(flow: Flow, loopMonitor: LoopMonitor): Array<Record<string, unknown>> {
+function emergencyLoopSequence(flow: Flow, loopMonitor: LoopMonitor): Array<Record<string, unknown>> {
   const participants = ["chato", "questionador", "entrevista-me", "reuniao", "garimpeiro", "estacionamento", "revisor-codigo", "tio-testador", "validador-pronto", "ppi"];
   return [
     {
@@ -775,7 +766,7 @@ export function emergencyLoopSequence(flow: Flow, loopMonitor: LoopMonitor): Arr
   ];
 }
 
-export function badLoopReviewSequence(flow: Flow, loopMonitor: LoopMonitor): Array<Record<string, unknown>> {
+function badLoopReviewSequence(flow: Flow, loopMonitor: LoopMonitor): Array<Record<string, unknown>> {
   const workspace = flow.goal_binding?.envelope.workspace ?? "<WORKSPACE>";
   return [
     {
@@ -918,7 +909,7 @@ function researcherSkillResolution(workspace: string): Record<string, unknown> {
   };
 }
 
-export function cooperatorSkillResolution(workspace: string, skill: string, role: string): Record<string, unknown> {
+function cooperatorSkillResolution(workspace: string, skill: string, role: string): Record<string, unknown> {
   return {
     required_skill: skill,
     lookup_paths: [

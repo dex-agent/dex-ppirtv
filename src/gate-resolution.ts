@@ -1,6 +1,7 @@
-import type { Evidence, Flow, GateRecord } from "./domain.js";
+import type { AnyPhase, Evidence, Flow, GateRecord, Verdict } from "./domain.js";
 import { REQUIREMENT_KINDS_BY_KEY, type GateRequirement, type GateRequirementKind } from "./phase-profile.js";
 import { normalizeReviewPath } from "./review-snapshot.js";
+import { stringArray as toStringArray, unique } from "./lang-utils.js";
 
 export type GateRequirementResolution = {
   key: string;
@@ -552,7 +553,10 @@ function sameReviewPaths(left: string[], right: string[]): boolean {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
-function truthy(value: unknown): boolean {
+// Dialeto PROVIDED (nao confundir com lang-utils.truthy, que devolve false para
+// array vazio): aqui array presente — mesmo vazio — conta como satisfeito;
+// contrato medido no laudo 2026-10-17 (T-2 gate-integrity).
+function providedSatisfied(value: unknown): boolean {
   if (Array.isArray(value)) return true;
   if (typeof value === "string") return value.trim().length > 0;
   return Boolean(value);
@@ -643,4 +647,138 @@ function uniqueSources(values: GateRequirementResolution["accepted_sources"]): G
 
 function uniqueStrings(values: string[]): string[] {
   return [...new Set(values)];
+}
+
+// Onda 4 (maratona, ESCOTEIRO-ONDA): familia de coerencia review x changed_files
+// do VERDICT e wrappers de requisito migram do monolito. As variantes irmas de
+// EVIDENCE (changedFilesSnapshotAt/canonicalReviewPaths, acima) NAO sao
+// byte-identicas a estas (stringArray+unique+sort x reviewPathArray+
+// sameReviewPaths) — coabitam SEM unificacao (comportamento e contrato; laudo
+// 2026-10-17); renomes verdict* evitam colisao de nomes.
+
+export function hasRequirement(flow: Flow, requirement: GateRequirement, provided: Record<string, unknown>): boolean {
+  return resolveGateRequirements({
+    flow,
+    requirements: [requirement],
+    provided,
+    canonicalVerdictRequired: officialGoalNeedsCanonicalVerdict(flow)
+  })[0]?.satisfied === true;
+}
+
+export function officialGoalNeedsCanonicalVerdict(flow: Flow, phase: AnyPhase = flow.phase): boolean {
+  return Boolean(flow.goal_binding && phase === "validacao" && flow.verdicts.length === 0);
+}
+
+export function canonicalVerdictChangedFiles(changedFiles: string[]): string[] {
+  return unique(changedFiles.map(normalizeReviewPath).filter(Boolean)).sort();
+}
+
+export function changedFilesMatchReview(changedFiles: string[], reviewedChangedFiles: string[] | undefined): boolean {
+  if (!reviewedChangedFiles) {
+    return false;
+  }
+  const current = canonicalVerdictChangedFiles(changedFiles);
+  const reviewed = canonicalVerdictChangedFiles(reviewedChangedFiles);
+  return current.length === reviewed.length && current.every((item, index) => item === reviewed[index]);
+}
+
+export function reviewedChangedFilesForVerdict(flow: Flow, verdict: Verdict): string[] | undefined {
+  if (verdict.reviewed_changed_files) {
+    return verdict.reviewed_changed_files;
+  }
+  const verdictIndex = verdictHistoryIndex(flow, verdict);
+  if (verdictIndex < 0) {
+    return undefined;
+  }
+  const changedFiles = verdictChangedFilesSnapshotAt(flow, verdictIndex);
+  return changedFiles.length > 0 ? changedFiles : undefined;
+}
+
+function verdictChangedFilesSnapshotAt(flow: Flow, historyIndex: number): string[] {
+  let changedFiles: string[] = [];
+  for (const event of flow.history.slice(0, historyIndex + 1)) {
+    const nextChangedFiles = verdictChangedFilesAfterEvent(changedFiles, event);
+    if (nextChangedFiles) {
+      changedFiles = nextChangedFiles;
+    }
+  }
+  return canonicalVerdictChangedFiles(changedFiles);
+}
+
+export function reviewRemainsCurrent(flow: Flow, verdict: Verdict): boolean {
+  if (flow.implementation_fingerprint || verdict.reviewed_implementation_fingerprint) {
+    return Boolean(
+      flow.implementation_fingerprint
+      && verdict.reviewed_implementation_fingerprint === flow.implementation_fingerprint
+    );
+  }
+  const verdictIndex = verdictHistoryIndex(flow, verdict);
+  const reviewedChangedFiles = reviewedChangedFilesForVerdict(flow, verdict);
+  if (verdictIndex < 0 || !reviewedChangedFiles) {
+    return false;
+  }
+  let current = canonicalVerdictChangedFiles(reviewedChangedFiles);
+  for (const event of flow.history.slice(verdictIndex + 1)) {
+    if (
+      event.type === "flow_facts_updated" &&
+      Object.prototype.hasOwnProperty.call(event.data, "changed_files")
+    ) {
+      return false;
+    }
+    const next = verdictChangedFilesAfterEvent(current, event);
+    if (!next) {
+      continue;
+    }
+    if (!changedFilesMatchReview(current, next)) {
+      return false;
+    }
+    current = next;
+  }
+  return true;
+}
+
+function verdictHistoryIndex(flow: Flow, verdict: Verdict): number {
+  return flow.history.findIndex(
+    (event) => event.type === "verdict_recorded" && event.data.verdict_id === verdict.verdict_id
+  );
+}
+
+function verdictChangedFilesAfterEvent(
+  current: string[],
+  event: Flow["history"][number]
+): string[] | undefined {
+  if (event.type === "flow_facts_updated") {
+    return Object.prototype.hasOwnProperty.call(event.data, "changed_files")
+      ? canonicalVerdictChangedFiles(toStringArray(event.data.changed_files))
+      : undefined;
+  }
+  if (event.type !== "gate_checked" || event.data.phase !== "implementacao") {
+    return undefined;
+  }
+  const provided = event.data.provided;
+  if (!provided || typeof provided !== "object" || Array.isArray(provided)) {
+    return undefined;
+  }
+  if (!Object.prototype.hasOwnProperty.call(provided, "changed_files")) {
+    return undefined;
+  }
+  return canonicalVerdictChangedFiles([
+    ...current,
+    ...toStringArray((provided as Record<string, unknown>).changed_files)
+  ]);
+}
+
+export function reviewEvidenceRequested(input: { kind?: string; satisfies?: string[] }): boolean {
+  if (/^(?:code_)?review$/i.test(input.kind ?? "")) {
+    return true;
+  }
+  const reviewClaims = new Set(["diff_reviewed", "barata_scan", "regression_risks", "review_required"]);
+  return (input.satisfies ?? []).some((claim) => reviewClaims.has(claim));
+}
+
+export function structuredReviewAttestationRequested(input: { kind?: string; satisfies?: string[] }): boolean {
+  return /^(?:code_)?review$/i.test(input.kind ?? "")
+    && (input.satisfies ?? []).some((claim) =>
+      ["diff_reviewed", "barata_scan", "regression_risks"].includes(claim)
+    );
 }

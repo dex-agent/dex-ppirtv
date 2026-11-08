@@ -42,7 +42,7 @@ import {
   type WorkProgressStatus,
   type WorkProgressSummary
 } from "./domain.js";
-import { changedFilesContainCode, invalidateStaleDownstreamGates, isStructuredReviewEvidence, mergePathFacts, providedRequirementDiagnostic, resolveGateRequirements, reviewCurrencyAppliesToPhase, reviewCurrencyMissing, reviewEvidenceDiagnostics, reviewEvidenceValidity, savedGateReusable, strictPathArray, type GateRequirementResolution } from "./gate-resolution.js";
+import { canonicalVerdictChangedFiles, changedFilesContainCode, changedFilesMatchReview, hasRequirement, invalidateStaleDownstreamGates, isStructuredReviewEvidence, mergePathFacts, officialGoalNeedsCanonicalVerdict, providedRequirementDiagnostic, resolveGateRequirements, reviewCurrencyAppliesToPhase, reviewCurrencyMissing, reviewedChangedFilesForVerdict, reviewEvidenceDiagnostics, reviewEvidenceRequested, reviewEvidenceValidity, reviewRemainsCurrent, savedGateReusable, strictPathArray, structuredReviewAttestationRequested, type GateRequirementResolution } from "./gate-resolution.js";
 import { sanitizePersistedProvided } from "./input-unwrap.js";
 import { assertNoSecretLikeItems, assertNoSecretLikePayload, assertNoSecretLikeText } from "./security/secret-redaction.js";
 import {
@@ -118,7 +118,7 @@ import {
 import { requiresGoalEvidence } from "./spt-traceability.js";
 import { latestFiscalBlockEvent, MEMORY_MINING_BLOCKED_VERDICT_REASON } from "./verdict-fiscal-policy.js";
 import { reviewRequiredSequence, LoopMonitor } from "./meeting-policy.js";
-import { requiredCooperationStillActive, requiredCooperationMeetingIdMissingForPositiveVerdict, requiredCooperationMeetingSignal, explicitMeetingTriggerClearedByFactsUpdate, hasOpenRequiredCooperationMeetingSignal, hasInsufficientRequiredCooperationMeetingSignal, liveOpenMeetingIds, historyAfter, hasMaterialMeeting, hasMaterialMeetingOrRegress, hasClosedMeetingSatisfying, inputMeetingIds, requiredCooperationDiagnostics, missingParticipantsFor, requiredCooperationMeetingMaterial, meetingHasRequiredCooperationParticipants, meetingLinkedToFiscalBlock, meetingOpenedIndex, meetingClosedIndex, previousFiscalBlockIndex, meetingConsumedByLaterVerdict, meetingOutcomeSummaries, meetingOutcomeSummary, meetingOutcomeCounts, hasVerdictRecordedAfterIndex, requiredCooperationNeedsMeetingIdRetry, meetingKindForType, meetingTypeForKind, requiredMeetingKind, hasClosedMeetingKind, requiredMeetingParticipants, meetingClosedLedgerData, applyClosedMeetingToFlow, assertMeetingClosed, latestOpenMeeting, requiredCooperationSequence, loopEscalationAction, loopMeetingSequence, cooperationCheckoutAccountability, suggestedCooperatorsForFlow } from "./meeting-policy.js";
+import { requiredCooperationStillActive, requiredCooperationMeetingIdMissingForPositiveVerdict, requiredCooperationMeetingSignal, explicitMeetingTriggerClearedByFactsUpdate, hasOpenRequiredCooperationMeetingSignal, hasInsufficientRequiredCooperationMeetingSignal, liveOpenMeetingIds, historyAfter, hasClosedMeetingSatisfying, inputMeetingIds, requiredCooperationDiagnostics, missingParticipantsFor, requiredCooperationMeetingMaterial, meetingHasRequiredCooperationParticipants, meetingLinkedToFiscalBlock, meetingOpenedIndex, meetingClosedIndex, previousFiscalBlockIndex, meetingConsumedByLaterVerdict, meetingOutcomeSummaries, meetingOutcomeSummary, meetingOutcomeCounts, hasVerdictRecordedAfterIndex, requiredCooperationNeedsMeetingIdRetry, meetingKindForType, meetingTypeForKind, requiredMeetingKind, hasClosedMeetingKind, requiredMeetingParticipants, meetingClosedLedgerData, applyClosedMeetingToFlow, assertMeetingClosed, latestOpenMeeting, requiredCooperationSequence, loopEscalationAction, loopMeetingSequence, cooperationCheckoutAccountability, suggestedCooperatorsForFlow } from "./meeting-policy.js";
 import { unique, truthy, stringArray, uniqueCooperators } from "./lang-utils.js";
 import { freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
 import { applyReviewScopeAttributions, attributedVerdictSnapshot, bindReviewScopeAttribution, prepareVerdictSnapshot, type GoalVerdictInput } from "./review-scope-attribution.js";
@@ -4100,7 +4100,7 @@ export class FlowEngine {
       review_findings: input.review_findings ?? [],
       reviewed_changed_files:
         citedCurrentReview
-          ? canonicalChangedFiles(flow.changed_files)
+          ? canonicalVerdictChangedFiles(flow.changed_files)
           : undefined,
       reviewed_implementation_fingerprint:
         citedCurrentReview
@@ -4978,19 +4978,6 @@ async function scanTrashWithoutGarimpoGate(root: string, store: PpirtvStore): Pr
   ];
 }
 
-function hasRequirement(flow: Flow, requirement: GateRequirement, provided: Record<string, unknown>): boolean {
-  return resolveGateRequirements({
-    flow,
-    requirements: [requirement],
-    provided,
-    canonicalVerdictRequired: officialGoalNeedsCanonicalVerdict(flow)
-  })[0]?.satisfied === true;
-}
-
-function officialGoalNeedsCanonicalVerdict(flow: Flow, phase: AnyPhase = flow.phase): boolean {
-  return Boolean(flow.goal_binding && phase === "validacao" && flow.verdicts.length === 0);
-}
-
 // P1 verdict-fiscal-policy-tree: nucleo fiscal migrou para src/verdict-fiscal-policy.ts;
 // wrappers preservam as assinaturas locais e injetam as dependencias dos eixos vizinhos.
 const FISCAL_POLICY_DEPS: FiscalPolicyDeps = {
@@ -5039,10 +5026,6 @@ function reviewStatusForPostWrite(validation: MemoryPostWriteValidation, written
   return "pending_consciencia_memorias";
 }
 
-function canonicalChangedFiles(changedFiles: string[]): string[] {
-  return unique(changedFiles.map(normalizeReviewPath).filter(Boolean)).sort();
-}
-
 function assertDeletedFilesBelongToChangedFiles(changedFiles: string[], deletedFiles: string[]): void {
   const changed = new Set(changedFiles.map(normalizeReviewPath).filter(Boolean));
   const unknown = deletedFiles
@@ -5054,100 +5037,6 @@ function assertDeletedFilesBelongToChangedFiles(changedFiles: string[], deletedF
   }
 }
 
-function changedFilesMatchReview(changedFiles: string[], reviewedChangedFiles: string[] | undefined): boolean {
-  if (!reviewedChangedFiles) {
-    return false;
-  }
-  const current = canonicalChangedFiles(changedFiles);
-  const reviewed = canonicalChangedFiles(reviewedChangedFiles);
-  return current.length === reviewed.length && current.every((item, index) => item === reviewed[index]);
-}
-
-function reviewedChangedFilesForVerdict(flow: Flow, verdict: Verdict): string[] | undefined {
-  if (verdict.reviewed_changed_files) {
-    return verdict.reviewed_changed_files;
-  }
-  const verdictIndex = verdictHistoryIndex(flow, verdict);
-  if (verdictIndex < 0) {
-    return undefined;
-  }
-  const changedFiles = changedFilesSnapshotAt(flow, verdictIndex);
-  return changedFiles.length > 0 ? changedFiles : undefined;
-}
-
-function changedFilesSnapshotAt(flow: Flow, historyIndex: number): string[] {
-  let changedFiles: string[] = [];
-  for (const event of flow.history.slice(0, historyIndex + 1)) {
-    const nextChangedFiles = changedFilesAfterEvent(changedFiles, event);
-    if (nextChangedFiles) {
-      changedFiles = nextChangedFiles;
-    }
-  }
-  return canonicalChangedFiles(changedFiles);
-}
-
-function reviewRemainsCurrent(flow: Flow, verdict: Verdict): boolean {
-  if (flow.implementation_fingerprint || verdict.reviewed_implementation_fingerprint) {
-    return Boolean(
-      flow.implementation_fingerprint
-      && verdict.reviewed_implementation_fingerprint === flow.implementation_fingerprint
-    );
-  }
-  const verdictIndex = verdictHistoryIndex(flow, verdict);
-  const reviewedChangedFiles = reviewedChangedFilesForVerdict(flow, verdict);
-  if (verdictIndex < 0 || !reviewedChangedFiles) {
-    return false;
-  }
-  let current = canonicalChangedFiles(reviewedChangedFiles);
-  for (const event of flow.history.slice(verdictIndex + 1)) {
-    if (
-      event.type === "flow_facts_updated" &&
-      Object.prototype.hasOwnProperty.call(event.data, "changed_files")
-    ) {
-      return false;
-    }
-    const next = changedFilesAfterEvent(current, event);
-    if (!next) {
-      continue;
-    }
-    if (!changedFilesMatchReview(current, next)) {
-      return false;
-    }
-    current = next;
-  }
-  return true;
-}
-
-function verdictHistoryIndex(flow: Flow, verdict: Verdict): number {
-  return flow.history.findIndex(
-    (event) => event.type === "verdict_recorded" && event.data.verdict_id === verdict.verdict_id
-  );
-}
-
-function changedFilesAfterEvent(
-  current: string[],
-  event: Flow["history"][number]
-): string[] | undefined {
-  if (event.type === "flow_facts_updated") {
-    return Object.prototype.hasOwnProperty.call(event.data, "changed_files")
-      ? canonicalChangedFiles(stringArray(event.data.changed_files))
-      : undefined;
-  }
-  if (event.type !== "gate_checked" || event.data.phase !== "implementacao") {
-    return undefined;
-  }
-  const provided = event.data.provided;
-  if (!provided || typeof provided !== "object" || Array.isArray(provided)) {
-    return undefined;
-  }
-  if (!Object.prototype.hasOwnProperty.call(provided, "changed_files")) {
-    return undefined;
-  }
-  return canonicalChangedFiles([
-    ...current,
-    ...stringArray((provided as Record<string, unknown>).changed_files)
-  ]);
-}
 function librarianRequired(flow: Flow, input: FiscalVerdictInput): boolean {
   const text = [input.rationale, input.next_step, ...(input.residual_risks ?? [])].filter(Boolean).join("\n");
   if (librarianExplicitlyOutOfScope(flow, text)) {
@@ -6303,21 +6192,6 @@ function classifyEvidenceQuality(evidence: Evidence): EvidenceQuality {
     reasons: evidenceQualityReasons(status, hasTrace, missingFields),
     missing_fields: missingFields
   };
-}
-
-function reviewEvidenceRequested(input: { kind?: string; satisfies?: string[] }): boolean {
-  if (/^(?:code_)?review$/i.test(input.kind ?? "")) {
-    return true;
-  }
-  const reviewClaims = new Set(["diff_reviewed", "barata_scan", "regression_risks", "review_required"]);
-  return (input.satisfies ?? []).some((claim) => reviewClaims.has(claim));
-}
-
-function structuredReviewAttestationRequested(input: { kind?: string; satisfies?: string[] }): boolean {
-  return /^(?:code_)?review$/i.test(input.kind ?? "")
-    && (input.satisfies ?? []).some((claim) =>
-      ["diff_reviewed", "barata_scan", "regression_risks"].includes(claim)
-    );
 }
 
 function evidenceQualityReasons(status: EvidenceQuality["status"], hasTrace: boolean, missingFields: string[]): string[] {

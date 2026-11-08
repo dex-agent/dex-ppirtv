@@ -1,3 +1,14 @@
+## Reavaliação — Onda 4: eixo gate-resolution migra + higiene Onda 3 paga, 2026-11-08
+
+Owner $oraculo-refatoracao (Trilho onda4-gate-resolution, flow 3751; GO do
+dono, ESCOTEIRO-ONDA): 11 símbolos do eixo (wrappers de requisito, atestação
+de review, família verdict-coherence com renomes anti-colisão) →
+src/gate-resolution.ts (646→784L); variantes de EVIDENCE coabitam SEM
+unificação (laudo 2026-10-17); higiene EST-ADV-ONDA3 itens 1-4 no mesmo corte
+(header, des-exports, par morto com rg, imports, providedSatisfied). Motor
+7223→7097 (−126L); suíte 835+4=839 sem editar teste. Camping SHRINK;
+selagem pós-commit COM parent_commit.
+
 ## Reavaliação — Emenda documental contagens Onda 3 (adversarial consolidada), 2026-11-08
 
 Owner $projeto-manter-changelog (consolidação da adversarial Onda 3 na sessão

@@ -264,9 +264,9 @@
  },
  "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
  "fotografia_id": "2026-11-05-merge-pr7",
- "head": "d46a415",
+ "head": "6e0ce92",
  "tree_hash": "c4d95961344c0abe7a96ab3cee3d041a98368c97",
- "generated_at": "2026-11-08T22:29:44.369413+00:00",
+ "generated_at": "2026-11-08T22:43:48.376805+00:00",
  "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
  "escopo": [
   "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1186,5 +1186,29 @@
   "limits": [
    "Record JSON imutável (LEDGER_HISTORY_MUTATED); a emenda vive no MD/CHANGELOG."
   ]
+ },
+ "reavaliacao_onda4_gate_resolution": {
+  "date": "2026-11-08",
+  "scope": [
+   "src/gate-resolution.ts",
+   "src/flow-engine.ts",
+   "src/meeting-policy.ts"
+  ],
+  "delta": "11 símbolos do eixo gate-resolution migram (renomes anti-colisão verdict*; variantes evidence NÃO unificadas); higiene EST-ADV-ONDA3 itens 1-4 paga; motor −126L.",
+  "evidence": [
+   "npm run build",
+   "npx vitest run tests/gate-resolution.test.ts tests/gate-integrity-hardening.test.ts (62/62)",
+   "npm test 835+4=839 sem editar teste"
+  ],
+  "limits": [
+   "unificação das variantes verdict×evidence fica para corte com RED próprio (mudaria comportamento)",
+   "needsReviewCoherence permanece no motor (orquestração fiscal, desenho Onda 0)"
+  ],
+  "suite": {
+   "passed": 835,
+   "failed": 0,
+   "skipped": 4,
+   "total": 839
+  }
  }
 }
