@@ -264,9 +264,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "665bb5f10dc6a57ed666c46ace69f68df16fbc8e",
-  "tree_hash": "4eeff9b2b4d57a4e84c69277bedbd5f238251244",
-  "generated_at": "2026-11-08T21:23:41.827467+00:00",
+  "head": "e809b054051741785d9df465cab9e680b1440ffa",
+  "tree_hash": "c4d95961344c0abe7a96ab3cee3d041a98368c97",
+  "generated_at": "2026-11-08T21:48:30.855942+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -290,7 +290,7 @@
     "skipped": 4,
     "files": 64,
     "total": 836,
-    "command": "npm run build && npm test (cura-2; exit 0)"
+    "command": "npm run build && npm test (Onda 3; exit 0)"
   },
   "tools_count": 32,
   "capabilities": [
@@ -1143,5 +1143,11 @@
     "camping": "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO EXCEPTION integrity — reasons [] de primeira",
     "selo_vivo": "COMMIT_SEAL_PARENT_MISMATCH no evaluateCommitSealDiff; bootstrap deixou de ser o unico caminho",
     "selagem": "record selado pos-commit em 49524c3"
+  },
+  "reavaliacao_onda3_meetings_policy": {
+    "commit_escopo": "src/meeting-policy.ts (NOVO 941L) + src/lang-utils.ts (NOVO) + src/flow-engine.ts (−970L) + src/verdict-fiscal-policy.ts + docs/ledger/CAPACITY",
+    "suite": "832 passed + 4 skipped = 836 — sem editar teste (movimentação pura)",
+    "camping": "FE-2026-11-08-ONDA3-MEETINGS-POLICY-SHRINK SHRINK pays_debt_id=FE-DEBT-006 — reasons []",
+    "motor": "8180→7210 linhas (−970, −12%); 48 símbolos top-level removidos, zero adicionados (AST diff)"
   }
 }

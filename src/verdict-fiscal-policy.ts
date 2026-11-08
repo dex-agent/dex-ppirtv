@@ -369,3 +369,15 @@ export async function reportRecurringRiskCleared(
   await ledger(flow.flow_id, "recurring_risk_reported", { recurring_risk: false, source: "goal_verdict" }, "goal_verdict");
   return store.loadFlow(flow.flow_id);
 }
+
+export function latestFiscalBlockEvent(flow: Flow): { event: Flow["history"][number]; index: number } | null {
+  for (let index = flow.history.length - 1; index >= 0; index -= 1) {
+    const event = flow.history[index];
+    if (event.type === "fiscal_policy_blocked") {
+      return { event, index };
+    }
+  }
+  return null;
+}
+
+export const MEMORY_MINING_BLOCKED_VERDICT_REASON = "memory_mining_blocked_verdict";

@@ -1,3 +1,13 @@
+## Reavaliação — Onda 3: política de meetings fora do monólito (SHRINK paga FE-DEBT-006), 2026-11-08
+
+Owner $oraculo-refatoracao (Trilho onda3-meetings-policy, flow 3693; GO do
+dono): 48 símbolos top-level do eixo meeting/required_cooperation →
+src/meeting-policy.ts (941L, família sequencer completa — dependência cruzada
+refutou exclusão por eixo); lang-utils (fonte única) + fiscal-policy ganham
+latestFiscalBlockEvent/MEMORY_MINING. Motor 8180→7210 (−970L, −12%) com ZERO
+símbolos adicionados (AST); suíte 832+4=836 sem editar teste; camping SHRINK
+reasons [] com pays_debt_id=FE-DEBT-006 — a dívida sai do ledger.
+
 ## Reavaliação — Cura-2: selo vivo confere linhagem + backfill do re-attach, 2026-11-08
 
 Owner $oraculo-refatoracao (Trilho cura2-validador-selo-vivo, flow 3667; GO do
