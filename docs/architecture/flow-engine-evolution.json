@@ -1299,7 +1299,9 @@
         "suíte completa conferida no fechamento"
       ],
       "changelog_marker": "FE-2026-11-08-ONDA3-MEETINGS-POLICY-SHRINK",
-      "architecture_marker": "FE-2026-11-08-ONDA3-MEETINGS-POLICY-SHRINK"
+      "architecture_marker": "FE-2026-11-08-ONDA3-MEETINGS-POLICY-SHRINK",
+      "commit": "9ad23eec2beba01dc94ddfe159213026deaedf36",
+      "parent_commit": "docs/architecture/flow-engine-evolution.json"
     }
   ]
 }

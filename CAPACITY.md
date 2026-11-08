@@ -7,6 +7,7 @@ refutou exclusão por eixo); lang-utils (fonte única) + fiscal-policy ganham
 latestFiscalBlockEvent/MEMORY_MINING. Motor 8180→7210 (−970L, −12%) com ZERO
 símbolos adicionados (AST); suíte 832+4=836 sem editar teste; camping SHRINK
 reasons [] com pays_debt_id=FE-DEBT-006 — a dívida sai do ledger.
+Record selado pós-commit em 9ad23ee **com parent_commit** (mitigação P2 adversarial).
 
 ## Reavaliação — Cura-2: selo vivo confere linhagem + backfill do re-attach, 2026-11-08
 
