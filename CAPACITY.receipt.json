@@ -266,7 +266,7 @@
   "fotografia_id": "2026-11-05-merge-pr7",
   "head": "e809b054051741785d9df465cab9e680b1440ffa",
   "tree_hash": "c4d95961344c0abe7a96ab3cee3d041a98368c97",
-  "generated_at": "2026-11-08T21:49:41.942073+00:00",
+  "generated_at": "2026-11-08T21:50:55.182620+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1149,6 +1149,6 @@
     "suite": "832 passed + 4 skipped = 836 — sem editar teste (movimentação pura)",
     "camping": "FE-2026-11-08-ONDA3-MEETINGS-POLICY-SHRINK SHRINK pays_debt_id=FE-DEBT-006 — reasons []",
     "motor": "8180→7210 linhas (−970, −12%); 48 símbolos top-level removidos, zero adicionados (AST diff)",
-    "selagem": "record selado pos-commit em 9ad23ee COM parent_commit REAL e809b054 (corrigido na mesma sessao: one-liner gravara path por bug; o selo vivo pegou o falso — COMMIT_SEAL_PARENT_MISMATCH — e a correcao foi validada por ele)"
+    "selagem": "record selado pos-commit em 9ad23ee COM parent_commit REAL e809b054 (emenda da sessao: one-liner gravara path por bug; o selo vivo pegou o falso COMMIT_SEAL_PARENT_MISMATCH e validou a correcao; linha do CAPACITY consertada)"
   }
 }
