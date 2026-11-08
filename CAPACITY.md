@@ -6,6 +6,7 @@ cura — helper vivia só no bootstrap morto); fonte única parentMatchesCommit;
 selectedParent sempre full sha; bootstrap isento como o path de declaração;
 backfill do re-attach via ensureLedgerTransitionRecorded; higiene (regex, MD,
 CAPACITY espaçamento, commits full). 2 REDs → GREEN 35/35; suíte 832+4=836.
+Record selado pós-commit em 49524c3.
 
 ## Reavaliação — Corte de cura adversarial 2/2b: ordem do evento + linhagem do ledger, 2026-11-08
 

@@ -1166,7 +1166,8 @@
         "suíte completa conferida no fechamento"
       ],
       "changelog_marker": "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO",
-      "architecture_marker": "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO"
+      "architecture_marker": "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO",
+      "commit": "49524c3597547dd86af71cf78b5096e3b2d1bb8b"
     }
   ]
 }

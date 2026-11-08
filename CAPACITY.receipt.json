@@ -266,7 +266,7 @@
   "fotografia_id": "2026-11-05-merge-pr7",
   "head": "665bb5f10dc6a57ed666c46ace69f68df16fbc8e",
   "tree_hash": "4eeff9b2b4d57a4e84c69277bedbd5f238251244",
-  "generated_at": "2026-11-08T21:23:21.302745+00:00",
+  "generated_at": "2026-11-08T21:23:41.827467+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1141,6 +1141,7 @@
     "commit_escopo": "scripts/validate-flow-engine-boundary.mjs (selo vivo + fonte unica + bootstrap isento) + src/flow-engine.ts (backfill) + tests (2 REDs + regex) + docs/ledger/CAPACITY",
     "suite": "832 passed + 4 skipped = 836 — +2 testes (selo vivo; backfill)",
     "camping": "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO EXCEPTION integrity — reasons [] de primeira",
-    "selo_vivo": "COMMIT_SEAL_PARENT_MISMATCH no evaluateCommitSealDiff; bootstrap deixou de ser o unico caminho"
+    "selo_vivo": "COMMIT_SEAL_PARENT_MISMATCH no evaluateCommitSealDiff; bootstrap deixou de ser o unico caminho",
+    "selagem": "record selado pos-commit em 49524c3"
   }
 }
