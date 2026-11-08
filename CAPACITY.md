@@ -1,3 +1,11 @@
+## Reavaliação — Emenda documental contagens Onda 3 (adversarial consolidada), 2026-11-08
+
+Owner $projeto-manter-changelog (consolidação da adversarial Onda 3 na sessão
+dona, 0 P1): FLOW_ENGINE_EVOLUTION.md + CHANGELOG recebem as contagens
+reconciliadas por medição (47 removed_symbols / 48 decls meeting-policy / 54
+removidas no diff / 8179→7210 = −969L) + nota de convenção consumers
+(importador direto). Sem mudança de código; suíte permanece 835+4=839 @ad82485.
+
 ## Reavaliação — Cura-3: seletor-regex + parent obrigatório + backfill terminal, 2026-11-08
 
 Owner $oraculo-refatoracao (Trilho cura3-selo-parent-obrigatorio, flow 3719; GO

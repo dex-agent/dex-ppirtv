@@ -266,7 +266,7 @@
  "fotografia_id": "2026-11-05-merge-pr7",
  "head": "d46a415",
  "tree_hash": "c4d95961344c0abe7a96ab3cee3d041a98368c97",
- "generated_at": "2026-11-08T22:16:34.555973+00:00",
+ "generated_at": "2026-11-08T22:29:44.369413+00:00",
  "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
  "escopo": [
   "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1170,5 +1170,21 @@
    "total": 839,
    "red_provas": 3
   }
+ },
+ "reavaliacao_emenda_contagens_onda3": {
+  "date": "2026-11-08",
+  "scope": [
+   "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+   "CHANGELOG.md"
+  ],
+  "delta": "Contagens da Onda 3 reconciliadas por medição na consolidação da adversarial (0 P1); nota de convenção consumers (importador direto).",
+  "evidence": [
+   "git show e809b054:src/flow-engine.ts | wc -l (8179)",
+   "node -e removed_symbols.length=47",
+   ".agents/AUDITORIAS/adversarial-261108-onda3/CONSOLIDADO.md (veredito sessão dona)"
+  ],
+  "limits": [
+   "Record JSON imutável (LEDGER_HISTORY_MUTATED); a emenda vive no MD/CHANGELOG."
+  ]
  }
 }
