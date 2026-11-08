@@ -7,6 +7,7 @@ P1 Onda 2 — sealedParentReasons no validador confere pai armazenado inclusive
 em pai único (COMMIT_PARENT_MISMATCH, prefixo ≥7); linhagem do ledger corrigida
 (0bdd375 full / full shas). Higiene: CAPACITY dedup, 3 gaps de teste, hoist,
 un-export. 2 REDs → GREEN 33/33; suíte 830+4=834.
+Record selado pós-commit em 9facae1.
 
 ## Reavaliação — Onda 2b: evento de re-attach + pré-indexação SptTraceIndex, 2026-11-08
 

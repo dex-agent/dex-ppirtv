@@ -1128,7 +1128,8 @@
       "architecture_marker": "FE-2026-11-08-CURA-ADVERSARIAL-LINHAGEM-LEDGER",
       "consumers": [
         "src/server.ts"
-      ]
+      ],
+      "commit": "9facae11db46e3c09f6e7c83d79c971829433a57"
     }
   ]
 }
