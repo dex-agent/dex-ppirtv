@@ -6,8 +6,8 @@ de review, família verdict-coherence com renomes anti-colisão) →
 src/gate-resolution.ts (646→784L); variantes de EVIDENCE coabitam SEM
 unificação (laudo 2026-10-17); higiene EST-ADV-ONDA3 itens 1-4 no mesmo corte
 (header, des-exports, par morto com rg, imports, providedSatisfied). Motor
-7223→7097 (−126L); suíte 835+4=839 sem editar teste. Camping SHRINK;
-selagem pós-commit COM parent_commit.
+7223→7097 (−126L); suíte 835+4=839 sem editar teste. Camping SHRINK PASS reasons [] (−11 símbolos, −116 linhas
+não-vazias, 0 exports); selagem pós-commit 8505275 COM parent_commit 6e0ce92.
 
 ## Reavaliação — Emenda documental contagens Onda 3 (adversarial consolidada), 2026-11-08
 

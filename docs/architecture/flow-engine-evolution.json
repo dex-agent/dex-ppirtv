@@ -1339,6 +1339,65 @@
       "architecture_marker": "FE-2026-11-08-CURA3-SELO-PARENT-OBRIGATORIO",
       "commit": "cb0b4aa17154d77c1be2b58614e7616771699251",
       "parent_commit": "d46a4154ddb533c5d0db2eb6b6dbfafc4086a008"
+    },
+    {
+      "id": "FE-2026-11-08-ONDA4-GATE-RESOLUTION-SHRINK",
+      "date": "2026-11-08",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-08-onda4-gate-resolution.md",
+      "owner": "$oraculo-refatoracao",
+      "mode": "SHRINK",
+      "destination_module": "src/gate-resolution.ts",
+      "base_blob": "defb1f8358dd1770f74d0cb8ee45547a4d334572",
+      "head_blob": "22d4d4e0d69e76a701e0f0c2b221fd799bf6be92",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "removed_symbols": [
+        "hasRequirement",
+        "officialGoalNeedsCanonicalVerdict",
+        "canonicalChangedFiles",
+        "changedFilesMatchReview",
+        "reviewedChangedFilesForVerdict",
+        "changedFilesSnapshotAt",
+        "reviewRemainsCurrent",
+        "verdictHistoryIndex",
+        "changedFilesAfterEvent",
+        "reviewEvidenceRequested",
+        "structuredReviewAttestationRequested"
+      ],
+      "symbol_mappings": {
+        "hasRequirement": "hasRequirement",
+        "officialGoalNeedsCanonicalVerdict": "officialGoalNeedsCanonicalVerdict",
+        "canonicalChangedFiles": "canonicalVerdictChangedFiles",
+        "changedFilesMatchReview": "changedFilesMatchReview",
+        "reviewedChangedFilesForVerdict": "reviewedChangedFilesForVerdict",
+        "changedFilesSnapshotAt": "verdictChangedFilesSnapshotAt",
+        "reviewRemainsCurrent": "reviewRemainsCurrent",
+        "verdictHistoryIndex": "verdictHistoryIndex",
+        "changedFilesAfterEvent": "verdictChangedFilesAfterEvent",
+        "reviewEvidenceRequested": "reviewEvidenceRequested",
+        "structuredReviewAttestationRequested": "structuredReviewAttestationRequested"
+      },
+      "responsibility": "Onda 4: o que restava do eixo gate-resolution no monolito migra — 11 simbolos (wrappers de requisito, atestacao de review e familia verdict-coherence com renomes anti-colisao verdict*). Variantes irmas de EVIDENCE coabitam SEM unificacao (nao byte-identicas: stringArray+unique+sort x reviewPathArray+sameReviewPaths; laudo 2026-10-17); stringArray local (predicado-guard) recebe a conversora de lang-utils sob alias toStringArray. Higiene EST-20261108-ADV-ONDA3 itens 1-4 no mesmo corte (ESCOTEIRO-ONDA): header meeting-policy reescrito, 4 sequencers des-exportados, par morto hasMaterialMeetingOrRegress+hasMaterialMeeting removido com rg de ausencia, imports duplicados consolidados, truthy privada renomeada providedSatisfied (dialeto PROVIDED). Motor 7223->7097 (menos 126L).",
+      "behavior_preserved_by": [
+        "movimentacao pura com renomes de palavra inteira (regex word-boundary) — corpos byte a byte",
+        "suíte completa 835 passed + 4 skipped = 839 SEM editar teste (npm test exit 0)",
+        "suítes do eixo 62/62 (gate-resolution + gate-integrity-hardening + flow-engine-boundary)",
+        "unificacao de variantes PROIBIDA: coabitacao com nomes proprios (verdict*) preserva os dois contratos"
+      ],
+      "rollback": "reverter 8505275 restaura as 11 funcoes no monolito e a higiene (exports/imports/header/par morto voltam); sem migracao de dados",
+      "evidence": [
+        "tests/gate-resolution.test.ts",
+        "tests/gate-integrity-hardening.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/gate-resolution.test.ts": "accepts only exact structured review satisfactions"
+      },
+      "changelog_marker": "FE-2026-11-08-ONDA4-GATE-RESOLUTION-SHRINK",
+      "architecture_marker": "FE-2026-11-08-ONDA4-GATE-RESOLUTION-SHRINK",
+      "commit": "850527530f9f0420c2d131e79620bd9586dd4513",
+      "parent_commit": "6e0ce927345238a96d51f8f5b99db2143e276c5d",
+      "same_responsibility": true
     }
   ]
 }
