@@ -1398,6 +1398,43 @@
       "commit": "850527530f9f0420c2d131e79620bd9586dd4513",
       "parent_commit": "6e0ce927345238a96d51f8f5b99db2143e276c5d",
       "same_responsibility": true
+    },
+    {
+      "id": "FE-2026-11-08-CURA4-SEAL-LINEAGE-UNICO",
+      "date": "2026-11-08",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-08-cura4-seal-lineage-unico.md",
+      "owner": "$oraculo-refatoracao",
+      "mode": "EXCEPTION",
+      "exception_reason": "integrity",
+      "expires": "2026-11-15",
+      "red_evidence": "tests/flow-engine-boundary.test.ts::motor-laundering: parent removido de record selado reprova mesmo em diff de motor",
+      "red_base_blob": "22d4d4e0d69e76a701e0f0c2b221fd799bf6be92",
+      "red_observed_failure": "REDs provados no baseline 7d5b67b: (B1) parent removido de record selado passava em diff de motor (stripSeal isenta; LEDGER_PREFIX so conferia commit mudado); (B2) record novo com parent fabricado passava no path de declaracao; (C) bootstrap com seletor legado de parenteses era vermelho por construcao (sem grandfathering); (ordem) trilha do _recovered divergia por caminho.",
+      "red_command": "npx vitest run tests/flow-engine-boundary.test.ts -t \"motor-laundering: parent removido de record selado reprova mesmo em diff de motor\"",
+      "base_blob": "22d4d4e0d69e76a701e0f0c2b221fd799bf6be92",
+      "head_blob": "39a5c149a5960f55a1390e025eb73c0b734b11a8",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/flow-engine-boundary.test.ts",
+        "tests/spt-verdict-coverage-diagnostics.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/flow-engine-boundary.test.ts": "motor-laundering: parent removido de record selado reprova mesmo em diff de motor",
+        "tests/spt-verdict-coverage-diagnostics.test.ts": "retry de flow TERMINAL completa a trilha do re-attach com evento recuperado"
+      },
+      "responsibility": "Cura-4 dos P1s da adversarial cura-3 (2 P1/4 P2/9 P3): sealLineageReasons helper UNICO consumido pelos 3 gates (LEDGER_PREFIX dispara quando o record ENTRA ou MUDA no diff — motor-laundering fechado; path de declaracao confere record novo com commit fabricado; seal-diff sem continue-cego que mascarava BLOB_MISMATCH). selectorIsReplayable = selectorRunsAsRegex + self-match (irmao colidente fechado); grandfathering DECLARADO em LEGACY_SELECTOR_EXEMPT com os 12 ids legados medidos por probe (24 seletores com metacaracteres; replay bootstrap verde com isencao visivel — falsa cobertura de 1 id pega AO VIVO pelo $critico-cetico na mesa QUESTIONADORES-ATIVADO e corrigida antes do commit). F4/G9: providedSatisfied enterrado (0 call sites; comentario falso do laudo saiu junto — cap.4 Comments). G5: backfillReattachLedger unico com ordem unificada reattach->flow_created->goal_started nos 2 caminhos do startGoal (aceita pelo dono); imports do motor consolidados. Dialetos changed-files PINADOS em teste (toStringArray coercivo x strictPathArray rejeitante). Guard importSpecifier(consumer, undefined) mata falso PRODUCT_CONSUMER_NOT_FOUND de EXCEPTION sem destination. 4 REDs baseline -> GREEN; suite 839+4=843 sem editar teste.",
+      "behavior_preserved_by": [
+        "suíte completa 839 passed + 4 skipped = 843 SEM editar teste (npm test exit 0)",
+        "suítes do eixo 69/69 (boundary + gate-resolution + coverage-diagnostics)",
+        "movimentacao de mensagem zero: gates emitem os MESMOS codigos de reason (BLOB/PARENT/MISSING/REMOVED/MISMATCH) so que agora sem janela de diff"
+      ],
+      "rollback": "reverter o commit da cura-4 restaura os 3 gates independentes e a duplicacao do backfill; os 4 REDs documentados reproduzem cada falso verde no baseline 7d5b67b",
+      "changelog_marker": "FE-2026-11-08-CURA4-SEAL-LINEAGE-UNICO",
+      "architecture_marker": "FE-2026-11-08-CURA4-SEAL-LINEAGE-UNICO",
+      "commit": "8ad367a680169ceba3715dd77d58729fa7093445",
+      "parent_commit": "7d5b67bf39a5ce38b84fe17ff4ca5c9e24c1d373"
     }
   ]
 }

@@ -277,8 +277,22 @@ export function selectorIsReplayable(selector, titles) {
 // documental vive no MD e o gate vigia os FUTUROS. ISENÇÃO É EXCEÇÃO
 // DECLARADA, nunca silêncio.
 const LEGACY_SELECTOR_EXEMPT = new Set([
-  "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO"
+  "FE-2026-10-17-REVIEW-LOOP-FISCAL-SANE",
+  "FE-2026-10-18-GATE-INTEGRITY-F4F5F6",
+  "FE-2026-10-18-GATE-INTEGRITY-HARDENING-2",
+  "FE-2026-10-18-GATE-INTEGRITY-TYPED-PHASES",
+  "FE-2026-10-18-GIT-CORROBORATION-COMMITS-SHRINK",
+  "FE-2026-10-18-INPUT-NEVER-BLOCKING-F2-SHRINK",
+  "FE-2026-10-26-VERDICT-FISCAL-POLICY-SHRINK",
+  "FE-2026-10-29-ENV-SNAPSHOT-REDACTION-CONTAIN",
+  "FE-2026-11-07-CONVERGENCIA-PR12",
+  "FE-2026-11-07-ONDA1-GOAL-START-SSOT",
+  "FE-2026-11-07-PATH-ATTRIBUTION-REGRESSAO-C01",
+  "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO",
 ]);
+// (ids legados cujos seletores selados ANTES do gate de self-match contêm
+// metacaracteres de regex — +, ->, {}, [] — medido por probe: 24 seletores
+// em 12 records; a emenda documental vive no MD; o gate vigia os FUTUROS.)
 
 // Cura-4 (P1-1 adversarial cura-3): helper ÚNICO de linhagem de selagem —
 // consumido pelo LEDGER_PREFIX (record que entra ou muda no diff), pelo path

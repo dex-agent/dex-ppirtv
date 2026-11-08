@@ -266,7 +266,7 @@
  "fotografia_id": "2026-11-05-merge-pr7",
  "head": "7d5b67b",
  "tree_hash": "c4d95961344c0abe7a96ab3cee3d041a98368c97",
- "generated_at": "2026-11-08T23:48:50.601232+00:00",
+ "generated_at": "2026-11-08T23:51:21.681185+00:00",
  "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
  "escopo": [
   "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1239,6 +1239,7 @@
    "skipped": 4,
    "total": 843,
    "red_provas": 4
-  }
+  },
+  "camping": "EXCEPTION PASS reasons [] (base 7d5b67b); selagem pos-commit 8ad367a COM parent_commit 7d5b67b; emenda da selagem completa o LEGACY_SELECTOR_EXEMPT com os 12 ids medidos por probe (24 seletores; falsa cobertura de 1 id pega AO VIVO pelo critico-cetico na mesa QUESTIONADORES-ATIVADO)"
  }
 }

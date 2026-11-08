@@ -7,7 +7,8 @@ selectorIsReplayable com self-match + grandfathering LEGACY_SELECTOR_EXEMPT
 (C); providedSatisfied enterrado (F4); backfillReattachLedger único com ordem
 unificada (G5); dialetos pinados; guard importSpecifier(consumer, undefined).
 4 REDs no baseline 7d5b67b -> GREEN; suíte 839+4=843 sem editar teste. Camping
-EXCEPTION; selagem pós-commit COM parent_commit.
+EXCEPTION PASS reasons []; selagem 8ad367a COM parent_commit 7d5b67b; exempt
+completo com 12 ids medidos (probe da mesa QUESTIONADORES-ATIVADO).
 
 ## Reavaliação — Emenda adversarial Onda 4 (0 P1 consolidada), 2026-11-08
 
