@@ -266,7 +266,7 @@
   "fotografia_id": "2026-11-05-merge-pr7",
   "head": "5b66f564e4b27aca7527e3d10d7fe4b5cf86319c",
   "tree_hash": null,
-  "generated_at": "2026-11-08T00:21:27.438731+00:00",
+  "generated_at": "2026-11-08T13:25:02.793031+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1116,5 +1116,11 @@
     "suite": "826 passed + 4 skipped = 830 (65 files) — merge trouxe testes MCP stdio; +2 RED classes no boundary",
     "camping": "FE-2026-11-07-CONVERGENCIA-PR12 EXCEPTION public_compatibility supersedes PATH-ATTRIBUTION — reasons: [] VERDE",
     "validador": "sealed_retroactive (copia, merge-base) + supersedes_record; regra-mae preservada (20/20)"
+  },
+  "reavaliacao_onda2_sentinela_v3": {
+    "commit_escopo": "src/spt-traceability.ts + src/flow-engine.ts (cola) + tests + ledger/markers/CHANGELOG",
+    "suite": "827 passed + 4 skipped = 831 — +1 teste Onda 2",
+    "camping": "FE-2026-11-08-ONDA2-SENTINELA-ADMISSAO-V3 EXCEPTION public_compatibility — reasons [] (selagem retroativa comprovada em corte real)",
+    "motor": "zero checagem SPT_V3 inline (rg SPT_V3_EVIDENCE_INVALID|SPT_V3_TRACEABILITY_MISSING|qualifyCriterionProof = vazio)"
   }
 }

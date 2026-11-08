@@ -1,3 +1,12 @@
+## Reavaliação — Onda 2: sentinela de admissão v3 no SSOT, 2026-11-08
+
+Owner $oraculo-refatoracao (Trilho onda2-sentinela-admissao-v3, flow 3570;
+GO PADRAO do dono): assertCriterionProofAdmission no SSOT spt-traceability
+(3 casos, mensagens preservadas byte a byte); monólito com zero checagem
+SPT_V3 inline (rg prova). RED→GREEN 10/10; suíte 827+4=831 (+1); build
+verde; camping reasons [] (selagem pós-commit da noite classificou os
+records como retroativos — a cura do validador provada em corte real).
+
 ## Reavaliação — Convergência PR12 (rota canônica única) + cura do validador de camping, 2026-11-08
 
 Owner $oraculo-refatoracao (Trilho convergencia-pr12, flow 3501; GO do dono no

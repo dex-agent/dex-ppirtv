@@ -110,7 +110,7 @@ import {
   criterionProjection,
   evidenceRequirementProjection,
   assertSptV3PositiveVerdictCoverage,
-  qualifyCriterionProof,
+  assertCriterionProofAdmission,
   taskProjection,
   traceabilityFromContract
 } from "./spt-traceability.js";
@@ -3777,16 +3777,8 @@ export class FlowEngine {
       flow.implementation_fingerprint = strictFingerprint;
     }
     const now = nowIso();
-    if (input.criterion_proof && flow.spt_contract_version !== 3) {
-      throw new Error("SPT_V3_EVIDENCE_INVALID: criterion_proof requires a flow bound to SPT v3");
-    }
-    if (input.criterion_proof && !flow.spt_traceability) {
-      throw new Error("SPT_V3_TRACEABILITY_MISSING: criterion_proof requires the bound canonical traceability map");
-    }
-    const criterionProof =
-      input.criterion_proof && flow.spt_traceability
-        ? qualifyCriterionProof(flow.spt_traceability, input.criterion_proof)
-        : undefined;
+    // Onda 2: admissao de criterion_proof e politica do SSOT spt-traceability.
+    const criterionProof = assertCriterionProofAdmission(flow, input);
     if (criterionProof) {
       await assertCriterionProofRevisionCurrent(criterionProof, flow.goal_binding!.envelope.workspace);
     }

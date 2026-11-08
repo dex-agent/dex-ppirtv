@@ -976,7 +976,9 @@
         "corte final <= limite EXCEPTION: leitor de arquivo e unblock moram em review-snapshot.ts; engine so cola deps"
       ],
       "changelog_marker": "FE-2026-11-07-PATH-ATTRIBUTION-REGRESSAO-C01",
-      "architecture_marker": "FE-2026-11-07-PATH-ATTRIBUTION-REGRESSAO-C01"
+      "architecture_marker": "FE-2026-11-07-PATH-ATTRIBUTION-REGRESSAO-C01",
+      "commit": "080abdd",
+      "parent_commit": "5b66f56"
     },
     {
       "id": "FE-2026-11-07-CONVERGENCIA-PR12",
@@ -1014,7 +1016,44 @@
         "Onda 1 preservada (import goalStartTaughtArgs + passo order:3 intactos no merge)"
       ],
       "changelog_marker": "FE-2026-11-07-CONVERGENCIA-PR12",
-      "architecture_marker": "FE-2026-11-07-CONVERGENCIA-PR12"
+      "architecture_marker": "FE-2026-11-07-CONVERGENCIA-PR12",
+      "commit": "4005482",
+      "parent_commit": "080abdd"
+    },
+    {
+      "id": "FE-2026-11-08-ONDA2-SENTINELA-ADMISSAO-V3",
+      "date": "2026-11-08",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-08-onda2-sentinela-admissao-v3.md",
+      "responsibility": "Onda 2 (FE-DEBT-006 sentinelas): admissao de criterion_proof vira politica pura do SSOT — assertCriterionProofAdmission em src/spt-traceability.ts (v2 rejeita SPT_V3_EVIDENCE_INVALID; v3 sem mapa rejeita SPT_V3_TRACEABILITY_MISSING; v3 com mapa qualifica via qualifyCriterionProof; mensagens preservadas byte a byte); attachEvidenceUnlocked reduzido a chamada unica (zero checagem SPT_V3 inline no monolito, rg prova).",
+      "owner": "$oraculo-refatoracao",
+      "mode": "EXCEPTION",
+      "exception_reason": "public_compatibility",
+      "rollback": "revert do commit: as 4 checagens SPT_V3 voltam inline ao monolito e o teste unitario da funcao pura falha",
+      "expires": "2026-11-15",
+      "red_evidence": "tests/spt-verdict-coverage-diagnostics.test.ts::RED->GREEN Onda 2: os 3 casos de admissao como politica pura do spt-traceability",
+      "red_base_blob": "3be809aeca4b829d37cad0e14e715a170cafa5e8",
+      "red_observed_failure": "RED provado: assertCriterionProofAdmission is not a function (funcao inexistente antes da cura) — os 3 casos de admissao falhavam por ausencia da politica no SSOT",
+      "red_command": "npx vitest run tests/spt-verdict-coverage-diagnostics.test.ts -t \"RED->GREEN Onda 2: os 3 casos de admissao como politica pura do spt-traceability\"",
+      "base_blob": "3be809aeca4b829d37cad0e14e715a170cafa5e8",
+      "head_blob": "ea4637acfffdef7e6050e29a996cefd068fc9050",
+      "destination_module": "src/spt-traceability.ts",
+      "consumers": [
+        "src/flow-engine.ts"
+      ],
+      "evidence": [
+        "tests/spt-verdict-coverage-diagnostics.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/spt-verdict-coverage-diagnostics.test.ts": "RED->GREEN Onda 2: os 3 casos de admissao como politica pura do spt-traceability"
+      },
+      "behavior_preserved_by": [
+        "RED->GREEN 10/10 no arquivo do SSOT (3 casos + 9 originais)",
+        "mensagens de erro preservadas byte a byte (contrato publico)",
+        "suíte completa conferida no fechamento",
+        "rg SPT_V3_EVIDENCE_INVALID|SPT_V3_TRACEABILITY_MISSING|qualifyCriterionProof em flow-engine.ts: zero ocorrencias"
+      ],
+      "changelog_marker": "FE-2026-11-08-ONDA2-SENTINELA-ADMISSAO-V3",
+      "architecture_marker": "FE-2026-11-08-ONDA2-SENTINELA-ADMISSAO-V3"
     }
   ]
 }

@@ -295,3 +295,34 @@ function v3Document(ws: string): string {
     "# Fixture SPT v3 diagnostico de cobertura"
   ].join("\n");
 }
+
+describe("Onda 2: sentinela de admissao v3 mora no SSOT (assertCriterionProofAdmission)", () => {
+  it("RED->GREEN Onda 2: os 3 casos de admissao como politica pura do spt-traceability", async () => {
+    const { assertCriterionProofAdmission } = await import("../src/spt-traceability.js");
+    const proofInput = {
+      task_id: "A-01",
+      requirement_id: "REQ-01",
+      criterion_id: "C-01",
+      evidence_requirement_id: "ER-01",
+      observed_value: true,
+      environment: "node v24 test",
+      producer: "teste unitario Onda 2",
+      limits: ["teste unitario"],
+      timestamp: "2026-11-08T13:20:00.000Z",
+      revision_set: [{ workspace: "C:\workspace-teste", paths: [{ path: "src/a.ts", sha256: "a".repeat(64) }] }]
+    };
+    const flowV2 = { spt_contract_version: 2, spt_traceability: null } as never;
+    expect(() => assertCriterionProofAdmission(flowV2, { criterion_proof: proofInput }))
+      .toThrow(/SPT_V3_EVIDENCE_INVALID: criterion_proof requires a flow bound to SPT v3/);
+    const flowV3SemMapa = { spt_contract_version: 3, spt_traceability: null } as never;
+    expect(() => assertCriterionProofAdmission(flowV3SemMapa, { criterion_proof: proofInput }))
+      .toThrow(/SPT_V3_TRACEABILITY_MISSING: criterion_proof requires the bound canonical traceability map/);
+    const flowV3ComMapa = { spt_contract_version: 3, spt_traceability: {
+      tasks: [{ id: "A-01", covers: ["REQ-01"], done_when: ["C-01"], evidence_requirements: [{ id: "ER-01", proves: ["C-01"], method: "test", procedure: "p", expectation: { kind: "boolean_assertion", expected: true } }] }],
+      requirements: [{ id: "REQ-01", criteria: [{ id: "C-01" }] }]
+    } } as never;
+    const admitted = assertCriterionProofAdmission(flowV3ComMapa, { criterion_proof: proofInput });
+    expect(admitted).toBeDefined();
+    expect(() => assertCriterionProofAdmission(flowV3ComMapa, { criterion_proof: undefined })).not.toThrow();
+  });
+});

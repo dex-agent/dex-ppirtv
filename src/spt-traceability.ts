@@ -398,3 +398,21 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 function proofError(code: string, detail?: string): Error {
   return new Error(`SPT_V3_EVIDENCE_INVALID: ${code}${detail ? `: ${detail}` : ""}`);
 }
+
+/** Onda 2 (FE-DEBT-006, sentinelas): admissao de criterion_proof como politica
+ *  pura do SSOT — v2 rejeita (SPT_V3_EVIDENCE_INVALID), v3 sem mapa rejeita
+ *  (SPT_V3_TRACEABILITY_MISSING), v3 com mapa qualifica via qualifyCriterionProof.
+ *  Mensagens sao contrato publico: preservadas byte a byte. */
+export function assertCriterionProofAdmission(
+  flowLike: { spt_contract_version?: number | null; spt_traceability?: unknown },
+  input: { criterion_proof?: CriterionProofInput }
+): CriterionProof | undefined {
+  if (!input.criterion_proof) return undefined;
+  if (flowLike.spt_contract_version !== 3) {
+    throw new Error("SPT_V3_EVIDENCE_INVALID: criterion_proof requires a flow bound to SPT v3");
+  }
+  if (!flowLike.spt_traceability) {
+    throw new Error("SPT_V3_TRACEABILITY_MISSING: criterion_proof requires the bound canonical traceability map");
+  }
+  return qualifyCriterionProof(flowLike.spt_traceability as SptV3Traceability, input.criterion_proof);
+}
