@@ -266,7 +266,7 @@
  "fotografia_id": "2026-11-05-merge-pr7",
  "head": "6e0ce92",
  "tree_hash": "c4d95961344c0abe7a96ab3cee3d041a98368c97",
- "generated_at": "2026-11-08T22:45:18.932842+00:00",
+ "generated_at": "2026-11-08T23:09:55.963364+00:00",
  "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
  "escopo": [
   "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1197,7 +1197,7 @@
   "delta": "11 símbolos do eixo gate-resolution migram (renomes anti-colisão verdict*; variantes evidence NÃO unificadas); higiene EST-ADV-ONDA3 itens 1-4 paga; motor −126L.",
   "evidence": [
    "npm run build",
-   "npx vitest run tests/gate-resolution.test.ts tests/gate-integrity-hardening.test.ts (62/62)",
+   "npx vitest run tests/gate-resolution.test.ts tests/gate-integrity-hardening.test.ts tests/flow-engine-boundary.test.ts (62/62 — emenda adversarial Onda 4: o run usou as 3 suítes)",
    "npm test 835+4=839 sem editar teste"
   ],
   "limits": [
@@ -1210,6 +1210,7 @@
    "skipped": 4,
    "total": 839
   },
-  "camping": "SHRINK PASS reasons [] (symbol_count -11, nonblank -116, exported 0); selagem pos-commit 8505275 COM parent_commit 6e0ce92"
+  "camping": "SHRINK PASS reasons [] (symbol_count -11, nonblank -116, exported 0); selagem pos-commit 8505275 COM parent_commit 6e0ce92",
+  "emenda_adversarial_onda4": "2026-11-08: 62/62 era citado com 2 arquivos (o run real usou 3); providedSatisfied CONFIRMADO morto (remoção na cura-4); 9 consumers corrigido para 7 no MD/CHANGELOG"
  }
 }

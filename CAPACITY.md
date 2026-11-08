@@ -1,3 +1,12 @@
+## Reavaliação — Emenda adversarial Onda 4 (0 P1 consolidada), 2026-11-08
+
+Owner $projeto-manter-changelog: conferência na sessão dona — 62/62 eram as 3
+suítes do eixo (receipt completado); 7 consumers de officialGoalNeedsCanonicalVerdict
+(não 9; MD+CHANGELOG emendados); prosa das variantes precisa (canonicalizadores
+equivalentes por probe; divergência real = coerção+comparação);
+providedSatisfied CONFIRMADO morto (remoção na cura-4); header meeting-policy
+stale REFUTADO. Suíte permanece 835+4=839 @4aed637.
+
 ## Reavaliação — Onda 4: eixo gate-resolution migra + higiene Onda 3 paga, 2026-11-08
 
 Owner $oraculo-refatoracao (Trilho onda4-gate-resolution, flow 3751; GO do
