@@ -68,7 +68,7 @@ describe("goal_verdict SPT v3 coverage: o erro ensina por que cada criterio esta
       rationale: "cobertura reprovada de proposito",
       evidence_ids: receipt.evidence_ids,
       next_step: "diagnostico visivel"
-    })).rejects.toThrow(/C-01.*proof_not_passed.*boolean false equals true/s);
+    })).rejects.toThrow(/C-01[^;]*proof_not_passed[^;]*boolean false equals true/);
   });
 
   it("evidencia citada sem criterion_proof: erro traz marca no_criterion_proof para o criterio descoberto", async () => {
@@ -240,6 +240,58 @@ describe("goal_verdict SPT v3 coverage: o erro ensina por que cada criterio esta
       .split("\n")
       .filter((line) => line.includes("spt_traceability_reattached"));
     expect(ledgerLines).toHaveLength(1);
+  });
+
+  // Cura-2 (P2/P2 adversarial da cura): appendLedger falhando DEPOIS do save
+  // bem-sucedido deixava o ledger permanentemente sem o evento (trilha
+  // AUSENTE — history persistiu, ledger não, e o retry não regrava porque o
+  // flow já tem spt_traceability). RED primeiro: no baseline 665bb5f o retry
+  // não completa a trilha.
+  it("appendLedger falhando pós-save: o retry completa a trilha com evento recuperado (backfill)", async () => {
+    const orphan = path.join(workspace, ".ppirtv", "flows", `${flowId}.json`);
+    const { readFile, writeFile } = await import("node:fs/promises");
+    const raw = JSON.parse(await readFile(orphan, "utf8"));
+    delete raw.spt_traceability;
+    await writeFile(orphan, JSON.stringify(raw), "utf8");
+
+    const engineInternals = engine as unknown as {
+      store: { appendLedger: (event: { type: string }) => Promise<unknown> };
+    };
+    const originalAppend = engineInternals.store.appendLedger;
+    let armed = true;
+    engineInternals.store.appendLedger = async (event: { type: string }) => {
+      if (armed && event.type === "spt_traceability_reattached") {
+        armed = false;
+        throw new Error("simulated ledger IO failure");
+      }
+      return originalAppend.call(engineInternals.store, event);
+    };
+    const startArgs = {
+      flow_id: flowId,
+      workspace,
+      spt_path: path.join(workspace, ".agents", "PLAN-TASKS", "fixture-v3.md"),
+      objective: "Provar diagnostico de cobertura",
+      idempotency_key: "coverage-diag-fixture",
+      evidence_required: true,
+      required_evidence: [] as string[],
+      requested_verdict_policy: "evidence_required" as const,
+      source: "test"
+    };
+    try {
+      await expect(engine.startGoal(startArgs)).rejects.toThrow(/simulated ledger IO failure/);
+    } finally {
+      engineInternals.store.appendLedger = originalAppend;
+    }
+    // o flow persistiu com spt_traceability: o retry de reuso NÃO re-dispara o
+    // re-bind — o backfill nasce da conferencia history x ledger.
+    await engine.startGoal(startArgs);
+    const ledgerRaw = await readFile(path.join(workspace, ".ppirtv", "ledger.ndjson"), "utf8");
+    const reattachEvents = ledgerRaw
+      .split("\n")
+      .filter((line) => line.trim().length > 0)
+      .map((line) => JSON.parse(line) as { type?: string; data?: Record<string, unknown> })
+      .filter((event) => (event.type === "spt_traceability_reattached" || event.type === "spt_traceability_reattached_recovered"));
+    expect(reattachEvents.length).toBeGreaterThanOrEqual(1);
   });
 
   // review-fixes: lean e o default da CAMADA MCP (server aplica detail ?? "lean");

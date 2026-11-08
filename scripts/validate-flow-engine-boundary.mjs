@@ -229,6 +229,14 @@ function failureAction() {
 
 // Corte de cura (P1 adversarial Onda 2): o selo parent_commit era ignorado em
 // commit de pai unico (parents[0] vencia) — fato git falso passava em silencio.
+// Cura-2: predicado de casamento de pai vive AQUI (fonte unica) — selo vivo,
+// replay de bootstrap e helper compartilham a mesma verdade.
+export function parentMatchesCommit(parents, candidate) {
+  return parents.some(
+    (parent) => parent === candidate || (candidate.length >= 7 && parent.startsWith(candidate))
+  );
+}
+
 // Puro e testavel: devolve COMMIT_PARENT_MISMATCH quando o pai armazenado nao
 // casa NENHUM pai real; prefixo nao-ambiguo (>= 7 hex) aceito por compat com
 // selos legados de sha curto.
@@ -236,10 +244,7 @@ export function sealedParentReasons(record, parents) {
   const reasons = [];
   const stored = nonEmptyString(record?.parent_commit) ? record.parent_commit : null;
   if (!stored) return reasons;
-  const matchesAnyParent = parents.some(
-    (parent) => parent === stored || (stored.length >= 7 && parent.startsWith(stored))
-  );
-  if (!matchesAnyParent) reasons.push("COMMIT_PARENT_MISMATCH");
+  if (!parentMatchesCommit(parents, stored)) reasons.push("COMMIT_PARENT_MISMATCH");
   return reasons;
 }
 
@@ -472,6 +477,13 @@ function evaluateCommitSealDiff({ cwd, baseManifest, headManifest }) {
         reasons.push(`COMMIT_SEAL_BLOB_MISMATCH:${after.id}`);
         continue;
       }
+      // Cura-2 (P1 adversarial da cura): o selo VIVO confere a linhagem — o
+      // parent_commit armazenado tem que casar um pai real do commit selado
+      // (o replay de bootstrap nunca roda com manifesto pre-existente).
+      if (nonEmptyString(after.parent_commit)
+        && sealedParentReasons(after, git(["rev-list", "--parents", "-n", "1", after.commit], cwd).split(/\s+/).slice(1)).length > 0) {
+        reasons.push(`COMMIT_SEAL_PARENT_MISMATCH:${after.id}`);
+      }
     } catch {
       reasons.push(`COMMIT_SEAL_COMMIT_NOT_FOUND:${after.id}`);
       continue;
@@ -512,14 +524,16 @@ function validateBootstrapRecords({ cwd, records, manifest, headBlob }) {
       const parents = commitLine.slice(1);
       for (const reason of sealedParentReasons(record, parents)) add(record, reason);
       const storedParent = nonEmptyString(record.parent_commit) ? record.parent_commit : null;
-      const isParent = (candidate) =>
-        parents.some((parent) => parent === candidate || (candidate.length >= 7 && parent.startsWith(candidate)));
-      const selectedParent = parents.length === 1
-        ? parents[0]
-        : (storedParent && isParent(storedParent) ? storedParent : null);
-      if (!selectedParent) {
+      // Cura-2: selectedParent e SEMPRE um sha FULL do array de pais (o prefixo
+      // armazenado nunca vai cru ao rev-parse); merge com pai armazenado
+      // mentiroso ja recebeu MISMATCH — REQUIRED fica reservado a ausencia.
+      const selectedFull = storedParent
+        ? parents.find((parent) => parentMatchesCommit([parent], storedParent)) ?? null
+        : null;
+      const selectedParent = parents.length === 1 ? parents[0] : selectedFull;
+      if (!selectedParent && !storedParent) {
         add(record, "COMMIT_PARENT_REQUIRED");
-      } else if (git(["rev-parse", `${selectedParent}:${TARGET_PATH}`], cwd) !== record.base_blob) {
+      } else if (selectedParent && git(["rev-parse", `${selectedParent}:${TARGET_PATH}`], cwd) !== record.base_blob) {
         add(record, "COMMIT_PARENT_BASE_BLOB_MISMATCH");
       }
     } catch {
@@ -538,9 +552,13 @@ function validateBootstrapRecords({ cwd, records, manifest, headBlob }) {
     if (!changelog.includes(record.changelog_marker)) add(record, "CHANGELOG_MARKER_NOT_FOUND");
     if (!architecture.includes(record.architecture_marker)) add(record, "ARCHITECTURE_MARKER_NOT_FOUND");
 
-    if (!safeProjectPath(record.destination_module, "src") || record.destination_module === TARGET_PATH) {
+    // Cura-2: mesma isencao do path de declaracao corrente — EXCEPTION sem
+    // destination_module nao exige destino (l.900+); a assimetria reprovaria o
+    // proprio record CURA se o bootstrap rodasse.
+    if ((record.mode !== "EXCEPTION" || nonEmptyString(record.destination_module))
+      && (!safeProjectPath(record.destination_module, "src") || record.destination_module === TARGET_PATH)) {
       add(record, "DESTINATION_MODULE_INVALID");
-    } else {
+    } else if (nonEmptyString(record.destination_module)) {
       try {
         const destination = readFileSync(path.join(cwd, record.destination_module), "utf8");
         const expectedEdge = importSpecifier(TARGET_PATH, record.destination_module);

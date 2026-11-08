@@ -787,6 +787,20 @@ export class FlowEngine {
       const hasGoalStarted = existingLedger.some(
         (event) => event.type === "goal_started" || event.type === "goal_started_recovered"
       );
+      // Cura-2 (P2 adversarial da cura): backfill do re-attach — o history
+      // persistiu o evento com o save, mas o append do ledger pode ter falhado
+      // depois (IO); o reuso nao re-dispara o re-bind, entao a trilha ausente
+      // e completada aqui pelo mecanismo generico de recuperacao.
+      const reattachHistory = flow.history.find((event) => event.type === "spt_traceability_reattached");
+      if (reattachHistory) {
+        await ensureLedgerTransitionRecorded(this.store, flow, {
+          originalType: "spt_traceability_reattached",
+          recoveredType: "spt_traceability_reattached_recovered",
+          originalAt: reattachHistory.at,
+          data: reattachHistory.data,
+          actor: "dex-code"
+        });
+      }
       await ensureLedgerTransitionRecorded(this.store, flow, {
         originalType: "flow_created",
         recoveredType: "flow_created_recovered",

@@ -718,6 +718,75 @@ describe("flow-engine responsibility balance", () => {
       .toEqual(["COMMIT_PARENT_MISMATCH"]);
   });
 
+  // Cura-2 (P1 adversarial da cura): o helper vivia SÓ no replay de bootstrap
+  // (inalcançável desde o manifesto existir) — o selo vivo aceitava
+  // parent_commit mentiroso conferindo apenas o blob. RED primeiro: no
+  // baseline 665bb5f este selo passa em silêncio.
+  it("selo vivo reprova parent_commit mentiroso do record selado (COMMIT_SEAL_PARENT_MISMATCH)", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "flow-engine-seal-"));
+    tempRoots.push(root);
+    await mkdir(path.join(root, "src"), { recursive: true });
+    await mkdir(path.join(root, "docs", "architecture"), { recursive: true });
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return true; } }\n");
+    await writeFile(path.join(root, "CHANGELOG.md"), "# Changelog\n\n## [Unreleased]\nseal-marker\n");
+    await writeFile(path.join(root, "docs", "architecture", "FLOW_ENGINE_EVOLUTION.md"), "# Architecture\nseal-marker\n");
+    execFileSync("git", ["init"], { cwd: root });
+    execFileSync("git", ["config", "user.email", "fixture@example.invalid"], { cwd: root });
+    execFileSync("git", ["config", "user.name", "Fixture"], { cwd: root });
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "commit 0 preterido"], { cwd: root });
+    const liarParent = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+
+    const unsealedRecord = {
+      ...baseDeclaration,
+      id: "seal-cura2",
+      mode: "EXCEPTION",
+      exception_reason: "integrity",
+      rollback: "revert do commit de selagem",
+      expires: "2026-11-15",
+      red_evidence: "tests/flow-engine-boundary.test.ts::selo vivo reprova parent_commit mentiroso do record selado (COMMIT_SEAL_PARENT_MISMATCH)",
+      red_base_blob: "0".repeat(40),
+      red_observed_failure: "RED da cura-2",
+      red_command: "npx vitest run tests/flow-engine-boundary.test.ts -t \"selo vivo reprova parent_commit mentiroso do record selado (COMMIT_SEAL_PARENT_MISMATCH)\"",
+      changelog_marker: "seal-marker",
+      architecture_marker: "seal-marker",
+      consumers: ["src/server.ts"]
+    };
+    // blobs ANTES da selagem: selagem real so adiciona commit/parent_commit
+    unsealedRecord.base_blob = execFileSync("git", ["rev-parse", "HEAD:src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    unsealedRecord.head_blob = unsealedRecord.base_blob;
+    const manifestOf = (record: Record<string, unknown>) => JSON.stringify({
+      contract: "dex.flow-engine.evolution-ledger.v1",
+      target: "src/flow-engine.ts",
+      owner: "$refactoring-fowler-rich",
+      records: [record]
+    });
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), manifestOf(unsealedRecord));
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "ledger sem selo"], { cwd: root });
+    const baseSha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    const headBlob = execFileSync("git", ["rev-parse", "HEAD:src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+
+    // selagem MENTIROSA: commit real do selo, mas parent_commit aponta para o
+    // commit 0 (ancestral) — o pai real do commit de selagem é o commit do
+    // ledger sem selo.
+    execFileSync("git", ["commit", "--allow-empty", "-m", "selagem"], { cwd: root });
+    const sealCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    const sealedRecord = {
+      ...unsealedRecord,
+      commit: sealCommit,
+      parent_commit: liarParent
+    };
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), manifestOf(sealedRecord));
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "selo mentiroso"], { cwd: root });
+
+    const result = runBoundaryCli({ cwd: root, argv: ["--base", baseSha] });
+    const receipt = JSON.parse(result.output);
+    expect(result.exitCode).toBe(1);
+    expect(receipt.reasons.some((reason: string) => reason.includes("COMMIT_SEAL_PARENT_MISMATCH:seal-cura2"))).toBe(true);
+  });
+
   it("keeps the living architecture public and discoverable", async () => {
     const [readme, agents, rootIndex, docsIndex, gitignore, architecture, ledger] = await Promise.all([
       readFile("README.md", "utf8"),

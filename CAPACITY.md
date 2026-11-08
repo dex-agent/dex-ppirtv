@@ -1,3 +1,12 @@
+## Reavaliação — Cura-2: selo vivo confere linhagem + backfill do re-attach, 2026-11-08
+
+Owner $oraculo-refatoracao (Trilho cura2-validador-selo-vivo, flow 3667; GO do
+dono): selo VIVO reprova COMMIT_SEAL_PARENT_MISMATCH (P1 da adversarial da
+cura — helper vivia só no bootstrap morto); fonte única parentMatchesCommit;
+selectedParent sempre full sha; bootstrap isento como o path de declaração;
+backfill do re-attach via ensureLedgerTransitionRecorded; higiene (regex, MD,
+CAPACITY espaçamento, commits full). 2 REDs → GREEN 35/35; suíte 832+4=836.
+
 ## Reavaliação — Corte de cura adversarial 2/2b: ordem do evento + linhagem do ledger, 2026-11-08
 
 Owner $oraculo-refatoracao (Trilho cura-adversarial-linhagem-ledger, flow 3637;
@@ -19,6 +28,7 @@ qualificação; shape persistido inalterado (índice lazy para flows antigos).
 RED→GREEN 11/11 (+1 teste); suíte 828+4=832; camping EXCEPTION integrity
  reasons []; record selado pós-commit em 145ac4e; pagamento do record FE-DEBT-006
 agendado no SHRINK verificado da Onda 3.
+
 ## Reavaliação — Onda 2: sentinela de admissão v3 no SSOT, 2026-11-08
 
 Owner $oraculo-refatoracao (Trilho onda2-sentinela-admissao-v3, flow 3570;
@@ -76,6 +86,7 @@ FE-2026-11-07-ONDA1-GOAL-START-SSOT) + selagem retroativa: FE-DEBT-006 item
 não modela selagem retroativa (record ISSUE11 entrando depois do commit 5b66f56
 — cadeia quebrou no 5b66f56 sem record; validador precisa distinguir corte
 novo × selagem de histórico; estacionado com owner $oraculo-refatoracao).
+
 ## Reavaliação — issue 11, atribuição fiscal, 2026-11-07
 
 O runtime recebe a atribuição explícita por `evidence_add`, vincula a evidência
@@ -445,6 +456,7 @@ Este corte não certifica capacidade adicional do servidor: o ensaio mede a
 skill externa dex-gerar-pull-request e seu transporte Git/GitHub. Resultados
 locais executados constam no corpo do PR; o estado remoto é conferido depois
 do envio e não é antecipado por este registro pré-commit.
+
 ## Reavaliação 2026-11-02 — contrato canônico ensina a rota terminal do teto
 
 Cura da deriva que ensinava o loop: GOAL_SPT_CANONICAL_CONTRACT (global +
@@ -707,6 +719,7 @@ incertas (corte próprio); FE-DEBT-005 aberta.
 ## Reavaliação 2026-10-26 — fechamento hardening-3 + rito P0 (docs-only, zero src)
 
 > Commit de fechamento de governanca: pendencia P0 `PPIRTV-GATE-INTEGRITY-REVALIDATION-2026-10-18` consumida com prova (probe A-F v2 black-box MCP 6/6 no HEAD 113713a; camping cumulativo PASS x2 nas bases 5e7d5df/067d975; suites 17/17; `pendencias.py --valida` VALIDO); flow `flow_20261018140649700_2948_0001` COMPLETE com veredito `pronto_com_ressalvas`; CHANGELOG/laudo Addendum 22/REVIEWS INDEX/Trilho/ACTIVE/HANDOFF reconciliados. Nenhuma capacidade de produto mudou (0 capability files; gate PASS 34 capabilities); fotografia `947fdb4` segue vigente; receipt atualizado apenas em `generated_at`.
+
 ## Reavaliação 2026-10-23 — snapshot fantasma: sensível de runtime de terceiro é redigido, nunca bloqueia
 
 > GO do dono 2026-10-23, cura da pendência PPIRTV-VEREDITO-TERMINAL-GATES-

@@ -264,9 +264,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "9df130419cc8d2d92d0a2b16af8e7a84e14a4b3d",
-  "tree_hash": "37822e2e920835fc8d1ebe8c529406a6a1a15185",
-  "generated_at": "2026-11-08T16:47:14.876826+00:00",
+  "head": "665bb5f10dc6a57ed666c46ace69f68df16fbc8e",
+  "tree_hash": "4eeff9b2b4d57a4e84c69277bedbd5f238251244",
+  "generated_at": "2026-11-08T21:23:21.302745+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -285,12 +285,12 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 830,
+    "passed": 832,
     "failed": 0,
     "skipped": 4,
     "files": 64,
-    "total": 834,
-    "command": "npm run build && npm test (corte de cura; exit 0)"
+    "total": 836,
+    "command": "npm run build && npm test (cura-2; exit 0)"
   },
   "tools_count": 32,
   "capabilities": [
@@ -1136,5 +1136,11 @@
     "camping": "FE-2026-11-08-CURA-ADVERSARIAL-LINHAGEM-LEDGER EXCEPTION integrity — reasons []",
     "linhagem": "PATH-ATTRIBUTION parent_commit=0bdd375 full (pai real dono do base_blob); CONVERGENCIA+ONDA2B full shas; validador agora confere pai unico",
     "selagem": "record selado pos-commit em 9facae1"
+  },
+  "reavaliacao_cura2_validador_selo": {
+    "commit_escopo": "scripts/validate-flow-engine-boundary.mjs (selo vivo + fonte unica + bootstrap isento) + src/flow-engine.ts (backfill) + tests (2 REDs + regex) + docs/ledger/CAPACITY",
+    "suite": "832 passed + 4 skipped = 836 — +2 testes (selo vivo; backfill)",
+    "camping": "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO EXCEPTION integrity — reasons [] de primeira",
+    "selo_vivo": "COMMIT_SEAL_PARENT_MISMATCH no evaluateCommitSealDiff; bootstrap deixou de ser o unico caminho"
   }
 }

@@ -977,7 +977,7 @@
       ],
       "changelog_marker": "FE-2026-11-07-PATH-ATTRIBUTION-REGRESSAO-C01",
       "architecture_marker": "FE-2026-11-07-PATH-ATTRIBUTION-REGRESSAO-C01",
-      "commit": "080abdd",
+      "commit": "080abdd4cea963c54e407e4d711c5064fc5ac4a8",
       "parent_commit": "0bdd37598e867e3e859206121da9c834270d8afa"
     },
     {
@@ -1017,7 +1017,7 @@
       ],
       "changelog_marker": "FE-2026-11-07-CONVERGENCIA-PR12",
       "architecture_marker": "FE-2026-11-07-CONVERGENCIA-PR12",
-      "commit": "4005482",
+      "commit": "4005482bc0bf8011eac45b50ada1fd65708a7126",
       "parent_commit": "080abdd4cea963c54e407e4d711c5064fc5ac4a8"
     },
     {
@@ -1130,6 +1130,43 @@
         "src/server.ts"
       ],
       "commit": "9facae11db46e3c09f6e7c83d79c971829433a57"
+    },
+    {
+      "id": "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO",
+      "date": "2026-11-08",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-08-cura2-validador-selo-vivo.md",
+      "responsibility": "Cura-2 do P1 da adversarial da cura: o selo VIVO (evaluateCommitSealDiff) agora confere a linhagem — record selado cujo parent_commit nao casa nenhum pai real do rev-list reprova COMMIT_SEAL_PARENT_MISMATCH (o helper antes vivia so no replay de bootstrap, caminho morto desde o manifesto existir); predicado de casamento de pai vira fonte unica (parentMatchesCommit) consumido pelo helper, pelo replay e pela selecao de pai (selectedParent SEMPRE full sha do array de pais — prefixo cru nunca vai ao rev-parse); merge com pai armazenado mentiroso emite so MISMATCH (REQUIRED reservado a ausencia); bootstrap ganha a isencao de EXCEPTION sem destination_module igual ao path de declaracao. No motor: backfill do re-attach — o reuso confere history persistido x ledger e completa a trilha ausente via ensureLedgerTransitionRecorded (tipo spt_traceability_reattached_recovered, recovery_reason state_persisted_ledger_missing) quando o append falhou apos o save. Higiene: regex do teste l.71 sem cruzar criterios, MD da cura no rodape cronologico com nota do red_command irrep rodavel (record imutavel), commits curtos remanescentes em full sha.",
+      "owner": "$oraculo-refatoracao",
+      "mode": "EXCEPTION",
+      "exception_reason": "integrity",
+      "rollback": "revert do commit: o selo volta a aceitar parent_commit mentiroso (teste do selo vivo falha) e o re-attach volta a perder a trilha quando o append falha pos-save (teste do backfill falha)",
+      "expires": "2026-11-15",
+      "red_evidence": "tests/spt-verdict-coverage-diagnostics.test.ts::appendLedger falhando pós-save: o retry completa a trilha com evento recuperado (backfill)",
+      "red_base_blob": "a114fec680ec3c4fa2cba2530aae666065b4d150",
+      "red_observed_failure": "REDs provados no baseline 665bb5f: (1) selo vivo aceitava parent_commit mentiroso (fixture git com selagem falsa devolvia PASS — so o blob era conferido); (2) appendLedger falhando apos o save deixava o ledger permanentemente sem o evento — o retry nao regrava porque o flow ja tinha spt_traceability.",
+      "red_command": "npx vitest run tests/flow-engine-boundary.test.ts -t \"selo vivo reprova parent_commit mentiroso do record selado (COMMIT_SEAL_PARENT_MISMATCH)\" ; npx vitest run tests/spt-verdict-coverage-diagnostics.test.ts -t \"appendLedger falhando pós-save: o retry completa a trilha com evento recuperado (backfill)\"",
+      "base_blob": "a114fec680ec3c4fa2cba2530aae666065b4d150",
+      "head_blob": "bb7f0402025f7b6934d46d96090fcbe7fdc85e87",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/spt-verdict-coverage-diagnostics.test.ts",
+        "tests/flow-engine-boundary.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/spt-verdict-coverage-diagnostics.test.ts": "appendLedger falhando pós-save: o retry completa a trilha com evento recuperado (backfill)",
+        "tests/flow-engine-boundary.test.ts": "selo vivo reprova parent_commit mentiroso do record selado (COMMIT_SEAL_PARENT_MISMATCH)"
+      },
+      "behavior_preserved_by": [
+        "GREEN 35/35 nos 2 arquivos (13 + 22), incluindo os 2 REDs curados",
+        "selo: conferencia de pai so quando parent_commit presente (sem custo extra para records sem selo de pai)",
+        "backfill so dispara quando history tem spt_traceability_reattached e ledger nao tem (guarda ensureLedgerTransitionRecorded)",
+        "fixtures de selo preservam blobs antes da selagem (selagem real so adiciona commit/parent_commit)",
+        "suíte completa conferida no fechamento"
+      ],
+      "changelog_marker": "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO",
+      "architecture_marker": "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO"
     }
   ]
 }
