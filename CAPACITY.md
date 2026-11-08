@@ -8,6 +8,9 @@ latestFiscalBlockEvent/MEMORY_MINING. Motor 8180→7210 (−970L, −12%) com ZE
 símbolos adicionados (AST); suíte 832+4=836 sem editar teste; camping SHRINK
 reasons [] com pays_debt_id=FE-DEBT-006 — a dívida sai do ledger.
 Record selado pós-commit em 9ad23ee **com parent_commit** (mitigação P2 adversarial).
+Emenda: one-liner gravou path por bug; o **selo vivo pegou o falso**
+(COMMIT_SEAL_PARENT_MISMATCH) e o pai real  foi gravado e validado
+na mesma sessão.
 
 ## Reavaliação — Cura-2: selo vivo confere linhagem + backfill do re-attach, 2026-11-08
 

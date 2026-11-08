@@ -1301,7 +1301,7 @@
       "changelog_marker": "FE-2026-11-08-ONDA3-MEETINGS-POLICY-SHRINK",
       "architecture_marker": "FE-2026-11-08-ONDA3-MEETINGS-POLICY-SHRINK",
       "commit": "9ad23eec2beba01dc94ddfe159213026deaedf36",
-      "parent_commit": "docs/architecture/flow-engine-evolution.json"
+      "parent_commit": "e809b054051741785d9df465cab9e680b1440ffa"
     }
   ]
 }
