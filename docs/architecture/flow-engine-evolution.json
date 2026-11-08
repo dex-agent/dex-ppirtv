@@ -1053,7 +1053,45 @@
         "rg SPT_V3_EVIDENCE_INVALID|SPT_V3_TRACEABILITY_MISSING|qualifyCriterionProof em flow-engine.ts: zero ocorrencias"
       ],
       "changelog_marker": "FE-2026-11-08-ONDA2-SENTINELA-ADMISSAO-V3",
-      "architecture_marker": "FE-2026-11-08-ONDA2-SENTINELA-ADMISSAO-V3"
+      "architecture_marker": "FE-2026-11-08-ONDA2-SENTINELA-ADMISSAO-V3",
+      "commit": "217c3894e7c688265d8389e1d84c3480a8aa72fc"
+    },
+    {
+      "id": "FE-2026-11-08-ONDA2B-REATTACH-EVENTO-INDICE",
+      "date": "2026-11-08",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-08-onda2b-fecha-fe-debt-006.md",
+      "responsibility": "Onda 2b (FE-DEBT-006 fechada): re-bind que reata spt_traceability de flow orfao deixa trilha de auditoria — evento spt_traceability_reattached (history + ledger) com flow_id e fingerprint do contrato via helper puro sptTraceabilityReattachedEventData; qualify/cobertura/declarative consultam o indice pre-construido SptTraceIndex (WeakMap, O(C+E) uma unica vez) — zero .find linear no caminho de qualificacao (rg prova); shape persistido {requirements,tasks} inalterado, flows antigos ganham indice lazy na 1a consulta. Pagamento estrutural do record FE-DEBT-006 agendado no SHRINK verificado da Onda 3 (payment_scope any_verified_shrink): o validador exige simbolo removido + saldo negativo, e o diff da 2b e adicao de trilha de auditoria (decisao do desenho com o fiscal).",
+      "owner": "$oraculo-refatoracao",
+      "mode": "EXCEPTION",
+      "exception_reason": "integrity",
+      "rollback": "revert do commit: o re-attach volta a mutar o flow em silencio e o teste do evento falha (events toHaveLength(1) recebe 0); qualify volta aos .find lineares",
+      "expires": "2026-11-15",
+      "red_evidence": "tests/spt-verdict-coverage-diagnostics.test.ts::re-bind de flow orfao grava evento de auditoria spt_traceability_reattached no history e no ledger",
+      "red_base_blob": "ea4637acfffdef7e6050e29a996cefd068fc9050",
+      "red_observed_failure": "RED provado no baseline 217c389: expect(events).toHaveLength(1) recebeu 0 — o re-attach reatava a traceability sem gravar evento de auditoria no history nem no ledger",
+      "red_command": "npx vitest run tests/spt-verdict-coverage-diagnostics.test.ts -t \"re-bind de flow orfao grava evento de auditoria spt_traceability_reattached no history e no ledger\"",
+      "base_blob": "ea4637acfffdef7e6050e29a996cefd068fc9050",
+      "head_blob": "f438188eec87f13a13dfa3c589349ac4c59c91f9",
+      "destination_module": "src/spt-traceability.ts",
+      "consumers": [
+        "src/flow-engine.ts",
+        "src/spt-declarative-proof.ts"
+      ],
+      "evidence": [
+        "tests/spt-verdict-coverage-diagnostics.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/spt-verdict-coverage-diagnostics.test.ts": "re-bind de flow orfao grava evento de auditoria spt_traceability_reattached no history e no ledger"
+      },
+      "behavior_preserved_by": [
+        "RED->GREEN 11/11 no arquivo (evento novo + 10 existentes)",
+        "mensagens de erro preservadas byte a byte (mesma mensagem para id inexistente e id fora do dono, como os .find originais)",
+        "suite completa 828+4=832 verde no fechamento",
+        "indice NAO mora no objeto persistido (WeakMap): flows antigos lidos do disco ganham indice lazy, sem migracao de disco",
+        "prova rg executada na sessao (exit 1 = zero matches): find linear eliminado do caminho de qualificacao dos modulos spt-traceability e spt-declarative-proof"
+      ],
+      "changelog_marker": "FE-2026-11-08-ONDA2B-REATTACH-EVENTO-INDICE",
+      "architecture_marker": "FE-2026-11-08-ONDA2B-REATTACH-EVENTO-INDICE"
     }
   ]
 }

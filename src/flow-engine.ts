@@ -111,6 +111,7 @@ import {
   evidenceRequirementProjection,
   assertSptV3PositiveVerdictCoverage,
   assertCriterionProofAdmission,
+  sptTraceabilityReattachedEventData,
   taskProjection,
   traceabilityFromContract
 } from "./spt-traceability.js";
@@ -707,6 +708,14 @@ export class FlowEngine {
       // criterion_proof exigia traceability que nenhuma rota regravava).
       flow.spt_contract_version = flow.spt_contract_version ?? validation.contract_version;
       flow.spt_traceability = validation.traceability;
+      // Onda 2b (FE-DEBT-006): re-attach deixa trilha de auditoria — o evento
+      // carrega flow_id e fingerprint do contrato no history e no ledger.
+      const reattachData = sptTraceabilityReattachedEventData(
+        flow.flow_id,
+        flow.goal_binding?.spt_contract_fingerprint ?? validation.contract_fingerprint ?? undefined
+      );
+      flow.history.push({ at: now, type: "spt_traceability_reattached", data: reattachData });
+      await this.ledger(flow.flow_id, "spt_traceability_reattached", reattachData);
     }
     await freezeGitHeadBase(flow, boundEnvelope.workspace);
     assertNoSecretLikeItems(parsedValidationItems(validation), "spt_validation");

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { parseSptDocument, type SptParseResult } from "./spt-contract.js";
-import { buildEvidenceRevision, traceabilityFromContract } from "./spt-traceability.js";
+import { buildEvidenceRevision, traceIndexFor, traceabilityFromContract } from "./spt-traceability.js";
 import type {
   CriterionProofInput,
   SptEvidenceExpectation,
@@ -60,14 +60,17 @@ export async function expandDeclarativeProof(
   defaults: DeclarativeProofDefaults,
   now: () => string = () => new Date().toISOString()
 ): Promise<CriterionProofInput[]> {
-  const task = traceability.tasks.find((candidate) => candidate.id === input.task_id);
+  // FE-DEBT-006 (Onda 2b): consulta O(1) pelo indice pre-construido.
+  const traceIndex = traceIndexFor(traceability);
+  const task = traceIndex.taskById.get(input.task_id);
   if (!task) throw declarativeError("unknown_task", input.task_id);
-  const evidenceRequirement = task.evidence_requirements.find(
-    (candidate) => candidate.id === input.evidence_requirement_id
-  );
-  if (!evidenceRequirement) {
+  const evidenceRequirementOwned = traceIndex.evidenceRequirementIdsByTaskId
+    .get(task.id)!
+    .has(input.evidence_requirement_id);
+  if (!evidenceRequirementOwned) {
     throw declarativeError("evidence_requirement_not_owned_by_task", `${input.evidence_requirement_id}/${task.id}`);
   }
+  const evidenceRequirement = traceIndex.evidenceRequirementById.get(input.evidence_requirement_id)!;
   assertObservedValueType(evidenceRequirement.id, evidenceRequirement.expectation, input.observed_value);
   const revision = await buildEvidenceRevision(workspace, input.paths);
   const timestamp = now();
@@ -275,13 +278,11 @@ function assertObservedValueType(
 }
 
 function criterionOwner(traceability: SptV3Traceability, evidenceRequirementId: string, criterionId: string): string {
-  const requirement = traceability.requirements.find((candidate) =>
-    candidate.criteria.some((criterion) => criterion.id === criterionId)
-  );
-  if (!requirement) {
+  const requirementId = traceIndexFor(traceability).requirementIdByCriterionId.get(criterionId);
+  if (!requirementId) {
     throw declarativeError("criterion_not_owned_by_requirement", `${evidenceRequirementId}/${criterionId}`);
   }
-  return requirement.id;
+  return requirementId;
 }
 
 function extractCriterionProof(receipt: Record<string, unknown>): {

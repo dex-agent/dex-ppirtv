@@ -137,6 +137,54 @@ describe("goal_verdict SPT v3 coverage: o erro ensina por que cada criterio esta
     expect((verdict.verdict as Record<string, unknown>).status).toBe("pronto_com_ressalvas");
   });
 
+  // Onda 2b (FE-DEBT-006): o re-bind que reata a traceability deixa trilha de
+  // auditoria — evento spt_traceability_reattached no history E no ledger com
+  // flow_id e fingerprint do contrato. RED primeiro: no baseline 217c389 o
+  // re-attach muta o flow em silencio (nenhum evento gravado).
+  it("re-bind de flow orfao grava evento de auditoria spt_traceability_reattached no history e no ledger", async () => {
+    const orphan = path.join(workspace, ".ppirtv", "flows", `${flowId}.json`);
+    const { readFile, writeFile } = await import("node:fs/promises");
+    const raw = JSON.parse(await readFile(orphan, "utf8"));
+    const fingerprintBefore = typeof raw.goal_binding?.spt_contract_fingerprint === "string"
+      ? raw.goal_binding.spt_contract_fingerprint
+      : "";
+    delete raw.spt_traceability;
+    await writeFile(orphan, JSON.stringify(raw), "utf8");
+
+    await engine.startGoal({
+      flow_id: flowId,
+      workspace,
+      spt_path: path.join(workspace, ".agents", "PLAN-TASKS", "fixture-v3.md"),
+      objective: "Provar diagnostico de cobertura",
+      idempotency_key: "coverage-diag-fixture",
+      evidence_required: true,
+      required_evidence: [],
+      requested_verdict_policy: "evidence_required",
+      source: "test"
+    });
+
+    const after = JSON.parse(await readFile(orphan, "utf8"));
+    const events = (after.history as Array<{ type: string; data: Record<string, unknown> }>)
+      .filter((event) => event.type === "spt_traceability_reattached");
+    expect(events).toHaveLength(1);
+    expect(events[0].data.flow_id).toBe(flowId);
+    expect(events[0].data.recovered_by).toBe("goal_start_rebind");
+    const fingerprint = String(events[0].data.spt_contract_fingerprint ?? "");
+    expect(fingerprint.length).toBeGreaterThan(0);
+    if (fingerprintBefore.length > 0) {
+      expect(fingerprint).toBe(fingerprintBefore);
+    }
+    const ledgerPath = path.join(workspace, ".ppirtv", "ledger.ndjson");
+    const ledgerRaw = await readFile(ledgerPath, "utf8");
+    const ledgerEvents = ledgerRaw
+      .split("\n")
+      .filter((line) => line.trim().length > 0)
+      .map((line) => JSON.parse(line) as { type?: string; data?: Record<string, unknown> });
+    const reattachLedger = ledgerEvents.filter((event) => event.type === "spt_traceability_reattached");
+    expect(reattachLedger).toHaveLength(1);
+    expect(reattachLedger[0].data?.flow_id).toBe(flowId);
+  });
+
   // review-fixes: lean e o default da CAMADA MCP (server aplica detail ?? "lean");
   // revisao adversarial (P2 consenso 3 lentes): o teste anterior chamava sem
   // detail e exercia o branch full do engine — spread lean sem guarda.

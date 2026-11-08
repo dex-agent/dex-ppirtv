@@ -11,6 +11,8 @@ import type {
   Flow,
   SptEvidenceExpectation,
   SptV3Contract,
+  SptV3EvidenceRequirement,
+  SptV3Task,
   SptV3Traceability
 } from "./domain.js";
 
@@ -21,10 +23,94 @@ export function requiresGoalEvidence(flow: Flow): boolean {
   return envelope?.requested_verdict_policy === "evidence_required" || envelope?.evidence_required === true;
 }
 
+// FE-DEBT-006 (Onda 2b): pre-indexacao O(C+E) da traceability. O qualify e a
+// cobertura deixam de varrer arrays (.find linear) por criterio anexado e
+// consultam Maps construidos uma unica vez. O indice NAO mora no objeto (o
+// shape persistido {requirements, tasks} e contrato publico): vive num cache
+// WeakMap — flows antigos lidos do disco ganham o indice lazy na 1a consulta,
+// sem migracao de disco.
+export type SptTraceIndex = {
+  taskById: Map<string, SptV3Task>;
+  criteriaByRequirementId: Map<string, Set<string>>;
+  evidenceRequirementById: Map<string, SptV3EvidenceRequirement>;
+  evidenceRequirementIdsByTaskId: Map<string, Set<string>>;
+  requirementIdByCriterionId: Map<string, string>;
+  ownerHintByCriterionId: Map<string, { taskId: string; evidenceRequirementId: string }>;
+};
+
+const traceIndexCache = new WeakMap<SptV3Traceability, SptTraceIndex>();
+
+export function traceIndexFor(traceability: SptV3Traceability): SptTraceIndex {
+  const cached = traceIndexCache.get(traceability);
+  if (cached) return cached;
+  const taskById = new Map<string, SptV3Task>();
+  const criteriaByRequirementId = new Map<string, Set<string>>();
+  const evidenceRequirementById = new Map<string, SptV3EvidenceRequirement>();
+  const evidenceRequirementIdsByTaskId = new Map<string, Set<string>>();
+  const requirementIdByCriterionId = new Map<string, string>();
+  const ownerHintByCriterionId = new Map<string, { taskId: string; evidenceRequirementId: string }>();
+  for (const requirement of traceability.requirements) {
+    const criteria = new Set<string>();
+    for (const criterion of requirement.criteria) {
+      criteria.add(criterion.id);
+      if (!requirementIdByCriterionId.has(criterion.id)) {
+        requirementIdByCriterionId.set(criterion.id, requirement.id);
+      }
+    }
+    criteriaByRequirementId.set(requirement.id, criteria);
+  }
+  for (const task of traceability.tasks) {
+    taskById.set(task.id, task);
+    const evidenceRequirementIds = new Set<string>();
+    const doneWhen = new Set(task.done_when);
+    for (const evidenceRequirement of task.evidence_requirements) {
+      evidenceRequirementIds.add(evidenceRequirement.id);
+      if (!evidenceRequirementById.has(evidenceRequirement.id)) {
+        evidenceRequirementById.set(evidenceRequirement.id, evidenceRequirement);
+      }
+      for (const criterionId of evidenceRequirement.proves) {
+        if (doneWhen.has(criterionId) && !ownerHintByCriterionId.has(criterionId)) {
+          ownerHintByCriterionId.set(criterionId, {
+            taskId: task.id,
+            evidenceRequirementId: evidenceRequirement.id
+          });
+        }
+      }
+    }
+    evidenceRequirementIdsByTaskId.set(task.id, evidenceRequirementIds);
+  }
+  const index: SptTraceIndex = {
+    taskById,
+    criteriaByRequirementId,
+    evidenceRequirementById,
+    evidenceRequirementIdsByTaskId,
+    requirementIdByCriterionId,
+    ownerHintByCriterionId
+  };
+  traceIndexCache.set(traceability, index);
+  return index;
+}
+
 export function traceabilityFromContract(contract: SptV3Contract): SptV3Traceability {
-  return {
+  const traceability: SptV3Traceability = {
     requirements: contract.requirements,
     tasks: contract.tasks
+  };
+  traceIndexFor(traceability);
+  return traceability;
+}
+
+// FE-DEBT-006 (Onda 2b): payload do evento de auditoria do re-attach — helper
+// puro para o motor colar sem carregar politica SPT inline.
+export function sptTraceabilityReattachedEventData(
+  flowId: string,
+  contractFingerprint: string | undefined
+): Record<string, unknown> {
+  return {
+    flow_id: flowId,
+    spt_contract_version: 3,
+    spt_contract_fingerprint: contractFingerprint,
+    recovered_by: "goal_start_rebind"
   };
 }
 
@@ -50,26 +136,34 @@ export function qualifyCriterionProof(
   traceability: SptV3Traceability,
   input: CriterionProofInput
 ): CriterionProof {
-  const task = traceability.tasks.find((candidate) => candidate.id === input.task_id);
+  // FE-DEBT-006 (Onda 2b): consultas O(1) pelo indice pre-construido —
+  // semantica de erro preservada (mesma mensagem para id inexistente e id
+  // existente fora do dono, como os .find originais).
+  const index = traceIndexFor(traceability);
+  const task = index.taskById.get(input.task_id);
   if (!task) throw proofError("unknown_task", input.task_id);
-  const requirement = traceability.requirements.find((candidate) => candidate.id === input.requirement_id);
-  if (!requirement) throw proofError("unknown_requirement", input.requirement_id);
-  const criterion = requirement.criteria.find((candidate) => candidate.id === input.criterion_id);
-  if (!criterion) throw proofError("criterion_not_owned_by_requirement", `${input.criterion_id}/${input.requirement_id}`);
-  if (!task.covers.includes(requirement.id)) {
-    throw proofError("task_does_not_cover_requirement", `${task.id}/${requirement.id}`);
+  if (!index.criteriaByRequirementId.has(input.requirement_id)) {
+    throw proofError("unknown_requirement", input.requirement_id);
   }
-  if (!task.done_when.includes(criterion.id)) {
-    throw proofError("criterion_not_in_task_done_when", `${task.id}/${criterion.id}`);
+  const criterionOwned = index.criteriaByRequirementId.get(input.requirement_id)!.has(input.criterion_id);
+  if (!criterionOwned) {
+    throw proofError("criterion_not_owned_by_requirement", `${input.criterion_id}/${input.requirement_id}`);
   }
-  const evidenceRequirement = task.evidence_requirements.find(
-    (candidate) => candidate.id === input.evidence_requirement_id
-  );
-  if (!evidenceRequirement) {
+  if (!task.covers.includes(input.requirement_id)) {
+    throw proofError("task_does_not_cover_requirement", `${task.id}/${input.requirement_id}`);
+  }
+  if (!task.done_when.includes(input.criterion_id)) {
+    throw proofError("criterion_not_in_task_done_when", `${task.id}/${input.criterion_id}`);
+  }
+  const evidenceRequirementOwned = index.evidenceRequirementIdsByTaskId
+    .get(task.id)!
+    .has(input.evidence_requirement_id);
+  if (!evidenceRequirementOwned) {
     throw proofError("evidence_requirement_not_owned_by_task", `${input.evidence_requirement_id}/${task.id}`);
   }
-  if (!evidenceRequirement.proves.includes(criterion.id)) {
-    throw proofError("evidence_requirement_does_not_prove_criterion", `${evidenceRequirement.id}/${criterion.id}`);
+  const evidenceRequirement = index.evidenceRequirementById.get(input.evidence_requirement_id)!;
+  if (!evidenceRequirement.proves.includes(input.criterion_id)) {
+    throw proofError("evidence_requirement_does_not_prove_criterion", `${evidenceRequirement.id}/${input.criterion_id}`);
   }
   validateProofProvenance(input);
   const evaluation = evaluateExpectation(evidenceRequirement.expectation, input.observed_value);
@@ -119,12 +213,10 @@ export function criterionCoverageDiagnostics(
           selected.has(item.evidence_id)
           && item.criterion_proof?.criterion_id === criterion.id
       );
-      const ownerTask = traceability.tasks.find((task) =>
-        task.done_when.includes(criterion.id)
-        && task.evidence_requirements.some((er) => er.proves.includes(criterion.id))
-      );
-      const ownerEr = ownerTask?.evidence_requirements.find((er) => er.proves.includes(criterion.id));
-      const ownerHint = ownerTask && ownerEr ? ` via ${ownerEr.id} na task ${ownerTask.id}` : "";
+      const ownerHintPair = traceIndexFor(traceability).ownerHintByCriterionId.get(criterion.id);
+      const ownerHint = ownerHintPair
+        ? ` via ${ownerHintPair.evidenceRequirementId} na task ${ownerHintPair.taskId}`
+        : "";
       const approvedNotCited = evidence
         .filter((item) => !selected.has(item.evidence_id) && item.criterion_proof?.criterion_id === criterion.id && item.criterion_proof?.passed === true)
         .map((item) => item.evidence_id);

@@ -1,3 +1,13 @@
+## Reavaliação — Onda 2b: evento de re-attach + pré-indexação SptTraceIndex, 2026-11-08
+
+Owner $oraculo-refatoracao (Trilho onda2b-fecha-fe-debt-006, flow 3601; GO
+PADRAO do dono): evento spt_traceability_reattached (history+ledger) no
+re-bind de flow órfão via helper puro; índice SptTraceIndex (WeakMap, O(C+E))
+consumido por qualify/cobertura/declarative — zero .find linear no caminho de
+qualificação; shape persistido inalterado (índice lazy para flows antigos).
+RED→GREEN 11/11 (+1 teste); suíte 828+4=832; camping EXCEPTION integrity
+reasons [] (pagamento do record FE-DEBT-006 agendado no SHRINK da Onda 3).
+
 ## Reavaliação — Onda 2: sentinela de admissão v3 no SSOT, 2026-11-08
 
 Owner $oraculo-refatoracao (Trilho onda2-sentinela-admissao-v3, flow 3570;

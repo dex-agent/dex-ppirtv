@@ -264,9 +264,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "5b66f564e4b27aca7527e3d10d7fe4b5cf86319c",
-  "tree_hash": null,
-  "generated_at": "2026-11-08T13:25:02.793031+00:00",
+  "head": "217c3894e7c688265d8389e1d84c3480a8aa72fc",
+  "tree_hash": "8ff605c86c37da557bbff772043c905d9244d01a",
+  "generated_at": "2026-11-08T13:54:59.416023+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -285,12 +285,12 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 825,
+    "passed": 828,
     "failed": 0,
     "skipped": 4,
     "files": 64,
-    "total": 829,
-    "command": "npm run check (issue11-attribution integrado a main 0bdd375; exit 0)"
+    "total": 832,
+    "command": "npm run build && npm test (Onda 2b; exit 0)"
   },
   "tools_count": 32,
   "capabilities": [
@@ -1122,5 +1122,11 @@
     "suite": "827 passed + 4 skipped = 831 — +1 teste Onda 2",
     "camping": "FE-2026-11-08-ONDA2-SENTINELA-ADMISSAO-V3 EXCEPTION public_compatibility — reasons [] (selagem retroativa comprovada em corte real)",
     "motor": "zero checagem SPT_V3 inline (rg SPT_V3_EVIDENCE_INVALID|SPT_V3_TRACEABILITY_MISSING|qualifyCriterionProof = vazio)"
+  },
+  "reavaliacao_onda2b_reattach_indice": {
+    "commit_escopo": "src/spt-traceability.ts (indice SptTraceIndex + helper evento) + src/flow-engine.ts (cola evento) + src/spt-declarative-proof.ts (indice) + tests + ledger/markers/CHANGELOG",
+    "suite": "828 passed + 4 skipped = 832 — +1 teste do evento de re-attach",
+    "camping": "FE-2026-11-08-ONDA2B-REATTACH-EVENTO-INDICE EXCEPTION integrity — reasons []; pagamento do record FE-DEBT-006 agendado no SHRINK da Onda 3 (decisao do desenho)",
+    "motor": "evento spt_traceability_reattached (history+ledger) no re-bind de orfao; zero .find linear no caminho de qualificacao (rg exit 1 em spt-traceability e spt-declarative-proof)"
   }
 }
