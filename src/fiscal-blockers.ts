@@ -498,7 +498,11 @@ export function blockerOwner(blocker: string): string {
   if (blocker === "review_required") return "evidence_add";
   if (blocker === "memory_required_but_empty") return "mm_memory_mining";
   if (blocker === "hygiene_blocking") return "hygiene_scan";
-  if (blocker === "librarian_status") return "memory_recall";
+  // ISSUE-LOCAL-0004 (2026-11-09): guidance aponta tool REAL — memory_recall
+  // nunca existiu no registro (32 tools); ppirtv_checkout é a checagem
+  // especializada de accountability do librarian (veredito documental
+  // oraculo-clean-code cap2: nomes/guidance revelam intenção executável).
+  if (blocker === "librarian_status") return "ppirtv_checkout";
   return "unknown/unregistered";
 }
 

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   blockedArchiveDirectAction,
@@ -101,14 +103,24 @@ describe("fiscal-blockers integration (import direto do módulo)", () => {
     expect(blockerOwner("hygiene_blocking")).toBe("hygiene_scan");
   });
 
-  it("SENTINELA de bug conhecido: librarian_status aponta tool memory_recall INEXISTENTE no registro (EST-20261109-TOOL-FANTASMA)", () => {
+  it("guidance de blockers aponta SOMENTE tools reais do registro — librarian_status para ppirtv_checkout (ISSUE-LOCAL-0004 curada)", () => {
     // Achado da adversarial (contratos P2-1, 2026-11-09): o servidor registra
-    // 32 tools e `memory_recall` NÃO está entre elas (só existem EVENTOS
-    // memory_recalled/memory_recall_reused). blockerOwner emite guidance com
-    // tool fantasma ao operador. SENTINELA deliberada: quando o mapeamento for
-    // corrigido para tool real, esta asserção FALHA de propósito para lembrar
-    // de consumir o estacionamento e atualizar o guidance.
-    expect(blockerOwner("librarian_status")).toBe("memory_recall");
+    // 32 tools e `memory_recall` NÃO estava entre elas — a SENTINELA esperava o
+    // bug e foi consumida pela cura (veredito documental oraculo-clean-code
+    // cap2: guidance revela intenção executável; padrão da tabela = tool de
+    // ação especializada). Agora a tabela INTEIRA é julgada contra o registro
+    // VIVO de tools do servidor — nenhuma tool fantasma passa.
+    const serverSource = readFileSync(path.join(__dirname, "..", "src", "server.ts"), "utf8");
+    const registered = new Set<string>();
+    for (const match of serverSource.matchAll(/registerPpirtvTool\(\s*\n?\s*server,\s*\n?\s*"([a-z0-9_]+)"/g)) {
+      registered.add(match[1]);
+    }
+    expect(registered.size).toBeGreaterThanOrEqual(30);
+    expect(blockerOwner("librarian_status")).toBe("ppirtv_checkout");
+    expect(registered.has("ppirtv_checkout")).toBe(true);
+    for (const blocker of ["review_required", "memory_required_but_empty", "hygiene_blocking", "librarian_status"]) {
+      expect(registered.has(blockerOwner(blocker))).toBe(true);
+    }
   });
 
   it("librarianRequired é TEXTUAL por desenho (palavra no rationale aciona; binding real é do motor, não daqui)", () => {

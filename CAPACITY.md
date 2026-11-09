@@ -1,3 +1,13 @@
+## Reavaliação — ISSUE-0004 tool fantasma no guidance (D-33), 2026-11-09
+
+Capability paths tocados: src/fiscal-blockers.ts (1 linha: blockerOwner
+librarian_status memory_recall→ppirtv_checkout, tool REAL do registro —
+veredito documental oraculo-clean-code cap2 l.906-920), tests/
+fiscal-blockers.integration.test.ts (SENTINELA CONSUMIDA: RED provado ao vivo
+quando a cura chegou; teste novo julga a TABELA INTEIRA contra o registro VIVO
+de tools do server.ts — nenhuma tool fantasma passa). flow-engine.ts
+intocado (camping N/A). Suíte 896+1 lógica nova.
+
 ## Reavaliação — ISSUE-0005 typecheck de tests/ no pipeline (D-32), 2026-11-09
 
 Capability paths tocados: tsconfig.tests.json (NOVO: extends base, noEmit,
