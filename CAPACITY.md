@@ -1,3 +1,17 @@
+## Reavaliação — Testes de integração dos 4 módulos de política + E2E golden-path, 2026-11-09
+
+Capability paths tocados: tests/ (+6 arquivos: helper fixture + 4 suítes
+integration + 1 e2e; 35 testes novos após emendas adversariais). Cobertura
+direta onde era indireta: meeting-policy/fiscal-blockers/ppirtv-checkin/
+memory-promotion agora com consumidor de teste próprio; E2E do ciclo completo
+(start→advances reais→gate/review→status→verdict) com artefatos persistidos
+conferidos no disco + idempotência. Vigília provada por mutação 5/5 (RED +
+revert imediato, src/ byte-igual). Emendas adversariais (5 revisores, veredito
+$oraculo-clean-code): fixture completa SEM casts + tsc strict pontual LIMPO,
+E2E pela máquina de estados (3 goalAdvance), formas fechadas, sentinelas de
+bugs conhecidos (tool fantasma librarian_status, falso-positivo rodoviaria).
+Zero src/ no corte final. Suíte 852→887 (medido: 883 passed + 4 skipped).
+
 ## Reavaliação — Mapa de decisões público FLOW_ENGINE_DECISIONS_MAP, 2026-11-09
 
 Documental: docs/architecture/FLOW_ENGINE_DECISIONS_MAP.md (projeção pública

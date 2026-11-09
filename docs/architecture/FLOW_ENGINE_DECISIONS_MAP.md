@@ -56,6 +56,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-27 | **Onda 7**: memory-promotion (33 símbolos; ÚLTIMA) | aceita→evento | V✅ | 3/3 | c99ef48..8c4cf46; `src/memory-promotion.ts` |
 | D-28 | Vacina anti-import-morto total | aceita | V✅ | 3/3 | nasceu Onda 5, pagou 6/7 |
 | D-29 | Janela acumulada no selo SHRINK | aceita | V✅ | 2/2 | Ondas 6/7 |
+| D-30 | Suíte de integração dos 4 módulos + E2E golden-path (pós-maratona) | aceita | V✅ | 6/6 | `tests/*.integration.test.ts` + `tests/goal-lifecycle.e2e.test.ts` |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -122,6 +123,23 @@ dívida para caber em CONTAIN.
 Vacina anti-import-morto: parser por bloco completo `import {...} from "...";`
 varrendo o corpo sem imports; pegou 42 mortos acumulados (Onda 6) e 9 em
 linha-única gigante (Onda 7). Janela acumulada: ver D-25..D-27 acima.
+
+### D-30 (pós-maratona, 2026-11-09): testes de integração + E2E
+A maior dívida declarada da maratona foi paga: os 4 módulos de política que
+só eram exercitados via suíte do motor ganharam suítes de integração com
+import direto (`tests/meeting-policy|fiscal-blockers|ppirtv-checkin|
+memory-promotion.integration.test.ts`, fixtures reais em
+`tests/helpers/policy-modules-fixture.ts`) cobrindo ramos adversariais
+(gatilho negativo de reunião, verdict consumindo sinal, blockers
+reconciliados, falso-positivo conhecido "validade"/"testemunha" documentado
+fiel, progresso inválido, resolução park sem quando, destino único de
+promoção). O E2E (`tests/goal-lifecycle.e2e.test.ts`) percorre o ciclo
+completo — goal_start → gate de revisão bloqueado → review estrutural →
+gate verde → status → verdict — e confere os artefatos PERSISTIDOS em disco
+(flow `.json` com `goal_started`/evidence/`verdict_recorded` + ledger
+`.ndjson`), além da idempotência do `goal_start`. Vigília provada por
+mutação (5 mutações, cada uma flagrada em RED com revert imediato). Suíte
+852→886, zero mudança de produto.
 
 ## Estado e débitos declarados (pós-maratona)
 

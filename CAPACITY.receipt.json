@@ -266,7 +266,7 @@
   "fotografia_id": "2026-11-05-merge-pr7",
   "head": "0e62ff2",
   "tree_hash": "a22a1d7103958e2ac25c492e6a4586e0ea817057",
-  "generated_at": "2026-11-09T18:27:36Z",
+  "generated_at": "2026-11-09T19:40:52Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1313,6 +1313,28 @@
     "limits": [
       "Documento nao executa chamadas MCP; fontes citadas sao Git-permanentes (commits, CHANGELOG, ledger).",
       "Fotografia interna completa (.agents/MAPAS/261109b) nao versiona por design."
+    ]
+  },
+  "reavaliacao_testes_integracao_e2e": {
+    "date": "2026-11-09",
+    "scope": [
+      "tests/helpers/policy-modules-fixture.ts",
+      "tests/meeting-policy.integration.test.ts",
+      "tests/fiscal-blockers.integration.test.ts",
+      "tests/ppirtv-checkin.integration.test.ts",
+      "tests/memory-promotion.integration.test.ts",
+      "tests/goal-lifecycle.e2e.test.ts"
+    ],
+    "delta": "4 modulos de politica sem consumidor de teste direto ganham suite de integracao propria (import direto de src/<modulo>.js, fixtures Flow/Meeting/Cooperator/Evidence/Candidate REAIS COMPLETAS sem casts, casos adversariais) + E2E golden-path do ciclo completo PELA MAQUINA DE ESTADOS (3 goalAdvance reais ate revisao; gate bloqueado -> review estrutural -> gate verde -> status -> verdict pronto) com artefatos persistidos conferidos no disco (flow json goal_started/evidence_attached/verdict_recorded + ledger ndjson) + idempotencia do goal_start. Vigilia por mutacao 5/5 RED com revert imediato e src/ byte-igual. Emendas da adversarial consolidada (5 revisores, 23 achados 1P1/10P2/12P3; veredito oraculo-clean-code confirmado_documental cap.9): P1 fixturexschema curado com tsc strict pontual LIMPO (pegou 3 props fantasmas 'phase' em goalAdvance); P2 teleporte de fase curado (advances reais); P2 tool fantasma librarian_status->memory_recall = SENTINELA + estacionamento (bug de produto pre-existente); formas fechadas e documentais. Suite 852->887 medido (883 passed + 4 skipped). Zero src/ no corte final.",
+    "evidence": [
+      "npx vitest run tests/meeting-policy.integration.test.ts tests/fiscal-blockers.integration.test.ts tests/ppirtv-checkin.integration.test.ts tests/memory-promotion.integration.test.ts tests/goal-lifecycle.e2e.test.ts",
+      "./node_modules/.bin/tsc --noEmit --strict --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --types node tests/helpers/policy-modules-fixture.ts tests/meeting-policy.integration.test.ts tests/fiscal-blockers.integration.test.ts tests/ppirtv-checkin.integration.test.ts tests/memory-promotion.integration.test.ts tests/goal-lifecycle.e2e.test.ts",
+      "npm run check"
+    ],
+    "limits": [
+      "Cobertura de simbolos publicos e amostral (ramos adversariais), nao exaustiva.",
+      "E2E usa o motor real com store em disco no workspace temporal; a camada stdio ja coberta por 36 its do mcp.test.ts nao e re-testada aqui.",
+      "Mutacoes de vigilia tocaram src/ temporariamente e foram revertidas com git checkout (diff final vazio)."
     ]
   }
 }
