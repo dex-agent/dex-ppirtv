@@ -1134,6 +1134,213 @@ describe("flow-engine responsibility balance", () => {
     expect(receipt.reasons.some((reason: string) => reason.includes("COMMIT_SEAL_COMMIT_MISSING:seal-cura5-3"))).toBe(true);
   });
 
+
+  // Cura-6 (P2-A adversarial cura-5): ledger ENCOLHIDO — record selado em
+  // índice órfão dereferenciava after.id sem guard: TypeError engolido pelo
+  // catch externo virava BASE_LEDGER_UNREADABLE FALSO. O reason próprio tem
+  // que dizer o que falhou (record removido) sem mentir sobre a base.
+  it("ledger encolhido reprova RECORD_REMOVED sem acusar base ilegivel", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "flow-engine-seal6-a-"));
+    tempRoots.push(root);
+    await mkdir(path.join(root, "src"), { recursive: true });
+    await mkdir(path.join(root, "docs", "architecture"), { recursive: true });
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 1; } }\n");
+    await writeFile(path.join(root, "CHANGELOG.md"), "# Changelog\n\n## [Unreleased]\nseal6-marker\n");
+    await writeFile(path.join(root, "docs", "architecture", "FLOW_ENGINE_EVOLUTION.md"), "# Architecture\nseal6-marker\n");
+    execFileSync("git", ["init"], { cwd: root });
+    execFileSync("git", ["config", "user.email", "fixture@example.invalid"], { cwd: root });
+    execFileSync("git", ["config", "user.name", "Fixture"], { cwd: root });
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "c0"], { cwd: root });
+    const blobV1 = execFileSync("git", ["rev-parse", "HEAD:src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 2; } }\n");
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "c1 motor v2"], { cwd: root });
+    const c1 = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    const c0 = execFileSync("git", ["rev-parse", "HEAD~1"], { cwd: root, encoding: "utf8" }).trim();
+    const recordOf = (extra: Record<string, unknown>) => ({ ...baseDeclaration, mode: "EXCEPTION", destination_module: undefined, changelog_marker: "seal6-marker", architecture_marker: "seal6-marker", consumers: ["src/server.ts"], ...extra });
+    const manifestOf = (recs: Record<string, unknown>[]) => JSON.stringify({ contract: "dex.flow-engine.evolution-ledger.v1", target: "src/flow-engine.ts", owner: "$refactoring-fowler-rich", records: recs });
+    // base com DOIS records; head encolhe para UM novo cobrindo o diff — o
+    // índice 1 fica órfão (after undefined) com before selado
+    const blobV2 = execFileSync("git", ["hash-object", "src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    const x = recordOf({ id: "seal6-x", base_blob: blobV2, head_blob: blobV2 });
+    const y = recordOf({ id: "seal6-y", base_blob: blobV2, head_blob: blobV2, commit: c1, parent_commit: c0 });
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), manifestOf([x, y]));
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "ledger base"], { cwd: root });
+    const sealBase = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 3; } }\n");
+    const blobV3 = execFileSync("git", ["hash-object", "src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    const z = recordOf({ id: "seal6-z", base_blob: blobV2, head_blob: blobV3 });
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), manifestOf([z]));
+    const run = runBoundaryCli({ cwd: root, argv: ["--base", sealBase, "--head", "WORKTREE"] });
+    const receipt = JSON.parse(run.output);
+    expect(run.exitCode).toBe(1);
+    expect(receipt.reasons.some((reason: string) => reason.includes("LEDGER_PREFIX_RECORD_REMOVED:seal6-y"))).toBe(true);
+    expect(receipt.reasons.some((reason: string) => reason.includes("BASE_LEDGER_UNREADABLE"))).toBe(false);
+  });
+
+  // Cura-6 (P2-B adversarial cura-5): record INTERMEDIÁRIO NOVO de chain
+  // nascendo com selo de blob mentiroso — o B2 conferia só o declaration
+  // (tail); a conferência de nascimento cobre TODOS os records da chain.
+  it("chain com intermediario selado de blob divergente reprova no nascimento", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "flow-engine-seal6-b-"));
+    tempRoots.push(root);
+    await mkdir(path.join(root, "src"), { recursive: true });
+    await mkdir(path.join(root, "docs", "architecture"), { recursive: true });
+    await writeFile(path.join(root, "CHANGELOG.md"), "# Changelog\n\n## [Unreleased]\nseal6-marker\n");
+    await writeFile(path.join(root, "docs", "architecture", "FLOW_ENGINE_EVOLUTION.md"), "# Architecture\nseal6-marker\n");
+    execFileSync("git", ["init"], { cwd: root });
+    execFileSync("git", ["config", "user.email", "fixture@example.invalid"], { cwd: root });
+    execFileSync("git", ["config", "user.name", "Fixture"], { cwd: root });
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 1; } }\n");
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "v1"], { cwd: root });
+    const blobV1 = execFileSync("git", ["rev-parse", "HEAD:src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 2; } }\n");
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "v2"], { cwd: root });
+    const blobV2 = execFileSync("git", ["rev-parse", "HEAD:src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    const v2 = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    const v1 = execFileSync("git", ["rev-parse", "HEAD~1"], { cwd: root, encoding: "utf8" }).trim();
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 3; } }\n");
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "v3"], { cwd: root });
+    const blobV3 = execFileSync("git", ["rev-parse", "HEAD:src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    const v3 = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    const recordOf = (extra: Record<string, unknown>) => ({ ...baseDeclaration, mode: "EXCEPTION", destination_module: undefined, changelog_marker: "seal6-marker", architecture_marker: "seal6-marker", consumers: ["src/server.ts"], ...extra });
+    // A intermediario: head_blob v2, mas commit selado v3 (blob divergente)
+    const a = recordOf({ id: "seal6-a", base_blob: blobV1, head_blob: blobV2, commit: v3, parent_commit: v2 });
+    const b = recordOf({ id: "seal6-b", base_blob: blobV2, head_blob: blobV3 });
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), JSON.stringify({ contract: "dex.flow-engine.evolution-ledger.v1", target: "src/flow-engine.ts", owner: "$refactoring-fowler-rich", records: [a, b] }));
+    const run = runBoundaryCli({ cwd: root, argv: ["--base", v1, "--head", "WORKTREE"] });
+    const receipt = JSON.parse(run.output);
+    expect(receipt.reasons.some((reason: string) => reason.includes("COMMIT_SEAL_BLOB_MISMATCH:seal6-a"))).toBe(true);
+  });
+
+  // Cura-6 (P3 Provide Context): commit que EXISTE mas não contém o target
+  // era rotulado COMMIT_SEAL_COMMIT_NOT_FOUND — o consumidor não distingue
+  // selo-fantasma de commit-real-sem-arquivo. Enum próprio TARGET_MISSING.
+  it("commit existente sem o target reprova TARGET_MISSING distinto de NOT_FOUND", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "flow-engine-seal6-c-"));
+    tempRoots.push(root);
+    await mkdir(path.join(root, "src"), { recursive: true });
+    await mkdir(path.join(root, "docs", "architecture"), { recursive: true });
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 1; } }\n");
+    await writeFile(path.join(root, "CHANGELOG.md"), "# Changelog\n\n## [Unreleased]\nseal6-marker\n");
+    await writeFile(path.join(root, "docs", "architecture", "FLOW_ENGINE_EVOLUTION.md"), "# Architecture\nseal6-marker\n");
+    execFileSync("git", ["init"], { cwd: root });
+    execFileSync("git", ["config", "user.email", "fixture@example.invalid"], { cwd: root });
+    execFileSync("git", ["config", "user.name", "Fixture"], { cwd: root });
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "c0"], { cwd: root });
+    const blobV1 = execFileSync("git", ["rev-parse", "HEAD:src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    // commit órfão de tree VAZIA: existe, mas nao contem src/flow-engine.ts
+    const emptyTree = execFileSync("git", ["hash-object", "-t", "tree", "/dev/null"], { cwd: root, encoding: "utf8" }).trim();
+    const orphan = execFileSync("git", ["commit-tree", emptyTree, "-m", "orphan"], { cwd: root, encoding: "utf8" }).trim();
+    const c0 = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    const recordOf = (extra: Record<string, unknown>) => ({ ...baseDeclaration, mode: "EXCEPTION", destination_module: undefined, changelog_marker: "seal6-marker", architecture_marker: "seal6-marker", consumers: ["src/server.ts"], ...extra });
+    const base = recordOf({ id: "seal6-c", base_blob: blobV1, head_blob: blobV1 });
+    const manifestOf = (recs: Record<string, unknown>[]) => JSON.stringify({ contract: "dex.flow-engine.evolution-ledger.v1", target: "src/flow-engine.ts", owner: "$refactoring-fowler-rich", records: recs });
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), manifestOf([base]));
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "base"], { cwd: root });
+    const baseSha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), manifestOf([{ ...base, commit: orphan, parent_commit: c0 }]));
+    const run = runBoundaryCli({ cwd: root, argv: ["--base", baseSha, "--head", "WORKTREE"] });
+    const receipt = JSON.parse(run.output);
+    expect(run.exitCode).toBe(1);
+    expect(receipt.reasons.some((reason: string) => reason.includes("COMMIT_SEAL_TARGET_MISSING:seal6-c"))).toBe(true);
+  });
+
+  // Cura-6 (P2-C vacina de regressão — passa no baseline por desenho): o
+  // canonicalJson (cura-5) garante que RE-SERIALIZAÇÃO com outra ordem de
+  // chaves não fabrica COMMIT_SEAL_RECORD_CHANGED/LEDGER_HISTORY_MUTATED.
+  // Sem o canônico (stringify cru) este teste reprovaria — é a rede que
+  // faltava para a promessa central da cura-5.
+  it("re-serializacao com ordem de chaves trocada nao fabrica mudanca de record", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "flow-engine-seal6-d-"));
+    tempRoots.push(root);
+    await mkdir(path.join(root, "src"), { recursive: true });
+    await mkdir(path.join(root, "docs", "architecture"), { recursive: true });
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 1; } }\n");
+    await writeFile(path.join(root, "CHANGELOG.md"), "# Changelog\n\n## [Unreleased]\nseal6-marker\n");
+    await writeFile(path.join(root, "docs", "architecture", "FLOW_ENGINE_EVOLUTION.md"), "# Architecture\nseal6-marker\n");
+    execFileSync("git", ["init"], { cwd: root });
+    execFileSync("git", ["config", "user.email", "fixture@example.invalid"], { cwd: root });
+    execFileSync("git", ["config", "user.name", "Fixture"], { cwd: root });
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "c0"], { cwd: root });
+    const blobV1 = execFileSync("git", ["rev-parse", "HEAD:src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    const c0 = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    const recordOf = (extra: Record<string, unknown>) => ({ ...baseDeclaration, mode: "EXCEPTION", destination_module: undefined, changelog_marker: "seal6-marker", architecture_marker: "seal6-marker", consumers: ["src/server.ts"], ...extra });
+    const manifestOf = (recs: Record<string, unknown>[]) => JSON.stringify({ contract: "dex.flow-engine.evolution-ledger.v1", target: "src/flow-engine.ts", owner: "$refactoring-fowler-rich", records: recs });
+    const base = recordOf({ id: "seal6-d", base_blob: blobV1, head_blob: blobV1 });
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), manifestOf([base]));
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "record base SEM selo"], { cwd: root });
+    const sealBase = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    execFileSync("git", ["commit", "--allow-empty", "-m", "seal"], { cwd: root });
+    const seal = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    // MESMO record, MESMOS valores, ORDEM de chaves trocada (commit/parent primeiro)
+    const reordered: Record<string, unknown> = { commit: seal, parent_commit: sealBase };
+    for (const [key, value] of Object.entries(base)) reordered[key] = value;
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), JSON.stringify({ contract: "dex.flow-engine.evolution-ledger.v1", target: "src/flow-engine.ts", owner: "$refactoring-fowler-rich", records: [reordered] }));
+    const run = runBoundaryCli({ cwd: root, argv: ["--base", sealBase, "--head", "WORKTREE"] });
+    const receipt = JSON.parse(run.output);
+    expect(run.exitCode).toBe(0);
+    expect(receipt.reasons).toEqual([]);
+    expect(receipt.ledger_commit_seal?.sealed_records).toContain("seal6-d");
+  });
+
+
+
+  // Cura-6 (P2-C vacina DISCRIMINANTE — derruba com stringify cru): ordem de
+  // chaves NÃO-SELO trocada no prefixo do ledger (head_blob/base_blob antes de
+  // id). Com canonicalJson: sem LEDGER_HISTORY_MUTATED (reordenação não é
+  // mutação); com JSON.stringify cru o preservedPrefix fabrica MUTATED.
+  it("prefixo re-serializado com ordem de chaves nao-selo trocada nao e mutacao", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "flow-engine-seal6-e-"));
+    tempRoots.push(root);
+    await mkdir(path.join(root, "src"), { recursive: true });
+    await mkdir(path.join(root, "docs", "architecture"), { recursive: true });
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 1; } }\n")
+    await writeFile(path.join(root, "CHANGELOG.md"), "# Changelog\n\n## [Unreleased]\nseal6-marker\n")
+    await writeFile(path.join(root, "docs", "architecture", "FLOW_ENGINE_EVOLUTION.md"), "# Architecture\nseal6-marker\n")
+    execFileSync("git", ["init"], { cwd: root });
+    execFileSync("git", ["config", "user.email", "fixture@example.invalid"], { cwd: root });
+    execFileSync("git", ["config", "user.name", "Fixture"], { cwd: root });
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "c0"], { cwd: root });
+    const blobV1 = execFileSync("git", ["rev-parse", "HEAD:src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    const recordOf = (extra: Record<string, unknown>) => ({ ...baseDeclaration, mode: "EXCEPTION", destination_module: undefined, changelog_marker: "seal6-marker", architecture_marker: "seal6-marker", consumers: ["src/server.ts"], ...extra });
+    const manifestOf = (recs: Record<string, unknown>[]) => JSON.stringify({ contract: "dex.flow-engine.evolution-ledger.v1", target: "src/flow-engine.ts", owner: "$refactoring-fowler-rich", records: recs });
+    // R selado honesto commitado na base (ordem natural: id...base_blob, head_blob, commit, parent)
+    const r = recordOf({ id: "seal6-r", base_blob: blobV1, head_blob: blobV1, commit: "PLACEHOLDER", parent_commit: "PLACEHOLDER" });
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), manifestOf([{ ...r, commit: undefined, parent_commit: undefined }]));
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "record base"], { cwd: root });
+    const rBase = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    execFileSync("git", ["commit", "--allow-empty", "-m", "seal"], { cwd: root });
+    const seal = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), manifestOf([{ ...r, commit: seal, parent_commit: rBase }]));
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "selo honesto"], { cwd: root });
+    const sealBase = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    // worktree: motor v2 + R com ordem NAO-SELO trocada (head_blob/base_blob primeiro) + declaration novo
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 2; } }\n")
+    const blobV2 = execFileSync("git", ["hash-object", "src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    const reordered: Record<string, unknown> = { head_blob: blobV1, base_blob: blobV1, commit: seal, parent_commit: rBase };
+    for (const [key, value] of Object.entries({ ...r, commit: seal, parent_commit: rBase })) reordered[key] = value;
+    const z = recordOf({ id: "seal6-z", base_blob: blobV1, head_blob: blobV2 });
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), manifestOf([reordered, z]));
+    const run = runBoundaryCli({ cwd: root, argv: ["--base", sealBase, "--head", "WORKTREE"] });
+    const receipt = JSON.parse(run.output);
+    expect(receipt.reasons.some((reason: string) => reason.includes("LEDGER_HISTORY_MUTATED"))).toBe(false);
+    expect(receipt.reasons.some((reason: string) => reason.includes("COMMIT_SEAL_RECORD_CHANGED:seal6-r"))).toBe(false);
+  });
+
+
   it("keeps the living architecture public and discoverable", async () => {
     const [readme, agents, rootIndex, docsIndex, gitignore, architecture, ledger] = await Promise.all([
       readFile("README.md", "utf8"),

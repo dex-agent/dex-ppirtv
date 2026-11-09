@@ -264,9 +264,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "c7b2ed6",
+  "head": "1ed5dcb",
   "tree_hash": "c4d95961344c0abe7a96ab3cee3d041a98368c97",
-  "generated_at": "2026-11-09T00:33:26.277010+00:00",
+  "generated_at": "2026-11-09T01:49:34.246737+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -285,12 +285,12 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 842,
+    "passed": 846,
     "failed": 0,
     "skipped": 4,
     "files": 64,
-    "total": 846,
-    "command": "npm run build && npm test (Cura-5; exit 0)"
+    "total": 850,
+    "command": "npm run build && npm test (Cura-6; exit 0)"
   },
   "tools_count": 32,
   "capabilities": [
@@ -1242,5 +1242,28 @@
     },
     "camping": "EXCEPTION PASS reasons [] (base 7d5b67b); selagem pos-commit 8ad367a COM parent_commit 7d5b67b; emenda da selagem completa o LEGACY_SELECTOR_EXEMPT com os 12 ids medidos por probe (24 seletores; falsa cobertura de 1 id pega AO VIVO pelo critico-cetico na mesa QUESTIONADORES-ATIVADO)"
   },
-  "reavaliacao_cura5_seal_error_path": "Cura-5 (Trilho 2026-11-08-cura5-seal-diff-crash, flow 3805; P1 adversarial cura-4): error-path do seal-diff com receipt estruturado (rev-list no MESMO try do rev-parse do blob; commit inexistente devolve COMMIT_SEAL_COMMIT_NOT_FOUND — crash sem receipt era regressao do 8ad367a, licao REGRESSAO-ERROR-PATH-TRY-CATCH); blob do nascimento conferido no path de declaracao (COMMIT_SEAL_BLOB_MISMATCH); deselagem fechada no LEDGER_PREFIX (guard olha o par after/before + COMMIT_SEAL_COMMIT_MISSING); canonicalJson (chaves ordenadas) nas 3 comparacoes de record. 3 REDs provados no baseline c7b2ed6 (fixtures exercitam seal-diff/B2/LEDGER_PREFIX com --head WORKTREE + declaration casando o par do diff) -> GREEN; suíte 842+4=846; camping NOT_APPLICABLE (src/flow-engine.ts intocado — primeira cura 100% fiscal, sem record por desenho)."
+  "reavaliacao_cura5_seal_error_path": {
+    "date": "2026-11-09",
+    "scope": [
+      "scripts/validate-flow-engine-boundary.mjs",
+      "tests/flow-engine-boundary.test.ts"
+    ],
+    "delta": "suíte 843->846; camping NOT_APPLICABLE (motor intocado)",
+    "evidence": "flow 3805 vrd_3815_0001; commit 1ed5dcb",
+    "summary": "Cura-5 (Trilho 2026-11-08-cura5-seal-diff-crash, flow 3805; P1 adversarial cura-4): error-path do seal-diff com receipt estruturado (rev-list no MESMO try do rev-parse do blob; commit inexistente devolve COMMIT_SEAL_COMMIT_NOT_FOUND — crash sem receipt era regressao do 8ad367a, licao REGRESSAO-ERROR-PATH-TRY-CATCH); blob do nascimento conferido no path de declaracao (COMMIT_SEAL_BLOB_MISMATCH); deselagem fechada no LEDGER_PREFIX (guard olha o par after/before + COMMIT_SEAL_COMMIT_MISSING); canonicalJson (chaves ordenadas) nas 3 comparacoes de record. 3 REDs provados no baseline c7b2ed6 (fixtures exercitam seal-diff/B2/LEDGER_PREFIX com --head WORKTREE + declaration casando o par do diff) -> GREEN; suíte 842+4=846; camping NOT_APPLICABLE (src/flow-engine.ts intocado — primeira cura 100% fiscal, sem record por desenho)."
+  },
+  "reavaliacao_cura6_seal_remaining": {
+    "date": "2026-11-09",
+    "scope": [
+      "scripts/validate-flow-engine-boundary.mjs",
+      "tests/flow-engine-boundary.test.ts",
+      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json",
+      "CHANGELOG.md"
+    ],
+    "delta": "suíte 846->850; reasons prorídos: LEDGER_PREFIX_RECORD_REMOVED/COMMIT_SEAL_TARGET_MISSING; enums unificados; camping NOT_APPLICABLE",
+    "evidence": "flow 3834 (cerimônia em curso); REDs baseline 1ed5dcb; mutação da vacina E provada",
+    "summary": "P2-A reason falso eliminado; P2-B chain inteira conferida no nascimento; P2-C vacinas de invariância com RED-por-mutação; P3s Provide Context."
+  }
 }

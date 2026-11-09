@@ -554,14 +554,23 @@ function evaluateCommitSealDiff({ cwd, baseManifest, headManifest }) {
     // commit — as duas chamadas git moram no MESMO try. Commit inexistente
     // devolve COMMIT_SEAL_COMMIT_NOT_FOUND estruturado (o rev-list fora do
     // try crashava o CLI sem receipt — lição REGRESSAO-ERROR-PATH-TRY-CATCH).
+    // Cura-6 (P3 Provide Context): cada enum diz a verdade — o rev-list
+    // discrimina COMMIT inexistente (NOT_FOUND); commit que resolve mas sem o
+    // target vira TARGET_MISSING (NOT_FOUND conflava as duas causas).
     const blobReasons = [];
     let parents = null;
     try {
-      const sealedBlob = git(["rev-parse", `${after.commit}:${TARGET_PATH}`], cwd);
-      if (sealedBlob !== after.head_blob) blobReasons.push(`COMMIT_SEAL_BLOB_MISMATCH:${after.id}`);
       parents = git(["rev-list", "--parents", "-n", "1", after.commit], cwd).split(/\s+/).slice(1);
     } catch {
       blobReasons.push(`COMMIT_SEAL_COMMIT_NOT_FOUND:${after.id}`);
+    }
+    if (parents) {
+      try {
+        const sealedBlob = git(["rev-parse", `${after.commit}:${TARGET_PATH}`], cwd);
+        if (sealedBlob !== after.head_blob) blobReasons.push(`COMMIT_SEAL_BLOB_MISMATCH:${after.id}`);
+      } catch {
+        blobReasons.push(`COMMIT_SEAL_TARGET_MISSING:${after.id}`);
+      }
     }
     reasons.push(...blobReasons);
     // Cura-4: linhagem pelo helper ÚNICO (P1 da cura-2 + selo vivo da cura-2
@@ -928,16 +937,31 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
   // Cura-5 (P2 adversarial cura-4): o nascimento também confere o BLOB do
   // commit selado contra o head_blob declarado (linhagem honesta + blob
   // mentiroso era selo verde).
-  if (declaration?.commit) {
+  // Cura-6 (P2-B adversarial cura-5): a conferência de nascimento cobre TODOS
+  // os records da CHAIN, não só o declaration tail — intermediário novo com
+  // selo de blob mentiroso escapa de toda verificação (probe: SEAL REASONS=[]
+  // para intermediário divergente).
+  // Cura-6 (P3 Provide Context): enums unificados com o seal-diff (o catch
+  // genérico LEDGER_PREFIX_COMMIT_SEAL_MISMATCH escondia a causa real).
+  const birthRecords = chainRecords ?? (declaration ? [declaration] : []);
+  for (const record of birthRecords) {
+    if (!record?.commit) continue;
+    let recordParents = null;
     try {
-      if (git(["rev-parse", `${declaration.commit}:${TARGET_PATH}`], cwd) !== declaration.head_blob) {
-        receipt.reasons.push(`COMMIT_SEAL_BLOB_MISMATCH:${declaration.id}`);
-      }
-      receipt.reasons.push(...sealLineageReasons(declaration, null,
-        git(["rev-list", "--parents", "-n", "1", declaration.commit], cwd).split(/\s+/).slice(1)));
+      recordParents = git(["rev-list", "--parents", "-n", "1", record.commit], cwd).split(/\s+/).slice(1);
     } catch {
-      receipt.reasons.push(`LEDGER_PREFIX_COMMIT_SEAL_MISMATCH:${declaration.id}`);
+      receipt.reasons.push(`COMMIT_SEAL_COMMIT_NOT_FOUND:${record.id}`);
+      continue;
     }
+    try {
+      if (git(["rev-parse", `${record.commit}:${TARGET_PATH}`], cwd) !== record.head_blob) {
+        receipt.reasons.push(`COMMIT_SEAL_BLOB_MISMATCH:${record.id}`);
+      }
+    } catch {
+      receipt.reasons.push(`COMMIT_SEAL_TARGET_MISSING:${record.id}`);
+      continue;
+    }
+    receipt.reasons.push(...sealLineageReasons(record, null, recordParents));
   }
 
   if (receipt.flow_engine_changed && !declaration) receipt.reasons.push("MATCHING_DECLARATION_REQUIRED");
@@ -978,25 +1002,40 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
         // PAR (antes OU depois selado); remover o commit de record selado
         // reprova COMMIT_SEAL_COMMIT_MISSING (o guard antigo after.commit &&
         // deixava a remoção escapar limpa). recordChanged pelo canônico.
+        // Cura-6 (P2-A adversarial cura-5): ledger ENCOLHIDO — record selado
+        // removido do head reprova RECORD_REMOVED com reason próprio (o
+        // dereference cru after.id lançava TypeError engolido pelo catch do
+        // bloco e o receipt acusava BASE_LEDGER_UNREADABLE FALSO).
         for (let index = 0; index < baseRecords.length; index += 1) {
           const after = records[index];
           const before = baseRecords[index];
           const recordChanged = canonicalJson(after) !== canonicalJson(before);
           const sealTouched = nonEmptyString(after?.commit) || nonEmptyString(before?.commit);
           if (!sealTouched || !recordChanged) continue;
-          if (!nonEmptyString(after?.commit)) {
+          if (!after) {
+            receipt.reasons.push(`LEDGER_PREFIX_RECORD_REMOVED:${before?.id ?? "unknown"}`);
+            continue;
+          }
+          if (!nonEmptyString(after.commit)) {
             receipt.reasons.push(`COMMIT_SEAL_COMMIT_MISSING:${after.id}`);
+            continue;
+          }
+          let loopParents = null;
+          try {
+            loopParents = git(["rev-list", "--parents", "-n", "1", after.commit], cwd).split(/\s+/).slice(1);
+          } catch {
+            receipt.reasons.push(`COMMIT_SEAL_COMMIT_NOT_FOUND:${after.id}`);
             continue;
           }
           try {
             if (git(["rev-parse", `${after.commit}:${TARGET_PATH}`], cwd) !== after.head_blob) {
-              receipt.reasons.push(`LEDGER_PREFIX_COMMIT_SEAL_MISMATCH:${after.id}`);
+              receipt.reasons.push(`COMMIT_SEAL_BLOB_MISMATCH:${after.id}`);
             }
-            receipt.reasons.push(...sealLineageReasons(after, before,
-              git(["rev-list", "--parents", "-n", "1", after.commit], cwd).split(/\s+/).slice(1)));
           } catch {
-            receipt.reasons.push(`LEDGER_PREFIX_COMMIT_SEAL_MISMATCH:${after.id}`);
+            receipt.reasons.push(`COMMIT_SEAL_TARGET_MISSING:${after.id}`);
+            continue;
           }
+          receipt.reasons.push(...sealLineageReasons(after, before, loopParents));
         }
         const appendedCount = chainRecords?.length ?? 1;
         if (records.length !== baseRecords.length + appendedCount || records.at(-1) !== declaration) {

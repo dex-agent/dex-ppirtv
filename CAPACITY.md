@@ -1,3 +1,15 @@
+## Reavaliação — Cura-6: rede do fiscal + janelas + vocabulário, 2026-11-09
+
+Owner $oraculo-refatoracao (Trilho cura6-seal-remaining, flow 3834; GO único
+do dono no veredito do oráculo-clean-code): P2-A RECORD_REMOVED com reason
+próprio (fim do BASE_LEDGER_UNREADABLE falso); P2-B birthRecords=chainRecords
+(todos os records da chain nascem conferidos); P2-C vacinas de invariância do
+canonicalJson (E discriminante RED-por-mutação + D integração); P3s
+TARGET_MISSING distinto de NOT_FOUND + enums unificados + typo + receipt
+dict. 3 REDs baseline 1ed5dcb -> GREEN; suíte 846+4=850; camping
+NOT_APPLICABLE (fiscal puro). Suíte medida antes do incidente do stash
+conflitado (resolvido restaurando HEAD; stash antigo preservado).
+
 ## Reavaliação — Cura-5: error-path do selo estruturado + janelas de selo, 2026-11-09
 
 Owner $oraculo-refatoracao (Trilho cura5-seal-diff-crash, flow 3805; P1 da
