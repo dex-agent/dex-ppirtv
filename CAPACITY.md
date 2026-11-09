@@ -1,3 +1,15 @@
+## Reavaliação — Onda 6: check-in/check-out PPIRTV fora do monólito, 2026-11-09
+
+Owner $oraculo-refatoracao (Trilho onda6-ppirtv-checkin, flow 3917; GO único
+do dono, mesa QUESTIONADORES-ATIVADO, RESPIRA-ANTES-DE-CODAR): 23 funções + 2
+consts (check-in/out + accountability + evidence-quality + work-progress +
+memoryMiningStatus) → src/ppirtv-checkin.ts (696L); bloco autônomo (zero
+função não-migrante consumida, probe pré-corte); motor 6156→5503 (−652L
+líquido) com zero símbolo novo; suíte 848+4=852 SEM editar teste; tsc 0.
+Vacina Onda 5 paga no primeiro uso: varredura anti-import-morto pegou 2
+mortos ANTES do commit. Camping SHRINK. Ficam: memory-v2/promotion (onda
+futura) e utils do motor.
+
 ## Reavaliação — Onda 5 emenda: adversarial 0 P1/2 P2/8 P3 curada no corte, 2026-11-09
 
 Owner $oraculo-refatoracao (mesma sessão, flow 3874): **P2 receipt re-ancorado**
