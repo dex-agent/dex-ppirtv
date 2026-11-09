@@ -163,7 +163,7 @@ describe("C-2: sensível não-declarado é redigido (nunca lido)", () => {
     const proofId = await attachCriterionProof(engine, flowId, workspace);
     // Verdict positivo bloquea (review_required) SEM congelar .env (prevenção C-1 ativa).
     await expect(
-      engine.goalVerdict({ flow_id: flowId, status: "pronto", rationale: "Vítima.", evidence_ids: [proofId] })
+      engine.goalVerdict({ flow_id: flowId, status: "pronto", rationale: "Vítima.", evidence_ids: [proofId], next_step: "conferir o bloqueio review_required" })
     ).rejects.toThrow(/review_required/);
     // Fixture de VÍTIMA LEGADA: estado persistido com .env congelado (o que a
     // corroboração antiga deixou nos flows reais, ex. flow_20261029164933895_0043_0001).
@@ -199,7 +199,7 @@ describe("C-2: sensível não-declarado é redigido (nunca lido)", () => {
     expect(revisao.status, `gate revisão bloqueado: ${JSON.stringify(revisao)}`).toBe("passed");
     let verdictError = "SEM_ERRO";
     try {
-      await engine.goalVerdict({ flow_id: flowId, status: "pronto", rationale: "Vítima destravada.", evidence_ids: [proofId, reviewId] });
+      await engine.goalVerdict({ flow_id: flowId, status: "pronto", rationale: "Vítima destravada.", evidence_ids: [proofId, reviewId], next_step: "verdict aceito com review citada" });
     } catch (error) {
       verdictError = String((error as Error).message);
     }

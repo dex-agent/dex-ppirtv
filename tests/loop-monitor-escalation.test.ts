@@ -66,11 +66,11 @@ describe("T-3 fiscal sao: ciclo do incidente acumula count e escala", () => {
     }
 
     const status = await engine.goalStatus({ flow_id: flowId });
-    expect(status.loop_monitor).toMatchObject({
+    expect(status.loop_monitor as Record<string, unknown>).toMatchObject({
       count: expect.any(Number)
     });
-    expect((status.loop_monitor?.count ?? 0) >= 6).toBe(true);
-    expect(status.loop_monitor?.escalation).toMatchObject({ active: true, level: "research_subagent" });
+    expect((((status.loop_monitor as Record<string, unknown> | null)?.count as number) ?? 0) >= 6).toBe(true);
+    expect(((status.loop_monitor as Record<string, unknown> | null)?.escalation as Record<string, unknown>) ?? {}).toMatchObject({ active: true, level: "research_subagent" });
   });
 
   it("a invalida NAO resolve review_required (blocker persiste no ciclo)", async () => {

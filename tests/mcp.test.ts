@@ -459,7 +459,7 @@ describe("PPIRTV MCP stdio server", () => {
       uncertainties: ["none"]
     });
     expect(flow.goal_binding).toBeUndefined();
-    expect(resource.contents[0]?.text).toContain(flowId);
+    expect((resource.contents[0] as { text: string }).text).toContain(flowId);
   });
 
   it("preserves the historical flow_create payload only with detail full", async () => {
@@ -784,7 +784,7 @@ describe("PPIRTV MCP stdio server", () => {
 
     const retried = resultOf(await client!.callTool({ name: "goal_start", arguments: envelope }));
     const resource = await client!.readResource({ uri: `ppirtv://flow/${flowId}/ledger` });
-    const events = JSON.parse(resource.contents[0]?.text ?? "[]") as Array<Record<string, any>>;
+    const events = JSON.parse((resource.contents[0] as { text: string }).text ?? "[]") as Array<Record<string, any>>;
     const recovered = events.find((event) => event.type === "goal_started_recovered");
 
     expect(retried).toMatchObject({ flow_id: flowId, started: false, reused: true });
@@ -1021,7 +1021,7 @@ describe("PPIRTV MCP stdio server", () => {
     const status = await client!.callTool({ name: "goal_status", arguments: { flow_id: flowId, detail: "full" } });
     const checkout = await client!.callTool({ name: "ppirtv_checkout", arguments: { flow_id: flowId, detail: "full" } });
     const ledger = await client!.readResource({ uri: `ppirtv://flow/${flowId}/ledger` });
-    const ledgerText = ledger.contents[0]?.text ?? "";
+    const ledgerText = (ledger.contents[0] as { text: string }).text ?? "";
 
     expect(resultOf(gate)).toMatchObject({ status: "blocked", missing: ["verdict"] });
     expect(resultOf(advanced)).toMatchObject({
@@ -1312,12 +1312,12 @@ describe("PPIRTV MCP stdio server", () => {
         suggested: expect.arrayContaining([expect.objectContaining({ name: "Chato", material: false })])
       }
     });
-    expect(resource.contents[0]?.text).toContain("meeting_opened");
-    expect(resource.contents[0]?.text).toContain("meeting_turn_added");
-    expect(resource.contents[0]?.text).toContain("meeting_closed");
-    expect(resource.contents[0]?.text).toContain("goal_regressed");
-    expect(resource.contents[0]?.text).toContain("gate_checked");
-    expect(resource.contents[0]?.text).toContain("phase_advanced");
+    expect((resource.contents[0] as { text: string }).text).toContain("meeting_opened");
+    expect((resource.contents[0] as { text: string }).text).toContain("meeting_turn_added");
+    expect((resource.contents[0] as { text: string }).text).toContain("meeting_closed");
+    expect((resource.contents[0] as { text: string }).text).toContain("goal_regressed");
+    expect((resource.contents[0] as { text: string }).text).toContain("gate_checked");
+    expect((resource.contents[0] as { text: string }).text).toContain("phase_advanced");
   });
 
   it("accepts compact phase in goal_gate_check over MCP without treating detail compact as mode", async () => {
@@ -1733,7 +1733,7 @@ describe("PPIRTV MCP stdio server", () => {
     }));
     expect(repeated.recall_consumption).toMatchObject({ reused: true });
     const ledger = await client!.readResource({ uri: `ppirtv://flow/${flowId}/ledger` });
-    const ledgerText = ledger.contents[0]?.text ?? "";
+    const ledgerText = (ledger.contents[0] as { text: string }).text ?? "";
     const ledgerEvents = JSON.parse(ledgerText) as Array<Record<string, unknown>>;
     expect(ledgerEvents.filter((event) => event.type === "memory_recall_consumed")).toHaveLength(1);
   });
@@ -1838,19 +1838,19 @@ describe("PPIRTV MCP stdio server", () => {
       operations_count: 1,
       last: { source: "graphify", operation: "deep-extract", current: 4, total: 4, status: "completed" }
     });
-    expect(status.display.work_progress).toEqual(status.work_progress);
+    expect((status.display as Record<string, unknown>).work_progress).toEqual(status.work_progress);
     expect(checklist.work_progress).toEqual(status.work_progress);
-    expect(checklist.display.work_progress).toEqual(status.work_progress);
+    expect((checklist.display as Record<string, unknown>).work_progress).toEqual(status.work_progress);
     expect(checkout.work_progress).toEqual(status.work_progress);
     expect(status.evidence_count).toBe(before.evidence_count);
 
     const ledger = await client!.readResource({ uri: `ppirtv://flow/${flowId}/ledger` });
-    const ledgerEvents = JSON.parse(ledger.contents[0]?.text ?? "[]") as Array<Record<string, any>>;
+    const ledgerEvents = JSON.parse((ledger.contents[0] as { text: string }).text ?? "[]") as Array<Record<string, any>>;
     const progressEvents = ledgerEvents.filter((event) => event.type === "work_progress_recorded");
     expect(progressEvents).toHaveLength(4);
     expect(progressEvents.map((event) => event.data.current)).toEqual([1, 2, 3, 4]);
-    expect(ledger.contents[0]?.text).not.toContain("Authorization");
-    expect(ledger.contents[0]?.text).not.toContain("abcdefghijklmnop");
+    expect((ledger.contents[0] as { text: string }).text).not.toContain("Authorization");
+    expect((ledger.contents[0] as { text: string }).text).not.toContain("abcdefghijklmnop");
     expect(ledgerEvents.some((event) => event.type === "evidence_attached" && event.data.title === "Graphify deep completed")).toBe(false);
   });
 
@@ -2050,7 +2050,7 @@ describe("PPIRTV MCP stdio server", () => {
           v2_receipts: [expect.objectContaining({ status: "COMMITTED" })]
         }
       });
-      const promotedWritten = promoted.memory_mining.written as Array<{ candidate_id: string; files: string[] }>;
+      const promotedWritten = ((promoted.memory_mining as Record<string, unknown>).written) as Array<{ candidate_id: string; files: string[] }>;
       expect(promotedWritten).toHaveLength(1);
       for (const file of promotedWritten[0]!.files) {
         expect(path.relative(path.join(mcpWorkspace, ".agents"), file)).not.toMatch(/^\.\.(?:[\\/]|$)/);
@@ -2265,7 +2265,7 @@ describe("PPIRTV MCP stdio server", () => {
     // BUG 4: o envelope EVIDENCIA_AUSENTE precisa informar o flow_id e o que
     // falta, para o consumidor saber exatamente quais args passar em
     // evidence_add, em vez de adivinhar.
-    expect(resultOf(missingEvidence).error.next_required_action).toMatchObject({
+    expect((resultOf(missingEvidence).error as Record<string, unknown>).next_required_action).toMatchObject({
       args: { flow_id: flowId }
     });
 
@@ -2334,7 +2334,7 @@ describe("PPIRTV MCP stdio server", () => {
         tool: "mm_memory_mining"
       }
     });
-    const memoryAction = resultOf(memoryBlocked).error.next_required_action as Record<string, unknown>;
+    const memoryAction = (resultOf(memoryBlocked).error as Record<string, unknown>).next_required_action as Record<string, unknown>;
     const memorySequence = memoryAction.required_tool_sequence as Array<{ args?: Record<string, unknown> }>;
     expect(memorySequence[0]?.args?.flow_id).toBe(flowId);
     expect(memorySequence[1]?.args?.flow_id).toBe(flowId);
@@ -2487,7 +2487,7 @@ describe("PPIRTV MCP stdio server", () => {
     const flows = result.flows as Array<Record<string, unknown>>;
     const firstFlowId = flows[0].flow_id as string;
     const resource = await client!.readResource({ uri: `ppirtv://flow/${firstFlowId}/ledger` });
-    const ledgerText = resource.contents[0]?.text ?? "";
+    const ledgerText = (resource.contents[0] as { text: string }).text ?? "";
 
     expect(result.pipeline_id).toMatch(/^pipe_/);
     expect(result).toMatchObject({
@@ -2541,7 +2541,7 @@ describe("PPIRTV MCP stdio server", () => {
     );
     const flow = (mined.flows as Array<Record<string, unknown>>)[0];
     const ledger = await client!.readResource({ uri: `ppirtv://flow/${flow.flow_id}/ledger` });
-    const ledgerText = ledger.contents[0]?.text ?? "";
+    const ledgerText = (ledger.contents[0] as { text: string }).text ?? "";
     const memoryText = await readFile(path.join(tempRoot, "memories", "temas", "delphi", "MEMORIA.md"), "utf8");
 
     expect(flow).toMatchObject({ status: "bloqueado" });
@@ -2613,7 +2613,7 @@ describe("PPIRTV MCP stdio server", () => {
     expect((fullChecklist.default_workflow as Record<string, unknown>).short_line).toContain("P🧠 Pensamentos");
 
     const checklistResource = await client!.readResource({ uri: `ppirtv://flow/${flowId}/checklist` });
-    const resourceChecklist = JSON.parse(checklistResource.contents[0]?.text ?? "{}") as Record<string, unknown>;
+    const resourceChecklist = JSON.parse((checklistResource.contents[0] as { text: string }).text ?? "{}") as Record<string, unknown>;
     expect(resourceChecklist.markdown).toContain("Checklist PPIRTV");
     expect(Array.isArray(resourceChecklist.operational_principles)).toBe(true);
     expect((resourceChecklist.default_workflow as Record<string, unknown>).short_line).toContain("P🧠 Pensamentos");

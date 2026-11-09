@@ -751,7 +751,7 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       v2_tags: TEST_TAGS
     }) as any;
     const candidateId = mined.candidates[0].candidate_id as string;
-    const resolutionInput = {
+    const resolutionInput: Parameters<FlowEngine["resolveMemoryCandidates"]>[0] = {
       flow_id: flow.flow_id,
       candidate_ids: [candidateId],
       action,
@@ -806,7 +806,7 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
     }) as any;
     const candidateId = mined.candidates[0].candidate_id as string;
 
-    const resolutionInput = {
+    const resolutionInput: Parameters<FlowEngine["resolveMemoryCandidates"]>[0] = {
       flow_id: flow.flow_id,
       candidate_ids: [candidateId],
       action: "promote",
@@ -816,7 +816,7 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       owner_skill: "dex-memoria",
       tags: TEST_TAGS,
       rationale: `Promocao segura para ${targetScope}.`
-    } as const;
+    };
     const registered = await engine.resolveMemoryCandidates(resolutionInput) as any;
     expect(registered).toMatchObject({
       application_status: "pending",
@@ -965,7 +965,7 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
     }) as any;
     const candidateId = mined.candidates[0].candidate_id as string;
     const unsafe = await store.loadFlow(flow.flow_id);
-    delete (unsafe.memory_mining!.candidates[0] as any).tags;
+    delete (unsafe.memory_mining!.candidates![0]! as any).tags;
     await store.saveFlow(unsafe);
 
     await expect(engine.resolveMemoryCandidates({
@@ -1096,12 +1096,12 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       v2_tags: TEST_TAGS
     }) as any;
     const candidateId = mined.candidates[0].candidate_id as string;
-    const resolutionInput = {
+    const resolutionInput: Parameters<FlowEngine["resolveMemoryCandidates"]>[0] = {
       flow_id: flow.flow_id,
       candidate_ids: [candidateId],
       action: "promote",
       rationale: "A decisão e o receipt COMMITTED devem permanecer recuperáveis."
-    } as const;
+    };
     const originalAppendLedger = store.appendLedger.bind(store);
     const originalSaveFlow = store.saveFlow.bind(store);
     let injected = false;
@@ -1257,12 +1257,12 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       v2_tags: TEST_TAGS
     }) as any;
     const candidateId = mined.candidates[0].candidate_id as string;
-    const resolutionInput = {
+    const resolutionInput: Parameters<FlowEngine["resolveMemoryCandidates"]>[0] = {
       flow_id: flow.flow_id,
       candidate_ids: [candidateId],
       action: "promote",
       rationale: "Falha de leitura não autoriza rollback pós-COMMITTED."
-    } as const;
+    };
     const originalReadLedger = store.readLedger.bind(store);
     let injected = false;
     store.readLedger = async (flowId) => {
@@ -1323,12 +1323,12 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       v2_tags: TEST_TAGS
     }) as any;
     const candidateId = mined.candidates[0].candidate_id as string;
-    const resolutionInput = {
+    const resolutionInput: Parameters<FlowEngine["resolveMemoryCandidates"]>[0] = {
       flow_id: flow.flow_id,
       candidate_ids: [candidateId],
       action: "promote",
       rationale: "Falha pós-COMMITTED deve produzir recuperação bloqueada."
-    } as const;
+    };
     const originalSaveFlow = store.saveFlow.bind(store);
     let injected = false;
     store.saveFlow = async (candidateFlow) => {
@@ -1395,12 +1395,12 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       v2_tags: TEST_TAGS
     }) as any;
     const candidateId = mined.candidates[0].candidate_id as string;
-    const resolutionInput = {
+    const resolutionInput: Parameters<FlowEngine["resolveMemoryCandidates"]>[0] = {
       flow_id: flow.flow_id,
       candidate_ids: [candidateId],
       action: "promote",
       rationale: "Persistência indisponível deve falhar explicitamente sem rollback."
-    } as const;
+    };
     const originalSaveFlow = store.saveFlow.bind(store);
     store.saveFlow = async (candidateFlow) => {
       const receipts = (candidateFlow.memory_mining as any)?.v2_receipts;
@@ -1454,12 +1454,12 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       v2_tags: TEST_TAGS
     }) as any;
     const candidateId = mined.candidates[0].candidate_id as string;
-    const resolutionInput = {
+    const resolutionInput: Parameters<FlowEngine["resolveMemoryCandidates"]>[0] = {
       flow_id: flow.flow_id,
       candidate_ids: [candidateId],
       action: "promote",
       rationale: "Confirmação incompleta do flow não pode receber applied."
-    } as const;
+    };
     const originalSaveFlow = store.saveFlow.bind(store);
     store.saveFlow = async (candidateFlow) => {
       if ((candidateFlow.memory_mining as any)?.v2_ledger_status === "confirmed"
@@ -1613,7 +1613,7 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
     class IdentityChurnStore extends PpirtvStore {
       attempts = 0;
 
-      protected override async readFlowLock(_lockPath: string, lockedFlowId: string) {
+      protected override async readFlowLock(_lockPath: string, lockedFlowId: string): Promise<never> {
         this.attempts += 1;
         vi.setSystemTime(new Date(Date.now() + 10_000));
         throw Object.assign(

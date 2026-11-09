@@ -44,7 +44,7 @@ describe("memory writer selector causal activation probe", () => {
 
     const paths = {
       controlRoot, configPath, journalPath,
-      selector_before: "unconfigured", selector_after: "v2",
+      selector_before: "unconfigured" as const, selector_after: "v2" as const,
       canonical_root: canonicalRoot, entrypoint
     };
     await prepareMemoryWriterSelectorCutover(paths);
@@ -226,7 +226,7 @@ async function cutoverFixture(options: { enabled?: boolean; includeAlias?: boole
     controlRoot, configPath, journalPath,
     paths: {
       controlRoot, configPath, journalPath,
-      selector_before: options.explicitLegacy ? "legacy-v1" : "unconfigured", selector_after: "v2",
+      selector_before: options.explicitLegacy ? ("legacy-v1" as const) : ("unconfigured" as const), selector_after: "v2" as const,
       canonical_root: canonicalRoot, entrypoint
     }
   };

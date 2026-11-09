@@ -19,7 +19,7 @@ async function workspace() {
   await mkdir(path.dirname(configPath), { recursive: true });
   await writeFile(configPath, BEFORE);
   const canonical_root = path.join(controlRoot, "dex-memoria");
-  return { controlRoot, configPath, journalPath, selector_before: "unconfigured", selector_after: "v2", canonical_root, entrypoint: path.join(canonical_root, "bin", "dex-memoria.js") };
+  return { controlRoot, configPath, journalPath, selector_before: "unconfigured" as const, selector_after: "v2" as const, canonical_root, entrypoint: path.join(canonical_root, "bin", "dex-memoria.js") };
 }
 
 describe("memory writer selector cutover control plane", () => {

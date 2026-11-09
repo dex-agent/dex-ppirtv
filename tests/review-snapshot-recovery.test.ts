@@ -24,7 +24,7 @@ async function fixture(declared = ["mission.txt"]) {
   const created = await engine.createFlow({ goal: "Synthetic legacy snapshot recovery", scope: { in: ["mission.txt"], out: [] } });
   const flow = await engine.store.loadFlow(created.flow_id);
   // Seed only the legacy state; all subsequent status/review calls use public APIs.
-  flow.goal_binding = { envelope: { workspace, evidence_required: false, required_evidence: [], requested_verdict_policy: "draft" } } as Flow["goal_binding"];
+  flow.goal_binding = { envelope: { workspace, evidence_required: false, required_evidence: [], requested_verdict_policy: "draft" } } as unknown as Flow["goal_binding"];
   flow.changed_files = ["mission.txt", "nested/"];
   flow.history.push({ at: new Date().toISOString(), type: "flow_facts_updated", data: { changed_files: declared } });
   await engine.store.saveFlow(flow);

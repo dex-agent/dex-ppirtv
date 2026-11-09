@@ -64,7 +64,7 @@ describe("flow-engine responsibility balance", () => {
 
     expect(result.status).toBe("PASS");
     expect(result.mode).toBe("SHRINK");
-    expect(result.metrics.decision_points.delta).toBeLessThanOrEqual(0);
+    expect(result.metrics!.decision_points.delta).toBeLessThanOrEqual(0);
   });
 
   it("accepts the current camping owner $oraculo-refatoracao alongside the legacy owner", () => {
@@ -352,7 +352,7 @@ describe("flow-engine responsibility balance", () => {
       }
     });
 
-    expect(result.metrics.decision_points.delta).toBe(0);
+    expect(result.metrics!.decision_points.delta).toBe(0);
     expect(result.status).toBe("FAIL");
     expect(result.reasons).toContain("CONTAIN_ADDED_OR_RELOCATED_DECISION");
   });
@@ -737,7 +737,7 @@ describe("flow-engine responsibility balance", () => {
     execFileSync("git", ["commit", "-m", "commit 0 preterido"], { cwd: root });
     const liarParent = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 
-    const unsealedRecord = {
+    const unsealedRecord: Record<string, unknown> = {
       ...baseDeclaration,
       id: "seal-cura2",
       mode: "EXCEPTION",

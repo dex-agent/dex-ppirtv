@@ -6,6 +6,7 @@ import {
   GraphifyRecallProvider,
   MemoryLibrarian,
   NullMemoryGraphProvider,
+  type MemoryGraphProvider,
   parseGraphifyNodes,
   type GraphifyCommandRunner
 } from "../src/memory/index.js";
@@ -244,8 +245,8 @@ describe("memory graph providers", () => {
   });
 
   it("redacts provider warnings before the librarian persists recall summaries", async () => {
-    const graphProvider = {
-      recall: async (input: { flow_id: string; phase: "pensamentos" | "planejamento" | "implementacao" | "revisao" | "teste" | "validacao" }) => ({
+    const graphProvider: MemoryGraphProvider = {
+      recall: async (input) => ({
         flow_id: input.flow_id,
         phase: input.phase,
         queried_at: new Date().toISOString(),

@@ -147,7 +147,7 @@ describe("C-2: e2e strict — espaçado não congela entry quotada", () => {
     // pending auditável do evento de bloqueio. O contrato do quoting segue:
     // SEM aspas em conjunto fiscal nenhum (changed_files E pending).
     await expect(
-      engine.goalVerdict({ flow_id: flowId, status: "pronto", rationale: "Fixture.", evidence_ids: [proofId] })
+      engine.goalVerdict({ flow_id: flowId, status: "pronto", rationale: "Fixture.", evidence_ids: [proofId], next_step: "conferir o bloqueio review_required" })
     ).rejects.toThrow(/review_required/);
     const persisted = await engine.store.loadFlow(flowId);
     expect(persisted.changed_files.some((file) => /^".*"$/s.test(file))).toBe(false);

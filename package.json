@@ -23,7 +23,8 @@
     "memory-selector:probe": "node dist/memory-writer-selector-activation-probe-cli.js",
     "test": "vitest run",
     "test:e2e": "npm run build && vitest run tests/e2e.test.ts",
-    "check": "npm run audit:canonical && npm run check:flow-engine && npm run check:capacity && npm run build && npm test"
+    "check": "npm run audit:canonical && npm run check:flow-engine && npm run check:capacity && npm run build && npm run check:types && npm test",
+    "check:types": "tsc -p tsconfig.tests.json"
   },
   "keywords": [
     "mcp",

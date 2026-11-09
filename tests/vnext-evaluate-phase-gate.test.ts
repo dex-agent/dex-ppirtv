@@ -84,7 +84,7 @@ describe("EvaluatePhaseGate vNext", () => {
   it("does not expose nested provided references through its decision", () => {
     const snapshot = gateSnapshot({ provided: { risks: ["known"] } });
     const result = evaluatePhaseGate(snapshot);
-    const provided = (result.next_required_action as { provided: { risks: string[] } }).provided;
+    const provided = (result.next_required_action as unknown as { provided: { risks: string[] } }).provided;
 
     provided.risks.push("mutated outside");
 
@@ -244,7 +244,7 @@ describe("EvaluatePhaseGate vNext", () => {
 
     const pending = evaluatePhaseGateWithHistory(snapshot, port);
     (snapshot as { action_signature: string }).action_signature = "mutated";
-    (snapshot.requirements as Array<{ satisfied: boolean }>)[0].satisfied = true;
+    (snapshot.requirements as unknown as Array<{ satisfied: boolean }>)[0].satisfied = true;
     releaseHistory();
 
     await expect(pending).resolves.toMatchObject({

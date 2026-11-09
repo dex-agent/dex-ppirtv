@@ -1,3 +1,15 @@
+## Reavaliação — ISSUE-0005 typecheck de tests/ no pipeline (D-32), 2026-11-09
+
+Capability paths tocados: tsconfig.tests.json (NOVO: extends base, noEmit,
+lib ES2023, include src+tests), package.json (script check:types entrando no
+check ANTES do vitest), scripts/validate-flow-engine-boundary.d.mts (NOVO:
+declarações do validador .mjs para o typecheck consumir), tests/ (curadoria
+de ~130 erros herdados em 18 arquivos: fixtures completas — Meeting 8 campos,
+GoalVerdictInput.next_step, GateRequirement.kind; imports de tipos; as const
+dos profiles; casts de envelope dinâmico; ! só em asserts). Baseline RED
+congelado (251 linhas tsc, src/ puro 0). tsc 0 erros; suíte 896 (892+4)
+VERDE sem mudança de comportamento; zero src/*.ts de runtime no corte.
+
 ## Reavaliação — D-31 emenda adversarial: aviso unconfirmed + fronteira envelope + preflight simétrico, 2026-11-09
 
 Capability paths tocados: src/flow-engine.ts (cola pura — julgamento extraído;

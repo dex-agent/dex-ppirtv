@@ -51,7 +51,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
     });
 
     const status = await engine.goalStatus({ flow_id: flow.flow_id });
-    expect(status.blocker_diagnostics.blocker_families).toEqual(
+    expect((status.blocker_diagnostics as Record<string, unknown>).blocker_families).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           blocker: "memoria_viva_reconciled",
@@ -75,7 +75,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto_com_ressalvas",
         rationale: "Mudanca de codigo precisa de review.",
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         residual_risks: ["review ainda nao anexado"],
         next_step: "anexar review antes de novo veredito"
       })
@@ -104,7 +104,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto_com_ressalvas",
         rationale: "Ressalva confessa ausencia da mesa.",
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         residual_risks: ["sem reuniao material para decidir a ressalva"],
         next_step: "abrir reuniao material agora"
       })
@@ -132,7 +132,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto_com_ressalvas",
         rationale: "Ressalva confessa ausência da mesa.",
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         residual_risks: ["sem reunião material para decidir a ressalva"],
         next_step: "abrir reuniao material agora"
       })
@@ -157,7 +157,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto_com_ressalvas",
         rationale: "Mudanca de codigo precisa de review.",
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         residual_risks: ["sem reunir evidencias suficientes no pacote"],
         next_step: "anexar review antes de novo veredito"
       })
@@ -182,7 +182,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto_com_ressalvas",
         rationale: "Ressalva antiga dizia sem reuniao material.",
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         residual_risks: ["sem reuniao material para decidir a ressalva"],
         next_step: "abrir reuniao material agora"
       })
@@ -212,7 +212,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto_com_ressalvas",
         rationale: "Ressalva ainda depende de mesa material.",
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         residual_risks: ["sem reuniao material para decidir a ressalva"],
         next_step: "abrir reuniao material agora"
       })
@@ -241,7 +241,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto_com_ressalvas",
         rationale: "required_cooperation nao se aplica neste corte.",
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         residual_risks: ["meeting_id opcional porque nao ha required_cooperation"],
         next_step: "anexar review antes de novo veredito"
       })
@@ -266,7 +266,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto_com_ressalvas",
         rationale: "required_cooperation nao se aplica ao pacote antigo.",
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         residual_risks: ["sem reuniao material para decidir o risco atual"],
         next_step: "abrir reuniao material agora"
       })
@@ -371,7 +371,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto_com_ressalvas",
         rationale: "Tentativa com participantes insuficientes.",
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         residual_risks: ["participantes insuficientes"],
         meeting_id: opened.meeting_id as string,
         next_step: "Fechar nova reuniao com participantes obrigatorios agora."
@@ -412,7 +412,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto_com_ressalvas",
         rationale: "Risco material novo apareceu no veredito.",
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         residual_risks: ["sem reuniao material para o risco novo"],
         next_step: "abrir reuniao material agora"
       })
@@ -452,7 +452,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto_com_ressalvas",
         rationale: "Risco material declarado no primeiro veredito.",
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         residual_risks: ["sem reuniao material para o risco inicial"],
         next_step: "abrir reuniao material agora"
       })
@@ -499,7 +499,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto_com_ressalvas",
         rationale: "Risco material declarado no primeiro veredito.",
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         residual_risks: ["sem reuniao material para o risco inicial"],
         next_step: "abrir reuniao material agora"
       })
@@ -546,7 +546,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto_com_ressalvas",
         rationale: "Tentativa sem meeting_id deve orientar o operador.",
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         residual_risks: ["sem meeting_id no veredito"],
         next_step: "Repetir goal_verdict agora com meeting_id."
       })
@@ -601,7 +601,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto_com_ressalvas",
         rationale: "Evidencias e decisao material revisadas.",
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         residual_risks: ["risco residual baixo"],
         next_step: "arquivar apos validacao agora"
       })
@@ -645,7 +645,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
       flow_id: flow.flow_id,
       status: "pronto_com_ressalvas",
       rationale: "Veredito vinculado ao encontro fechado.",
-      evidence_ids: [evidence.evidence_id],
+      evidence_ids: [evidence.evidence_id as string],
       residual_risks: ["risco residual baixo"],
       meeting_id: opened.meeting_id as string,
       next_step: "registrar segundo veredito agora sem novo gatilho material"
@@ -656,7 +656,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto_com_ressalvas",
         rationale: "Segundo veredito sem novo risco material.",
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         residual_risks: ["risco residual baixo"],
         next_step: "arquivar apos validacao agora"
       })
@@ -693,7 +693,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         flow_id: flow.flow_id,
         status: "pronto_com_ressalvas",
         rationale: "Novo risco material surgiu depois da reuniao antiga.",
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         residual_risks: ["sem reuniao material para o risco novo"],
         meeting_id: opened.meeting_id as string,
         next_step: "abrir reuniao material para o risco novo agora"
@@ -834,7 +834,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
       flow_id: flow.flow_id,
       status: "pronto",
       rationale: "Primeiro veredito positivo antes da cooperacao posterior.",
-      evidence_ids: [evidence.evidence_id],
+      evidence_ids: [evidence.evidence_id as string],
       next_step: "encerrar quando o guard terminal permitir"
     });
     const meeting = await engine.goalMeetingOpen({
@@ -856,7 +856,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
         status: "pronto",
         rationale: "Tentativa posterior sem vincular a reuniao elegivel.",
         recurring_risk: true,
-        evidence_ids: [evidence.evidence_id],
+        evidence_ids: [evidence.evidence_id as string],
         next_step: "repetir com meeting_id"
       })
     ).rejects.toThrow(/required_cooperation/i);
@@ -988,7 +988,7 @@ describe("GOAL fiscal canonical verdict boundary", () => {
       flow_id: flow.flow_id,
       status: "pronto_com_ressalvas",
       rationale: "Implementacao e testes atendem ao objetivo do corte.",
-      evidence_ids: [evidence.evidence_id],
+      evidence_ids: [evidence.evidence_id as string],
       residual_risks: ["sincronizacao de consumidor fica para a proxima release"],
       next_step: "sincronizar quando a proxima release for aberta"
     });

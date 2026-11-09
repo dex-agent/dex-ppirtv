@@ -5,8 +5,8 @@ import {
   collectMemoryNuggets,
   isBookkeepingNugget,
   isWritableCandidate,
-  type MemoryCandidate
 } from "../src/memory/mining-policy.js";
+import type { MemoryCandidate } from "../src/domain.js";
 
 function buildCandidate(overrides: Partial<MemoryCandidate> = {}): MemoryCandidate {
   return {

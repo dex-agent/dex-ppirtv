@@ -34,7 +34,7 @@ beforeEach(async () => {
     flow_id: flow.flow_id,
     status: "pronto_com_ressalvas",
     rationale: "Aceite confirmado.",
-    evidence_ids: [evidence.evidence_id],
+    evidence_ids: [evidence.evidence_id as string],
     residual_risks: [],
     next_step: "Quando este aceite terminar, encerrar este corte."
   };

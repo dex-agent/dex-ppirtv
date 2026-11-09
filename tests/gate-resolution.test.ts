@@ -45,9 +45,9 @@ describe("gate requirement resolution", () => {
     const resolved = resolveGateRequirements({
       flow,
       requirements: [
-        { key: "diff_reviewed", label: "diff", source: "provided" },
-        { key: "barata_scan", label: "barata", source: "provided" },
-        { key: "regression_risks", label: "riscos", source: "provided" }
+        { key: "diff_reviewed", label: "diff", source: "provided", kind: "boolean" },
+        { key: "barata_scan", label: "barata", source: "provided", kind: "boolean" },
+        { key: "regression_risks", label: "riscos", source: "provided", kind: "non_empty_string_array" }
       ]
     });
 

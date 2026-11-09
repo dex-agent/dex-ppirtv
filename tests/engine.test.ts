@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FlowEngine } from "../src/flow-engine.js";
+import type { AnyPhase, Phase } from "../src/domain.js";
 import { promptText } from "../src/catalogs.js";
 import { validateMemoryPostWrite, type MemoryGraphProvider, MemoryLibrarian, type MemoryHookRunner } from "../src/memory/index.js";
 import { AUTO_WRITE_REVIEW_MARKER, AUTO_WRITE_REVIEW_TAGS, memoryAnchor } from "../src/memory/mining-policy.js";
@@ -713,10 +714,15 @@ describe("PPIRTV flow engine", () => {
         meeting_id: undefined as unknown as string,
         flow_id: flow.flow_id,
         type: "divergent",
+        kind: "divergente",
         question: "Nao deve gravar undefined",
         status: "open",
         opened_at: new Date().toISOString(),
+        participants_required: [],
+        participants_present: [],
+        suggested_cooperators: [],
         questions: [],
+        findings: [],
         hypotheses: [],
         alternatives: [],
         decisions: [],
@@ -726,6 +732,9 @@ describe("PPIRTV flow engine", () => {
         impacts: [],
         owners: [],
         gates_extra: [],
+        satisfies_blockers: [],
+        evidence_ids: [],
+        turns: [],
         parking_lot: [],
         gold_mining: [],
         cooperators: [],
@@ -2624,7 +2633,7 @@ describe("PPIRTV flow engine", () => {
       flow_id: flowId,
       status: "pronto",
       rationale: "Codigo revisado e validado.",
-      evidence_ids: [evidenceId, review.evidence_id],
+      evidence_ids: [evidenceId, review.evidence_id as string],
       review_artifact_path: ".agents/REPORTS/review-terminal.md",
       review_findings: ["review material fornecido pelo contrato publico"],
       next_step: "encerrar agora"
@@ -2688,7 +2697,7 @@ describe("PPIRTV flow engine", () => {
         flow_id: flowId,
         status: "nao_pronto",
         rationale: "nao pode reescrever veredito terminal",
-        evidence_ids: [evidenceId, review.evidence_id],
+        evidence_ids: [evidenceId, review.evidence_id as string],
         next_step: "abrir outro ciclo"
       })
     ).rejects.toThrow("FLOW_IMMUTABLE_AFTER_COMPLETION");
@@ -2923,7 +2932,7 @@ describe("PPIRTV flow engine", () => {
       flow_id: flowId,
       status: "pronto",
       rationale: "Revisao 1 comprovada.",
-      evidence_ids: [evidenceId, review.evidence_id],
+      evidence_ids: [evidenceId, review.evidence_id as string],
       next_step: "encerrar agora"
     });
 
@@ -3012,7 +3021,7 @@ describe("PPIRTV flow engine", () => {
       flow_id: flowId,
       status: "pronto",
       rationale: "Rota legada nao pode contornar o fiscal do GOAL.",
-      evidence_ids: [evidenceId, review.evidence_id],
+      evidence_ids: [evidenceId, review.evidence_id as string],
       next_step: "usar goal_verdict"
     })).rejects.toThrow("OFFICIAL_GOAL_REQUIRES_GOAL_VERDICT");
 
@@ -3028,7 +3037,7 @@ describe("PPIRTV flow engine", () => {
       flow_id: flowId,
       status: "pronto",
       rationale: "Primeiro veredito cita a review corrente.",
-      evidence_ids: [evidenceId, review.evidence_id],
+      evidence_ids: [evidenceId, review.evidence_id as string],
       next_step: "tentar novo veredito"
     });
     await expect(engine.goalVerdict({
@@ -3074,7 +3083,7 @@ describe("PPIRTV flow engine", () => {
       flow_id: flowId,
       status: "pronto",
       rationale: "Review anterior ao campo de snapshot.",
-      evidence_ids: [evidenceId, review.evidence_id],
+      evidence_ids: [evidenceId, review.evidence_id as string],
       review_artifact_path: ".agents/REPORTS/review-pre-upgrade.md",
       review_findings: ["SRC/flow-engine.ts foi revisado"],
       next_step: "encerrar agora"
@@ -3134,7 +3143,7 @@ describe("PPIRTV flow engine", () => {
       flow_id: flowId,
       status: "pronto",
       rationale: "Alteracao original revisada.",
-      evidence_ids: [evidenceId, review.evidence_id],
+      evidence_ids: [evidenceId, review.evidence_id as string],
       review_artifact_path: ".agents/REPORTS/review-original.md",
       review_findings: ["src/flow-engine.ts foi revisado"],
       next_step: "encerrar agora"
@@ -3744,7 +3753,7 @@ describe("PPIRTV flow engine", () => {
     await engine.updateFlowFacts(flowId, { risks: ["memoria L1/L2 exigida para nao repetir erro"], tasks: ["promover aprendizado reutilizavel"] });
 
     const checklist = await engine.renderChecklist(flowId, "full");
-    const memoryPrinciple = checklist.operational_principles.find((item) => item.id === "memoria_sem_lembranca");
+    const memoryPrinciple = checklist.operational_principles!.find((item) => item.id === "memoria_sem_lembranca");
 
     expect(memoryPrinciple?.checked).toBe(false);
     expect(checklist.display.checklist_visual).toEqual(
@@ -4350,7 +4359,7 @@ describe("PPIRTV flow engine", () => {
       flow_id: flowId,
       provided: { context: "ctx", risks: ["risco"], scope_in: ["src"], scope_out: ["fora"], tasks: ["codar"], done_criteria: ["passar"] }
     });
-    expect(advanced1.flow?.phase ?? (advanced1 as Record<string, unknown>).phase).toBe("implementacao");
+    expect(((advanced1.flow as Record<string, unknown> | null | undefined)?.phase ?? (advanced1 as Record<string, unknown>).phase)).toBe("implementacao");
 
     // Implementacao -> Revisao. Em compact, a revisao acontece na proxima
     // fase. usamos risk_level "mechanical" para nao exigir review_required
@@ -5177,7 +5186,7 @@ describe("PPIRTV flow engine", () => {
     const { flowId } = await startGoalWithEvidence("dex-code:test-fiscal-t17", "Checklist pendente antes da prova");
 
     const checklist = await engine.renderChecklist(flowId, "full");
-    const proofPrinciples = checklist.operational_principles.filter((item) =>
+    const proofPrinciples = checklist.operational_principles!.filter((item) =>
       ["casa_limpa", "memoria_sem_lembranca", "barata_nunca_esta_sozinha"].includes(item.id)
     );
 
@@ -5536,13 +5545,13 @@ describe("PPIRTV flow engine", () => {
         }),
         direct_action: expect.stringContaining("resolution_guidance")
       });
-      expect(status.checklist.display.direct_action.action).toContain("Bloqueado:");
-      expect(status.checklist.operational_principles).toEqual(
+      expect((((status.checklist as Record<string, unknown>).display as Record<string, unknown>).direct_action as Record<string, unknown>).action).toContain("Bloqueado:");
+      expect((status.checklist as Record<string, unknown>).operational_principles).toEqual(
         expect.arrayContaining([expect.objectContaining({ id: "casa_limpa", checked: false, state: "blocked" })])
       );
-      expect(evidenceAfterBlock.status.checklist.display.direct_action.action).toContain("Bloqueado:");
-      expect(archived.display.direct_action.action).toContain("Arquivado com bloqueios preservados");
-      expect(archived.display.direct_action.action).not.toMatch(/Gate pronto para avancar|pronto para avancar/i);
+      expect(((((evidenceAfterBlock.status as Record<string, unknown>).checklist as Record<string, unknown>).display as Record<string, unknown>).direct_action as Record<string, unknown>).action).toContain("Bloqueado:");
+      expect(archived.display.direct_action!.action).toContain("Arquivado com bloqueios preservados");
+      expect(archived.display.direct_action!.action).not.toMatch(/Gate pronto para avancar|pronto para avancar/i);
       expect(hygiene.hygiene_blocking).toBe(true);
       // BUG 1 (novo contrato): classify_only com 0 strong_unwritten limpa o
       // memory_required_but_empty. Outros blockers persistem.
@@ -5825,7 +5834,7 @@ describe("PPIRTV flow engine", () => {
     expect(resolved.blockers).not.toContain("review_required");
     expect(resolved.next_required_action).not.toMatchObject({ type: "attach_review" });
     expect(resolved.ppirtv_checkout).toMatchObject({
-      resolution_guidance: resolved.blockers.length > 0 ? expect.any(Object) : null
+      resolution_guidance: ((resolved.blockers as unknown[]) ?? []).length > 0 ? expect.any(Object) : null
     });
 
     await engine.updateFlowFacts(flowId, { changed_files: ["src/server.ts"] });
@@ -6503,12 +6512,12 @@ describe("PPIRTV flow engine", () => {
       archived_blocked_flow: true,
       preserved_blockers: expect.arrayContaining(["required_cooperation"])
     });
-    expect(archived.display.direct_action.action).toContain("Arquivado com bloqueios preservados");
+    expect(archived.display.direct_action!.action).toContain("Arquivado com bloqueios preservados");
     expect(archiveRetry).toMatchObject({
       archived_blocked_flow: true,
       preserved_blockers: expect.arrayContaining(["required_cooperation"])
     });
-    expect(archiveRetry.display.direct_action.action).toContain("Arquivado com bloqueios preservados");
+    expect(archiveRetry.display.direct_action!.action).toContain("Arquivado com bloqueios preservados");
     expect(await engine.store.readLedger(flowId)).toEqual(ledgerAfterArchive);
     expect(status.ppirtv_checkout).toMatchObject({
       status: "archived",
@@ -6646,7 +6655,7 @@ describe("PPIRTV flow engine", () => {
     expect(status.blockers as string[]).not.toContain("memory_required_but_empty");
     expect((status.fiscal_policy as Record<string, unknown>).blocking_reasons as string[]).not.toContain("memory_required_but_empty");
     expect((status.ppirtv_checkout as Record<string, unknown>).direct_action as string).not.toContain("memory_required_but_empty");
-    expect(archived.preserved_blockers as string[]).not.toContain("memory_required_but_empty");
+    expect((archived as unknown as Record<string, unknown>).preserved_blockers as string[]).not.toContain("memory_required_but_empty");
     expect(memory).toMatchObject({
       required: true,
       mined: true,
@@ -6709,7 +6718,7 @@ describe("PPIRTV flow engine", () => {
     const archived = await engine.archiveFlow({ flow_id: flowId, reason: "candidatos sem lista continuam bloqueando" });
 
     expect(status.blockers as string[]).toContain("memory_required_but_empty");
-    expect(archived.preserved_blockers as string[]).toContain("memory_required_but_empty");
+    expect((archived as unknown as Record<string, unknown>).preserved_blockers as string[]).toContain("memory_required_but_empty");
   });
 
   it("T32 keeps goal_verdict from auto-writing after explicit classify_only mining", async () => {
@@ -7621,7 +7630,7 @@ describe("PPIRTV flow engine", () => {
       const flow = await engine.createFlow({ goal: "Contrato via env" });
       const checklist = await engine.renderChecklist(flow.flow_id, "full");
 
-      expect(checklist.operational_principles.map((item) => item.id)).toEqual(["custom_env_contract"]);
+      expect(checklist.operational_principles!.map((item) => item.id)).toEqual(["custom_env_contract"]);
     } finally {
       restoreEnv(originalEnv);
       process.chdir(originalCwd);
@@ -7721,7 +7730,7 @@ describe("PPIRTV flow engine", () => {
         blocks_ready_when: ["acao futura sem quando"],
         trace_destination: ["verdict_parking_lot", "SPT"]
       });
-      expect(checklist.operational_principles[0]).toMatchObject({
+      expect(checklist.operational_principles![0]).toMatchObject({
         id: "gate_do_quando",
         default_severity: "BLOCK",
         required_actions: ["exigir data, gatilho, cadencia ou responsavel"],
@@ -7908,7 +7917,7 @@ describe("PPIRTV flow engine", () => {
       const flow = await engine.createFlow({ goal: "Contrato compartilhado" });
       const checklist = await engine.renderChecklist(flow.flow_id, "full");
 
-      expect(checklist.operational_principles.map((item) => item.id)).toEqual(["shared_memory_contract"]);
+      expect(checklist.operational_principles!.map((item) => item.id)).toEqual(["shared_memory_contract"]);
     } finally {
       restoreEnv(originalEnv);
       restoreUserProfile(originalUserProfile);
@@ -7951,7 +7960,7 @@ describe("PPIRTV flow engine", () => {
       const flow = await engine.createFlow({ goal: "Contrato local" });
       const checklist = await engine.renderChecklist(flow.flow_id, "full");
 
-      expect(checklist.operational_principles.map((item) => item.id)).toEqual(["local_contract"]);
+      expect(checklist.operational_principles!.map((item) => item.id)).toEqual(["local_contract"]);
     } finally {
       restoreEnv(originalEnv);
       restoreUserProfile(originalUserProfile);
@@ -7971,7 +7980,7 @@ describe("PPIRTV flow engine", () => {
       const checklist = await engine.renderChecklist(flow.flow_id, "full");
       const hygiene = await engine.hygieneScan();
 
-      expect(checklist.operational_principles.some((item) => item.id === "memoria_sem_lembranca")).toBe(true);
+      expect(checklist.operational_principles!.some((item) => item.id === "memoria_sem_lembranca")).toBe(true);
       expect(hygiene.findings).toEqual(
         expect.arrayContaining([
           expect.objectContaining({

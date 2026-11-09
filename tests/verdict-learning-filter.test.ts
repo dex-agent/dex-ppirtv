@@ -42,7 +42,7 @@ beforeEach(async () => {
   await engine.store.saveFlow(flow);
   flowId = flow.flow_id;
   const evidence = await engine.addGoalEvidence({ flow_id: flowId, title: "Prova sintetica", content: "Assert executado." });
-  lastEvidenceId = evidence.evidence_id;
+  lastEvidenceId = evidence.evidence_id as string;
 });
 
 let lastEvidenceId = "";

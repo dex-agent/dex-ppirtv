@@ -33,8 +33,8 @@ async function workspace() {
     controlRoot,
     configPath,
     journalPath,
-    selector_before: "unconfigured",
-    selector_after: "v2",
+    selector_before: "unconfigured" as const,
+    selector_after: "v2" as const,
     canonical_root: path.join(controlRoot, "dex-memoria"),
     entrypoint: path.join(controlRoot, "dex-memoria", "bin", "dex-memoria.js")
   };
@@ -82,7 +82,7 @@ describe("selector cutover hardening", () => {
 
   it("rejects legacy-v1 as the declared before profile when the selector key is absent", async () => {
     const paths = await workspace();
-    await expect(prepareMemoryWriterSelectorCutover({ ...paths, selector_before: "legacy-v1" }))
+    await expect(prepareMemoryWriterSelectorCutover({ ...paths, selector_before: "legacy-v1" as const }))
       .rejects.toThrow("PPIRTV_SELECTOR_CUTOVER_UNEXPECTED_PROFILE: unconfigured");
   });
 
