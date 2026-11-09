@@ -34,16 +34,19 @@ describe("gate provided.changed_files: path inexistente e expurgo (ISSUE-LOCAL-0
       },
     })) as Record<string, unknown>;
 
-    // ressava nomeando o typo (aviso; nunca em missing/blocked)
+    // ressalva nomeando o typo (aviso; nunca em missing/blocked — e a gate
+    // segue passed: ressalva nunca bloqueia, contrato de domain.ts)
     expect(Array.isArray(gate.provided_missing_paths)).toBe(true);
     expect(gate.provided_missing_paths).toContain("src/typo-fantasma-ts.ts");
-    expect(Array.isArray(gate.missing) ? gate.missing : []).not.toContain("src/typo-fantasma-ts.ts");
+    expect(gate.missing).not.toContain("src/typo-fantasma-ts.ts");
+    expect(gate.status).toBe("passed");
 
     // o typo NAO persiste na union acumulada
     const flow = await engine.store.loadFlow(flowId);
     expect(flow.changed_files).toContain("src/app.ts");
     expect(flow.changed_files).not.toContain("src/typo-fantasma-ts.ts");
-    expect(workspace).toBeTruthy();
+    // a raiz de julgamento e o workspace do ENVELOPE (nunca o CWD do processo)
+    expect(flow.goal_binding!.envelope.workspace).toBe(workspace);
   });
 
   it("path valido declarado antes de existir fica de fora COM ressalva ate existir (comportamento declarado)", async () => {
@@ -61,6 +64,7 @@ describe("gate provided.changed_files: path inexistente e expurgo (ISSUE-LOCAL-0
     })) as Record<string, unknown>;
 
     expect(gate.provided_missing_paths).toContain("src/futuro.ts");
+    expect(gate.status).toBe("passed");
     const flow = await engine.store.loadFlow(flowId);
     expect(flow.changed_files).not.toContain("src/futuro.ts");
 
@@ -99,21 +103,24 @@ describe("gate provided.changed_files: path inexistente e expurgo (ISSUE-LOCAL-0
     // PERMANECE na union (memoria do escopo — o snapshot o atesta como
     // deleted; expurga-lo quebra a atestacao, regresso medido na emenda)
     await rm(path.join(workspace, "src", "temp.ts"), { force: true });
-    await engine.goalGateCheck({
+    const gate2 = (await engine.goalGateCheck({
       flow_id: flowId,
       phase: "implementacao",
       persist: true,
       provided: { implementation_done: true, changed_files: ["src/app.ts"], deleted_files: ["src/temp.ts"] },
-    });
+    })) as Record<string, unknown>;
     flow = await engine.store.loadFlow(flowId);
     expect(flow.changed_files).toContain("src/app.ts");
     expect(flow.changed_files).toContain("src/temp.ts");
     expect(flow.deleted_files ?? []).toContain("src/temp.ts");
-    // e a ressalva NAO acusa o path declarado como deleted (ausencia legitima)
+    // a ressalva NAO acusa o path declarado como deleted (deleção REAL de quem
+    // está na union histórica — isenção legítima) e a gate segue passed
+    expect(gate2.provided_missing_paths ?? []).not.toContain("src/temp.ts");
+    expect(gate2.status).toBe("passed");
   });
 
   it("deleted_files de path fora do escopo historico continua reprovado (DELETED_FILES_NOT_CHANGED)", async () => {
-    const { flowId } = await startGoal("gate-paths-estrorno");
+    const { flowId } = await startGoal("gate-paths-guard-escopo");
     await engine.updateFlowFacts(flowId, { changed_files: ["src/app.ts"] });
     await expect(
       engine.goalGateCheck({
@@ -121,6 +128,106 @@ describe("gate provided.changed_files: path inexistente e expurgo (ISSUE-LOCAL-0
         phase: "implementacao",
         persist: true,
         provided: { implementation_done: true, changed_files: ["src/app.ts"], deleted_files: ["src/ nunca-esteve-aqui.ts"] },
+      })
+    ).rejects.toThrow(/DELETED_FILES_NOT_CHANGED/);
+  });
+
+  it("BYPASS FECHADO adversarial D-31 P1 — par changed E deleted simultâneo de path que o disco NÃO confirma entra por atestação canônica COM aviso, nunca mudo, nunca bloqueia", async () => {
+    const { flowId } = await startGoal("gate-paths-bypass");
+    await engine.updateFlowFacts(flowId, { changed_files: ["src/app.ts"] });
+
+    // Pré-emenda: o par simultâneo plantava o fantasma na union SEM aviso
+    // nenhum (mudo — bypass do contrato publicado). Pós-emenda: o par é o
+    // formato canônico de deleção (1ª declaração; indistinguível de deleção
+    // real no disco), então ENTRA na union por atestação do cliente, mas o
+    // receipt emite provided_unconfirmed_deletions nomeando o path — o typo
+    // deixa de ser mudo sem quebrar a deleção real legítima.
+    const gate = (await engine.goalGateCheck({
+      flow_id: flowId,
+      phase: "implementacao",
+      persist: true,
+      provided: {
+        implementation_done: true,
+        changed_files: ["src/app.ts", "src/typo-bypass.ts"],
+        deleted_files: ["src/typo-bypass.ts"],
+      },
+    })) as Record<string, unknown>;
+    expect(gate.status).toBe("passed");
+    expect(gate.provided_unconfirmed_deletions).toContain("src/typo-bypass.ts");
+    expect(gate.provided_missing_paths ?? []).not.toContain("src/typo-bypass.ts");
+    const flow = await engine.store.loadFlow(flowId);
+    expect(flow.changed_files).toContain("src/typo-bypass.ts");
+  });
+
+  it("fluxo SEM goal_binding gate_check legado — sem envelope não há raiz legítima, sem ressalva e sem contaminação pelo CWD do servidor adversarial D-31", async () => {
+    const created = (await engine.createFlow({ goal: "fluxo legado sem binding (gate_check)" })) as { flow_id: string };
+    await engine.updateFlowFacts(created.flow_id, { changed_files: ["src/app.ts"] });
+
+    // Pré-cura: o fallback process.cwd() julgava existência contra a raiz do
+    // SERVIDOR (arquivo do produto podia entrar na union de flow sem
+    // workspace). Pós-cura: sem envelope a ressalva fica ausente (não há
+    // fronteira para julgar) — comportamento pré-issue preservado na rota legada.
+    const gate = (await engine.checkGate({
+      flow_id: created.flow_id,
+      phase: "implementacao",
+      persist: true,
+      provided: {
+        implementation_done: true,
+        changed_files: ["src/app.ts", "nao-existe-em-lugar-nenhum.ts"],
+      },
+    })) as Record<string, unknown>;
+    expect(gate.provided_missing_paths ?? []).not.toContain("nao-existe-em-lugar-nenhum.ts");
+  });
+
+  it("diretório não é arquivo do escopo — typo em forma de diretório ganha ressalva e NÃO entra na union adversarial D-31 V3", async () => {
+    const { flowId } = await startGoal("gate-paths-diretorio");
+    await engine.updateFlowFacts(flowId, { changed_files: ["src/app.ts"] });
+
+    const gate = (await engine.goalGateCheck({
+      flow_id: flowId,
+      phase: "implementacao",
+      persist: true,
+      provided: { implementation_done: true, changed_files: ["src/app.ts", "src"] },
+    })) as Record<string, unknown>;
+    expect(gate.provided_missing_paths).toContain("src");
+    const flow = await engine.store.loadFlow(flowId);
+    expect(flow.changed_files).not.toContain("src");
+  });
+
+  it("goal_gate_preflight emite a mesma ressalva do gate — assimetria fechada adversarial D-31", async () => {
+    const { flowId } = await startGoal("gate-paths-preflight");
+    await engine.updateFlowFacts(flowId, { changed_files: ["src/app.ts"] });
+
+    const preflight = (await engine.goalGatePreflight({
+      flow_id: flowId,
+      phase: "implementacao",
+      provided: { implementation_done: true, changed_files: ["src/app.ts", "src/typo-preflight.ts"] },
+    })) as Record<string, unknown>;
+    expect(preflight.provided_missing_paths).toContain("src/typo-preflight.ts");
+  });
+
+  it("sequência declarado-antes-de-existir com deleted depois — guard ensina que o path nunca foi escopo adversarial D-31 V5 documental", async () => {
+    const { flowId } = await startGoal("gate-paths-v5");
+    await engine.updateFlowFacts(flowId, { changed_files: ["src/app.ts"] });
+
+    // gate1: path ainda inexistente fica de fora COM ressalva (desenho #6)
+    const gate1 = (await engine.goalGateCheck({
+      flow_id: flowId,
+      phase: "implementacao",
+      persist: true,
+      provided: { implementation_done: true, changed_files: ["src/app.ts", "src/temp-v5.ts"] },
+    })) as Record<string, unknown>;
+    expect(gate1.provided_missing_paths).toContain("src/temp-v5.ts");
+
+    // gate2: deleted_files de quem nunca entrou na union é erro de contrato —
+    // o throw nomeia o path (recuperação: não há escopo para deletar;
+    // corrija a declaração em vez de insistir)
+    await expect(
+      engine.goalGateCheck({
+        flow_id: flowId,
+        phase: "implementacao",
+        persist: true,
+        provided: { implementation_done: true, changed_files: ["src/app.ts"], deleted_files: ["src/temp-v5.ts"] },
       })
     ).rejects.toThrow(/DELETED_FILES_NOT_CHANGED/);
   });

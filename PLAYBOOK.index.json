@@ -3,7 +3,7 @@
   "generated_by": "tools/playbook/generate-playbook.py",
   "authority": "derived_projection",
   "repo_name": "dex-PPIRTV",
-  "sources_revision": "sha256:26e4018fb36372539831f24487e2c9104ed4836ae511ba9efa9398567eb1a9fa",
+  "sources_revision": "sha256:a0c70cf88fa830bdfc4d89f4ab290259118ba9f49aaaf1da99b47d202748261c",
   "sent_revision": "sha256:c3fe3900353785713ca9fdb1d0ff4a840d2eade60eadca73b9a4ac228bd6dc0f",
   "rules": [
     {
@@ -40,25 +40,25 @@
       "fonte": "AGENTS.md#L26-L68"
     },
     {
-      "seal": "pb-ec1b3d91",
-      "locator": "PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL",
+      "seal": "pb-a4b7a55a",
+      "locator": "CONSELHEIRO-ATIVO-PADRAO-REPO",
       "title": "Regras locais",
-      "gatilho": "Formato de ciclo: `Unreleased` ate decisao explicita de versao; gatilhos:",
-      "extrato": "- Manter `CHANGELOG.md` atualizado. Owner: `$projeto-manter-changelog`.",
+      "gatilho": "mapa quente em `.agents/GATILHOS-VIVOS.md`).",
+      "extrato": "- `CONSELHEIRO-ATIVO-PADRAO-REPO` (GO do dono 2026-11-09): toda sessão de",
       "rotas": [],
-      "fonte": "AGENTS.md#L69-L221"
+      "fonte": "AGENTS.md#L69-L233"
     },
     {
-      "seal": "pb-7b0765ec",
+      "seal": "pb-c525bb53",
       "locator": "PPIRTV-CAPACITY-COMMIT-GATE",
       "title": "Validacao minima",
       "gatilho": "ndeclarado",
       "extrato": "```powershell",
       "rotas": [],
-      "fonte": "AGENTS.md#L251-L273"
+      "fonte": "AGENTS.md#L263-L285"
     },
     {
-      "seal": "pb-43c52bf8",
+      "seal": "pb-9864e092",
       "locator": "PPIRTV-CHATO-LIVE-PREFLIGHT",
       "title": "Ordens diretas do Comandante Owner o $chato 🗣️",
       "gatilho": "2. $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamento da $estacionamento ao lado da $garimpeiro e tudo que for achado MEMORÁVEL...",
@@ -69,19 +69,19 @@
         "Ative o fluxo visual PPIRTV com checklist visual dinâmico u...",
         "Sempre finalize o trabalho analisando \"com lentes dos espec..."
       ],
-      "fonte": "AGENTS.md#L274-L336"
+      "fonte": "AGENTS.md#L286-L348"
     },
     {
-      "seal": "pb-919696e7",
+      "seal": "pb-234246a9",
       "locator": "PPIRTV-GIT-CONSOLIDACAO-SELETIVA-MAIN",
       "title": "Dex Agent Local",
       "gatilho": "- Antes de qualquer consolidacao Git deste repositorio, recupere o gatilho",
       "extrato": "- Projeto: `dex-PPIRTV`",
       "rotas": [],
-      "fonte": "AGENTS.md#L337-L381"
+      "fonte": "AGENTS.md#L349-L393"
     },
     {
-      "seal": "pb-7f2bfe9e",
+      "seal": "pb-ea6ceb8a",
       "locator": "TRACKER-LOCAL",
       "title": "Bootstrap (toda janela nova, nesta ordem)",
       "gatilho": "operar) → `.agents\\GATILHOS-VIVOS.md` (hub de gatilhos quentes de reuso).",
@@ -92,10 +92,10 @@
         "Leia o estado vivo, nesta ordem: `.agents\\ACTIVE.md` → `.ag...",
         "Gatilhos L1: `.agents\\lembranca.md` — abra L2/L3 somente po..."
       ],
-      "fonte": "AGENTS.md#L415-L436"
+      "fonte": "AGENTS.md#L427-L448"
     },
     {
-      "seal": "pb-12840d1b",
+      "seal": "pb-0ab6f570",
       "locator": "PENDENTES-LEDGER",
       "title": "Leitura obrigatoria (bootstrap)",
       "gatilho": "5. `.agents/PENDENTES.md` — ledger de pendências append-only (schema `dex.pendencias.v2`; gatilho `PENDENTES-LEDGER`)",
@@ -106,7 +106,7 @@
         "`.agents/HANDOFF.md`",
         "`.agents/PLAN-TASKS/ACTIVE.md`"
       ],
-      "fonte": "AGENTS.md#L464-L471"
+      "fonte": "AGENTS.md#L476-L483"
     }
   ],
   "mesa": {
@@ -120,19 +120,19 @@
   "nao_decodificadas": [
     {
       "titulo": "Organizacao De Artefatos E Scripts",
-      "ancora": "AGENTS.md#L222"
+      "ancora": "AGENTS.md#L234"
     },
     {
       "titulo": "Graphify local",
-      "ancora": "AGENTS.md#L382"
+      "ancora": "AGENTS.md#L394"
     },
     {
       "titulo": "Indexação (doutrina da casa)",
-      "ancora": "AGENTS.md#L437"
+      "ancora": "AGENTS.md#L449"
     },
     {
       "titulo": "Envio a terceiros",
-      "ancora": "AGENTS.md#L444"
+      "ancora": "AGENTS.md#L456"
     }
   ],
   "fontes": [
@@ -143,7 +143,7 @@
     },
     {
       "caminho": "AGENTS.md",
-      "sha256": "4db78c14b988090f0c3d7f39e18cd055076b9b88e49f1990400bc594e0bd2719",
+      "sha256": "d65c47554bb88f0c236a6d6e0f0a6bc2492371fd0bebffe2bbb5a3e2071edfbd",
       "enviado": false
     },
     {

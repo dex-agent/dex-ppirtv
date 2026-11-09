@@ -413,6 +413,12 @@ export type GateRecord = {
   // existem no workspace — ressalva ensinável (nunca bloqueia); o path não
   // entra na union de flow.changed_files enquanto não existir.
   provided_missing_paths?: string[];
+  // ISSUE-LOCAL-0002 (emenda adversarial D-31): par changed+deleted simultâneo
+  // (formato canônico de deleção) de path que o disco NÃO confirma e a union
+  // histórica não conhece — aviso ensinável (nunca bloqueia): o path entra na
+  // union por atestação do cliente, mas o receipt nomeia para o revisor
+  // conferir (typo em duas listas deixa de ser mudo).
+  provided_unconfirmed_deletions?: string[];
   missing: string[];
   next: string;
   back_to: AnyPhase | null;

@@ -1765,7 +1765,40 @@
    "responsibility": "sanidade da entrada de provided.changed_files/deleted_files no gate de implementacao (ressalva de paths inexistentes + expurgo da union acumulada)",
    "changelog_marker": "FE-2026-11-09-ISSUE0002-PROVIDED-PATHS-UNION-EXCEPTION",
    "architecture_marker": "FE-2026-11-09-ISSUE0002-PROVIDED-PATHS-UNION-EXCEPTION",
-   "rollback": "revert do commit do corte ISSUI0002 restaura a union sem ressalva (git revert <commit>); o teste novo tests/gate-provided-paths.test.ts fica RED apos o revert por design (sentinela do comportamento curado)"
+   "rollback": "revert do commit do corte ISSUI0002 restaura a union sem ressalva (git revert <commit>); o teste novo tests/gate-provided-paths.test.ts fica RED apos o revert por design (sentinela do comportamento curado)",
+   "commit": "0c6dda900d887f8e92ea7de784cb8943a731230d",
+   "parent_commit": "7c766329ac82cfc94fbaf265e29ec87bdaa608e2"
+  },
+  {
+   "id": "FE-2026-11-09-ISSUE0002-ADV-BYPASS-AVISO-EXCEPTION",
+   "date": "2026-11-09",
+   "spt_path": ".agents/PLAN-TASKS/2026-11-09-issue0002-union-path-fantasma.md",
+   "owner": "$oraculo-refatoracao",
+   "mode": "EXCEPTION",
+   "exception_reason": "integrity",
+   "expires": "2026-11-16",
+   "red_evidence": "tests/gate-provided-paths.test.ts::BYPASS FECHADO adversarial D-31 P1 — par changed E deleted simultâneo de path que o disco NÃO confirma entra por atestação canônica COM aviso, nunca mudo, nunca bloqueia",
+   "red_base_blob": "841d5874aa151efb6afd575458a987956f515a1e",
+   "red_observed_failure": "4 RED provados no baseline 0c6dda9: (P1 contratos+revisor-codigo, probes ao vivo reproduzidos pela sessao dona) par changed+deleted simultaneo de path nunca existente entrava MUDO na union (status passed, sem provided_missing_paths) — bypass do contrato publicado; (P2) fallback process.cwd() em flow sem goal_binding julgava contra a raiz do SERVIDOR (sentinela do cwd entrava na union); (P2) existsSync aceitava DIRETORIO como arquivo do escopo; (P2) goal_gate_preflight silenciava a ressalva que o gate persistente emite. NOTA de qualificacao do record anterior: o '3 falhas' do red_observed_failure do record 38 descrevia a versao PRE-ROLLBACK do teste de expurgo — o arquivo FINAL produz 2 RED no baseline 7c76632.",
+   "red_command": "npx vitest run tests/gate-provided-paths.test.ts -t \"BYPASS FECHADO adversarial D-31 P1 — par changed E deleted simultâneo de path que o disco NÃO confirma entra por atestação canônica COM aviso, nunca mudo, nunca bloqueia\"",
+   "base_blob": "841d5874aa151efb6afd575458a987956f515a1e",
+   "head_blob": "4facb4e91421097ef3a6b4a7a9aa5650f6120acc",
+   "consumers": [
+    "src/server.ts"
+   ],
+   "evidence": [
+    "tests/gate-provided-paths.test.ts",
+    "src/domain.ts",
+    "src/gate-provided-paths.ts"
+   ],
+   "evidence_selectors": {
+    "tests/gate-provided-paths.test.ts": "BYPASS FECHADO adversarial D-31 P1 — par changed E deleted simultâneo de path que o disco NÃO confirma entra por atestação canônica COM aviso, nunca mudo, nunca bloqueia"
+   },
+   "behavior_preserved_by": "suite gates+engine 208/208 apos a emenda (sensor #6 engine.test 'attests an explicit deletion' VERDE — desenho canonico preservado); suite total 891->896 sem editar teste existente de comportamento; guard DELETED_FILES_NOT_CHANGED intocado. Desenho: par changed+deleted simultaneo (formato canonico de delecao, 1a declaracao — indistinguivel de delecao real no disco) CONTINUA entrando por atestacao do cliente, agora COM aviso provided_unconfirmed_deletions quando o disco nao confirma e a union historica nao conhece (nunca bloqueia; typo em duas listas deixa de ser mudo — veredito documental oraculo-clean-code cap7 Provide Context with Exceptions); raiz de julgamento = workspace do envelope, sem envelope nao se julga (fim do fallback process.cwd(); cap8 Clean Boundaries); isExistingFile (statSync isFile) substitui existsSync; preflight emite provided_missing_paths e provided_unconfirmed_deletions simetricamente ao gate. Julgamento mora em src/gate-provided-paths.ts (modulo novo); a fachada ganhou so cola (import + chamadas).",
+   "responsibility": "sanidade da entrada de provided.changed_files/deleted_files no gate de implementacao (emenda adversarial: aviso de delecao nao confirmada + fronteira de workspace + simetria preflight)",
+   "changelog_marker": "FE-2026-11-09-ISSUE0002-ADV-BYPASS-AVISO-EXCEPTION",
+   "architecture_marker": "FE-2026-11-09-ISSUE0002-ADV-BYPASS-AVISO-EXCEPTION",
+   "rollback": "revert do commit da emenda restaura o bypass mudo do par simultaneo, o fallback process.cwd() e o preflight cego; os 5 testes novos de tests/gate-provided-paths.test.ts ficam RED apos o revert por design (sentinelas do comportamento curado)"
   }
  ]
 }

@@ -1,3 +1,19 @@
+## Reavaliação — D-31 emenda adversarial: aviso unconfirmed + fronteira envelope + preflight simétrico, 2026-11-09
+
+Capability paths tocados: src/flow-engine.ts (cola pura — julgamento extraído;
+nonblank +10, decisões −1), src/gate-provided-paths.ts (NOVO: julgamento de
+provided paths — ressalva na nascente, aviso provided_unconfirmed_deletions do
+par canônico changed+deleted, fronteira = workspace do envelope, isExistingFile),
+src/domain.ts (GateRecord.provided_unconfirmed_deletions?), tests/
+(gate-provided-paths.test.ts 4→9: bypass P1 RED no baseline 0c6dda9 + sem-binding
++ diretório + preflight + V5 documental; asserts reforçados: status passed,
+envelope.workspace, ressalva sem deleted legítimo). Camping EXCEPTION integrity
+(record 39; 38 selado com commit 0c6dda9 + parent 7c76632). Suíte 891→896.
+Limits vigentes: existsSync→statSync isFile NO workspace do envelope; SEM
+envelope a ressalva fica ausente (nunca CWD do servidor); par changed+deleted
+simultâneo entra por atestação com aviso quando não confirmável (indistinguível
+de deleção real no disco — decisão documental cap7/cap8).
+
 ## Reavaliação — D-31 ISSUE-0002: ressalva provided_missing_paths + expurgo da union, 2026-11-09
 
 Capability paths tocados: src/flow-engine.ts (gate implementacao: union só com

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import { existsSync } from "node:fs";
+import { providedPathFindingsFields, providedPathFindingsFor, providedPathPreviewFields } from "./gate-provided-paths.js";
 import { PHASES, COMPACT_PHASES, GOAL_FLOW_ROLES, type AnyPhase, type Cooperator, type CriterionProofInput, type Evidence, type Flow, type GateRecord, type GoalBinding, type GoalEnvelope, type GoalFlowRole, type HygieneFinding, type Meeting, type MemoryCandidatePromoteScope, type MemoryCandidateResolution, type MemoryCandidateResolutionAction, type MeetingKind, type MeetingType, type MemoryMiningSummary, type MemoryPostWriteValidation, type MemoryReviewStatus, type MemoryWritePolicy, type PipelineFlowResult, type PipelineItem, type PresentationEnvelope, type Phase, type Scope, type SptValidationResult, type Verdict, type VerdictStatus, type WorkProgressEvent, type WorkProgressStatus, type WorkProgressSummary } from "./domain.js";
 import { canonicalVerdictChangedFiles, hasRequirement, invalidateStaleDownstreamGates, isStructuredReviewEvidence, mergePathFacts, officialGoalNeedsCanonicalVerdict, providedRequirementDiagnostic, resolveGateRequirements, reviewCurrencyAppliesToPhase, reviewCurrencyMissing, reviewEvidenceDiagnostics, reviewEvidenceRequested, reviewEvidenceValidity, savedGateReusable, strictPathArray, structuredReviewAttestationRequested, type GateRequirementResolution } from "./gate-resolution.js";
 import { requiredCooperationDiagnostics, meetingClosedIndex, meetingOutcomeSummaries, meetingOutcomeCounts, requiredCooperationNeedsMeetingIdRetry, meetingKindForType, meetingTypeForKind, requiredMeetingKind, requiredMeetingParticipants, meetingClosedLedgerData, applyClosedMeetingToFlow, assertMeetingClosed } from "./meeting-policy.js";
@@ -1112,6 +1112,9 @@ export class FlowEngine {
       already_satisfied: snapshot.requirements.filter((item) => item.satisfied).map((item) => item.key),
       missing: snapshot.missing,
       phase_blockers: snapshot.missing,
+      // ISSUE-LOCAL-0002 (emenda adversarial D-31): preflight simétrico ao
+      // gate persistente — a rota read-only não silencia o typo.
+      ...providedPathPreviewFields(flow, effectiveProvided.changed_files, flow.deleted_files ?? [], phase),
       closure_blockers: closureBlockers,
       phase_advance_allowed: currentPhaseAdvanceAllowed,
       evidence_candidates: evidenceCandidates,
@@ -2745,19 +2748,20 @@ export class FlowEngine {
         ? unique(strictPathArray(provided.deleted_files, "provided.deleted_files"))
         : (flow.deleted_files ?? [])
       : (flow.deleted_files ?? []);
-    // ISSUE-LOCAL-0002 (2026-11-09): path inexistente no workspace NÃO entra
-    // na union — vira ressalva ensinável no receipt (nunca bloqueia; quando o
-    // arquivo passar a existir, o mesmo provided o aceita). Paths declarados
-    // em deleted_files não são avisados (remoção legítima declara ausência) e
-    // PERMANECEM na union como memória do escopo (o snapshot os atesta como
-    // deleted — desenho #6; expurgo testado e rejeitado: quebra a atestação).
-    const deletedSet = new Set(deletedFiles.map(normalizeReviewPath).filter(Boolean));
+    // ISSUE-LOCAL-0002 (2026-11-09): path inexistente (ou não-arquivo) no
+    // workspace NÃO entra na union — vira ressalva ensinável no receipt
+    // (nunca bloqueia; quando o arquivo passar a existir, o mesmo provided o
+    // aceita). Emenda adversarial D-31: raiz de julgamento = workspace do
+    // envelope (sem envelope não se julga — nunca o CWD do servidor) e o par
+    // changed+deleted simultâneo entra como atestação canônica COM aviso
+    // provided_unconfirmed_deletions quando o disco não o confirma.
     const providedChangedFiles = phase === "implementacao"
       ? strictPathArray(effectiveProvided.changed_files, "provided.changed_files")
       : [];
-    const gateWorkspaceRoot = flow.goal_binding?.envelope.workspace ?? process.cwd();
-    const providedMissingPaths = providedChangedFiles.filter((file) =>
-      !deletedSet.has(normalizeReviewPath(file)) && !existsSync(path.resolve(gateWorkspaceRoot, file))
+    const { missingPaths: providedMissingPaths, unconfirmedDeletions } = providedPathFindingsFor(
+      flow,
+      providedChangedFiles,
+      deletedFiles
     );
     const acceptedProvidedChanges = providedChangedFiles.filter((file) => !providedMissingPaths.includes(file));
     const changedFiles = phase === "implementacao"
@@ -2792,7 +2796,7 @@ export class FlowEngine {
       provided: effectiveProvided,
       implementation_fingerprint: flowForResolution.implementation_fingerprint,
       changed_files_snapshot: [...changedFiles],
-      ...(providedMissingPaths.length > 0 ? { provided_missing_paths: unique(providedMissingPaths) } : {}),
+      ...providedPathFindingsFields({ missingPaths: providedMissingPaths, unconfirmedDeletions }),
       missing,
       next: status === "passed" ? `advance_to_${profile.nextPhase[phase] ?? "complete"}` : `complete_gate_${phase}`,
       back_to: status === "passed" ? null : (profile.defaultBackTo[phase] as Phase | null)
@@ -4863,6 +4867,13 @@ function reviewStatusForPostWrite(validation: MemoryPostWriteValidation, written
   }
   return "pending_consciencia_memorias";
 }
+
+// ISSUE-LOCAL-0002 (emenda adversarial D-31): o julgamento de
+// provided.changed_files/deleted_files mora em ./gate-provided-paths.ts
+// (camping CONTAIN — comportamento fora, fachada só cola). Ver comentário
+// do módulo para o desenho (ressalva na nascente; par changed+deleted
+// canônico com aviso provided_unconfirmed_deletions; fronteira = workspace
+// do envelope, nunca o CWD do servidor; preflight simétrico).
 
 function assertDeletedFilesBelongToChangedFiles(changedFiles: string[], deletedFiles: string[]): void {
   const changed = new Set(changedFiles.map(normalizeReviewPath).filter(Boolean));

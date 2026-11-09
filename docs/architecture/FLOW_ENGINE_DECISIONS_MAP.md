@@ -57,6 +57,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-28 | Vacina anti-import-morto total | aceita | V✅ | 3/3 | nasceu Onda 5, pagou 6/7 |
 | D-29 | Janela acumulada no selo SHRINK | aceita | V✅ | 2/2 | Ondas 6/7 |
 | D-30 | Suíte de integração dos 4 módulos + E2E golden-path (pós-maratona) | aceita | V✅ | 6/6 | `tests/*.integration.test.ts` + `tests/goal-lifecycle.e2e.test.ts` |
+| D-31 | ISSUE-0002: ressalva `provided_missing_paths` + não-entrada na union (expurgo rejeitado com regresso medido); emenda adversarial: aviso `provided_unconfirmed_deletions` + fronteira envelope + preflight simétrico | aceita | V✅ | 6/6 | `tests/gate-provided-paths.test.ts` + `src/gate-provided-paths.ts`; commits `0c6dda9`+emenda |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -123,6 +124,32 @@ dívida para caber em CONTAIN.
 Vacina anti-import-morto: parser por bloco completo `import {...} from "...";`
 varrendo o corpo sem imports; pegou 42 mortos acumulados (Onda 6) e 9 em
 linha-única gigante (Onda 7). Janela acumulada: ver D-25..D-27 acima.
+
+### D-31 (pós-maratona, 2026-11-09): ISSUE-0002 — fim do fantasma na union
+Primeira issue do TRACKER local curada por GO (P1, custo real: flow 136 com
+3 verdicts bloqueados + 6 emissões de review por 1 typo). O gate de
+implementação com path inexistente em `provided.changed_files` devolve
+**ressalva `provided_missing_paths`** no receipt (nunca bloqueia) e **não
+persiste o path na union** `flow.changed_files` — o typo morre na nascente.
+Decisão com regresso medido: o expurgo literal da union por `deleted_files`
+foi implementado, testado e **rejeitado** (quebrava a atestação de deleção
+real do desenho #6 — path deletado legitimamente permanece na union como
+memória do escopo; suíte do engine provou ao vivo); critério fechado pelo
+aceite alternativo da própria issue. Camping EXCEPTION `urgent_hotfix`
+(record 38, RED real). Dúvida de uso: declarou um arquivo que ainda não
+existe? O receipt avisa na hora — redeclare quando o arquivo existir.
+
+**Emenda adversarial (record 39, EXCEPTION integrity)**: o par
+`changed_files`+`deleted_files` **simultâneo** é o formato canônico de
+deleção (1ª declaração) e **entra por atestação do cliente** — quando o
+disco não confirma e a union histórica não conhece, o receipt emite o aviso
+**`provided_unconfirmed_deletions`** (nunca bloqueia; o typo em duas listas
+deixa de ser mudo — fechado com veredito documental do $oraculo-clean-code).
+No mesmo corte: fim do fallback `process.cwd()` (sem `goal_binding` não há
+fronteira legítima — rota legada fica sem ressalva em vez de julgar contra a
+raiz do servidor), `isExistingFile` substitui `existsSync` (diretório não é
+arquivo do escopo) e `goal_gate_preflight` emite as chaves simetricamente.
+Julgamento mora em `src/gate-provided-paths.ts`; suíte 891→896.
 
 ### D-30 (pós-maratona, 2026-11-09): testes de integração + E2E
 A maior dívida declarada da maratona foi paga: os 4 módulos de política que
