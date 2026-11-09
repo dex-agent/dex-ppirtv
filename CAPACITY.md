@@ -1,3 +1,14 @@
+## Reavaliação — Onda 6 emenda: adversarial 0 P1/3 P2/10 P3 — 42 imports mortos, 2026-11-09
+
+Owner $oraculo-refatoracao (mesma sessão, flow 3917; mesa QUESTIONADORES-ATIVADO):
+vacina anti-import-morto revelou que só varria o bloco NOVO — 8 mortificados
+pelo corte + 34 acumulados das Ondas 1-5 = **42 cortados**; monólito
+5503→5341; tsc 0; suíte 848+4=852 sem editar teste. Contagens reconciliadas
+(baseline 6155 real; import 12 símbolos; msg b5d5f95: 23 imports, não 25).
+`__stash__` do record selado documentado no EVOLUTION.md (imutável pós-selo).
+Estacionados: testes diretos (tio-testador), invariante parent→base_blob
+(Trilho futuro), README stale.
+
 ## Reavaliação — selagem pós-commit da Onda 6, 2026-11-09
 
 Documental: record FE-2026-11-09-ONDA6-PPIRTV-CHECKIN-SHRINK selado no ledger

@@ -1,195 +1,33 @@
 import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import {
-  PHASES,
-  COMPACT_PHASES,
-  GOAL_FLOW_ROLES,
-  type AnyPhase,
-  type Cooperator,
-  type CriterionProofInput,
-  type Evidence,
-  type EvidenceQuality,
-  type Flow,
-  type GateRecord,
-  type GoalBinding,
-  type GoalEnvelope,
-  type GoalFlowRole,
-  type HygieneFinding,
-  type Meeting,
-  type MemoryCandidate,
-  type MemoryCandidatePromoteScope,
-  type MemoryCandidateResolution,
-  type MemoryCandidateResolutionAction,
-  type MemoryCandidateScope,
-  type MeetingKind,
-  type MeetingType,
-  type MemoryMiningSummary,
-  type MemoryPostWriteValidation,
-  type MemoryReviewStatus,
-  type MemoryWritePolicy,
-  type PipelineFlowResult,
-  type PipelineItem,
-  type PresentationEnvelope,
-  type Phase,
-  type Scope,
-  type StructuredLibrarianStatus,
-  type SptValidationResult,
-  type SptV3Contract,
-  type Verdict,
-  type VerdictStatus,
-  type WorkProgressEvent,
-  type WorkProgressStatus,
-  type WorkProgressSummary
-} from "./domain.js";
-import { canonicalVerdictChangedFiles, changedFilesContainCode, changedFilesMatchReview, hasRequirement, invalidateStaleDownstreamGates, isStructuredReviewEvidence, mergePathFacts, officialGoalNeedsCanonicalVerdict, providedRequirementDiagnostic, resolveGateRequirements, reviewCurrencyAppliesToPhase, reviewCurrencyMissing, reviewedChangedFilesForVerdict, reviewEvidenceDiagnostics, reviewEvidenceRequested, reviewEvidenceValidity, reviewRemainsCurrent, savedGateReusable, strictPathArray, structuredReviewAttestationRequested, type GateRequirementResolution } from "./gate-resolution.js";
-import { reviewRequiredSequence, LoopMonitor, requiredCooperationStillActive, requiredCooperationMeetingIdMissingForPositiveVerdict, requiredCooperationMeetingSignal, explicitMeetingTriggerClearedByFactsUpdate, hasOpenRequiredCooperationMeetingSignal, hasInsufficientRequiredCooperationMeetingSignal, liveOpenMeetingIds, historyAfter, hasClosedMeetingSatisfying, inputMeetingIds, requiredCooperationDiagnostics, missingParticipantsFor, requiredCooperationMeetingMaterial, meetingHasRequiredCooperationParticipants, meetingLinkedToFiscalBlock, meetingOpenedIndex, meetingClosedIndex, previousFiscalBlockIndex, meetingConsumedByLaterVerdict, meetingOutcomeSummaries, meetingOutcomeSummary, meetingOutcomeCounts, hasVerdictRecordedAfterIndex, requiredCooperationNeedsMeetingIdRetry, meetingKindForType, meetingTypeForKind, requiredMeetingKind, hasClosedMeetingKind, requiredMeetingParticipants, meetingClosedLedgerData, applyClosedMeetingToFlow, assertMeetingClosed, latestOpenMeeting, requiredCooperationSequence, loopEscalationAction, loopMeetingSequence, cooperationCheckoutAccountability, suggestedCooperatorsForFlow } from "./meeting-policy.js";
-import { evaluateFiscalPolicyWithDeps, countHistory, countRegressions, explicitMeetingTrigger, fiscalResultWithDeps, fiscalText, hasReviewEvidenceWithDeps, latestFiscalBlockEvent, MEMORY_MINING_BLOCKED_VERDICT_REASON, reportFiscalSignals, reportRecurringRiskCleared, requiredCooWithDeps, type FiscalPolicyDeps, type FiscalPolicyResult } from "./verdict-fiscal-policy.js";
+import { PHASES, COMPACT_PHASES, GOAL_FLOW_ROLES, type AnyPhase, type Cooperator, type CriterionProofInput, type Evidence, type Flow, type GateRecord, type GoalBinding, type GoalEnvelope, type GoalFlowRole, type HygieneFinding, type Meeting, type MemoryCandidate, type MemoryCandidatePromoteScope, type MemoryCandidateResolution, type MemoryCandidateResolutionAction, type MemoryCandidateScope, type MeetingKind, type MeetingType, type MemoryMiningSummary, type MemoryPostWriteValidation, type MemoryReviewStatus, type MemoryWritePolicy, type PipelineFlowResult, type PipelineItem, type PresentationEnvelope, type Phase, type Scope, type SptValidationResult, type Verdict, type VerdictStatus, type WorkProgressEvent, type WorkProgressStatus, type WorkProgressSummary } from "./domain.js";
+import { canonicalVerdictChangedFiles, hasRequirement, invalidateStaleDownstreamGates, isStructuredReviewEvidence, mergePathFacts, officialGoalNeedsCanonicalVerdict, providedRequirementDiagnostic, resolveGateRequirements, reviewCurrencyAppliesToPhase, reviewCurrencyMissing, reviewEvidenceDiagnostics, reviewEvidenceRequested, reviewEvidenceValidity, savedGateReusable, strictPathArray, structuredReviewAttestationRequested, type GateRequirementResolution } from "./gate-resolution.js";
+import { requiredCooperationDiagnostics, meetingClosedIndex, meetingOutcomeSummaries, meetingOutcomeCounts, requiredCooperationNeedsMeetingIdRetry, meetingKindForType, meetingTypeForKind, requiredMeetingKind, requiredMeetingParticipants, meetingClosedLedgerData, applyClosedMeetingToFlow, assertMeetingClosed } from "./meeting-policy.js";
+import { evaluateFiscalPolicyWithDeps, countHistory, countRegressions, explicitMeetingTrigger, fiscalResultWithDeps, fiscalText, MEMORY_MINING_BLOCKED_VERDICT_REASON, reportFiscalSignals, reportRecurringRiskCleared, requiredCooWithDeps, type FiscalPolicyResult } from "./verdict-fiscal-policy.js";
 import { sanitizePersistedProvided } from "./input-unwrap.js";
 import { assertNoSecretLikeItems, assertNoSecretLikePayload, assertNoSecretLikeText } from "./security/secret-redaction.js";
-import {
-  assertLegacyFlowCanReceiveFirstGoalBinding,
-  ensureLedgerTransitionRecorded,
-  GoalIdempotencyDuplicateBindingsError
-} from "./goal-ledger-recovery.js";
-import {
-  classifyDexMemoriaV2MiningCandidate,
-  classifyMemoryCandidate,
-  classifyDexMemoriaV2Intent,
-  collectMemoryNuggets,
-  executeDexMemoriaV2Adapter,
-  governAutoWriteCandidate,
-  isWritableCandidate,
-  linkParkingToGold,
-  MemoryLibrarian,
-  memoryCandidateLedgerData,
-  memoryMiningRequiredSequence,
-  miningDepositStep,
-  miningVisibilityEgress,
-  resolveDexMemoriaHome,
-  validateMemoryPostWrite,
-  writeMemoryCandidate,
-  type DexMemoriaV2CanonicalReceipt,
-  type DexMemoriaV2Destination,
-  type DexMemoriaV2FlowWriterConfig,
-  type DexMemoriaV2MiningClassification,
-  type DexMemoriaV2ValidationReceiptRef,
-  type MemoryHookRunner
-} from "./memory/index.js";
+import { assertLegacyFlowCanReceiveFirstGoalBinding, ensureLedgerTransitionRecorded, GoalIdempotencyDuplicateBindingsError } from "./goal-ledger-recovery.js";
+import { classifyDexMemoriaV2MiningCandidate, classifyMemoryCandidate, classifyDexMemoriaV2Intent, collectMemoryNuggets, executeDexMemoriaV2Adapter, governAutoWriteCandidate, isWritableCandidate, linkParkingToGold, MemoryLibrarian, memoryCandidateLedgerData, miningVisibilityEgress, resolveDexMemoriaHome, validateMemoryPostWrite, writeMemoryCandidate, type DexMemoriaV2CanonicalReceipt, type DexMemoriaV2Destination, type DexMemoriaV2FlowWriterConfig, type DexMemoriaV2MiningClassification, type DexMemoriaV2ValidationReceiptRef, type MemoryHookRunner } from "./memory/index.js";
 import { requireText, nowIso } from "./lang-utils.js";
 import { presentArtifact, presentChecklist, presentFlow, presentGate } from "./presentation.js";
-import {
-  ppirtvCheckIn,
-  ppirtvCheckOut,
-  compactPpirtvCheckout,
-  classifyEvidenceQuality,
-  missingQuandoGate,
-  goalEvidenceMetadataNote,
-  mergeEvidenceNotes,
-  workProgressSummary,
-  memoryMiningStatus,
-  workProgressEvents,
-  progressText,
-  validateProgressNumbers,
-} from "./ppirtv-checkin.js";
-import {
-  type RecallVisualStatus,
-  type MemoryMiningV2Summary,
-  type V2MemoryCandidateResolution,
-  type BlockerDiagnostics,
-  FISCAL_POLICY_DEPS,
-  latestLibrarianStatus,
-  latestLibrarianStatusFromLedger,
-  structuredLibrarianStatus,
-  librarianCheckoutAccountability,
-  hasHygieneBlocking,
-  hasHygieneScan,
-  hasMemoryMiningRun,
-  isMaterialHygieneFinding,
-  needsReviewCoherence,
-  latestFiscalBlock,
-  reconciledBlockers,
-  blockerDiagnosticsFor,
-  memoryMiningVerdictBlockers,
-  memoryMiningBlockedAction,
-  blockedDirectAction,
-  phaseAdvanceDirectAction,
-  blockedArchiveDirectAction,
-  withDirectAction,
-  fiscalBackTo,
-  MEETING_RESOLVABLE_BLOCKERS,
-  blockerOwner,
-  nextRequiredActionFor,
-  blockerResolutionGuidance,
-  fiscalLoopMonitor,
-  strongestLoopMonitor,
-  loopEscalationFor,
-  blockerLoopId,
-  lastIndexWhere,
-} from "./fiscal-blockers.js";
-import {
-  defaultWorkflow,
-  earlySecurityProportionalityPolicy,
-  finalReportModel,
-  gateFinalOutput,
-  operationalContractMeta,
-  principleChecklist,
-  readyDefinition,
-  scanOperationalPrinciples,
-  secretEnvConsumptionPolicy,
-  type DefaultWorkflow,
-  type OperationalPolicyBlock,
-  type PrincipleChecklistItem
-} from "./principles.js";
-import { PpirtvStore, type RuntimeLayoutStatus } from "./store.js";
-import { assertPhaseInProfile, assertPhaseTransitionDirection, nextPhaseOrThrow, phaseAdvanceAllowed, profileFor, type GateRequirement } from "./phase-profile.js";
-import { FISCAL_CONFIG, RUNTIME_ENV, graphifyRecallConfigured, sameRuntimePath } from "./config.js";
+import { ppirtvCheckIn, ppirtvCheckOut, compactPpirtvCheckout, classifyEvidenceQuality, missingQuandoGate, goalEvidenceMetadataNote, mergeEvidenceNotes, workProgressSummary, memoryMiningStatus, workProgressEvents, progressText, validateProgressNumbers } from "./ppirtv-checkin.js";
+import { type RecallVisualStatus, type MemoryMiningV2Summary, type V2MemoryCandidateResolution, FISCAL_POLICY_DEPS, latestLibrarianStatus, latestLibrarianStatusFromLedger, structuredLibrarianStatus, librarianCheckoutAccountability, hasHygieneBlocking, hasHygieneScan, hasMemoryMiningRun, isMaterialHygieneFinding, needsReviewCoherence, latestFiscalBlock, reconciledBlockers, blockerDiagnosticsFor, memoryMiningVerdictBlockers, memoryMiningBlockedAction, blockedDirectAction, phaseAdvanceDirectAction, blockedArchiveDirectAction, withDirectAction, fiscalBackTo, MEETING_RESOLVABLE_BLOCKERS, blockerOwner, nextRequiredActionFor, blockerResolutionGuidance, fiscalLoopMonitor, strongestLoopMonitor, blockerLoopId, lastIndexWhere } from "./fiscal-blockers.js";
+import { defaultWorkflow, earlySecurityProportionalityPolicy, finalReportModel, gateFinalOutput, principleChecklist, readyDefinition, scanOperationalPrinciples, secretEnvConsumptionPolicy, type DefaultWorkflow, type OperationalPolicyBlock, type PrincipleChecklistItem } from "./principles.js";
+import { PpirtvStore } from "./store.js";
+import { assertPhaseInProfile, assertPhaseTransitionDirection, nextPhaseOrThrow, phaseAdvanceAllowed, profileFor } from "./phase-profile.js";
+import { FISCAL_CONFIG, graphifyRecallConfigured, sameRuntimePath } from "./config.js";
 import { fingerprintSptContract, parseSptDocument, sha256SptDocument } from "./spt-contract.js";
-import { fiscalStateSegment, goalStartTaughtArgs } from "./error-envelope.js";
-import {
-  missingValidationDiagnostic,
-  runtimeWorkspaceMismatchDiagnostic,
-  SptPathContractError,
-  validationSptPathDiagnostic,
-  resolveSptPath,
-  isDirectory,
-  isFile,
-  isInsideOrEqual,
-  isSensitivePath
-} from "./spt-path-diagnostics.js";
-import {
-  assertCriterionProofRevisionCurrent,
-  criterionProjection,
-  evidenceRequirementProjection,
-  assertSptV3PositiveVerdictCoverage,
-  assertCriterionProofAdmission,
-  sptTraceabilityReattachedEventData,
-  taskProjection,
-  traceabilityFromContract
-} from "./spt-traceability.js";
+import { fiscalStateSegment } from "./error-envelope.js";
+import { missingValidationDiagnostic, runtimeWorkspaceMismatchDiagnostic, SptPathContractError, validationSptPathDiagnostic, resolveSptPath, isDirectory, isFile, isInsideOrEqual, isSensitivePath } from "./spt-path-diagnostics.js";
+import { assertCriterionProofRevisionCurrent, criterionProjection, evidenceRequirementProjection, assertSptV3PositiveVerdictCoverage, assertCriterionProofAdmission, sptTraceabilityReattachedEventData, taskProjection, traceabilityFromContract } from "./spt-traceability.js";
 import { requiresGoalEvidence } from "./spt-traceability.js";
-import { unique, truthy, stringArray, uniqueCooperators } from "./lang-utils.js";
+import { unique, stringArray, uniqueCooperators } from "./lang-utils.js";
 import { freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
 import { applyReviewScopeAttributions, attributedVerdictSnapshot, bindReviewScopeAttribution, prepareVerdictSnapshot, type GoalVerdictInput } from "./review-scope-attribution.js";
-import {
-  normalizeRecallConsumptionInput,
-  sameRecallReferences,
-  validateRecallConsumptionReferences,
-  type RecallConsumptionInput
-} from "./memory/recall-consumption-contract.js";
+import { normalizeRecallConsumptionInput, sameRecallReferences, validateRecallConsumptionReferences, type RecallConsumptionInput } from "./memory/recall-consumption-contract.js";
 import { assertGovernedTag } from "./memory/governed-tag.js";
-import {
-  blockerSignature,
-  hasVerdictAfterLatestMemoryMining,
-  loopWindowEvents,
-  memoryMiningCompletedWithNoCandidates,
-  memoryPostWriteValidationBlocks,
-  memoryRequiredByFlow,
-  noMemoryWasPromoted,
-  numericMemoryField,
-  requireV2PromotionMetadata,
-  type FiscalVerdictInput
-} from "./memory/mining-policy.js";
+import { blockerSignature, hasVerdictAfterLatestMemoryMining, memoryPostWriteValidationBlocks, memoryRequiredByFlow, noMemoryWasPromoted, numericMemoryField, requireV2PromotionMetadata, type FiscalVerdictInput } from "./memory/mining-policy.js";
 import { deriveVerdictLearning } from "./verdict-learning.js";
 
 export {
