@@ -6,8 +6,8 @@
 // (evaluateFiscalPolicy) e consome o diagnostico por import.
 import type {
   AnyPhase, Cooperator, Flow, GateRecord, HygieneFinding, Meeting,
-  MemoryMiningSummary, MemoryCandidateResolution, Phase, PresentationEnvelope, Scope,
-  StructuredLibrarianStatus, Verdict,
+  MemoryMiningSummary, MemoryCandidateResolution, Phase, PresentationEnvelope,
+  StructuredLibrarianStatus,
 } from "./domain.js";
 import type { LoopMonitor } from "./meeting-policy.js";
 import {
@@ -29,19 +29,16 @@ import {
   memoryRequiredByFlow, noMemoryWasPromoted, memoryMiningRequiredSequence,
   memoryMiningCompletedWithNoCandidates, memoryPostWriteValidationBlocks,
   numericMemoryField, blockerSignature, loopWindowEvents,
-  writeMemoryCandidate, MemoryLibrarian, type FiscalVerdictInput,
+  type FiscalVerdictInput,
 } from "./memory/index.js";
-import type { MemoryHookRunner } from "./memory/memory-types.js";
 import type {
   DexMemoriaV2CanonicalReceipt, DexMemoriaV2Destination,
-  DexMemoriaV2FlowWriterConfig, DexMemoriaV2ValidationReceiptRef,
+  DexMemoriaV2ValidationReceiptRef,
 } from "./memory/dex-memoria-v2-adapter.js";
 import { FISCAL_CONFIG, graphifyRecallConfigured } from "./config.js";
 import { goalStartTaughtArgs } from "./error-envelope.js";
 import { profileFor } from "./phase-profile.js";
-import { assertNoSecretLikePayload } from "./security/secret-redaction.js";
-import { stringArray, unique, truthy, requireText, nowIso } from "./lang-utils.js";
-import type { PpirtvStore } from "./store.js";
+import { stringArray, unique, truthy } from "./lang-utils.js";
 
 export type RecallVisualStatus = NonNullable<PresentationEnvelope["display"]["librarian"]>;
 

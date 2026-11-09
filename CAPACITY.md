@@ -1,3 +1,14 @@
+## Reavaliação — Onda 5 emenda: adversarial 0 P1/2 P2/8 P3 curada no corte, 2026-11-09
+
+Owner $oraculo-refatoracao (mesma sessão, flow 3874): **P2 receipt re-ancorado**
+(head=87981d9 + tree_hash=6cba77f5 write-tree da árvore staged medida pela
+suíte 848+4=852; antes congelado em db823f1 há 4 receipts); **25 imports
+mortos cortados** (15 monólito + 10 módulo — tsc não flagrava sem noUnusedLocals);
+**contagens reconciliadas por medição**: baseline real 7071L → **−901L**;
+50 símbolos movidos (44 selo AST + 2 consts + 4 tipos). Estacionados: teste
+direto do módulo (tio-testador), tautologia expect(true) na fixture RED,
+spawn git sem timeout, asserts fracos.
+
 ## Reavaliação — selagem pós-commit da Onda 5, 2026-11-09
 
 Documental: record FE-2026-11-09-ONDA5-FISCAL-BLOCKERS-SHRINK selado no
