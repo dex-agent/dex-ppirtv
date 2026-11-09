@@ -1341,6 +1341,53 @@ describe("flow-engine responsibility balance", () => {
   });
 
 
+
+  // Cura-6 emenda (P1 adversarial cura-6, CONFIRMADO por probe real: janela
+  // 4bf8aab..HEAD fabricava 5 COMMIT_SEAL_PARENT_MISSING falsos): elo NOVO na
+  // janela cujo selo ja esta COMMITADO em commit intermediario (selagem
+  // legitima do seu tempo, ex.: parent pre-cura-3) — birth check nao julga o
+  // passado pela lei nova; nascimento e o selo que ainda NAO esta commitado.
+  it("elo com selo commitado em commit intermediario nao e re-julgado no nascimento", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "flow-engine-seal6-f-"));
+    tempRoots.push(root);
+    await mkdir(path.join(root, "src"), { recursive: true });
+    await mkdir(path.join(root, "docs", "architecture"), { recursive: true });
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 1; } }\n");
+    await writeFile(path.join(root, "CHANGELOG.md"), "# Changelog\n\n## [Unreleased]\nseal6-marker\n");
+    await writeFile(path.join(root, "docs", "architecture", "FLOW_ENGINE_EVOLUTION.md"), "# Architecture\nseal6-marker\n");
+    execFileSync("git", ["init"], { cwd: root });
+    execFileSync("git", ["config", "user.email", "fixture@example.invalid"], { cwd: root });
+    execFileSync("git", ["config", "user.name", "Fixture"], { cwd: root });
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "c0 v1"], { cwd: root });
+    const blobV1 = execFileSync("git", ["rev-parse", "HEAD:src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    const recordOf = (extra: Record<string, unknown>) => ({ ...baseDeclaration, mode: "EXCEPTION", destination_module: undefined, changelog_marker: "seal6-marker", architecture_marker: "seal6-marker", consumers: ["src/server.ts"], ...extra });
+    const manifestOf = (recs: Record<string, unknown>[]) => JSON.stringify({ contract: "dex.flow-engine.evolution-ledger.v1", target: "src/flow-engine.ts", owner: "$refactoring-fowler-rich", records: recs });
+    // base: motor v1 + manifest [R0(v1->v1)] sem selo
+    const r0 = recordOf({ id: "seal6-r0", base_blob: blobV1, head_blob: blobV1 });
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), manifestOf([r0]));
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "base com R0"], { cwd: root });
+    const diffBase = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    // commit intermediario: motor v2 + R1(v1->v2) selado SEM parent (pre-cura-3)
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 2; } }\n");
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "c1 v2"], { cwd: root });
+    const blobV2 = execFileSync("git", ["rev-parse", "HEAD:src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    const r1 = recordOf({ id: "seal6-r1", base_blob: blobV1, head_blob: blobV2, commit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim() });
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), manifestOf([r0, r1]));
+    execFileSync("git", ["add", "."], { cwd: root });
+    execFileSync("git", ["commit", "-m", "selo historico de R1 sem parent"], { cwd: root });
+    // worktree: motor v3 + R2(v2->v3) sem selo -> chain [R0, R1, R2]
+    await writeFile(path.join(root, "src", "flow-engine.ts"), "export class FlowEngine { run() { return 3; } }\n");
+    const blobV3 = execFileSync("git", ["hash-object", "src/flow-engine.ts"], { cwd: root, encoding: "utf8" }).trim();
+    const r2 = recordOf({ id: "seal6-r2", base_blob: blobV2, head_blob: blobV3 });
+    await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), manifestOf([r0, r1, r2]));
+    const run = runBoundaryCli({ cwd: root, argv: ["--base", diffBase, "--head", "WORKTREE"] });
+    const receipt = JSON.parse(run.output);
+    expect(receipt.reasons.some((reason: string) => reason.includes("COMMIT_SEAL_PARENT_MISSING:seal6-r1"))).toBe(false);
+  });
+
   it("keeps the living architecture public and discoverable", async () => {
     const [readme, agents, rootIndex, docsIndex, gitignore, architecture, ledger] = await Promise.all([
       readFile("README.md", "utf8"),

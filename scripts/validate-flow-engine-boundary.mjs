@@ -873,12 +873,36 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
   // Na cadeia coberta, cada janela carrega suas proprias metricas: o evaluate
   // principal aplica a declaracao do ULTIMO record sobre a janela DELE (blobs do
   // ledger), nunca sobre o diff acumulado inteiro.
-  const chainHeadSource = chainRecords
-    ? git(["cat-file", "-p", chainRecords.at(-1).head_blob], cwd)
-    : headSource;
-  const chainBaseSource = chainRecords
-    ? git(["cat-file", "-p", chainRecords.at(-1).base_blob], cwd)
-    : baseSource;
+  // Cura-6 emenda (P3 adversarial cura-5, pago agora — mesma classe
+  // REGRESSAO-ERROR-PATH-TRY-CATCH): blob loose do worktree (hash-object sem
+  // -w) não está no object store — cat-file do chain crashava o CLI sem
+  // receipt. Reason estruturado no lugar do crash.
+  const chainBlobAt = (blob) => {
+    try {
+      return git(["cat-file", "-p", blob], cwd);
+    } catch {
+      return null;
+    }
+  };
+  let chainHeadSource = null;
+  let chainBaseSource = null;
+  if (chainRecords) {
+    chainHeadSource = chainBlobAt(chainRecords.at(-1).head_blob);
+    chainBaseSource = chainBlobAt(chainRecords.at(-1).base_blob);
+    if (chainHeadSource === null || chainBaseSource === null) {
+      const receipt = {
+        schema: "dex.flow-engine.boundary.v1",
+        status: "FAIL",
+        flow_engine_changed: true,
+        reasons: ["LEDGER_CHAIN_BLOB_UNREADABLE"],
+        decision: "FAIL"
+      };
+      return { exitCode: 1, output: JSON.stringify(receipt, null, 2), json: true };
+    }
+  } else {
+    chainHeadSource = headSource;
+    chainBaseSource = baseSource;
+  }
   const receipt = evaluateFlowEngineChange({
     baseSource: chainBaseSource,
     headSource: chainHeadSource,
@@ -943,22 +967,39 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
   // para intermediário divergente).
   // Cura-6 (P3 Provide Context): enums unificados com o seal-diff (o catch
   // genérico LEDGER_PREFIX_COMMIT_SEAL_MISMATCH escondia a causa real).
+  // Cura-6 EMENDA (P1 adversarial cura-6, probe real: janela 4bf8aab..HEAD
+  // fabricava 5 COMMIT_SEAL_PARENT_MISSING falsos): nascimento é o selo que
+  // ainda NÃO está commitado — elo cujo selo (id+commit) já mora no manifest
+  // do HEAD passou pelo gate do seu commit com as regras da época (ex.:
+  // parent pre-cura-3 não é crime retroativo); selo reescrito no worktree
+  // (commit diferente) é conferido integralmente.
+  let committedSealKeys = null;
+  try {
+    const headManifest = JSON.parse(git(["show", `HEAD:${args.manifest}`], cwd) ?? "{}");
+    committedSealKeys = new Set((headManifest.records ?? [])
+      .filter((entry) => entry?.commit)
+      .map((entry) => `${entry.id}\u0000${entry.commit}`));
+  } catch {
+    committedSealKeys = new Set();
+  }
   const birthRecords = chainRecords ?? (declaration ? [declaration] : []);
   for (const record of birthRecords) {
+    if (!record?.commit) continue;
+    if (committedSealKeys.has(`${record.id}\u0000${record.commit}`)) continue;
     if (!record?.commit) continue;
     let recordParents = null;
     try {
       recordParents = git(["rev-list", "--parents", "-n", "1", record.commit], cwd).split(/\s+/).slice(1);
     } catch {
-      receipt.reasons.push(`COMMIT_SEAL_COMMIT_NOT_FOUND:${record.id}`);
+      receipt.reasons.push(`COMMIT_SEAL_COMMIT_NOT_FOUND:${record.id ?? "unknown"}`);
       continue;
     }
     try {
       if (git(["rev-parse", `${record.commit}:${TARGET_PATH}`], cwd) !== record.head_blob) {
-        receipt.reasons.push(`COMMIT_SEAL_BLOB_MISMATCH:${record.id}`);
+        receipt.reasons.push(`COMMIT_SEAL_BLOB_MISMATCH:${record.id ?? "unknown"}`);
       }
     } catch {
-      receipt.reasons.push(`COMMIT_SEAL_TARGET_MISSING:${record.id}`);
+      receipt.reasons.push(`COMMIT_SEAL_TARGET_MISSING:${record.id ?? "unknown"}`);
       continue;
     }
     receipt.reasons.push(...sealLineageReasons(record, null, recordParents));

@@ -266,7 +266,7 @@
   "fotografia_id": "2026-11-05-merge-pr7",
   "head": "1ed5dcb",
   "tree_hash": "c4d95961344c0abe7a96ab3cee3d041a98368c97",
-  "generated_at": "2026-11-09T01:49:34.246737+00:00",
+  "generated_at": "2026-11-09T02:26:07.423613+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -285,12 +285,12 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 846,
+    "passed": 848,
     "failed": 0,
     "skipped": 4,
     "files": 64,
-    "total": 850,
-    "command": "npm run build && npm test (Cura-6; exit 0)"
+    "total": 852,
+    "command": "npm run build && npm test (Cura-6 emenda; exit 0)"
   },
   "tools_count": 32,
   "capabilities": [
@@ -1262,8 +1262,21 @@
       "CAPACITY.receipt.json",
       "CHANGELOG.md"
     ],
-    "delta": "suíte 846->850; reasons prorídos: LEDGER_PREFIX_RECORD_REMOVED/COMMIT_SEAL_TARGET_MISSING; enums unificados; camping NOT_APPLICABLE",
+    "delta": "suíte 846->850; reasons produzidos: LEDGER_PREFIX_RECORD_REMOVED/COMMIT_SEAL_TARGET_MISSING; enums unificados; camping NOT_APPLICABLE",
     "evidence": "flow 3834 (cerimônia em curso); REDs baseline 1ed5dcb; mutação da vacina E provada",
     "summary": "P2-A reason falso eliminado; P2-B chain inteira conferida no nascimento; P2-C vacinas de invariância com RED-por-mutação; P3s Provide Context."
+  },
+  "reavaliacao_cura6_p1_grandfathering": {
+    "date": "2026-11-09",
+    "scope": [
+      "scripts/validate-flow-engine-boundary.mjs",
+      "tests/flow-engine-boundary.test.ts",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json",
+      "CHANGELOG.md"
+    ],
+    "delta": "suíte 850->852; probe real 4bf8aab..HEAD: 5 PARENT_MISSING falsos -> 0",
+    "evidence": "RED F baseline beef440; .agents/AUDITORIAS/adversarial-261109-cura6/CONSOLIDADO.md (P1 3 revisores)",
+    "summary": "grandfathering por selo ja commitado (committedSealKeys) + RED F + cat-file chain com try (P3) + id fallback + typo."
   }
 }

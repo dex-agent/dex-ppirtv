@@ -1,3 +1,18 @@
+## Reavaliação — Cura-6 emenda: P1 da adversarial curado (grandfathering) + P3s, 2026-11-09
+
+Owner $oraculo-refatoracao (mesma sessão, mesa QUESTIONADORES-ATIVADO): P1
+convergente de 3 revisores (birthRecords re-julgava selos legados sem
+parent_commit — probes reais 4bf8aab..HEAD com 5-15 COMMIT_SEAL_PARENT_MISSING
+falsos) CURADO com RED F + grandfathering por selo já commitado no manifest do
+HEAD (committedSealKeys id+commit; nascimento = selo ainda não commitado);
+probe real pós-fix: 0 falsos. P3 pago no mesmo corte: cat-file do chain com
+blob loose (LEDGER_CHAIN_BLOB_UNREADABLE estruturado), record.id ??
+"unknown" no birth loop, typo receipt. Contador da suíte corrigido por
+medição viva: 848+4=852 (o +4 anterior estava congelado pré-vacina E).
+P2/P3 estacionados: teste legado cwd, cobertura merge (resistiu por probe),
+timeout spawns, /dev/null, vacina da 3ª comparação, trio de reasons do
+encolhido, assimetria pós-TARGET_MISSING.
+
 ## Reavaliação — Cura-6: rede do fiscal + janelas + vocabulário, 2026-11-09
 
 Owner $oraculo-refatoracao (Trilho cura6-seal-remaining, flow 3834; GO único
