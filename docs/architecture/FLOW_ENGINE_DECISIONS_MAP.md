@@ -59,6 +59,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-30 | Suíte de integração dos 4 módulos + E2E golden-path (pós-maratona) | aceita | V✅ | 6/6 | `tests/*.integration.test.ts` + `tests/goal-lifecycle.e2e.test.ts` |
 | D-31 | ISSUE-0002: ressalva `provided_missing_paths` + não-entrada na union (expurgo rejeitado com regresso medido); emenda adversarial: aviso `provided_unconfirmed_deletions` + fronteira envelope + preflight simétrico | aceita | V✅ | 6/6 | `tests/gate-provided-paths.test.ts` + `src/gate-provided-paths.ts`; commits `0c6dda9`+emenda |
 | D-32 | ISSUE-0005: typecheck de `tests/` no pipeline (`check:types` no `check` antes do vitest; curadoria de ~130 erros herdados) | aceita | V✅ | 6/6 | `tsconfig.tests.json`; commit `3d41f26` |
+| D-33 | ISSUE-0004: fim da tool fantasma no guidance — `librarian_status` → `ppirtv_checkout`; sentinela consumida julgando contra o registro vivo | aceita | V✅ | 4/4 | `src/fiscal-blockers.ts`; commit `e5992f4` |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -184,6 +185,19 @@ profiles de cutover, casts de envelope dinâmico e non-null **só em asserts**
 (veredito documental $oraculo-clean-code cap 7/cap 9). tsc 0 erros; suíte 896
 verde; zero `src/` de runtime. Dúvida de uso: fixture incompleta ou prop
 fantasma em teste agora quebra o `npm run check` na hora.
+
+
+### D-33 (pós-maratona, 2026-11-09): ISSUE-0004 — fim da tool fantasma no guidance
+`blockerOwner("librarian_status")` apontava `memory_recall` — tool que NUNCA
+existiu no registro (32 tools reais; só eventos `memory_recalled`). Veredito
+documental $oraculo-clean-code (cap 2 *Meaningful Names*, l.906-920): guidance
+é um nome de rota — deve revelar intenção executável. Escolha pela própria
+tabela: irmãos apontam tools de AÇÃO especializada → **`ppirtv_checkout`**
+(checagem de accountability do librarian, dona do diagnóstico
+graphify/bibliotecário). Sentinela consumida conforme desenhada: RED provado
+ao vivo na cura; o teste novo julga a tabela INTEIRA contra o registro VIVO
+de tools — nenhuma tool fantasma passa. Dúvida de uso: guidance de blocker
+nunca mais aponta tool inexistente (o teste vigia).
 
 ## Estado e débitos declarados (pós-maratona)
 

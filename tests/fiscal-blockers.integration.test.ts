@@ -108,8 +108,13 @@ describe("fiscal-blockers integration (import direto do módulo)", () => {
     // 32 tools e `memory_recall` NÃO estava entre elas — a SENTINELA esperava o
     // bug e foi consumida pela cura (veredito documental oraculo-clean-code
     // cap2: guidance revela intenção executável; padrão da tabela = tool de
-    // ação especializada). Agora a tabela INTEIRA é julgada contra o registro
-    // VIVO de tools do servidor — nenhuma tool fantasma passa.
+    // ação especializada). EMENDA adversarial D-33: a tabela é julgada POR
+    // CONSTRUÇÃO (regex extrai cada par if/return do blockerOwner) e TODO
+    // guidance `tool:` do módulo é varrido contra o registro VIVO — ramo
+    // futuro fantasma ou tool fantasma em tabela irmã reprova (mutation probe
+    // do adversário pagou a classe: lista hardcoded deixava passar). O piso
+    // >=30 é tripwire de forma da regex do registro (drift de formatação =>
+    // conjunto menor => falha estrita em registered.has, nunca falso verde).
     const serverSource = readFileSync(path.join(__dirname, "..", "src", "server.ts"), "utf8");
     const registered = new Set<string>();
     for (const match of serverSource.matchAll(/registerPpirtvTool\(\s*\n?\s*server,\s*\n?\s*"([a-z0-9_]+)"/g)) {
@@ -118,8 +123,16 @@ describe("fiscal-blockers integration (import direto do módulo)", () => {
     expect(registered.size).toBeGreaterThanOrEqual(30);
     expect(blockerOwner("librarian_status")).toBe("ppirtv_checkout");
     expect(registered.has("ppirtv_checkout")).toBe(true);
-    for (const blocker of ["review_required", "memory_required_but_empty", "hygiene_blocking", "librarian_status"]) {
-      expect(registered.has(blockerOwner(blocker))).toBe(true);
+    const moduleSource = readFileSync(path.join(__dirname, "..", "src", "fiscal-blockers.ts"), "utf8");
+    const ownerPairs = [...moduleSource.matchAll(/if \(blocker === "([a-z0-9_]+)"\) return "([a-z0-9_]+)"/g)];
+    expect(ownerPairs.length).toBeGreaterThanOrEqual(4);
+    for (const [, blocker, tool] of ownerPairs) {
+      expect(registered.has(tool), `blockerOwner(${blocker}) -> ${tool}`).toBe(true);
+    }
+    const guidanceTools = [...moduleSource.matchAll(/tool:\s*"([a-z0-9_]+)"/g)];
+    expect(guidanceTools.length).toBeGreaterThanOrEqual(6);
+    for (const [, tool] of guidanceTools) {
+      expect(registered.has(tool), `guidance tool: ${tool}`).toBe(true);
     }
   });
 

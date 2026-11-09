@@ -6,7 +6,11 @@ veredito documental oraculo-clean-code cap2 l.906-920), tests/
 fiscal-blockers.integration.test.ts (SENTINELA CONSUMIDA: RED provado ao vivo
 quando a cura chegou; teste novo julga a TABELA INTEIRA contra o registro VIVO
 de tools do server.ts — nenhuma tool fantasma passa). flow-engine.ts
-intocado (camping N/A). Suíte 896+1 lógica nova.
+intocado (camping N/A). Suíte INALTERADA em 896 (892+4, files 70 — a
+sentinela foi reescrita 1:1, não somada). EMENDA adversarial (0P1/1P2/6P3):
+vacina por CONSTRUÇÃO no teste (pares if/return extraídos por regex + TODO
+guidance tool: do módulo varrido contra o registro vivo — mutation probe
+do adversário pagou a classe da lista hardcoded).
 
 ## Reavaliação — ISSUE-0005 typecheck de tests/ no pipeline (D-32), 2026-11-09
 
