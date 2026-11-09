@@ -55,6 +55,10 @@ acceptance still depends on review and the applicable checks for that revision.
 
 - [Laudo: recorrência fiscal e fingerprint pós-recall](docs/contracts/FISCAL_RECURRENCE_BUG_REPORT_2026-11-02.md)
   — reprodução do bug, causa confirmada, testes e limites da correção.
+- [FlowEngine decisions map](docs/architecture/FLOW_ENGINE_DECISIONS_MAP.md) —
+  why the code is shaped this way: decision IDs `D-xx` with sources, a
+  common-question shortcut table, and the 2026-11 disassembly marathon record
+  (monolith 8.181→4.933 lines, 7 waves + 6 cures, suite 823→852).
 
 - [CAPACITY.md](CAPACITY.md) — capability map of this repository (static
   photograph plus a live re-evaluation section, 2026-10-18): 34 capabilities

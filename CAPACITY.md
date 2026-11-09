@@ -1,3 +1,11 @@
+## Reavaliação — Mapa de decisões público FLOW_ENGINE_DECISIONS_MAP, 2026-11-09
+
+Documental: docs/architecture/FLOW_ENGINE_DECISIONS_MAP.md (projeção pública
+versionada do mapa D-01..D-29; tabela dúvida-comum→decisão + L1/L2 `rg "D-xx"`
+para consumo por LLM). Publicação completa: README + docs/INDEX (2 seções) +
+docs/architecture/INDEX + AGENTS (rota) + INDEX raiz; PLAYBOOK regen (AGENTS é
+fonte). Zero src; fotografia interna .agents/MAPAS/261109b não versiona por design.
+
 ## Reavaliação — Rodada documental pós-maratona, 2026-11-09
 
 Documental: src/INDEX.md + netos memory/security (mapa de código local por

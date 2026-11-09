@@ -45,6 +45,10 @@ state under `.agents/` is outside the public documentation boundary.
 - [FlowEngine evolutionary architecture](architecture/FLOW_ENGINE_EVOLUTION.md)
   — mandatory edit gate, living extraction map, machine ledger and safe seam
   sequence for the monolithic facade.
+- [FlowEngine decisions map](architecture/FLOW_ENGINE_DECISIONS_MAP.md) —
+  stable decision IDs `D-xx` answering "why is the code shaped this way?",
+  with a common-question shortcut table and the disassembly marathon record;
+  localizer `PPIRTV-FLOW-ENGINE-DECISIONS-MAP`.
 - [System snapshot and evolution map — 2026-08-03](architecture/SYSTEM_SNAPSHOT_AND_EVOLUTION_MAP_2026-08-03.md)
   — dated, evidence-bound view of the whole system, measured bottlenecks,
   version clocks and path to the next release.
@@ -66,6 +70,8 @@ state under `.agents/` is outside the public documentation boundary.
 ## Architecture
 
 - [Architecture index](architecture/INDEX.md).
+- [FlowEngine decisions map](architecture/FLOW_ENGINE_DECISIONS_MAP.md) —
+  decision IDs `D-xx` with Git sources for the 2026-11 disassembly marathon.
 - [System snapshot and evolution map — 2026-08-03](architecture/SYSTEM_SNAPSHOT_AND_EVOLUTION_MAP_2026-08-03.md)
   — immutable map bound to Git, runtime, CRG and benchmark evidence.
 - [PPIRTV vNext architecture decision — 2026-08-03](architecture/PPIRTV_VNEXT_ARCHITECTURE_DECISION_2026-08-03.md)

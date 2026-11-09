@@ -4,6 +4,10 @@ Public architecture references for maintainers and coding agents.
 
 - [FlowEngine evolutionary architecture](FLOW_ENGINE_EVOLUTION.md) — living
   camp map, dependency direction, edit gate, examples and next safe seams.
+- [FlowEngine decisions map](FLOW_ENGINE_DECISIONS_MAP.md) — stable decision
+  IDs `D-xx` with Git sources answering "why is the code shaped this way?";
+  shortcut table for common usage questions; localizer
+  `PPIRTV-FLOW-ENGINE-DECISIONS-MAP`.
 - [FlowEngine evolution ledger](flow-engine-evolution.json) — machine-readable
   declarations bound to Git blobs and verified by the boundary fiscal.
 - [System snapshot and evolution map — 2026-08-03](SYSTEM_SNAPSHOT_AND_EVOLUTION_MAP_2026-08-03.md)

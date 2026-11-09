@@ -266,7 +266,7 @@
   "fotografia_id": "2026-11-05-merge-pr7",
   "head": "0e62ff2",
   "tree_hash": "a22a1d7103958e2ac25c492e6a4586e0ea817057",
-  "generated_at": "2026-11-09T18:11:32.953248+00:00",
+  "generated_at": "2026-11-09T18:27:36Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1294,5 +1294,25 @@
     "delta": "monólito 7072->6170 (−902L); fiscal-blockers 995L; suíte 852 sem editar teste",
     "evidence": "flow 3874; camping SHRINK FE-2026-11-09-ONDA5-FISCAL-BLOCKERS-SHRINK",
     "summary": "família de diagnóstico de bloqueio + ações diretas sai do monólito (onda densa por coesão)."
+  },
+  "reavaliacao_decisions_map_publico": {
+    "date": "2026-11-09",
+    "scope": [
+      "docs/architecture/FLOW_ENGINE_DECISIONS_MAP.md",
+      "README.md",
+      "docs/INDEX.md",
+      "docs/architecture/INDEX.md",
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json"
+    ],
+    "delta": "Mapa publico de decisoes D-01..D-29 do flow-engine (projecao versionada da fotografia interna 261109b): tabela duvida-comum->decisao + L1/L2 consumivel por LLM (rg D-xx). Publicacao em 5 superficies (README, docs/INDEX 2 secoes, architecture/INDEX, AGENTS rota, INDEX raiz gitignored); PLAYBOOK regen porque AGENTS e fonte. Zero src.",
+    "evidence": [
+      "python -B tools/playbook/generate-playbook.py --repo . --check",
+      "rg -n \"PPIRTV-FLOW-ENGINE-DECISIONS-MAP\" README.md docs/INDEX.md docs/architecture/INDEX.md"
+    ],
+    "limits": [
+      "Documento nao executa chamadas MCP; fontes citadas sao Git-permanentes (commits, CHANGELOG, ledger).",
+      "Fotografia interna completa (.agents/MAPAS/261109b) nao versiona por design."
+    ]
   }
 }
