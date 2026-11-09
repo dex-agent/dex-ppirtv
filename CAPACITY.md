@@ -1,5 +1,9 @@
 ## Reavaliação — Onda 6 emenda: adversarial 0 P1/3 P2/10 P3 — 42 imports mortos, 2026-11-09
 
+Emenda documental adicional: projeção PLAYBOOK regen commitada (fontes
+napkin/ACTIVE da Onda 6; worktree limpo para a corroboração do verdict).
+Suíte/receipts unchanged (852).
+
 Owner $oraculo-refatoracao (mesma sessão, flow 3917; mesa QUESTIONADORES-ATIVADO):
 vacina anti-import-morto revelou que só varria o bloco NOVO — 8 mortificados
 pelo corte + 34 acumulados das Ondas 1-5 = **42 cortados**; monólito
