@@ -1,3 +1,17 @@
+## Reavaliação — Cura-5: error-path do selo estruturado + janelas de selo, 2026-11-09
+
+Owner $oraculo-refatoracao (Trilho cura5-seal-diff-crash, flow 3805; P1 da
+adversarial cura-4): rev-list de linhagem no MESMO try do rev-parse do blob
+(commit inexistente devolve COMMIT_SEAL_COMMIT_NOT_FOUND — crash sem receipt
+era regressão do 8ad367a; lição REGRESSAO-ERROR-PATH-TRY-CATCH); blob do
+nascimento no path de declaração (COMMIT_SEAL_BLOB_MISMATCH); deselagem
+fechada no LEDGER_PREFIX (guard do par + COMMIT_SEAL_COMMIT_MISSING);
+canonicalJson nas 3 comparações de record. 3 REDs no baseline c7b2ed6 ->
+GREEN; suíte 842+4=846; camping NOT_APPLICABLE (motor intocado — primeira
+cura 100% fiscal, sem record por desenho). Aprendizado de fixture: --head
+WORKTREE faz o seal-diff ler o worktree sujo; declaration só é selecionado
+quando base_blob/head_blob casam o par do diff.
+
 ## Reavaliação — Cura-4: linhagem incondicional + rede antes da pá, 2026-11-08
 
 Owner $oraculo-refatoracao (Trilho cura4-seal-lineage-unico, flow 3778; GO do

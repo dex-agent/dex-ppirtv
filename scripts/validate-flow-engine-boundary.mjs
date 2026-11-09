@@ -294,6 +294,18 @@ const LEGACY_SELECTOR_EXEMPT = new Set([
 // metacaracteres de regex — +, ->, {}, [] — medido por probe: 24 seletores
 // em 12 records; a emenda documental vive no MD; o gate vigia os FUTUROS.)
 
+// Cura-5 (P2 adversarial cura-4): serialização canônica — a comparação de
+// records não pode fabricar "mudança" (nem esconder mudança real) só porque
+// o JSON foi re-serializado com outra ordem de chaves.
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const keys = Object.keys(value).sort();
+    return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
 // Cura-4 (P1-1 adversarial cura-3): helper ÚNICO de linhagem de selagem —
 // consumido pelo LEDGER_PREFIX (record que entra ou muda no diff), pelo path
 // de declaração (record novo) e pelo seal-diff. Sem janela de diff escapa.
@@ -525,7 +537,7 @@ function evaluateCommitSealDiff({ cwd, baseManifest, headManifest }) {
     delete beforeCopy.parent_commit;
     delete afterCopy.commit;
     delete afterCopy.parent_commit;
-    if (JSON.stringify(beforeCopy) !== JSON.stringify(afterCopy)) {
+    if (canonicalJson(beforeCopy) !== canonicalJson(afterCopy)) {
       reasons.push(`COMMIT_SEAL_RECORD_CHANGED:${after.id}`);
       continue;
     }
@@ -538,17 +550,23 @@ function evaluateCommitSealDiff({ cwd, baseManifest, headManifest }) {
     }
     // Cura-4: parent ausente NÃO pula a conferência de blob — a mentira mais
     // grave (commit que não contém o blob declarado) não pode ficar mascarada.
+    // Cura-5 (P1 adversarial cura-4): blob E linhagem consultam o MESMO
+    // commit — as duas chamadas git moram no MESMO try. Commit inexistente
+    // devolve COMMIT_SEAL_COMMIT_NOT_FOUND estruturado (o rev-list fora do
+    // try crashava o CLI sem receipt — lição REGRESSAO-ERROR-PATH-TRY-CATCH).
     const blobReasons = [];
+    let parents = null;
     try {
       const sealedBlob = git(["rev-parse", `${after.commit}:${TARGET_PATH}`], cwd);
       if (sealedBlob !== after.head_blob) blobReasons.push(`COMMIT_SEAL_BLOB_MISMATCH:${after.id}`);
+      parents = git(["rev-list", "--parents", "-n", "1", after.commit], cwd).split(/\s+/).slice(1);
     } catch {
       blobReasons.push(`COMMIT_SEAL_COMMIT_NOT_FOUND:${after.id}`);
     }
     reasons.push(...blobReasons);
     // Cura-4: linhagem pelo helper ÚNICO (P1 da cura-2 + selo vivo da cura-2
-    // agora são a mesma fonte).
-    reasons.push(...sealLineageReasons(after, before, git(["rev-list", "--parents", "-n", "1", after.commit], cwd).split(/\s+/).slice(1)));
+    // agora são a mesma fonte) — só quando o commit resolve (parents lidos).
+    if (parents) reasons.push(...sealLineageReasons(after, before, parents));
     if (blobReasons.length > 0 || !nonEmptyString(after.parent_commit)) {
       continue;
     }
@@ -907,8 +925,14 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
   // Cura-4 (B2): record NOVO que nasce com commit no diff tem a linhagem
   // conferida na hora, COM ou SEM base manifest — não existe "selo de
   // nascimento" sem conferência (o LEDGER_PREFIX só cobre records pré-existentes).
+  // Cura-5 (P2 adversarial cura-4): o nascimento também confere o BLOB do
+  // commit selado contra o head_blob declarado (linhagem honesta + blob
+  // mentiroso era selo verde).
   if (declaration?.commit) {
     try {
+      if (git(["rev-parse", `${declaration.commit}:${TARGET_PATH}`], cwd) !== declaration.head_blob) {
+        receipt.reasons.push(`COMMIT_SEAL_BLOB_MISMATCH:${declaration.id}`);
+      }
       receipt.reasons.push(...sealLineageReasons(declaration, null,
         git(["rev-list", "--parents", "-n", "1", declaration.commit], cwd).split(/\s+/).slice(1)));
     } catch {
@@ -941,7 +965,7 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
         const preservedPrefix = baseRecords.every((before, index) => {
           const after = records[index];
           return Boolean(after) && after.id === before.id
-            && JSON.stringify(stripSeal(after)) === JSON.stringify(stripSeal(before));
+            && canonicalJson(stripSeal(after)) === canonicalJson(stripSeal(before));
         });
         if (!preservedPrefix) receipt.reasons.push("LEDGER_HISTORY_MUTATED");
         // Cura-4 (P1-1 adversarial cura-3, motor-laundering): a conferência de
@@ -950,20 +974,28 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
         // aceita no seu tempo (grandfathering por imutabilidade); qualquer
         // mutação (inclusive remover parent com commit inalterado) é conferida
         // contra o git real pelo helper ÚNICO.
+        // Cura-5 (P2 adversarial cura-4): DESELAGEM fechada — o guard olha o
+        // PAR (antes OU depois selado); remover o commit de record selado
+        // reprova COMMIT_SEAL_COMMIT_MISSING (o guard antigo after.commit &&
+        // deixava a remoção escapar limpa). recordChanged pelo canônico.
         for (let index = 0; index < baseRecords.length; index += 1) {
           const after = records[index];
           const before = baseRecords[index];
-          const recordChanged = JSON.stringify(after) !== JSON.stringify(before);
-          if (after.commit && recordChanged) {
-            try {
-              if (git(["rev-parse", `${after.commit}:${TARGET_PATH}`], cwd) !== after.head_blob) {
-                receipt.reasons.push(`LEDGER_PREFIX_COMMIT_SEAL_MISMATCH:${after.id}`);
-              }
-              receipt.reasons.push(...sealLineageReasons(after, before,
-                git(["rev-list", "--parents", "-n", "1", after.commit], cwd).split(/\s+/).slice(1)));
-            } catch {
+          const recordChanged = canonicalJson(after) !== canonicalJson(before);
+          const sealTouched = nonEmptyString(after?.commit) || nonEmptyString(before?.commit);
+          if (!sealTouched || !recordChanged) continue;
+          if (!nonEmptyString(after?.commit)) {
+            receipt.reasons.push(`COMMIT_SEAL_COMMIT_MISSING:${after.id}`);
+            continue;
+          }
+          try {
+            if (git(["rev-parse", `${after.commit}:${TARGET_PATH}`], cwd) !== after.head_blob) {
               receipt.reasons.push(`LEDGER_PREFIX_COMMIT_SEAL_MISMATCH:${after.id}`);
             }
+            receipt.reasons.push(...sealLineageReasons(after, before,
+              git(["rev-list", "--parents", "-n", "1", after.commit], cwd).split(/\s+/).slice(1)));
+          } catch {
+            receipt.reasons.push(`LEDGER_PREFIX_COMMIT_SEAL_MISMATCH:${after.id}`);
           }
         }
         const appendedCount = chainRecords?.length ?? 1;
