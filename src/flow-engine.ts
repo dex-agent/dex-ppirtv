@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { existsSync } from "node:fs";
 import { PHASES, COMPACT_PHASES, GOAL_FLOW_ROLES, type AnyPhase, type Cooperator, type CriterionProofInput, type Evidence, type Flow, type GateRecord, type GoalBinding, type GoalEnvelope, type GoalFlowRole, type HygieneFinding, type Meeting, type MemoryCandidatePromoteScope, type MemoryCandidateResolution, type MemoryCandidateResolutionAction, type MeetingKind, type MeetingType, type MemoryMiningSummary, type MemoryPostWriteValidation, type MemoryReviewStatus, type MemoryWritePolicy, type PipelineFlowResult, type PipelineItem, type PresentationEnvelope, type Phase, type Scope, type SptValidationResult, type Verdict, type VerdictStatus, type WorkProgressEvent, type WorkProgressStatus, type WorkProgressSummary } from "./domain.js";
 import { canonicalVerdictChangedFiles, hasRequirement, invalidateStaleDownstreamGates, isStructuredReviewEvidence, mergePathFacts, officialGoalNeedsCanonicalVerdict, providedRequirementDiagnostic, resolveGateRequirements, reviewCurrencyAppliesToPhase, reviewCurrencyMissing, reviewEvidenceDiagnostics, reviewEvidenceRequested, reviewEvidenceValidity, savedGateReusable, strictPathArray, structuredReviewAttestationRequested, type GateRequirementResolution } from "./gate-resolution.js";
 import { requiredCooperationDiagnostics, meetingClosedIndex, meetingOutcomeSummaries, meetingOutcomeCounts, requiredCooperationNeedsMeetingIdRetry, meetingKindForType, meetingTypeForKind, requiredMeetingKind, requiredMeetingParticipants, meetingClosedLedgerData, applyClosedMeetingToFlow, assertMeetingClosed } from "./meeting-policy.js";
@@ -2739,14 +2740,29 @@ export class FlowEngine {
     // hardening-3 preservado); so o replay de dado antigo nao mata a chamada.
     const persistedProvided = sanitizePersistedProvided(flow.gates[phase]?.provided);
     const effectiveProvided: Record<string, unknown> = { ...persistedProvided, ...provided };
-    const changedFiles = phase === "implementacao"
-      ? unique([...flow.changed_files, ...strictPathArray(effectiveProvided.changed_files, "provided.changed_files")])
-      : flow.changed_files;
     const deletedFiles = phase === "implementacao"
       ? Object.prototype.hasOwnProperty.call(provided, "deleted_files")
         ? unique(strictPathArray(provided.deleted_files, "provided.deleted_files"))
         : (flow.deleted_files ?? [])
       : (flow.deleted_files ?? []);
+    // ISSUE-LOCAL-0002 (2026-11-09): path inexistente no workspace NÃO entra
+    // na union — vira ressalva ensinável no receipt (nunca bloqueia; quando o
+    // arquivo passar a existir, o mesmo provided o aceita). Paths declarados
+    // em deleted_files não são avisados (remoção legítima declara ausência) e
+    // PERMANECEM na union como memória do escopo (o snapshot os atesta como
+    // deleted — desenho #6; expurgo testado e rejeitado: quebra a atestação).
+    const deletedSet = new Set(deletedFiles.map(normalizeReviewPath).filter(Boolean));
+    const providedChangedFiles = phase === "implementacao"
+      ? strictPathArray(effectiveProvided.changed_files, "provided.changed_files")
+      : [];
+    const gateWorkspaceRoot = flow.goal_binding?.envelope.workspace ?? process.cwd();
+    const providedMissingPaths = providedChangedFiles.filter((file) =>
+      !deletedSet.has(normalizeReviewPath(file)) && !existsSync(path.resolve(gateWorkspaceRoot, file))
+    );
+    const acceptedProvidedChanges = providedChangedFiles.filter((file) => !providedMissingPaths.includes(file));
+    const changedFiles = phase === "implementacao"
+      ? unique([...flow.changed_files, ...acceptedProvidedChanges])
+      : flow.changed_files;
     assertDeletedFilesBelongToChangedFiles(changedFiles, deletedFiles);
     // Patch C (modo compact wire-up): usar profileFor(flow.mode) para decidir
     // gates e transicoes. Default cai em FULL_PROFILE quando flow.mode e'
@@ -2776,6 +2792,7 @@ export class FlowEngine {
       provided: effectiveProvided,
       implementation_fingerprint: flowForResolution.implementation_fingerprint,
       changed_files_snapshot: [...changedFiles],
+      ...(providedMissingPaths.length > 0 ? { provided_missing_paths: unique(providedMissingPaths) } : {}),
       missing,
       next: status === "passed" ? `advance_to_${profile.nextPhase[phase] ?? "complete"}` : `complete_gate_${phase}`,
       back_to: status === "passed" ? null : (profile.defaultBackTo[phase] as Phase | null)

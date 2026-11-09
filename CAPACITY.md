@@ -1,3 +1,12 @@
+## Reavaliação — D-31 ISSUE-0002: ressalva provided_missing_paths + expurgo da union, 2026-11-09
+
+Capability paths tocados: src/flow-engine.ts (gate implementacao: union só com
+paths existentes + ressalva provided_missing_paths no GateRecord + expurgo por
+deleted_files com assert pré-expurgo), src/domain.ts (GateRecord.provided_missing_paths?),
+tests/ (+1 arquivo gate-provided-paths.test.ts, 4 testes RED-first; expurgo literal
+testado e rejeitado com regresso medido — #6 preservado). Camping EXCEPTION
+urgent_hotfix (record 38, RED real baseline 7c76632). Suíte 887→891.
+
 ## Reavaliação — D-30 emenda 3: receipt re-ancorado + missing_context, 2026-11-09
 
 Consolidado automático da adversarial completou (22 agrupados): P2 do receipt

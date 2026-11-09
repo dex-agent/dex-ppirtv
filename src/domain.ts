@@ -409,6 +409,10 @@ export type GateRecord = {
   // momento do check; gates downstream so sao reutilizados enquanto o snapshot
   // permanecer identico ao estado atual do flow.
   changed_files_snapshot?: string[];
+  // ISSUE-LOCAL-0002 (2026-11-09): paths de provided.changed_files que NÃO
+  // existem no workspace — ressalva ensinável (nunca bloqueia); o path não
+  // entra na union de flow.changed_files enquanto não existir.
+  provided_missing_paths?: string[];
   missing: string[];
   next: string;
   back_to: AnyPhase | null;

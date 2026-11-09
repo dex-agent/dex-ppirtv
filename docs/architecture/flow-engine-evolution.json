@@ -1737,6 +1737,35 @@
    "architecture_marker": "FE-2026-11-09-ONDA7-MEMORY-PROMOTION-SHRINK",
    "commit": "c99ef48155ca257e3b554e91fb36d1ad50c10d9c",
    "parent_commit": "601c8aca294c9bc7a8c82772901fc22187b87641"
+  },
+  {
+   "id": "FE-2026-11-09-ISSUE0002-PROVIDED-PATHS-UNION-EXCEPTION",
+   "date": "2026-11-09",
+   "spt_path": ".agents/PLAN-TASKS/2026-11-09-issue0002-union-path-fantasma.md",
+   "owner": "$oraculo-refatoracao",
+   "mode": "EXCEPTION",
+   "exception_reason": "urgent_hotfix",
+   "expires": "2026-11-16",
+   "red_evidence": "tests/gate-provided-paths.test.ts::path inexistente em provided.changed_files vira ressalva provided_missing_paths e NAO entra na union",
+   "red_base_blob": "2d439cfbdf6d3fae5dd15e06127f422cb67bb6a4",
+   "red_observed_failure": "RED provado no baseline 7c76632 (3 falhas): receipt SEM provided_missing_paths e typo persistindo na union flow.changed_files; path declarado antes de existir sem ressalva; comportamento de delecao real sem cobertura documental. EMENDA com regresso MEDIDO: o expurgo da union por deleted_files (criterio 3 literal) quebrou a atestacao de delecao real do desenho #6 (engine.test 'attests an explicit deletion' — path expurgado destruia a memoria do escopo e o replay do goalStatus rejogava assert contra lista vazia); ROLLBACK do expurgo — prevalece a cura A (nao-entrada + ressalva) e o criterio 3 fecha pelo aceite alternativo da propria issue (typo nunca entra => nao ha fantasma eterno).",
+   "red_command": "npx vitest run tests/gate-provided-paths.test.ts -t \"path inexistente em provided.changed_files vira ressalva provided_missing_paths e NAO entra na union\"",
+   "base_blob": "2d439cfbdf6d3fae5dd15e06127f422cb67bb6a4",
+   "head_blob": "841d5874aa151efb6afd575458a987956f515a1e",
+   "consumers": [
+    "src/server.ts"
+   ],
+   "evidence": [
+    "tests/gate-provided-paths.test.ts"
+   ],
+   "evidence_selectors": {
+    "tests/gate-provided-paths.test.ts": "path inexistente em provided.changed_files vira ressalva provided_missing_paths e NAO entra na union"
+   },
+   "behavior_preserved_by": "npm run check integral (suite 891 sem editar teste existente) + 4 testes novos GREEN (ressalva nomeada, nao-entrada, declarado-antes-de-existir com aceitacao posterior, delecao real documental #6 com path permanecendo na union) + guard DELETED_FILES_NOT_CHANGED preservado na semantica original (deleted pertence ao escopo); mudanca unica de semantica: union so aceita paths existentes no workspace (ressalva ensinavel no receipt, nunca bloqueia).",
+   "responsibility": "sanidade da entrada de provided.changed_files/deleted_files no gate de implementacao (ressalva de paths inexistentes + expurgo da union acumulada)",
+   "changelog_marker": "FE-2026-11-09-ISSUE0002-PROVIDED-PATHS-UNION-EXCEPTION",
+   "architecture_marker": "FE-2026-11-09-ISSUE0002-PROVIDED-PATHS-UNION-EXCEPTION",
+   "rollback": "revert do commit do corte ISSUI0002 restaura a union sem ressalva (git revert <commit>); o teste novo tests/gate-provided-paths.test.ts fica RED apos o revert por design (sentinela do comportamento curado)"
   }
  ]
 }

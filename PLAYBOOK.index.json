@@ -3,7 +3,7 @@
   "generated_by": "tools/playbook/generate-playbook.py",
   "authority": "derived_projection",
   "repo_name": "dex-PPIRTV",
-  "sources_revision": "sha256:d51cacf08886b02092eb5ebdcc307f5a42f2a90a124ea55aa0c9fc9b384f1a30",
+  "sources_revision": "sha256:26e4018fb36372539831f24487e2c9104ed4836ae511ba9efa9398567eb1a9fa",
   "sent_revision": "sha256:c3fe3900353785713ca9fdb1d0ff4a840d2eade60eadca73b9a4ac228bd6dc0f",
   "rules": [
     {
@@ -81,7 +81,21 @@
       "fonte": "AGENTS.md#L337-L381"
     },
     {
-      "seal": "pb-0effd247",
+      "seal": "pb-7f2bfe9e",
+      "locator": "TRACKER-LOCAL",
+      "title": "Bootstrap (toda janela nova, nesta ordem)",
+      "gatilho": "operar) → `.agents\\GATILHOS-VIVOS.md` (hub de gatilhos quentes de reuso).",
+      "extrato": "1. Leia o AGENTS global: `$env:USERPROFILE\\.agents\\AGENTS.md` (PowerShell) /",
+      "rotas": [
+        "Leia o AGENTS global: `$env:USERPROFILE\\.agents\\AGENTS.md`...",
+        "Leia este `AGENTS.md` inteiro.",
+        "Leia o estado vivo, nesta ordem: `.agents\\ACTIVE.md` → `.ag...",
+        "Gatilhos L1: `.agents\\lembranca.md` — abra L2/L3 somente po..."
+      ],
+      "fonte": "AGENTS.md#L415-L436"
+    },
+    {
+      "seal": "pb-12840d1b",
       "locator": "PENDENTES-LEDGER",
       "title": "Leitura obrigatoria (bootstrap)",
       "gatilho": "5. `.agents/PENDENTES.md` — ledger de pendências append-only (schema `dex.pendencias.v2`; gatilho `PENDENTES-LEDGER`)",
@@ -92,7 +106,7 @@
         "`.agents/HANDOFF.md`",
         "`.agents/PLAN-TASKS/ACTIVE.md`"
       ],
-      "fonte": "AGENTS.md#L460-L467"
+      "fonte": "AGENTS.md#L464-L471"
     }
   ],
   "mesa": {
@@ -113,16 +127,12 @@
       "ancora": "AGENTS.md#L382"
     },
     {
-      "titulo": "Bootstrap (toda janela nova, nesta ordem)",
-      "ancora": "AGENTS.md#L415"
-    },
-    {
       "titulo": "Indexação (doutrina da casa)",
-      "ancora": "AGENTS.md#L433"
+      "ancora": "AGENTS.md#L437"
     },
     {
       "titulo": "Envio a terceiros",
-      "ancora": "AGENTS.md#L440"
+      "ancora": "AGENTS.md#L444"
     }
   ],
   "fontes": [
@@ -133,7 +143,7 @@
     },
     {
       "caminho": "AGENTS.md",
-      "sha256": "27e7a5aa947d998fb40e7f30e9f0006d2abdbc086ab983e5f1f06fddb5199a5a",
+      "sha256": "4db78c14b988090f0c3d7f39e18cd055076b9b88e49f1990400bc594e0bd2719",
       "enviado": false
     },
     {

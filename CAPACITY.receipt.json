@@ -266,7 +266,7 @@
   "fotografia_id": "2026-11-05-merge-pr7",
   "head": "009f780bee19b64ea50259a62c184f3b2348e42a",
   "tree_hash": "5f857cdddbed0bcab8879b73865e834631823d86",
-  "generated_at": "2026-11-09T19:46:28Z",
+  "generated_at": "2026-11-09T20:40:39Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1335,6 +1335,24 @@
       "Cobertura de simbolos publicos e amostral (ramos adversariais), nao exaustiva.",
       "E2E usa o motor real com store em disco no workspace temporal; a camada stdio ja coberta por 36 its do mcp.test.ts nao e re-testada aqui.",
       "Anchors head/tree_hash re-ancorados por write-tree staged (cura do P2 checklist; precedente Onda 5)."
+    ]
+  },
+  "reavaliacao_d31_issue0002_union_paths": {
+    "date": "2026-11-09",
+    "scope": [
+      "src/flow-engine.ts",
+      "src/domain.ts",
+      "tests/gate-provided-paths.test.ts"
+    ],
+    "delta": "ISSUE-LOCAL-0002 (P1) curada com RED-first: gate de implementacao com path inexistente em provided.changed_files devolve ressalva provided_missing_paths (nunca bloqueia) e NAO persiste na union flow.changed_files. Expurgo literal por deleted_files implementado, testado e REJEITADO com regresso medido (quebrava atestacao de delecao real do desenho #6; criterio 3 fechado pelo aceite alternativo da issue). GateRecord.provided_missing_paths? documentado. Camping EXCEPTION urgent_hotfix (record 38). Suite 887->891.",
+    "evidence": [
+      "npx vitest run tests/gate-provided-paths.test.ts -t \"path inexistente em provided.changed_files vira ressalva provided_missing_paths e NAO entra na union\" (RED no baseline)",
+      "npm run check:flow-engine (PASS EXCEPTION)",
+      "npm run check"
+    ],
+    "limits": [
+      "Ressalva usa existsSync no workspace do envelope; estados especiais do snapshot (non_file/unborn) prevalecem no fingerprint — a ressalva e ensinavel, nao autoritativa.",
+      "Paths declarados antes de existir ficam fora da union ate existirem (comportamento declarado no CHANGELOG)."
     ]
   }
 }
