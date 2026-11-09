@@ -1,3 +1,10 @@
+## Reavaliação — selagem pós-commit da Onda 6, 2026-11-09
+
+Documental: record FE-2026-11-09-ONDA6-PPIRTV-CHECKIN-SHRINK selado no ledger
+(commit=defacc1f1, parent=b5d5f9514) após push do corte; janela acumulada
+e0ec9d1..cobre emenda b5d5f95 (imports) + corte defacc1. Suíte/receipts
+unchanged (852). Zero src no commit (ledger + par CAPACITY).
+
 ## Reavaliação — Onda 6: check-in/check-out PPIRTV fora do monólito, 2026-11-09
 
 Owner $oraculo-refatoracao (Trilho onda6-ppirtv-checkin, flow 3917; GO único

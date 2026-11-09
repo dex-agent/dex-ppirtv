@@ -1635,7 +1635,9 @@
    ],
    "changelog_marker": "FE-2026-11-09-ONDA6-PPIRTV-CHECKIN-SHRINK",
    "architecture_marker": "FE-2026-11-09-ONDA6-PPIRTV-CHECKIN-SHRINK",
-   "__stash__": true
+   "__stash__": true,
+   "commit": "defacc1f1a22c98d316e7ecb0fdfe1d78ef6adce",
+   "parent_commit": "b5d5f95147ef2cc62b0ac05d4bc05ad9c83e7ad3"
   }
  ]
 }
