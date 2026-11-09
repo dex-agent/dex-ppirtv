@@ -11,9 +11,13 @@ export interface FlowEngineChangeDeclaration {
 }
 
 export interface BoundaryReceipt {
-  status?: string;
-  mode?: string;
-  requested_mode?: string;
+  // Vocabulários FECHADOS espelhados do .mjs (ALLOWED_MODES l.15; mode efetivo
+  // l.369/379/453-455; status l.450) — emenda adversarial D-32: o typecheck
+  // perde o enforcing grátis se o d.mts abrir string onde o runtime valida
+  // enum (probe: tsc aceitava mode "SHRINKGG" que o validador reprova).
+  status?: "PASS" | "FAIL";
+  mode?: "SHRINK" | "CONTAIN" | "EXCEPTION" | "FAIL" | "NOT_APPLICABLE";
+  requested_mode?: "SHRINK" | "CONTAIN" | "EXCEPTION";
   reasons?: string[];
   metrics?: {
     nonblank_lines: { delta: number; [key: string]: unknown };
@@ -25,8 +29,7 @@ export interface BoundaryReceipt {
 }
 
 export declare function analyzeFlowEngineSource(
-  source: string,
-  label?: string
+  source: string
 ): {
   nonblank_lines: number;
   decision_points: number;

@@ -135,7 +135,7 @@ npm run build
 npm run check
 ```
 
-`npm run check` builds the TypeScript project and runs the Vitest suite.
+`npm run check` runs the canonical gates (audit, flow-engine camping, capacity), builds the TypeScript project, typechecks `src/` + `tests/` (`check:types`) and runs the Vitest suite.
 
 ### FlowEngine camping gate
 

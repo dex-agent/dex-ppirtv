@@ -79,6 +79,14 @@ function validateReceipt(receipt) {
     || !Number.isInteger(receipt.suite.skipped) || receipt.suite.skipped < 0) {
     reasons.push("CAPACITY_RECEIPT_SUITE_INVALID");
   }
+  // ISSUE-LOCAL-0005 (emenda adversarial D-32, P2 4x convergente): a
+  // aritmética da suíte tem que fechar — passed+failed+skipped===total e
+  // files>0. Receipts anteriores carregavam total congelado de cortes
+  // antigos (852) e até total-como-passed (896 no 2aad953) sem o gate ver.
+  if (receipt.suite && Number.isInteger(receipt.suite.total)
+    && receipt.suite.total !== (receipt.suite.passed | 0) + (receipt.suite.failed | 0) + (receipt.suite.skipped | 0)) {
+    reasons.push("CAPACITY_RECEIPT_SUITE_TOTAL_MISMATCH");
+  }
   if (!Number.isInteger(receipt.tools_count) || receipt.tools_count < 1) reasons.push("CAPACITY_RECEIPT_TOOLS_COUNT_INVALID");
   if (!Array.isArray(receipt.capabilities) || receipt.capabilities.length === 0) {
     reasons.push("CAPACITY_RECEIPT_CAPABILITIES_REQUIRED");

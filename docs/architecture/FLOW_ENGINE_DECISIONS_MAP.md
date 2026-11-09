@@ -58,6 +58,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-29 | Janela acumulada no selo SHRINK | aceita | V✅ | 2/2 | Ondas 6/7 |
 | D-30 | Suíte de integração dos 4 módulos + E2E golden-path (pós-maratona) | aceita | V✅ | 6/6 | `tests/*.integration.test.ts` + `tests/goal-lifecycle.e2e.test.ts` |
 | D-31 | ISSUE-0002: ressalva `provided_missing_paths` + não-entrada na union (expurgo rejeitado com regresso medido); emenda adversarial: aviso `provided_unconfirmed_deletions` + fronteira envelope + preflight simétrico | aceita | V✅ | 6/6 | `tests/gate-provided-paths.test.ts` + `src/gate-provided-paths.ts`; commits `0c6dda9`+emenda |
+| D-32 | ISSUE-0005: typecheck de `tests/` no pipeline (`check:types` no `check` antes do vitest; curadoria de ~130 erros herdados) | aceita | V✅ | 6/6 | `tsconfig.tests.json`; commit `3d41f26` |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -167,6 +168,22 @@ gate verde → status → verdict — e confere os artefatos PERSISTIDOS em disc
 `.ndjson`), além da idempotência do `goal_start`. Vigília provada por
 mutação (5 mutações, cada uma flagrada em RED com revert imediato). Suíte
 852→886, zero mudança de produto.
+
+
+### D-32 (pós-maratona, 2026-11-09): ISSUE-0005 — typecheck de tests/ no pipeline
+O gate `npm run check` não validava tipos dos arquivos de teste (tsconfig só
+`src/**`; vitest não typechecka) — a fixture incompleta do D-30 e 3 props
+fantasmas `phase` passavam em silêncio. Cura: `tsconfig.tests.json` (extends
+base, noEmit, lib ES2023 p/ `findLast`) + script `check:types` no `check`
+ANTES do vitest, com curadoria completa dos ~130 erros herdados em 18
+arquivos (baseline RED congelado: 251 linhas). Classes: fixtures completas
+(Meeting +8 campos — a própria barata do D-30 agora impossível de repetir;
+`GoalVerdictInput.next_step`; `GateRequirement.kind` real do mapa),
+`d.mts` de declaração para o validador de camping `.mjs`, `as const` dos
+profiles de cutover, casts de envelope dinâmico e non-null **só em asserts**
+(veredito documental $oraculo-clean-code cap 7/cap 9). tsc 0 erros; suíte 896
+verde; zero `src/` de runtime. Dúvida de uso: fixture incompleta ou prop
+fantasma em teste agora quebra o `npm run check` na hora.
 
 ## Estado e débitos declarados (pós-maratona)
 

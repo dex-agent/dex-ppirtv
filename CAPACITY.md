@@ -7,8 +7,17 @@ declarações do validador .mjs para o typecheck consumir), tests/ (curadoria
 de ~130 erros herdados em 18 arquivos: fixtures completas — Meeting 8 campos,
 GoalVerdictInput.next_step, GateRequirement.kind; imports de tipos; as const
 dos profiles; casts de envelope dinâmico; ! só em asserts). Baseline RED
-congelado (251 linhas tsc, src/ puro 0). tsc 0 erros; suíte 896 (892+4)
+congelado (251 linhas tsc, src/ puro 0 — BASELINE-RED.txt reabrível na pasta
+de evidências). tsc 0 erros; suíte 896 (892 passed + 4 skipped, files 70)
 VERDE sem mudança de comportamento; zero src/*.ts de runtime no corte.
+EMENDA adversarial (5 revisores, 0 P1/4 P2/10 P3): receipt suite corrigido
+(892+0+4=896, files 70, comando atual — o total 852 e o rótulo "Onda 5"
+estavam congelados há 4 cortes; 2aad953 gravou total-como-passed) +
+VACINA no fiscal check-capacity.mjs (cruzamento passed+failed+skipped===total,
+CAPACITY_RECEIPT_SUITE_TOTAL_MISMATCH); d.mts com vocabulários FECHADOS
+espelhados do .mjs (probe provou tsc aceitando mode SHRINKGG) e sem label
+fantasma; README com o pipeline real do check; spawn git sem timeout =
+duplicata de classe já estacionada (EST ADV-ONDA5).
 
 ## Reavaliação — D-31 emenda adversarial: aviso unconfirmed + fronteira envelope + preflight simétrico, 2026-11-09
 
