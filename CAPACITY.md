@@ -1,3 +1,10 @@
+## Reavaliação — D-30 emenda 3: receipt re-ancorado + missing_context, 2026-11-09
+
+Consolidado automático da adversarial completou (22 agrupados): P2 do receipt
+(head/tree_hash congelados — mesma classe da Onda 5) curado com âncoras reais
+write-tree; P3 missing_context exercitado (ramo 3 faltantes); E2E v3
+estacionado; acentuação/freeze declarados não-curados deliberados. Suíte 887.
+
 ## Reavaliação — Testes de integração dos 4 módulos de política + E2E golden-path, 2026-11-09
 
 Capability paths tocados: tests/ (+6 arquivos: helper fixture + 4 suítes

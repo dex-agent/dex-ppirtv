@@ -67,6 +67,20 @@ describe("ppirtv-checkin integration (import direto do módulo)", () => {
     );
     expect(forte.status).toBe("strong");
     expect(forte.missing_fields.length).toBeLessThanOrEqual(1);
+
+    // ramo missing_context (2-3 campos ausentes): nem weak nem strong —
+    // com resultado e limitação presentes, faltam origem/objetivo/fase = 3
+    const media = classifyEvidenceQuality(
+      makeEvidence({
+        kind: "command",
+        title: "titulo seco",
+        content: "resultado observado: pass; limitacao residual declarada",
+      })
+    );
+    expect(media.status).toBe("missing_context");
+    expect(media.missing_fields).toContain("origin");
+    expect(media.missing_fields.length).toBeGreaterThanOrEqual(2);
+    expect(media.missing_fields.length).toBeLessThan(4);
   });
 
   it("evidenceQualityReasons explica a causa por rastreabilidade e campos ausentes", () => {
