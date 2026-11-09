@@ -1,3 +1,9 @@
+## Reavaliação — Rodada documental pós-maratona, 2026-11-09
+
+Documental: src/INDEX.md + netos memory/security (mapa de código local por
+design do gitignore), INDEX raiz em árvore, README roteia o mapa, fix links
+MAPAS. Validado check-markdown-links (doc viva limpa). Zero src.
+
 ## Reavaliação — Onda 7 emenda: adversarial 0 P1/3 P2/7 P3 — contagens 5341/−408, 2026-11-09
 
 Owner $oraculo-refatoracao (mesma sessão, flow 3952): baseline real 601c8ac =
