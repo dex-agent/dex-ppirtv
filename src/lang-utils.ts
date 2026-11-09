@@ -39,3 +39,13 @@ export function uniqueCooperators(values: Flow["cooperators"]): Flow["cooperator
     return value.name.trim().length > 0 && value.reason.trim().length > 0;
   });
 }
+
+export function requireText(value: string | undefined, field: string): void {
+  if (!value || value.trim().length === 0) {
+    throw new Error(`${field} is required`);
+  }
+}
+
+export function nowIso(): string {
+  return new Date().toISOString();
+}

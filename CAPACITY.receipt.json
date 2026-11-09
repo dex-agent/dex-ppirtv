@@ -264,9 +264,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "1ed5dcb",
+  "head": "db823f1",
   "tree_hash": "c4d95961344c0abe7a96ab3cee3d041a98368c97",
-  "generated_at": "2026-11-09T02:26:07.423613+00:00",
+  "generated_at": "2026-11-09T05:05:59.541357+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -290,7 +290,7 @@
     "skipped": 4,
     "files": 64,
     "total": 852,
-    "command": "npm run build && npm test (Cura-6 emenda; exit 0)"
+    "command": "npm run build && npm test (Onda 5; exit 0)"
   },
   "tools_count": 32,
   "capabilities": [
@@ -1278,5 +1278,21 @@
     "delta": "suíte 850->852; probe real 4bf8aab..HEAD: 5 PARENT_MISSING falsos -> 0",
     "evidence": "RED F baseline beef440; .agents/AUDITORIAS/adversarial-261109-cura6/CONSOLIDADO.md (P1 3 revisores)",
     "summary": "grandfathering por selo ja commitado (committedSealKeys) + RED F + cat-file chain com try (P3) + id fallback + typo."
+  },
+  "reavaliacao_onda5_fiscal_blockers": {
+    "date": "2026-11-09",
+    "scope": [
+      "src/flow-engine.ts",
+      "src/fiscal-blockers.ts",
+      "src/lang-utils.ts",
+      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+      "docs/architecture/flow-engine-evolution.json",
+      "CHANGELOG.md",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json"
+    ],
+    "delta": "monólito 7072->6170 (−902L); fiscal-blockers 995L; suíte 852 sem editar teste",
+    "evidence": "flow 3874; camping SHRINK FE-2026-11-09-ONDA5-FISCAL-BLOCKERS-SHRINK",
+    "summary": "família de diagnóstico de bloqueio + ações diretas sai do monólito (onda densa por coesão)."
   }
 }

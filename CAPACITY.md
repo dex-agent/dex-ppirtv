@@ -1,3 +1,13 @@
+## Reavaliação — Onda 5: diagnóstico de bloqueio fiscal fora do monólito, 2026-11-09
+
+Owner $oraculo-refatoracao (Trilho onda5-fiscal-blockers, flow 3874; GO único
+do dono, régua ESCOTEIRO-ONDA): ~48 símbolos (librarian/blocker-diagnostics/
+memory-mining-blocked/ações diretas/loop) → src/fiscal-blockers.ts (995L);
+requireText/nowIso → lang-utils (fonte única). Motor 7072→6170 (−902L) com
+zero símbolo novo; suíte 848+4=852 SEM editar teste; tsc 0 erros. Camping
+SHRINK. Ficam: avaliação (evaluateFiscalPolicy), check-in/graphify,
+promotion-scope (eixos futuros).
+
 ## Reavaliação — Cura-6 emenda: P1 da adversarial curado (grandfathering) + P3s, 2026-11-09
 
 Owner $oraculo-refatoracao (mesma sessão, mesa QUESTIONADORES-ATIVADO): P1
