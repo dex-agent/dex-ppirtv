@@ -12,7 +12,7 @@ Onda 6 (Trilho `2026-11-09-onda6-ppirtv-checkin`, flow 3917; GO único do dono c
 
 ### FE-2026-11-09-ONDA7-MEMORY-PROMOTION-SHRINK — SHRINK (última onda da maratona)
 
-Onda 7 (Trilho `2026-11-09-onda7-memory-promotion`, flow 3952; GO único do dono): a **política de candidatos/promoção de memória v2** mora fora do monólito — `src/memory-promotion.ts` (458L). 33 símbolos (32 funcs + `V2CommittedBoundaryError`) em bloco contíguo de 432L: resolução de candidatos, IDs/receipts v2, escopo confinado, promotion, decisão de escrita, ledger de candidatos. `errorMessage` → **lang-utils** (fonte única). Motor 5342→**4933 (−409L)**; suíte 848+4=852 sem editar teste; vacina TOTAL pegou 9 mortos antes do commit; camping com janela acumulada defacc1→corte. **Com esta onda a maratona de famílias TERMINA: resta apenas o núcleo de orquestração, por desenho.**
+Onda 7 (Trilho `2026-11-09-onda7-memory-promotion`, flow 3952; GO único do dono): a **política de candidatos/promoção de memória v2** mora fora do monólito — `src/memory-promotion.ts` (458L). 33 símbolos (32 funcs + `V2CommittedBoundaryError`) em bloco contíguo de 432L: resolução de candidatos, IDs/receipts v2, escopo confinado, promotion, decisão de escrita, ledger de candidatos. `errorMessage` → **lang-utils** (fonte única). Motor 5342→**4933 (−409L)** *(emenda adversarial: baseline real 5341, delta −408, range l.4837-5268)*; suíte 848+4=852 sem editar teste; vacina TOTAL pegou 9 mortos antes do commit; camping com janela acumulada defacc1→corte. **Com esta onda a maratona de famílias TERMINA: resta apenas o núcleo de orquestração, por desenho.**
 
 ### FE-2026-11-09-ONDA6-PPIRTV-CHECKIN-SHRINK — emenda adversarial (2026-11-09)
 

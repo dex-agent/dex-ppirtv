@@ -1,3 +1,12 @@
+## Reavaliação — Onda 7 emenda: adversarial 0 P1/3 P2/7 P3 — contagens 5341/−408, 2026-11-09
+
+Owner $oraculo-refatoracao (mesma sessão, flow 3952): baseline real 601c8ac =
+5341L (linha fantasma do split pela 3ª vez — o número da prosa veio do script
+de corte, não do wc -l), delta −408L; range l.4837-5268; claim errorMessage
+qualificado (2 cópias privadas pré-existentes em memory/ ficam). Zero mudança
+de código (emenda documental). Estacionados: testes diretos dos 33 símbolos +
+seletor mcp.test no record (tio-testador); robustez pré-existente fiel.
+
 ## Reavaliação — selagem pós-commit da Onda 7 (última), 2026-11-09
 
 Documental: record FE-2026-11-09-ONDA7-MEMORY-PROMOTION-SHRINK selado no
