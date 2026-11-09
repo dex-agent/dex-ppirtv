@@ -1,3 +1,10 @@
+## Reavaliação — selagem pós-commit da Onda 7 (última), 2026-11-09
+
+Documental: record FE-2026-11-09-ONDA7-MEMORY-PROMOTION-SHRINK selado no
+ledger (commit=c99ef481, parent=601c8aca) após push do corte; janela
+acumulada defacc1→c99ef48 (emenda 3ff6d7e + playbook + corte). Suíte e
+receipts unchanged (852). Zero src no commit (ledger + par CAPACITY).
+
 ## Reavaliação — Onda 7 (ÚLTIMA): eixo memory-v2/promotion fora do monólito, 2026-11-09
 
 Owner $oraculo-refatoracao (Trilho onda7-memory-promotion, flow 3952; GO único

@@ -266,7 +266,7 @@
   "fotografia_id": "2026-11-05-merge-pr7",
   "head": "601c8ac",
   "tree_hash": "b04ec5378439f51baa67ad31642bde199b131523",
-  "generated_at": "2026-11-09T17:24:22.295831+00:00",
+  "generated_at": "2026-11-09T17:24:42.601770+00:00",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"

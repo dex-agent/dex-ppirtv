@@ -1734,7 +1734,9 @@
     "janela acumulada defacc1..worktree cobre emenda 3ff6d7e (42 imports mortos) + playbook 601c8ac + corte Onda 7; errorMessage -> lang-utils (fonte unica)"
    ],
    "changelog_marker": "FE-2026-11-09-ONDA7-MEMORY-PROMOTION-SHRINK",
-   "architecture_marker": "FE-2026-11-09-ONDA7-MEMORY-PROMOTION-SHRINK"
+   "architecture_marker": "FE-2026-11-09-ONDA7-MEMORY-PROMOTION-SHRINK",
+   "commit": "c99ef48155ca257e3b554e91fb36d1ad50c10d9c",
+   "parent_commit": "601c8aca294c9bc7a8c82772901fc22187b87641"
   }
  ]
 }
