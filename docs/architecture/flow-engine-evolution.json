@@ -1555,7 +1555,9 @@
         "suite 848 passed + 4 skipped (852) sem edicao de teste; tsc --noEmit 0 erros; imports explicitos no motor"
       ],
       "changelog_marker": "FE-2026-11-09-ONDA5-FISCAL-BLOCKERS-SHRINK",
-      "architecture_marker": "FE-2026-11-09-ONDA5-FISCAL-BLOCKERS-SHRINK"
+      "architecture_marker": "FE-2026-11-09-ONDA5-FISCAL-BLOCKERS-SHRINK",
+      "commit": "e0ec9d1716a1a481a5df2131e81cf697c62f7b7c",
+      "parent_commit": "db823f1d42a08fd4cc97dd5c5047697a55c38cff"
     }
   ]
 }

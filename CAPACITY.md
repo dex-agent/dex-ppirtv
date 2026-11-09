@@ -1,3 +1,9 @@
+## Reavaliação — selagem pós-commit da Onda 5, 2026-11-09
+
+Documental: record FE-2026-11-09-ONDA5-FISCAL-BLOCKERS-SHRINK selado no
+ledger de camping (commit=e0ec9d17, parent=db823f1d) após push do corte;
+suíte e receipts unchanged (852). Zero src no commit (docs + par CAPACITY).
+
 ## Reavaliação — Onda 5: diagnóstico de bloqueio fiscal fora do monólito, 2026-11-09
 
 Owner $oraculo-refatoracao (Trilho onda5-fiscal-blockers, flow 3874; GO único
