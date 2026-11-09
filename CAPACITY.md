@@ -1,3 +1,13 @@
+## Reavaliação — Onda 7 (ÚLTIMA): eixo memory-v2/promotion fora do monólito, 2026-11-09
+
+Owner $oraculo-refatoracao (Trilho onda7-memory-promotion, flow 3952; GO único
+do dono — última família da maratona): 33 símbolos (32 funcs + 1 type) →
+src/memory-promotion.ts (458L); errorMessage → lang-utils (fonte única);
+motor 5342→4933 (−409L) com zero símbolo novo; suíte 848+4=852 SEM editar
+teste; tsc 0; vacina TOTAL pegou 9 mortos antes do commit (6 do corte + 3 de
+linhas únicas). Camping SHRINK com janela acumulada defacc1→corte. Maratona
+de famílias ENCERRA aqui; resta núcleo de orquestração por desenho.
+
 ## Reavaliação — Onda 6 emenda: adversarial 0 P1/3 P2/10 P3 — 42 imports mortos, 2026-11-09
 
 Emenda documental adicional: projeção PLAYBOOK regen commitada (fontes

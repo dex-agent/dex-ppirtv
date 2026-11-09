@@ -49,3 +49,8 @@ export function requireText(value: string | undefined, field: string): void {
 export function nowIso(): string {
   return new Date().toISOString();
 }
+
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
