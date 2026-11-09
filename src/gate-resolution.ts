@@ -563,6 +563,24 @@ export type ProvidedRequirementKind =
   | "string_array"
   | "non_empty_string_array";
 
+// ISSUE-LOCAL-0001 (2026-11-09): typo em provided (ex.: tests_executed plural)
+// era engolido em silêncio — o gate reportava só test_executed como faltante e
+// o chamador queimava turno adivinhando. providedIgnoredKeys nomeia as chaves
+// que NENHUM requisito da fase conhece (ressalva ensinável no receipt; o
+// julgamento de satisfação continua sendo dos requisitos, nunca deste aviso).
+// As chaves de path são aceitas em toda fase: o motor as lê fora do mapa de
+// requisitos (changed/deleted_files do gate de implementacao).
+export const PROVIDED_PATH_KEYS = new Set(["changed_files", "deleted_files"]);
+
+export function providedIgnoredKeys(
+  provided: Record<string, unknown>,
+  requirementKeys: string[]
+): string[] {
+  const accepted = new Set([...requirementKeys, ...PROVIDED_PATH_KEYS]);
+  return Object.keys(provided).filter((key) => !accepted.has(key));
+}
+
+
 export const PROVIDED_REQUIREMENT_KINDS: Record<string, ProvidedRequirementKind> = {
   implementation_done: "boolean",
   diff_reviewed: "boolean",

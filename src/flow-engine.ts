@@ -3,7 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { providedPathFindingsFields, providedPathFindingsFor, providedPathPreviewFields } from "./gate-provided-paths.js";
 import { PHASES, COMPACT_PHASES, GOAL_FLOW_ROLES, type AnyPhase, type Cooperator, type CriterionProofInput, type Evidence, type Flow, type GateRecord, type GoalBinding, type GoalEnvelope, type GoalFlowRole, type HygieneFinding, type Meeting, type MemoryCandidatePromoteScope, type MemoryCandidateResolution, type MemoryCandidateResolutionAction, type MeetingKind, type MeetingType, type MemoryMiningSummary, type MemoryPostWriteValidation, type MemoryReviewStatus, type MemoryWritePolicy, type PipelineFlowResult, type PipelineItem, type PresentationEnvelope, type Phase, type Scope, type SptValidationResult, type Verdict, type VerdictStatus, type WorkProgressEvent, type WorkProgressStatus, type WorkProgressSummary } from "./domain.js";
-import { canonicalVerdictChangedFiles, hasRequirement, invalidateStaleDownstreamGates, isStructuredReviewEvidence, mergePathFacts, officialGoalNeedsCanonicalVerdict, providedRequirementDiagnostic, resolveGateRequirements, reviewCurrencyAppliesToPhase, reviewCurrencyMissing, reviewEvidenceDiagnostics, reviewEvidenceRequested, reviewEvidenceValidity, savedGateReusable, strictPathArray, structuredReviewAttestationRequested, type GateRequirementResolution } from "./gate-resolution.js";
+import { canonicalVerdictChangedFiles, hasRequirement, invalidateStaleDownstreamGates, isStructuredReviewEvidence, mergePathFacts, officialGoalNeedsCanonicalVerdict, providedIgnoredKeys, providedRequirementDiagnostic, resolveGateRequirements, reviewCurrencyAppliesToPhase, reviewCurrencyMissing, reviewEvidenceDiagnostics, reviewEvidenceRequested, reviewEvidenceValidity, savedGateReusable, strictPathArray, structuredReviewAttestationRequested, type GateRequirementResolution } from "./gate-resolution.js";
 import { requiredCooperationDiagnostics, meetingClosedIndex, meetingOutcomeSummaries, meetingOutcomeCounts, requiredCooperationNeedsMeetingIdRetry, meetingKindForType, meetingTypeForKind, requiredMeetingKind, requiredMeetingParticipants, meetingClosedLedgerData, applyClosedMeetingToFlow, assertMeetingClosed } from "./meeting-policy.js";
 import { evaluateFiscalPolicyWithDeps, countHistory, countRegressions, explicitMeetingTrigger, fiscalResultWithDeps, fiscalText, MEMORY_MINING_BLOCKED_VERDICT_REASON, reportFiscalSignals, reportRecurringRiskCleared, requiredCooWithDeps, type FiscalPolicyResult } from "./verdict-fiscal-policy.js";
 import { sanitizePersistedProvided } from "./input-unwrap.js";
@@ -2789,6 +2789,11 @@ export class FlowEngine {
     const reviewMissing = reviewCurrencyMissing(phase, priorGate, flowForResolution);
     const missing = unique([...snapshot.missing, ...reviewMissing]);
     const status = missing.length === 0 ? "passed" : "blocked";
+    // ISSUE-LOCAL-0001 (2026-11-09): cola pura — o julgamento mora em
+    // providedIgnoredKeys (gate-resolution.ts); aqui só nomeamos no receipt as
+    // chaves de provided que nenhum requisito da fase conhece (typo vira
+    // ressalva visível, nunca bloqueio).
+    const providedIgnored = providedIgnoredKeys(effectiveProvided, snapshot.requirements.map((item) => item.key));
     const record: GateRecord = {
       phase,
       status,
@@ -2797,6 +2802,7 @@ export class FlowEngine {
       implementation_fingerprint: flowForResolution.implementation_fingerprint,
       changed_files_snapshot: [...changedFiles],
       ...providedPathFindingsFields({ missingPaths: providedMissingPaths, unconfirmedDeletions }),
+      ...(providedIgnored.length > 0 ? { provided_ignored: providedIgnored } : {}),
       missing,
       next: status === "passed" ? `advance_to_${profile.nextPhase[phase] ?? "complete"}` : `complete_gate_${phase}`,
       back_to: status === "passed" ? null : (profile.defaultBackTo[phase] as Phase | null)

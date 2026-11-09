@@ -74,6 +74,19 @@ function canonicalPath(workspace: string, value: string): string {
   return normalizeReviewPath(relative);
 }
 
+// ISSUE-LOCAL-0003 (2026-11-09): os erros de escopo NOMEIAM os paths
+// ofensivos (molde da irmã STALE, que já nomeia o evidence_id) — o some()
+// achava o culpado e o jogava fora, e fechar verdict no repo compartilhado
+// exigia probe externo do motor (4 rodadas no flow 136). Truncagem com
+// contador preserva o envelope (R9: erro explícito, nunca silêncio).
+const OFFENDING_PATHS_LIMIT = 10;
+
+function offendingPathsSuffix(offending: string[]): string {
+  const shown = offending.slice(0, OFFENDING_PATHS_LIMIT);
+  const omitted = offending.length - shown.length;
+  return `; offending_paths: ${shown.join(", ")}${omitted > 0 ? ` (+${omitted} more)` : ""}`;
+}
+
 function protectedReviewPaths(flow: Flow): Set<string> {
   const workspace = flow.goal_binding!.envelope.workspace;
   return new Set([...flow.changed_files, ...declaredReviewPaths(flow)]
@@ -108,8 +121,9 @@ export async function bindReviewScopeAttribution(
   assertExternalPaths(flow, paths);
   const corroborated = await withGitCorroboratedChangedFiles(flow);
   const discovered = new Set(corroborated.changed_files.map((value) => canonicalPath(workspace, value)));
-  if (paths.some((value) => !discovered.has(value))) {
-    throw new Error("REVIEW_SCOPE_UNDISCOVERED_PATH: exclusions must come from current Git corroboration");
+  const undiscovered = paths.filter((value) => !discovered.has(value));
+  if (undiscovered.length > 0) {
+    throw new Error("REVIEW_SCOPE_UNDISCOVERED_PATH: exclusions must come from current Git corroboration" + offendingPathsSuffix(undiscovered));
   }
   return {
     reviewer: parsed.data.reviewer,
@@ -148,8 +162,9 @@ export async function applyReviewScopeAttributions(
   }
   const changedFiles = corroborated.changed_files.filter((value) => !exclusions.has(canonicalPath(workspace, value)));
   const protectedPaths = protectedReviewPaths(flow);
-  if (changedFiles.some((value) => !protectedPaths.has(canonicalPath(workspace, value)))) {
-    throw new Error("REVIEW_SCOPE_UNATTRIBUTED_PATH: declare legitimate additions through the gate or attribute external paths before retrying");
+  const unattributed = changedFiles.filter((value) => !protectedPaths.has(canonicalPath(workspace, value)));
+  if (unattributed.length > 0) {
+    throw new Error("REVIEW_SCOPE_UNATTRIBUTED_PATH: declare legitimate additions through the gate or attribute external paths before retrying" + offendingPathsSuffix(unattributed));
   }
   return withCurrentImplementationFingerprint({
     ...corroborated,

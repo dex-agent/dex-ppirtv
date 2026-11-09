@@ -1,3 +1,19 @@
+## Reavaliação — ISSUE-0001+0003 diagnóstico-que-ensina (D-34), 2026-11-09
+
+Capability paths tocados: src/gate-resolution.ts (função pura providedIgnoredKeys
++ PROVIDED_PATH_KEYS — reuso do mapa PROVIDED_REQUIREMENT_KINDS; julga chaves de
+provided que nenhum requisito da fase conhece), src/flow-engine.ts (COLA pura:
+import + cálculo + spread condicional de provided_ignored no GateRecord —
+camping EXCEPTION FE-2026-11-09-ISSUE0001-PROVIDED-IGNORED-EXCEPTION, RED real
+baseline 4c693c6), src/domain.ts (GateRecord.provided_ignored? aditivo),
+src/review-scope-attribution.ts (filter no lugar do some() nos 2 erros de
+escopo + helper de truncagem offending_paths até 10 com contador — molde da
+irmã STALE), tests/gate-provided-ignored.test.ts NOVO (2: typo plural nomeado
+no receipt sem reprovar; chaves válidas nunca avisadas), tests/
+review-scope-offending-paths.test.ts NOVO (3: UNATTRIBUTED nomeia 2 paths,
+UNDISCOVERED nomeia, truncagem 12→10 +2 more). Suíte 896→901 (892+5 passed,
+4 skipped, files 72). RED-first 1+3 provados no baseline antes das curas.
+
 ## Reavaliação — ISSUE-0004 tool fantasma no guidance (D-33), 2026-11-09
 
 Capability paths tocados: src/fiscal-blockers.ts (1 linha: blockerOwner

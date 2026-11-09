@@ -1798,7 +1798,39 @@
    "responsibility": "sanidade da entrada de provided.changed_files/deleted_files no gate de implementacao (emenda adversarial: aviso de delecao nao confirmada + fronteira de workspace + simetria preflight)",
    "changelog_marker": "FE-2026-11-09-ISSUE0002-ADV-BYPASS-AVISO-EXCEPTION",
    "architecture_marker": "FE-2026-11-09-ISSUE0002-ADV-BYPASS-AVISO-EXCEPTION",
-   "rollback": "revert do commit da emenda restaura o bypass mudo do par simultaneo, o fallback process.cwd() e o preflight cego; os 5 testes novos de tests/gate-provided-paths.test.ts ficam RED apos o revert por design (sentinelas do comportamento curado)"
+   "rollback": "revert do commit da emenda restaura o bypass mudo do par simultaneo, o fallback process.cwd() e o preflight cego; os 5 testes novos de tests/gate-provided-paths.test.ts ficam RED apos o revert por design (sentinelas do comportamento curado)",
+   "commit": "2aad953cb7ca837aef14a256ae7874076864ef58",
+   "parent_commit": "0c6dda900d887f8e92ea7de784cb8943a731230d"
+  },
+  {
+   "id": "FE-2026-11-09-ISSUE0001-PROVIDED-IGNORED-EXCEPTION",
+   "date": "2026-11-09",
+   "spt_path": ".agents/PLAN-TASKS/2026-11-09-issue0001-0003-diagnostico-que-ensina.md",
+   "owner": "$oraculo-refatoracao",
+   "mode": "EXCEPTION",
+   "exception_reason": "integrity",
+   "expires": "2026-11-16",
+   "red_evidence": "tests/gate-provided-ignored.test.ts::typo plural em provided vira aviso nomeado no receipt e o gate NÃO é reprovado por ele",
+   "red_base_blob": "4facb4e91421097ef3a6b4a7a9aa5650f6120acc",
+   "red_command": "npx vitest run tests/gate-provided-ignored.test.ts -t \"typo plural em provided vira aviso nomeado no receipt e o gate NÃO é reprovado por ele\"",
+   "red_observed_failure": "RED provado no baseline 4c693c6: AssertionError expected undefined to deeply equal [ 'tests_executed' ] — o receipt do gate não carregava nenhuma ressalva para chave desconhecida em provided (typo plural da ISSUE-LOCAL-0001 custou 1 turno real no flow_20261109171131257_5703_0001). Cola pura: julgamento mora em providedIgnoredKeys (gate-resolution.ts, módulo extraído Onda 4) + spread condicional de provided_ignored no GateRecord (domain.ts opcional). Aditivo: nenhum consumidor existente lê o campo novo.",
+   "base_blob": "4facb4e91421097ef3a6b4a7a9aa5650f6120acc",
+   "head_blob": "00f43f8eb627e5e5e73dca640c370d414ded4782",
+   "responsibility": "aviso provided_ignored no receipt do gate: chaves de provided desconhecidas pela fase viram ressalva nomeada (julgamento em providedIgnoredKeys, gate-resolution.ts; o motor so calcula e espalha)",
+   "changelog_marker": "FE-2026-11-09-ISSUE0001-PROVIDED-IGNORED-EXCEPTION",
+   "architecture_marker": "FE-2026-11-09-ISSUE0001-PROVIDED-IGNORED-EXCEPTION",
+   "consumers": [
+    "src/server.ts"
+   ],
+   "evidence": [
+    "tests/gate-provided-ignored.test.ts",
+    "src/gate-resolution.ts",
+    "src/domain.ts"
+   ],
+   "rollback": "revert do commit de fechamento devolve o receipt sem o campo (mudanca aditiva); ou remover o spread provided_ignored do GateRecord restaura o comportamento anterior",
+   "evidence_selectors": {
+    "tests/gate-provided-ignored.test.ts": "typo plural em provided vira aviso nomeado no receipt e o gate NÃO é reprovado por ele"
+   }
   }
  ]
 }
