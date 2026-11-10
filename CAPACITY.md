@@ -1,4 +1,12 @@
-## Reavaliação — ISSUE #15 reconciliação de flows históricos (OPS), 2026-11-10
+## Reavaliação — ISSUE #15 reconciliação de flows históricos (OPS + emenda adversarial), 2026-11-10
+
+EMENDA (commit seguinte): nenhum capability path tocado (ops; adversarial 5
+revisores 0P1/4P2/5P3 sem quebra material). Deltas: `CHANGELOG.md` (ponteiros
+da prova para o destino perene `.agents/AUDITORIAS/2026-11-10-issue15-verify.py`
+— verificador CWD-ancorado por `__file__` + detector de 5º arquivado implícito,
+P2s curados e provados verdes de CWD externo) + este par. Suíte 908 inalterada.
+
+Capability paths tocados: NENHUM (corte de ops sem src — camping flow-engine
 
 Capability paths tocados: NENHUM (corte de ops sem src — camping flow-engine
 NOT_APPLICABLE por desenho; suíte 908 inalterada re-medida no ciclo). Deltas
