@@ -463,6 +463,63 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
     expect(executor.execute).not.toHaveBeenCalled();
   });
 
+  // ISSUE-LOCAL-0007 (2026-11-10): memoryV2OperationId é determinístico pelo
+  // item — o retry do resolve reutilizava o operation_id preso em PENDING e a
+  // dex-memoria respondia "use a new operation_id". Este é o RED-first do id
+  // fresco: a segunda mineração do MESMO nugget com receipt PENDING anterior
+  // tem que executar com operation_id DISTINTO e sem resume do id velho.
+  it("charset-retry: mineração repetida com receipt PENDING anterior executa com operation_id fresco", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-memory-v2-retry-fresh-id-"));
+    const executedIds: string[] = [];
+    let calls = 0;
+    const executor = {
+      execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => {
+        executedIds.push(input.operation_request.operation_id);
+        calls += 1;
+        // 1ª tentativa fica com o id PRESO (status PENDING, não retomável —
+        // o caso real da 0007: "use a new operation_id"; PARTIAL_PENDING
+        // seguiria o resume canônico e é coberto pelo it irmão). Da 2ª em
+        // diante o writer da casa entrega e commita com id fresco.
+        if (calls > 1) return await committedReceipt(input.operation_request, input.candidate);
+        const stuck = await committedReceipt(input.operation_request, input.candidate);
+        stuck.status = "PENDING";
+        stuck.recovery_mode = "use_a_new_operation_id";
+        stuck.route_receipts.project!.status = "PENDING";
+        delete stuck.route_receipts.project!.receipt_path;
+        delete stuck.route_receipts.project!.validation_receipt_path;
+        delete stuck.route_receipts.project!.validation_receipt_hash;
+        return stuck;
+      })
+    };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, {
+      memory_writer: configuredWriter(executor, {
+        default_classification: {
+          status: "resolved",
+          density: "light",
+          tags: TEST_TAGS,
+          requested_destinations: [{ scope: "project" }]
+        }
+      })
+    });
+    const flow = await engine.createFlow({ goal: "Retry com id fresco apos PENDING" });
+    flow.gold_mining = ["Achado com hash de grafo d41d8cd9 para o charset L1 da dex-memoria 0.1.17."];
+    await store.saveFlow(flow);
+
+    const first = await engine.mineMemory({ flow_id: flow.flow_id, write_policy: "auto_write" }) as any;
+    expect(first.v2_status).not.toBe("complete");
+
+    const second = await engine.mineMemory({ flow_id: flow.flow_id, write_policy: "auto_write" }) as any;
+    expect(second.v2_status).toBe("complete");
+    expect(executedIds.length).toBe(2);
+    // o id da 2ª execução é FRESCO: distinto do preso em PENDING
+    expect(executedIds[1]).not.toBe(executedIds[0]);
+    expect(executedIds[1].startsWith(executedIds[0])).toBe(true);
+    // e o request não carrega resume do id velho (operação nova)
+    const secondInput = executor.execute.mock.calls[1]?.[0] as DexMemoriaV2ExecutionInput;
+    expect(secondInput.operation_request.operation_id).toBe(executedIds[1]);
+  });
+
   it("preserves the legacy V1 global classification while V2 uses contextual scope intent", () => {
     const candidate = classifyMemoryCandidate({
       id: "legacy-global-no-shrink",

@@ -118,6 +118,31 @@ export function memoryV2OperationId(item: string, classification: ReturnType<typ
   return `mmv2_${createHash("sha256").update(JSON.stringify(materialUnit), "utf8").digest("hex")}`;
 }
 
+// ISSUE-LOCAL-0007 (2026-11-10): memoryV2OperationId é determinístico pelo
+// item — o retry do resolve reutilizava o id PRESO e a dex-memoria responde
+// "use a new operation_id". Preso = status não-COMMITTED que o adapter NÃO
+// retoma (PENDING, ROLLED_BACK...): PARTIAL_PENDING segue o RESUME canônico
+// pelo mesmo id (contrato "persists PARTIAL_PENDING and consumes it through
+// canonical resume" — a suíte pega regressão). Sufixo determinístico por
+// contador de receipts presos do MESMO id base: id fresco por tentativa,
+// rastreável pelo prefixo, e o filtro de resume_receipts do chamador não
+// casa nada do id velho (operação nova, sem resume). Separador HÍFEN (não
+// "::"): receipt paths derivam do operation_id (validation-<id>.json) e ":"
+// é proibido em nome de arquivo no Windows — provado ao vivo pelo RED
+// (ENOENT com "::retry-1").
+export function freshOperationIdForRetry(
+  baseOperationId: string,
+  previousReceipts: Array<{ operation_id: string; status: string }>
+): string {
+  const stuckCount = previousReceipts.filter(
+    (receipt) =>
+      receipt.operation_id === baseOperationId
+      && receipt.status !== "COMMITTED"
+      && receipt.status !== "PARTIAL_PENDING"
+  ).length;
+  return stuckCount === 0 ? baseOperationId : `${baseOperationId}-retry-${stuckCount}`;
+}
+
 export function v2ReceiptsProveCommittedEffect(receipts: DexMemoriaV2CanonicalReceipt[]): boolean {
   return receipts.some((receipt) =>
     receipt.status === "COMMITTED"

@@ -158,6 +158,42 @@ describe("Dex Memoria V2 adapter", () => {
     } finally { await rm(fixtureRoot, { recursive: true, force: true }); }
   });
 
+  // ISSUE-LOCAL-0007 (2026-11-10): o item da mineração citando shape-MM
+  // (^{slug}-[hash8]$ com hash de grafo) fazia o writer entregar
+  // title/trigger com os metacaracteres ^ [ ] — a dex-memoria 0.1.17
+  // rejeita em request-stage (INVALID_CANDIDATE citando o caractere).
+  // Este teste é o RED-first do saneamento: o candidate entregue ao
+  // executor tem que caber no charset L1 (title E trigger).
+  it("charset: item citando shape-MM gera candidate com title e trigger sem os metacaracteres proibidos", async () => {
+    const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-adapter-charset-"));
+    const executor = { execute: vi.fn() };
+    executor.execute.mockImplementation(async (input: DexMemoriaV2ExecutionInput) => await materializedCommittedReceipt(input.operation_request, input.candidate));
+    try {
+      await executeDexMemoriaV2Adapter({
+        operation_id: "op_charset", slug: "shape-mm-charset", workspace_root: path.join(fixtureRoot, "workspace"), memory_home: path.join(fixtureRoot, "memory-home"),
+        classification: classifyDexMemoriaV2Intent({
+          item: "Grafo rico reconciliado 4022n/6389links — shape-MM ^{slug}-[hash8]$ citando hash do build d41d8cd9.",
+          density: "light", tags: TEST_TAGS, requested_destinations: [{ scope: "project" }]
+        }), executor
+      });
+
+      const candidate = executor.execute.mock.calls[0]?.[0].candidate as { title: string; trigger: string; body: string };
+      expect(candidate.title).not.toMatch(/[\^\[\]\r\n]/);
+      expect(candidate.trigger).not.toMatch(/[\^\[\]\r\n]/);
+      // caso bom preservado: item sem metacaracteres não degrada
+      const clean = await executeDexMemoriaV2Adapter({
+        operation_id: "op_charset_limpo", slug: "item-limpo-charset", workspace_root: path.join(fixtureRoot, "workspace"), memory_home: path.join(fixtureRoot, "memory-home"),
+        classification: classifyDexMemoriaV2Intent({
+          item: "Regra operacional sem metacaracteres do charset.",
+          density: "light", tags: TEST_TAGS, requested_destinations: [{ scope: "project" }]
+        }), executor
+      });
+      expect(clean.status).toBe("complete");
+      const cleanCandidate = executor.execute.mock.calls[1]?.[0].candidate as { title: string };
+      expect(cleanCandidate.title).toBe("Regra operacional sem metacaracteres do charset.");
+    } finally { await rm(fixtureRoot, { recursive: true, force: true }); }
+  });
+
   it("preserves the specific V2 direct L1-to-L3 rule instead of manufacturing a legacy L2 sibling", async () => {
     const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-adapter-direct-l3-"));
     const executor = { execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => await materializedCommittedReceipt(input.operation_request, input.candidate)) };

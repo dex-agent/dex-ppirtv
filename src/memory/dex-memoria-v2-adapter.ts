@@ -420,7 +420,7 @@ function requireResume(executor: DexMemoriaV2Executor): NonNullable<DexMemoriaV2
 function buildWriteCandidate(slug: string, classification: DexMemoriaV2Classification): DexMemoriaV2WriteCandidate {
   const normalizedSlug = requireNonEmpty(slug, "slug");
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(normalizedSlug)) throw new Error("DEX_MEMORIA_V2_SLUG_INVALID");
-  const title = classification.item.replace(/\s+/g, " ").trim().slice(0, 96);
+  const title = sanitizeCandidateText(classification.item).slice(0, 96);
   const candidate: DexMemoriaV2WriteCandidate = {
     contract: "dex.memory.write.candidate.v2",
     target_layer: classification.route.target,
@@ -432,6 +432,15 @@ function buildWriteCandidate(slug: string, classification: DexMemoriaV2Classific
   };
   if (classification.route.target === "L3") candidate.owner_skill = classification.route.owner_skill;
   return candidate;
+}
+
+// ISSUE-LOCAL-0007 (2026-11-10): o charset request-stage da dex-memoria
+// 0.1.17 fecha ^ [ ] CR LF em title/trigger (rejeita INVALID_CANDIDATE
+// citando o caractere). O item da mineração pode citar shape-MM/hash; o
+// writer saneia o texto de apresentação — o body permanece cru (o charset
+// fecha title/trigger). Caso bom (sem metacaracteres) sai idêntico.
+export function sanitizeCandidateText(value: string): string {
+  return value.replace(/[\^\[\]\r\n]+/g, "").replace(/\s+/g, " ").trim();
 }
 
 async function validateIndependentValidationReceipt(

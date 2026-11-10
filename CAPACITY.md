@@ -1,3 +1,23 @@
+## Reavaliação — ISSUE-LOCAL-0007 gerador MM × charset L1 da dex-memoria 0.1.17 (D-37), 2026-11-10
+
+Capability paths tocados: src/memory/dex-memoria-v2-adapter.ts
+(`sanitizeCandidateText` exportada — o item da mineração citando shape-MM
+`^{slug}-[hash8]$` não pode mais levar `^`/`[`/`]`/CR/LF em title/trigger;
+body permanece cru; caso bom sai idêntico), src/memory-promotion.ts
+(`freshOperationIdForRetry` — id fresco sufixado `-retry-N` quando o id base
+está PRESO: status não-COMMITTED e não-PARTIAL_PENDING; PARTIAL_PENDING
+segue o RESUME canônico pelo mesmo id, contrato preservado pela suíte que
+PEGOU A REGRESSÃO no primeiro desenho) e src/flow-engine.ts (1 linha de cola
+na montagem do operationId; camping fiscal: consulta ao validador antes do
+commit). Testes RED-first (adapter charset + engine charset-retry) + 2
+achados pagos pela execução: helper partialReceipt assume rota global
+(fixture) e sufixo `::` quebra paths de receipt no Windows (":" proibido em
+nome de arquivo — ENOENT ao vivo; separador é hífen). PROVA REAL: mineração
+com hash no item commitando COMMITTED na dex-memoria 0.1.17 REAL
+(`theme=COMMITTED`, receipt mmv2_617f...520e9c8, memory_home temporário
+isolado; harness .agents/TMP/prova-real-0007.mjs). Suíte 906→908 (904+4,
+files 72).
+
 ## Reavaliação — ISSUE #16/ISSUE-LOCAL-0008 contrato goal_advance × path inexistente (D-36), 2026-11-10
 
 Capability paths tocados: src/server.ts (apenas a description da tool

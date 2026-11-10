@@ -264,9 +264,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "79549cc",
-  "tree_hash": "4ad8925a492c69c7669883edad59526383b28594",
-  "generated_at": "2026-11-10T20:17:39Z",
+  "head": "4326322",
+  "tree_hash": "90966b6e8aa13bd2499014468c6b8f3063805f85",
+  "generated_at": "2026-11-10T21:54:43Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -285,11 +285,11 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 902,
+    "passed": 904,
     "failed": 0,
     "skipped": 4,
     "files": 72,
-    "total": 906,
+    "total": 908,
     "command": "npm run check (audit:canonical + check:flow-engine + check:capacity + build + check:types + vitest; exit 0)"
   },
   "tools_count": 32,
@@ -1370,6 +1370,26 @@
     "limits": [
       "Description e ajuda textual do tools/list (nao-breaking por definicao); consumidores nao devem fazer parsing dela.",
       "A ressalva continua ensinavel, nao autoritativa: julgamento de existencia mora em gate-provided-paths.ts com envelope do flow."
+    ]
+  },
+  "reavaliacao_issue0007_gerador_mm_charset": {
+    "date": "2026-11-10",
+    "scope": [
+      "src/memory/dex-memoria-v2-adapter.ts",
+      "src/memory-promotion.ts",
+      "src/flow-engine.ts",
+      "tests/dex-memoria-v2-adapter.test.ts",
+      "tests/flow-engine-dex-memoria-v2.test.ts"
+    ],
+    "delta": "ISSUE-LOCAL-0007 (P2): writer da MM entregava title/trigger com os metacaracteres ^ [ ] CR LF do item da mineracao (caso graphify com shape-MM) — a dex-memoria 0.1.17 rejeita em request-stage (INVALID_CANDIDATE citando o caractere) e o retry do resolve reusava o operation_id preso em PENDING ('use a new operation_id'). Cura: sanitizeCandidateText no adapter (title/trigger no charset L1; body cru; caso bom identico) + freshOperationIdForRetry (id fresco -retry-N SOMENTE para id PRESO: status nao-COMMITTED e nao-PARTIAL_PENDING — PARTIAL_PENDING segue o resume canonico, contrato preservado pela suite que PEGOU a regressao do primeiro desenho). RED-first duplo (adapter charset + engine charset-retry); 2 achados da execucao: helper partialReceipt assume rota global; sufixo :: quebra paths de receipt no Windows (hifen). PROVA REAL: mineracao com hash no item COMMITTED na 0.1.17 real (theme=COMMITTED, receipt mmv2_617f..., home temporario isolado). Suite 906->908 (904+4).",
+    "evidence": [
+      "npx vitest run tests/dex-memoria-v2-adapter.test.ts tests/flow-engine-dex-memoria-v2.test.ts -t charset (RED duplo no baseline 4326322)",
+      "node .agents/TMP/prova-real-0007.mjs (receipt COMMITTED na dex-memoria 0.1.17 real)",
+      "npm run check"
+    ],
+    "limits": [
+      "Prova real usa tema de prova em memory_home temporario (o vault real da casa nao e tocado pela suíte).",
+      "Sufixo -retry-N e opaco para consumidores de operation_id (string); nenhum parser de formato encontrado (rg)."
     ]
   }
 }

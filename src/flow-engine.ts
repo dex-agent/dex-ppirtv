@@ -27,6 +27,7 @@ import {
   memoryCandidateLookup,
   memoryEditSuggestion,
   memoryNonWriteReason,
+  freshOperationIdForRetry,
   memoryV2CandidateId,
   memoryV2OperationId,
   memoryV2ReconciliationId,
@@ -1805,7 +1806,10 @@ export class FlowEngine {
         owner_skill: directive.owner_skill,
         tags: directive.tags
       });
-      const operationId = memoryV2OperationId(nugget.item, classification);
+      // ISSUE-LOCAL-0007: id fresco quando o id base ficou preso em PENDING
+      // (retry do resolve não reusa operation_id não-commitado; o filtro de
+      // resume abaixo não casa o id sufixado — operação nova).
+      const operationId = freshOperationIdForRetry(memoryV2OperationId(nugget.item, classification), previousReceipts);
       const slug = memoryV2Slug(nugget.item, candidateId);
       if (resolution) {
         resolvedCandidateIds.push(candidateId);
