@@ -31,6 +31,10 @@ alvo. Não-curados deliberados: dedup case-variant da ressalva e resultOf
 opaco (motor/harness pré-existentes fora do escopo do corte); vacina de
 atualidade do suite.total (corte próprio).
 
+FECHAMENTO: CHANGELOG D-36 + mapas (2) + Trilho CONCLUSAO + TRACKER 0008
+com remote_url + #16 fechada online + playbook regen; commits bee93ea
+(corte) + 79549cc (emenda) + docs de fechamento.
+
 ## Reavaliação — ISSUE-0006 E2E golden-path SPT v3 (D-35), 2026-11-10
 
 Capability paths tocados: tests/goal-lifecycle.e2e.test.ts (NOVO it golden-path

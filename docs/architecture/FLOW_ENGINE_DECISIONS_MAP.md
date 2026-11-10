@@ -62,6 +62,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-33 | ISSUE-0004: fim da tool fantasma no guidance — `librarian_status` → `ppirtv_checkout`; sentinela consumida julgando contra o registro vivo | aceita | V✅ | 4/4 | `src/fiscal-blockers.ts`; commit `e5992f4` |
 | D-34 | Aviso `provided_ignored` no receipt do gate (typo nunca mais silencioso; cola pura, julgamento em gate-resolution) + erros de escopo nomeiam `offending_paths` | `rg "provided_ignored" src/gate-resolution.ts`; record 40 do ledger | 2026-11-09 · ISSUE-LOCAL-0001+0003 · 8367969 |
 | D-35 | E2E golden-path sobre SPT v3 canônico: `addDeclarativeEvidence` expande 1 evidência por critério (`criterion_proof` SINGULAR) | `rg "golden-path SPT v3" tests/goal-lifecycle.e2e.test.ts` | 2026-11-10 · ISSUE-LOCAL-0006 · c7c3779 |
+| D-36 | Contrato público de `goal_advance` alinhado ao desenho D-31: description declara a ressalva `provided_missing_paths` com escopo de fase; sentinela bidirecional no teste MCP (description × comportamento) | `rg "contrato-goal-advance-path-inexistente" tests/mcp.test.ts` | 2026-11-10 · GitHub #16 / ISSUE-LOCAL-0008 · bee93ea+79549cc |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -259,3 +260,25 @@ o UNATTRIBUTED?" — agora ambos nomeiam o culpado no ponto de erro.
 - **Por que assim**: reuso dos moldes v3 existentes em vez de fixture nova;
   2 critérios provam a expansão múltipla; zero src (amplificação de teste).
 - **Fontes**: commit c7c3779; suíte 905; fila da revisão D-30 fechada 6/6.
+
+## D-36 — Contrato público de goal_advance × path inexistente (GitHub #16 / ISSUE-LOCAL-0008)
+
+**Dúvida comum**: "a description do tools/list pode prometer o que o motor
+não faz?" → não; e a vacina da classe mora no teste que vigia a description.
+
+- **O quê**: a description de `goal_advance` prometia "an absent changed
+  file without deleted_files fails closed" — mentira sobre o desenho D-31
+  (ressalva deliberada). Frase nova declara as 3 verdades COM escopo de fase
+  ("when the implementation gate advances ... changed_files paths are only
+  inspected during the implementation gate" — emenda: fora de implementacao
+  o receipt NÃO nomeia, 5/6 fases), o caso diretório ("or not a regular
+  file"), a âncora legível (`gate.provided_missing_paths`) e os markers
+  negativos do `next_step`. It MCP com caso+controle no mesmo advance +
+  caso SOLO (path único inexistente) + sentinela **bidirecional**
+  (`toContain("provided_missing_paths")` + `not.toContain("fails closed")` —
+  provada por mutação CASO E: mentira que cite o campo ao lado é pega).
+- **Por que assim**: o motor D-31 é deliberado e testado — o defeito era a
+  divergência do contrato público; cortar a frase (não o motor) é o menor
+  diff que resolve inteiro, e a sentinela vacina a classe descrição×comportamento.
+- **Fontes**: commits bee93ea+79549cc; adversarial 0P1/4P2/7P3 (probe MCP
+  real no CASO C pagou o escopo de fase); suíte 906 (902+4).
