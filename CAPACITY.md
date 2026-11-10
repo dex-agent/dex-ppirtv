@@ -5,6 +5,7 @@ revisores 0P1/4P2/5P3 sem quebra material). Deltas: `CHANGELOG.md` (ponteiros
 da prova para o destino perene `.agents/AUDITORIAS/2026-11-10-issue15-verify.py`
 — verificador CWD-ancorado por `__file__` + detector de 5º arquivado implícito,
 P2s curados e provados verdes de CWD externo) + este par. Suíte 908 inalterada.
+PLAYBOOK regen pós-fechamento (ACTIVE/HANDOFF/PLAN-TASKS INDEX da #15).
 
 Capability paths tocados: NENHUM (corte de ops sem src — camping flow-engine
 

@@ -264,9 +264,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "f35c034",
-  "tree_hash": "3e8a22213dbcc8b822e278aef0edb498736d8c50",
-  "generated_at": "2026-11-10T23:24:14Z",
+  "head": "475ec82",
+  "tree_hash": "ea0e51ca56e88a4d45310ad691dc86e05cf02413",
+  "generated_at": "2026-11-10T23:34:02Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1392,5 +1392,5 @@
       "Sufixo -retry-N e opaco para consumidores de operation_id (string); nenhum parser de formato encontrado (rg)."
     ]
   },
-  "reavaliacao_issue15_reconciliacao_flows": "OPS ISSUE #15 (2026-11-10): nenhum capability path tocado (corte de ops sem src; camping NOT_APPLICABLE). 4 flows historicos arquivados via API flow_archive com motivo citando o status do SPT (2374 CONCLUIDO_COM_RESSALVA; 2036/2078 CONCLUIDO_NAO_PRONTO; 2313 EM_VALIDACAO_NAO_PRONTO) + readback (status=archived, evento flow_archived, evidencias/verdicts preservados); 29 ambiguos/externos intactos (zero eventos flow_archived). Suite 908 inalterada (904 passed + 4 skipped, files 72) re-medida no ciclo; npm run check exit 0. Prova executavel: .agents/TMP/verify-issue15.py (gitignored) exit 0; tabela: .agents/AUDITORIAS/2026-11-10-issue15-reconciliacao-flows.md. EMENDA: verificador movido para .agents/AUDITORIAS/2026-11-10-issue15-verify.py com CWD ancorado por __file__ + detector de 5o arquivado implicito (P2s da adversarial, provados verdes de CWD externo); proveniencia do corpo da issue fechada (inventario f0477a4/197 arquivos = outra instalacao da frota; nesta maquina o 2374 arquivado unicamente por este corte as 23:04Z); nuance archived_blocked_flow=true em 3/4 (preserved_blockers vazio) e ressalva de vocabulario legado interpretativo registradas em comentario de emenda na #15. Zero src; suite 908."
+  "reavaliacao_issue15_reconciliacao_flows": "OPS ISSUE #15 (2026-11-10): nenhum capability path tocado (corte de ops sem src; camping NOT_APPLICABLE). 4 flows historicos arquivados via API flow_archive com motivo citando o status do SPT (2374 CONCLUIDO_COM_RESSALVA; 2036/2078 CONCLUIDO_NAO_PRONTO; 2313 EM_VALIDACAO_NAO_PRONTO) + readback (status=archived, evento flow_archived, evidencias/verdicts preservados); 29 ambiguos/externos intactos (zero eventos flow_archived). Suite 908 inalterada (904 passed + 4 skipped, files 72) re-medida no ciclo; npm run check exit 0. Prova executavel: .agents/TMP/verify-issue15.py (gitignored) exit 0; tabela: .agents/AUDITORIAS/2026-11-10-issue15-reconciliacao-flows.md. EMENDA: verificador movido para .agents/AUDITORIAS/2026-11-10-issue15-verify.py com CWD ancorado por __file__ + detector de 5o arquivado implicito (P2s da adversarial, provados verdes de CWD externo); proveniencia do corpo da issue fechada (inventario f0477a4/197 arquivos = outra instalacao da frota; nesta maquina o 2374 arquivado unicamente por este corte as 23:04Z); nuance archived_blocked_flow=true em 3/4 (preserved_blockers vazio) e ressalva de vocabulario legado interpretativo registradas em comentario de emenda na #15. Zero src; suite 908. PLAYBOOK regen pos-fechamento (ACTIVE/HANDOFF/INDEX PLAN-TASKS atualizados na sessao — quem edita fonte regenera)."
 }

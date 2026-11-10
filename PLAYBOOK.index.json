@@ -3,7 +3,7 @@
   "generated_by": "tools/playbook/generate-playbook.py",
   "authority": "derived_projection",
   "repo_name": "dex-PPIRTV",
-  "sources_revision": "sha256:57d8ae997cee806fabb2151df5d013eec9162b19380f9a7c95bf79bf261a2eaf",
+  "sources_revision": "sha256:3e153497b9fba344e0b7d30fb8bb959f028ce7ddfb2f1c9f933ff111c984321f",
   "sent_revision": "sha256:c3fe3900353785713ca9fdb1d0ff4a840d2eade60eadca73b9a4ac228bd6dc0f",
   "rules": [
     {
@@ -153,7 +153,7 @@
     },
     {
       "caminho": ".agents/PLAN-TASKS/ACTIVE.md",
-      "sha256": "27b2ace07eaf63b5f51af8cce0669c7dac8750a992663656786bc3bce3d145f5",
+      "sha256": "3759b80fadb640af44e2c8ee02fd0e5338d2eb0b71247ffd3b2f7121dea0ef0c",
       "enviado": false
     }
   ]
