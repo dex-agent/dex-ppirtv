@@ -1894,7 +1894,9 @@
       "rollback": "revert do commit do corte restaura a invocacao direta memoryV2OperationId e devolve o writer sem saneamento (as funcoes puras ficam sem consumidor e sao removiveis junto)",
       "evidence_selectors": {
         "tests/flow-engine-dex-memoria-v2.test.ts": "charset-retry: mineração repetida com receipt PENDING anterior executa com operation_id fresco"
-      }
+      },
+      "commit": "ab1c63ea0fbb358a8d8665ed364fad77e34e8c57",
+      "parent_commit": "4326322a9b67447c54f5a31e357b896d2d432426"
     }
   ]
 }

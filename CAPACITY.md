@@ -18,6 +18,9 @@ com hash no item commitando COMMITTED na dex-memoria 0.1.17 REAL
 isolado; harness .agents/TMP/prova-real-0007.mjs). Suíte 906→908 (904+4,
 files 72).
 
+SELAGEM: record 42 do camping selado com commit ab1c63ea (parent 4326322)
+— sem dívida oculta de CONSECUTIVE_EXCEPTION; commit B persiste a selagem.
+
 ## Reavaliação — ISSUE #16/ISSUE-LOCAL-0008 contrato goal_advance × path inexistente (D-36), 2026-11-10
 
 Capability paths tocados: src/server.ts (apenas a description da tool
