@@ -1,3 +1,13 @@
+## Reavaliação — ISSUE-0006 E2E golden-path SPT v3 (D-35), 2026-11-10
+
+Capability paths tocados: tests/goal-lifecycle.e2e.test.ts (NOVO it golden-path
+SPT v3 canônico: fixture v3 molde memory-gate-loop com 2 critérios;
+addDeclarativeEvidence expande 1 evidência por critério — Evidence.criterion_proof
+é SINGULAR; gate revisão bloqueado→review estrutural fp pós-âncora→verde;
+verdict pronto citando provas+review; fonte persistida + artefatos no disco). O
+it v2 legacy PERMANECE verde (contrato legado aceito). Zero src (camping N/A).
+Suíte 904→905 (901+4, files 72).
+
 ## Reavaliação — ISSUE-0001+0003 diagnóstico-que-ensina (D-34), 2026-11-09
 
 Capability paths tocados: src/gate-resolution.ts (função pura providedIgnoredKeys
