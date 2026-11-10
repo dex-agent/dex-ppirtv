@@ -1,3 +1,18 @@
+## Reavaliação — ISSUE #15 reconciliação de flows históricos (OPS), 2026-11-10
+
+Capability paths tocados: NENHUM (corte de ops sem src — camping flow-engine
+NOT_APPLICABLE por desenho; suíte 908 inalterada re-medida no ciclo). Deltas
+do commit: `CHANGELOG.md` (entrada OPS da #15: 4 flows arquivados por
+fechamento DOCUMENTAL via `flow_archive` com motivo citando o status do SPT +
+readback, evidências/verdicts preservados 9/5/4/17 ev; 29 ambíguos/externos
+intactos para decisão do owner; tabela de classificação por flow com evidência
+em `.agents/AUDITORIAS/2026-11-10-issue15-reconciliacao-flows.md` — gitignored;
+prova executável `.agents/TMP/verify-issue15.py` → 4/4 archived com motivo +
+29 intactos, exit 0) e o par CAPACITY deste receipt. Distinção publicada:
+fechamento documental ≠ conclusão oficial — mora no motivo de cada
+arquivamento. Nenhuma edição manual de arquivo de flow: tudo pela API com
+readback (eventos `flow_archived` nos 4; zero eventos nos 29).
+
 ## Reavaliação — ISSUE-LOCAL-0007 gerador MM × charset L1 da dex-memoria 0.1.17 (D-37), 2026-11-10
 
 Capability paths tocados: src/memory/dex-memoria-v2-adapter.ts

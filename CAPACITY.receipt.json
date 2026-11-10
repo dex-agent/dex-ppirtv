@@ -264,9 +264,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "b2b58be",
-  "tree_hash": "d9d4006ce013c644d7f7ec1dc0fb8c84445423c6",
-  "generated_at": "2026-11-10T22:15:10Z",
+  "head": "02dc32a",
+  "tree_hash": "e45a4e8a73e8f194f2d9438031b4306b5e018d81",
+  "generated_at": "2026-11-10T23:11:45Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1391,5 +1391,6 @@
       "Prova real usa tema de prova em memory_home temporario (o vault real da casa nao e tocado pela suíte).",
       "Sufixo -retry-N e opaco para consumidores de operation_id (string); nenhum parser de formato encontrado (rg)."
     ]
-  }
+  },
+  "reavaliacao_issue15_reconciliacao_flows": "OPS ISSUE #15 (2026-11-10): nenhum capability path tocado (corte de ops sem src; camping NOT_APPLICABLE). 4 flows historicos arquivados via API flow_archive com motivo citando o status do SPT (2374 CONCLUIDO_COM_RESSALVA; 2036/2078 CONCLUIDO_NAO_PRONTO; 2313 EM_VALIDACAO_NAO_PRONTO) + readback (status=archived, evento flow_archived, evidencias/verdicts preservados); 29 ambiguos/externos intactos (zero eventos flow_archived). Suite 908 inalterada (904 passed + 4 skipped, files 72) re-medida no ciclo; npm run check exit 0. Prova executavel: .agents/TMP/verify-issue15.py (gitignored) exit 0; tabela: .agents/AUDITORIAS/2026-11-10-issue15-reconciliacao-flows.md."
 }
