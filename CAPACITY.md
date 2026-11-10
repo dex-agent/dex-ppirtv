@@ -3,16 +3,33 @@
 Capability paths tocados: src/server.ts (apenas a description da tool
 goal_advance no tools/list — a frase "an absent changed file without
 deleted_files fails closed" mentia sobre o desenho D-31 deliberado de
-gate-provided-paths.ts; agora declara as 3 verdades: nunca falha o gate,
-nunca entra na union, receipt nomeia provided_missing_paths — inclusive
-quando é o único path declarado) e tests/mcp.test.ts (NOVO it
+gate-provided-paths.ts) e tests/mcp.test.ts (NOVO it
 contrato-goal-advance-path-inexistente: RED-provado na sentinela ANTES do
-fix — caracterização antes da mudança; caso + controle no MESMO advance:
-provided_missing_paths nomeia só o inexistente, changed_files_snapshot
-acolhe só o existente, fase persistida avança para revisao; sentinela de
-classe vigia a description citar provided_missing_paths — mata a mentira
-recorrente). Zero motor (gate-provided-paths/flow-engine intocados; camping
-N/A). Suíte 905→906.
+fix — caracterização antes da mudança; caso + controle no MESMO advance;
+sentinela de classe). Zero motor (gate-provided-paths/flow-engine
+intocados; camping N/A). Suíte 905→906 (re-medida: 902 passed + 4 skipped,
+files 72).
+
+EMENDA adversarial D-36 (5 revisores, 0P1/4P2/7P3, 2 classes convergentes;
+consolidado em .agents/TMP/adversarial-issue16/CONSOLIDADO.md): (P2
+adversário, probe MCP real) frase emendada com ESCOPO DE FASE — "when the
+implementation gate advances ... (changed_files paths are only inspected
+during the implementation gate)": fora de implementacao o receipt não nomeia
+(5/6 fases), e a frase herdara a mesma classe de mentira que o corte veio
+matar; mesma emenda cobriu o caso diretório ("or not a regular file" —
+statSync isFile), a âncora legível (gate.provided_missing_paths) e os
+markers negativos do next_step ("such as false/no/null/0/off"). (P2 testes)
+caso SOLO por MCP no mesmo it — 2º flow com changed_files único inexistente:
+ressalva nomeada, snapshot vazio, fase persistida (a claim "even when it is
+the only declared path" agora tem it onde a claim mora). (P2 checklist)
+suite.total re-medido no receipt (905→906; classe congelamento paga 2x na
+casa). (P3, 3 revisores convergentes) sentinela BIDIRECIONAL —
+not.toContain("fails closed") — provada por MUTAÇÃO CASO E (campo citado +
+mentira ao lado → RED exato na sentinela; restore → GREEN). (P3 testes)
+fail-near: advance de setup asserta phase implementacao antes do advance
+alvo. Não-curados deliberados: dedup case-variant da ressalva e resultOf
+opaco (motor/harness pré-existentes fora do escopo do corte); vacina de
+atualidade do suite.total (corte próprio).
 
 ## Reavaliação — ISSUE-0006 E2E golden-path SPT v3 (D-35), 2026-11-10
 

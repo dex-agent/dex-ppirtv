@@ -1130,11 +1130,14 @@ describe("PPIRTV MCP stdio server", () => {
     await connectClient();
     const workspace = mcpWorkspace;
 
-    // Sentinela de classe (descrição × comportamento): o contrato público
-    // declara a ressalva em vez de prometer bloqueio que o motor não faz.
+    // Sentinela de classe (descrição × comportamento), BIDIRECIONAL: o
+    // contrato público declara a ressalva em vez de prometer bloqueio que o
+    // motor não faz — e a mentira antiga ("fails closed") não pode voltar ao
+    // lado da citação do campo (emenda D-36: 3 revisores convergentes).
     const toolsList = await client!.listTools();
     const advanceTool = toolsList.tools.find((tool) => tool.name === "goal_advance");
     expect(advanceTool?.description).toContain("provided_missing_paths");
+    expect(advanceTool?.description).not.toContain("fails closed");
 
     const sptPath = await writeFakeSpt(workspace, "Contrato goal advance path inexistente");
     const envelope = {
@@ -1151,7 +1154,10 @@ describe("PPIRTV MCP stdio server", () => {
     const started = await client!.callTool({ name: "goal_start", arguments: envelope });
     const flowId = resultOf(started).flow_id as string;
     await client!.callTool({ name: "goal_advance", arguments: { flow_id: flowId } });
-    await client!.callTool({ name: "goal_advance", arguments: { flow_id: flowId } });
+    // Fail-near: o advance alvo só julga paths na fase implementacao —
+    // assertar a fase aqui explode perto da causa se a máquina de fases mudar.
+    const setupAdvance = resultOf(await client!.callTool({ name: "goal_advance", arguments: { flow_id: flowId } }));
+    expect(setupAdvance.phase).toBe("implementacao");
 
     // Controle (arquivo existente no disco) + caso (path inexistente, sem
     // deleted_files) declarados NO MESMO advance: a union acolhe só o real.
@@ -1174,6 +1180,41 @@ describe("PPIRTV MCP stdio server", () => {
     // Fase persistida: o avanço para revisão é real, não só receipt.
     const status = resultOf(await client!.callTool({ name: "goal_status", arguments: { flow_id: flowId, detail: "full" } }));
     expect(status.phase).toBe("revisao");
+
+    // EMENDA D-36 (P2 testes + claim "even when it is the only declared
+    // path"): o path inexistente SOZINHO também produz a ressalva nomeada,
+    // snapshot vazio e avanço de fase — provado por MCP, onde a claim mora.
+    const soloSptPath = await writeFakeSpt(workspace, "Contrato goal advance path unico inexistente");
+    const soloStarted = await client!.callTool({
+      name: "goal_start",
+      arguments: {
+        workspace,
+        spt_path: soloSptPath,
+        objective: "Contrato goal advance path unico inexistente",
+        idempotency_key: "dex-code:mcp-issue16-contrato-path-solo",
+        evidence_required: true,
+        required_evidence: [],
+        requested_verdict_policy: "evidence_required",
+        source: "dex-code",
+        mode: "full"
+      }
+    });
+    const soloFlowId = resultOf(soloStarted).flow_id as string;
+    await client!.callTool({ name: "goal_advance", arguments: { flow_id: soloFlowId } });
+    await client!.callTool({ name: "goal_advance", arguments: { flow_id: soloFlowId } });
+    const soloAdvance = resultOf(await client!.callTool({
+      name: "goal_advance",
+      arguments: {
+        flow_id: soloFlowId,
+        provided: { implementation_done: true, changed_files: ["aut/somente-fantasma.txt"] }
+      }
+    }));
+    expect(soloAdvance.advanced).toBe(true);
+    const soloGate = soloAdvance.gate as Record<string, unknown>;
+    expect(soloGate.provided_missing_paths).toEqual(["aut/somente-fantasma.txt"]);
+    expect(soloGate.changed_files_snapshot).toEqual([]);
+    const soloStatus = resultOf(await client!.callTool({ name: "goal_status", arguments: { flow_id: soloFlowId, detail: "full" } }));
+    expect(soloStatus.phase).toBe("revisao");
   });
 
   it("does not turn negative meeting trigger text into required_cooperation over MCP", async () => {

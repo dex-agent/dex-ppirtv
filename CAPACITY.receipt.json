@@ -264,9 +264,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "f0477a4",
-  "tree_hash": "91d06cd5e8227fe7a86023d9af76c50f3f3d387d",
-  "generated_at": "2026-11-10T19:54:30Z",
+  "head": "bee93ea",
+  "tree_hash": "4c625fe48623b0bc0aeaad8a06858da55dd42f89",
+  "generated_at": "2026-11-10T20:14:26Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -285,11 +285,11 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 901,
+    "passed": 902,
     "failed": 0,
     "skipped": 4,
     "files": 72,
-    "total": 905,
+    "total": 906,
     "command": "npm run check (audit:canonical + check:flow-engine + check:capacity + build + check:types + vitest; exit 0)"
   },
   "tools_count": 32,
@@ -1361,7 +1361,7 @@
       "src/server.ts",
       "tests/mcp.test.ts"
     ],
-    "delta": "ISSUE #16 / ISSUE-LOCAL-0008 (P2): description da tool goal_advance no tools/list prometia 'an absent changed file without deleted_files fails closed' enquanto o desenho D-31 (gate-provided-paths.ts, deliberado) devolve ressalva provided_missing_paths. Corte de contrato: frase nova declara as 3 verdades (nunca falha o gate; nunca entra na tracked union; receipt nomeia provided_missing_paths — inclusive quando e o unico path declarado). It MCP contrato-goal-advance-path-inexistente RED-provado na sentinela ANTES do fix (caracterizacao antes da mudanca): caso + controle no MESMO advance (ressalva nomeia so o inexistente; changed_files_snapshot acolhe so o existente), fase persistida avanca para revisao, sentinela de classe vigia a description citar o campo. Zero motor (gate-provided-paths/flow-engine intocados; camping N/A). Suite 905->906.",
+    "delta": "ISSUE #16 / ISSUE-LOCAL-0008 (P2): description da tool goal_advance no tools/list prometia 'an absent changed file without deleted_files fails closed' enquanto o desenho D-31 (gate-provided-paths.ts, deliberado) devolve ressalva provided_missing_paths. Corte de contrato + EMENDA adversarial (0P1/4P2/7P3): frase com escopo de fase ('when the implementation gate advances ... changed_files paths are only inspected during the implementation gate'), caso diretorio ('or not a regular file'), ancora legivel (gate.provided_missing_paths) e markers negativos do next_step; it MCP com caso+controle no mesmo advance, caso SOLO (2o flow, path unico inexistente: ressalva nomeada, snapshot vazio, fase persistida), sentinela BIDIRECIONAL provada por mutacao CASO E (campo citado + 'fails closed' ao lado -> RED exato; restore -> GREEN) e fail-near (setup asserta phase implementacao). Zero motor (camping N/A). Suite re-medida 905->906 (902+4, files 72).",
     "evidence": [
       "npx vitest run tests/mcp.test.ts -t \"contrato-goal-advance-path-inexistente\" (RED na sentinela com a description antiga; GREEN apos o fix)",
       "npm run build (dist/index.js e o servidor do teste MCP)",
