@@ -41,6 +41,12 @@ teste adapter (trava vazio/aparado), contadores de suíte "(906+2)" nos 2
 arquivos (checklist: decomposição não batia com o diff). Zero flow-engine
 na emenda (camping N/A para este diff).
 
+FECHAMENTO: CHANGELOG com emenda + D-37 nos 2 mapas + Trilho CONCLUSAO +
+ACTIVE/HANDOFF + TRACKER 0007 FECHADA com receipt da prova real COMMITTED
+na 0.1.17 (mmv2_617f...520e9c8) + playbook regen; commits ab1c63e (corte)
++ a804545 (selagem) + b2b58be (emenda) + fechamento. TRACKER local zerado
+(0001..0008).
+
 ## Reavaliação — ISSUE #16/ISSUE-LOCAL-0008 contrato goal_advance × path inexistente (D-36), 2026-11-10
 
 Capability paths tocados: src/server.ts (apenas a description da tool

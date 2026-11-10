@@ -63,6 +63,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-34 | Aviso `provided_ignored` no receipt do gate (typo nunca mais silencioso; cola pura, julgamento em gate-resolution) + erros de escopo nomeiam `offending_paths` | `rg "provided_ignored" src/gate-resolution.ts`; record 40 do ledger | 2026-11-09 · ISSUE-LOCAL-0001+0003 · 8367969 |
 | D-35 | E2E golden-path sobre SPT v3 canônico: `addDeclarativeEvidence` expande 1 evidência por critério (`criterion_proof` SINGULAR) | `rg "golden-path SPT v3" tests/goal-lifecycle.e2e.test.ts` | 2026-11-10 · ISSUE-LOCAL-0006 · c7c3779 |
 | D-36 | Contrato público de `goal_advance` alinhado ao desenho D-31: description declara a ressalva `provided_missing_paths` com escopo de fase; sentinela bidirecional no teste MCP (description × comportamento) | `rg "contrato-goal-advance-path-inexistente" tests/mcp.test.ts` | 2026-11-10 · GitHub #16 / ISSUE-LOCAL-0008 · bee93ea+79549cc |
+| D-37 | Gerador MM no charset L1 da dex-memoria 0.1.17 + retry com operation_id fresco por FAMÍLIA (sufixo numérico monotônico; PARTIAL_PENDING retoma pelo resume canônico) | `rg "freshOperationIdForRetry" src/memory-promotion.ts` | 2026-11-10 · ISSUE-LOCAL-0007 · ab1c63e+b2b58be |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -282,3 +283,23 @@ não faz?" → não; e a vacina da classe mora no teste que vigia a description.
   diff que resolve inteiro, e a sentinela vacina a classe descrição×comportamento.
 - **Fontes**: commits bee93ea+79549cc; adversarial 0P1/4P2/7P3 (probe MCP
   real no CASO C pagou o escopo de fase); suíte 906 (902+4).
+
+## D-37 — Gerador MM × charset L1 da dex-memoria 0.1.17 (ISSUE-LOCAL-0007)
+
+**Dúvida comum**: "por que o writer da MM saneia title/trigger e o retry
+ganha id novo?" → porque o charset da 0.1.17 fecha `^ [ ] CR LF` em
+request-stage e o id determinístico pelo item fica preso.
+
+- **O quê**: `sanitizeCandidateText` no adapter (title/trigger no charset,
+  body cru, caso bom idêntico, guard `TITLE_EMPTY` para item só de
+  metacaracteres) + `freshOperationIdForRetry` em memory-promotion:
+  FAMÍLIA por prefixo com contador no SUFIXO numérico (monotônico sob
+  replace do `v2_receipts` por rodada — o 1º desenho regenerava id queimado
+  na 3ª tentativa, P1 da adversarial com 2 revisores convergentes por
+  probe); último PARTIAL_PENDING da família devolve o MESMO id (resume
+  canônico preservado, inclusive em id sufixado); vocabulário real do
+  receipt: `COMMITTED|PARTIAL_PENDING|FAILED` (preso = FAILED).
+- **Por que assim**: a dex-memoria 0.1.17 é a autoridade do charset; o
+  gerador saneia na fronteira; o id novo só nasce quando o id está PRESO.
+- **Fontes**: commits ab1c63e+b2b58be; PROVA REAL COMMITTED na 0.1.17 real
+  com hash no item (tema de prova, home temporário isolado); suíte 908.
