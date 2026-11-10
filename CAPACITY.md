@@ -20,6 +20,8 @@ timeout 30s no it. Não-curados deliberados: vocabulário `status` do SPT
 (texto livre por desenho — enum é corte de schema próprio), tree_hash
 write-tree intermediário (protocolo do gate: confere o STAGED).
 
+FECHAMENTO: superfícies vivas + Trilho CONCLUSAO + TRACKER 0006 (revisão D-30 6/6, TRACKER zerado); generated_at atualizado junto do head ao re-ancorar (vacina em ação).
+
 ## Reavaliação — ISSUE-0001+0003 diagnóstico-que-ensina (D-34), 2026-11-09
 
 Capability paths tocados: src/gate-resolution.ts (função pura providedIgnoredKeys
