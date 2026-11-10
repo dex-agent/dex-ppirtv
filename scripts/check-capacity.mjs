@@ -72,6 +72,21 @@ function validateReceipt(receipt) {
     if (!nonEmpty(receipt[field])) reasons.push("CAPACITY_RECEIPT_FIELD_REQUIRED:" + field);
   }
   if (!Number.isFinite(Date.parse(receipt.generated_at))) reasons.push("CAPACITY_RECEIPT_GENERATED_AT_INVALID");
+  // EMENDA adversarial D-35 (P2 congelado há >=2 reavaliações): generated_at
+  // não pode preceder a CRIAÇÃO do commit citado como head — timestamp velho
+  // re-ancorado em receipt novo é impossibilidade interna (a data não
+  // representa a geração do conteúdo que cita).
+  if (nonEmpty(receipt.head)) {
+    try {
+      const headDate = execFileSync("git", ["show", "-s", "--format=%cI", String(receipt.head)], { encoding: "utf8" }).trim();
+      if (headDate && Date.parse(receipt.generated_at) < Date.parse(headDate)) {
+        reasons.push("CAPACITY_RECEIPT_GENERATED_AT_STALE_CITED_HEAD");
+      }
+    } catch {
+      // head ainda não resolvido localmente (ex.: worktree de terceiro): o
+      // gate de frescor fica indisponível SEM reprovar por forma
+    }
+  }
   for (const field of ["escopo", "fora_de_escopo", "fontes_vivas", "limits"]) {
     if (!Array.isArray(receipt[field])) reasons.push("CAPACITY_RECEIPT_FIELD_REQUIRED:" + field);
   }

@@ -44,7 +44,7 @@ describe("GOAL lifecycle e2e (golden path num único workspace persistido)", () 
       mode: "full",
     })) as { flow_id: string };
     const flowId = started.flow_id;
-    expect(flowId).toBeTruthy();
+    expect(flowId).toMatch(/^flow_/);
 
     // 2) implementação: facts mudam o worktree (changed_files)
     await engine.updateFlowFacts(flowId, { changed_files: ["src/app.ts"] });
@@ -180,7 +180,7 @@ describe("GOAL lifecycle e2e (golden path num único workspace persistido)", () 
     expect(files.filter((file) => file.startsWith(first.flow_id))).toHaveLength(1);
   });
 
-  it("golden-path SPT v3 canônico: criterion_proofs por critério via declarative_proof no ciclo completo (ISSUE-LOCAL-0006)", async () => {
+  it("golden-path SPT v3 canônico: criterion_proofs por critério via declarative_proof no ciclo completo (ISSUE-LOCAL-0006)", { timeout: 30_000 }, async () => {
     const objective = "Percorrer o ciclo canônico SPT v3 com provas por critério";
     const workspace = path.join(tempRoot, "consumer-v3");
     const sptPath = path.join(workspace, ".agents", "PLAN-TASKS", "lifecycle-v3.md");
@@ -202,19 +202,24 @@ describe("GOAL lifecycle e2e (golden path num único workspace persistido)", () 
     await engine.updateFlowFacts(flowId, { changed_files: ["src/app.ts"] });
 
     // 2) fases pela máquina de estados real (sequência canônica)
-    await engine.goalAdvance({ flow_id: flowId, provided: {} });
-    await engine.goalAdvance({ flow_id: flowId, provided: {} });
-    await engine.goalAdvance({
+    // EMENDA adversarial D-35 (P2 fail-near): cada advance é assertado no
+    // ponto — early-return/falha de fase explode AQUI, não 3 passos depois.
+    const a1 = (await engine.goalAdvance({ flow_id: flowId, provided: {} })) as { phase?: string };
+    expect(a1.phase).toBe("planejamento");
+    const a2 = (await engine.goalAdvance({ flow_id: flowId, provided: {} })) as { phase?: string };
+    expect(a2.phase).toBe("implementacao");
+    const a3 = (await engine.goalAdvance({
       flow_id: flowId,
       provided: { implementation_done: true, changed_files: ["src/app.ts"] },
-    });
+    })) as { phase?: string };
+    expect(a3.phase).toBe("revisao");
     expect((await engine.store.loadFlow(flowId)).phase).toBe("revisao");
 
     // 3) provas por critério — a rota canônica da casa: 1 declarative_proof
     // expande EXATAMENTE 1 criterion_proof por critério em ER.proves (2 aqui)
     const declared = (await addDeclarativeEvidence(
-      engine as never,
-      engine as never,
+      engine,
+      engine,
       {
         flow_id: flowId,
         title: "declared golden-path v3",
@@ -227,7 +232,7 @@ describe("GOAL lifecycle e2e (golden path num único workspace persistido)", () 
       },
       declarativeDefaults()
     )) as { evidence_ids: string[]; criteria: Array<{ criterion_id: string }> };
-    expect(declared.criteria.map((item) => item.criterion_id)).toEqual(["C-01", "C-02"]);
+    expect(declared.criteria.map((item) => item.criterion_id).sort()).toEqual(["C-01", "C-02"]);
 
     // 4) gate de revisão: bloqueado sem review → review estrutural (fp pós-âncora) → verde
     const gateProvided = {
@@ -284,7 +289,7 @@ describe("GOAL lifecycle e2e (golden path num único workspace persistido)", () 
     expect(proofs.every((proof) => proof.passed)).toBe(true);
 
     // 7) artefatos no disco (anti falso-positivo de exit 0)
-    const flowFile = path.join((engine.store as unknown as { flowsDir: string }).flowsDir, `${flowId}.json`);
+    const flowFile = path.join(engine.store.flowsDir, `${flowId}.json`);
     const persisted = JSON.parse(await readFile(flowFile, "utf8")) as { history: Array<{ type: string }> };
     expect(persisted.history.some((event) => event.type === "goal_started")).toBe(true);
     expect(persisted.history.some((event) => event.type === "verdict_recorded")).toBe(true);

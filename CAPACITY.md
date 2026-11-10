@@ -8,6 +8,18 @@ verdict pronto citando provas+review; fonte persistida + artefatos no disco). O
 it v2 legacy PERMANECE verde (contrato legado aceito). Zero src (camping N/A).
 Suíte 904→905 (901+4, files 72).
 
+EMENDA adversarial D-35 (5 revisores, 0P1/3P2/6P3): (P2 mapa = timing — mapa
+gravado na mesma entrega, persiste no fechamento); (P2 testes) fail-near —
+cada goalAdvance assertado na fase; (P2 receipt, vacina de CLASSE)
+`CAPACITY_RECEIPT_GENERATED_AT_STALE_CITED_HEAD` no fiscal (generated_at não
+pode preceder a criação do commit head — RED ao vivo pegando o congelamento
+de >=2 reavaliações; generated_at agora real); (P3s) `as never` ×2 e cast
+flowsDir MORTOS (acesso direto compila — engine satisfaz estruturalmente as
+interfaces), asserts fortes (flowId `^flow_`; .sort() na ordem de critérios),
+timeout 30s no it. Não-curados deliberados: vocabulário `status` do SPT
+(texto livre por desenho — enum é corte de schema próprio), tree_hash
+write-tree intermediário (protocolo do gate: confere o STAGED).
+
 ## Reavaliação — ISSUE-0001+0003 diagnóstico-que-ensina (D-34), 2026-11-09
 
 Capability paths tocados: src/gate-resolution.ts (função pura providedIgnoredKeys

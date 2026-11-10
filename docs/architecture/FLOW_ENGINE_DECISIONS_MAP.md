@@ -61,6 +61,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-32 | ISSUE-0005: typecheck de `tests/` no pipeline (`check:types` no `check` antes do vitest; curadoria de ~130 erros herdados) | aceita | V✅ | 6/6 | `tsconfig.tests.json`; commit `3d41f26` |
 | D-33 | ISSUE-0004: fim da tool fantasma no guidance — `librarian_status` → `ppirtv_checkout`; sentinela consumida julgando contra o registro vivo | aceita | V✅ | 4/4 | `src/fiscal-blockers.ts`; commit `e5992f4` |
 | D-34 | Aviso `provided_ignored` no receipt do gate (typo nunca mais silencioso; cola pura, julgamento em gate-resolution) + erros de escopo nomeiam `offending_paths` | `rg "provided_ignored" src/gate-resolution.ts`; record 40 do ledger | 2026-11-09 · ISSUE-LOCAL-0001+0003 · 8367969 |
+| D-35 | E2E golden-path sobre SPT v3 canônico: `addDeclarativeEvidence` expande 1 evidência por critério (`criterion_proof` SINGULAR) | `rg "golden-path SPT v3" tests/goal-lifecycle.e2e.test.ts` | 2026-11-10 · ISSUE-LOCAL-0006 · c7c3779 |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -242,3 +243,19 @@ o UNATTRIBUTED?" — agora ambos nomeiam o culpado no ponto de erro.
 - **Fontes**: commit 8367969; record 40 do ledger
   `docs/architecture/flow-engine-evolution.json`; RED baseline 4c693c6
   (`tests/gate-provided-ignored.test.ts`, `tests/review-scope-offending-paths.test.ts`).
+
+## D-35 — E2E golden-path SPT v3 (ISSUE-0006)
+
+**Dúvida comum**: "como é o ciclo canônico completo com provas por critério?"
+→ o it golden-path v3 é o exemplar executável.
+
+- **O quê**: `tests/goal-lifecycle.e2e.test.ts` ganhou o it v3 — fixture v3
+  (molde `memory-gate-loop.test.ts`, 2 critérios), `addDeclarativeEvidence`
+  expande **1 evidência por critério** (`Evidence.criterion_proof` é
+  SINGULAR — 1 chamada → provas C-01/C-02), gate de revisão
+  `review_evidence_coherent` → review estrutural `code_review` fp pós-âncora
+  → verde, verdict `pronto` citando provas + review, fonte persistida e
+  artefatos no disco. O it v2 legacy permanece (contrato legado provado).
+- **Por que assim**: reuso dos moldes v3 existentes em vez de fixture nova;
+  2 critérios provam a expansão múltipla; zero src (amplificação de teste).
+- **Fontes**: commit c7c3779; suíte 905; fila da revisão D-30 fechada 6/6.
