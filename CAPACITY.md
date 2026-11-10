@@ -4,7 +4,8 @@ RODADA 2 (GO do owner na pergunta da #15): nenhum capability path. +20
 arquivamentos administrativos via API (18 stubs externos + 2 SPT ausente)
 com motivo citando a classe e a autorização; readback 24 archived pelo
 corte / 9 da família 3 preservados para decisão flow-a-flow (lista no
-comentário da issue).
+comentário da issue). PLAYBOOK regen pós-rodada2 (ACTIVE/HANDOFF/PLAN-TASKS
+atualizados 24 archived / 9 família 3).
 
 EMENDA (commit seguinte): nenhum capability path tocado (ops; adversarial 5
 revisores 0P1/4P2/5P3 sem quebra material). Deltas: `CHANGELOG.md` (ponteiros
