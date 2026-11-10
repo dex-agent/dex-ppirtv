@@ -1862,7 +1862,9 @@
    "rollback": "revert do commit da emenda restaura o preflight sem o campo (aditivo) e devolve o conjunto aceito original",
    "evidence_selectors": {
     "tests/gate-provided-ignored.test.ts": "EMENDA D-34 P2 simetria: goal_gate_preflight na rota read-only também nomeia o typo — invariante D-31 vale para a família inteira"
-   }
+   },
+   "commit": "9ea8ef6f6e22cf65b4323a539dbd91c15de56273",
+   "parent_commit": "836796907f04fd5b6035ac158d4e9df866ec4935"
   }
  ]
 }

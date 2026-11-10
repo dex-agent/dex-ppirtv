@@ -13,6 +13,7 @@ no receipt sem reprovar; chaves válidas nunca avisadas), tests/
 review-scope-offending-paths.test.ts NOVO (3: UNATTRIBUTED nomeia 2 paths,
 UNDISCOVERED nomeia, truncagem 12→10 +2 more). Suíte 896→901 (892+5 passed,
 4 skipped, files 72). RED-first 1+3 provados no baseline antes das curas.
+FECHAMENTO: selagem do record 41 commitada (9ea8ef6); superfícies vivas + TRACKER + mapa D-34; playbook regen (ACTIVE.md é fonte). Suíte medida 904 (900+4, files 72) no check exit 0.
 
 EMENDA adversarial D-34 (5 revisores, 0P1/3P2/7P3, 3 classes convergentes;
 probe do adversário no motor real): (P2) PROVIDED_REVIEW_INPUT_KEYS mata o
