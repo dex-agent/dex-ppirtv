@@ -118,29 +118,39 @@ export function memoryV2OperationId(item: string, classification: ReturnType<typ
   return `mmv2_${createHash("sha256").update(JSON.stringify(materialUnit), "utf8").digest("hex")}`;
 }
 
-// ISSUE-LOCAL-0007 (2026-11-10): memoryV2OperationId é determinístico pelo
-// item — o retry do resolve reutilizava o id PRESO e a dex-memoria responde
-// "use a new operation_id". Preso = status não-COMMITTED que o adapter NÃO
-// retoma (PENDING, ROLLED_BACK...): PARTIAL_PENDING segue o RESUME canônico
-// pelo mesmo id (contrato "persists PARTIAL_PENDING and consumes it through
-// canonical resume" — a suíte pega regressão). Sufixo determinístico por
-// contador de receipts presos do MESMO id base: id fresco por tentativa,
-// rastreável pelo prefixo, e o filtro de resume_receipts do chamador não
-// casa nada do id velho (operação nova, sem resume). Separador HÍFEN (não
-// "::"): receipt paths derivam do operation_id (validation-<id>.json) e ":"
-// é proibido em nome de arquivo no Windows — provado ao vivo pelo RED
-// (ENOENT com "::retry-1").
+// ISSUE-LOCAL-0007 (2026-11-10, emenda D-37 P1 — adversarial com 2 revisores
+// convergentes por probe): memoryV2OperationId é determinístico pelo item —
+// o retry do resolve reutilizava o id PRESO e a dex-memoria responde "use a
+// new operation_id". A FAMÍLIA do id é o prefixo (base + "-retry-N"): o
+// julgamento conta TODOS os receipts da família, não só os do id exato (o
+// primeiro desenho regenerava id já queimado na 3ª tentativa — loop
+// base↔retry-1). Regras: (1) se o ÚLTIMO receipt da família é
+// PARTIAL_PENDING, devolve o MESMO id — o adapter retoma pelo RESUME
+// canônico (contrato "persists PARTIAL_PENDING and consumes it through
+// canonical resume", preservado pela suíte); (2) se há id PRESO na família
+// (status FAILED — o vocabulário real do receipt canônico é
+// "COMMITTED"|"PARTIAL_PENDING"|"FAILED"), sufixo MONOTÔNICO
+// retry-(total-de-receipts-da-família + 1): id novo por tentativa, nunca
+// colide com id já usado (mesmo um COMMITTED intermediário); (3) sem preso,
+// o id base. Separador HÍFEN (não "::"): receipt paths derivam do
+// operation_id e ":" é proibido em nome de arquivo no Windows.
 export function freshOperationIdForRetry(
   baseOperationId: string,
-  previousReceipts: Array<{ operation_id: string; status: string }>
+  previousReceipts: Array<Pick<DexMemoriaV2CanonicalReceipt, "operation_id" | "status">>
 ): string {
-  const stuckCount = previousReceipts.filter(
-    (receipt) =>
-      receipt.operation_id === baseOperationId
-      && receipt.status !== "COMMITTED"
-      && receipt.status !== "PARTIAL_PENDING"
-  ).length;
-  return stuckCount === 0 ? baseOperationId : `${baseOperationId}-retry-${stuckCount}`;
+  const suffixOf = (operationId: string): number =>
+    operationId === baseOperationId ? 0 : Number(/-retry-(\d+)$/.exec(operationId)?.[1] ?? 0);
+  const family = previousReceipts.filter((receipt) =>
+    receipt.operation_id === baseOperationId
+    || receipt.operation_id.startsWith(`${baseOperationId}-retry-`));
+  if (family.length === 0) return baseOperationId;
+  // v2_receipts é SUBSTITUÍDO a cada mineração: o contador mora no SUFIXO
+  // numérico do maior id da família — monotônico sob replace (a contagem
+  // por receipts regenerava id queimado na 3ª tentativa).
+  const latest = [...family].sort((left, right) => suffixOf(right.operation_id) - suffixOf(left.operation_id))[0]!;
+  if (latest.status === "PARTIAL_PENDING") return latest.operation_id;
+  const stuck = family.some((receipt) => receipt.status !== "COMMITTED");
+  return stuck ? `${baseOperationId}-retry-${suffixOf(latest.operation_id) + 1}` : baseOperationId;
 }
 
 export function v2ReceiptsProveCommittedEffect(receipts: DexMemoriaV2CanonicalReceipt[]): boolean {

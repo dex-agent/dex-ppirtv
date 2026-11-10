@@ -476,14 +476,15 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => {
         executedIds.push(input.operation_request.operation_id);
         calls += 1;
-        // 1ª tentativa fica com o id PRESO (status PENDING, não retomável —
-        // o caso real da 0007: "use a new operation_id"; PARTIAL_PENDING
-        // seguiria o resume canônico e é coberto pelo it irmão). Da 2ª em
-        // diante o writer da casa entrega e commita com id fresco.
-        if (calls > 1) return await committedReceipt(input.operation_request, input.candidate);
+        // Tentativas 1 e 2 ficam com o id PRESO (status FAILED — o vocabulário
+        // real do receipt canônico: "COMMITTED"|"PARTIAL_PENDING"|"FAILED"; o
+        // caso real da 0007 é "use a new operation_id"); a 3ª entrega e committa.
+        // EMENDA D-37 P1 (adversarial, 2 revisores convergentes por probe): a
+        // 3ª rodada não pode regenerar id já queimado — sufixo MONOTÔNICO.
+        if (calls > 2) return await committedReceipt(input.operation_request, input.candidate);
         const stuck = await committedReceipt(input.operation_request, input.candidate);
-        stuck.status = "PENDING";
-        stuck.recovery_mode = "use_a_new_operation_id";
+        stuck.status = "FAILED";
+        stuck.recovery_mode = null;
         stuck.route_receipts.project!.status = "PENDING";
         delete stuck.route_receipts.project!.receipt_path;
         delete stuck.route_receipts.project!.validation_receipt_path;
@@ -510,14 +511,19 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
     expect(first.v2_status).not.toBe("complete");
 
     const second = await engine.mineMemory({ flow_id: flow.flow_id, write_policy: "auto_write" }) as any;
-    expect(second.v2_status).toBe("complete");
-    expect(executedIds.length).toBe(2);
-    // o id da 2ª execução é FRESCO: distinto do preso em PENDING
-    expect(executedIds[1]).not.toBe(executedIds[0]);
-    expect(executedIds[1].startsWith(executedIds[0])).toBe(true);
+    expect(second.v2_status).not.toBe("complete");
+    const third = await engine.mineMemory({ flow_id: flow.flow_id, write_policy: "auto_write" }) as any;
+    expect(third.v2_status).toBe("complete");
+    expect(executedIds.length).toBe(3);
+    // ids da família FRESCOS por tentativa: base, retry-1, retry-2 —
+    // EMENDA D-37 P1: nunca regenera id já queimado (loop base↔retry-1)
+    const [baseId, retryOne, retryTwo] = executedIds;
+    expect(retryOne).toBe(`${baseId}-retry-1`);
+    expect(retryTwo).toBe(`${baseId}-retry-2`);
+    expect(new Set(executedIds).size).toBe(3);
     // e o request não carrega resume do id velho (operação nova)
-    const secondInput = executor.execute.mock.calls[1]?.[0] as DexMemoriaV2ExecutionInput;
-    expect(secondInput.operation_request.operation_id).toBe(executedIds[1]);
+    const thirdInput = executor.execute.mock.calls[2]?.[0] as DexMemoriaV2ExecutionInput;
+    expect(thirdInput.operation_request.operation_id).toBe(retryTwo);
   });
 
   it("preserves the legacy V1 global classification while V2 uses contextual scope intent", () => {

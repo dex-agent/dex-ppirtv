@@ -264,9 +264,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "ab1c63e",
-  "tree_hash": "36f498b87e10cc86aa10eb9b477a7067377e7ec9",
-  "generated_at": "2026-11-10T21:56:28Z",
+  "head": "a804545",
+  "tree_hash": "c6349b1b758d80bbc8b830dd9517b14dff202214",
+  "generated_at": "2026-11-10T22:13:09Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1381,7 +1381,7 @@
       "tests/dex-memoria-v2-adapter.test.ts",
       "tests/flow-engine-dex-memoria-v2.test.ts"
     ],
-    "delta": "ISSUE-LOCAL-0007 (P2): writer da MM entregava title/trigger com os metacaracteres ^ [ ] CR LF do item da mineracao (caso graphify com shape-MM) — a dex-memoria 0.1.17 rejeita em request-stage (INVALID_CANDIDATE citando o caractere) e o retry do resolve reusava o operation_id preso em PENDING ('use a new operation_id'). Cura: sanitizeCandidateText no adapter (title/trigger no charset L1; body cru; caso bom identico) + freshOperationIdForRetry (id fresco -retry-N SOMENTE para id PRESO: status nao-COMMITTED e nao-PARTIAL_PENDING — PARTIAL_PENDING segue o resume canonico, contrato preservado pela suite que PEGOU a regressao do primeiro desenho). RED-first duplo (adapter charset + engine charset-retry); 2 achados da execucao: helper partialReceipt assume rota global; sufixo :: quebra paths de receipt no Windows (hifen). PROVA REAL: mineracao com hash no item COMMITTED na 0.1.17 real (theme=COMMITTED, receipt mmv2_617f..., home temporario isolado). Suite 906->908 (904+4).",
+    "delta": "ISSUE-LOCAL-0007 (P2): writer da MM entregava title/trigger com os metacaracteres ^ [ ] CR LF do item da mineracao (caso graphify com shape-MM) — a dex-memoria 0.1.17 rejeita em request-stage (INVALID_CANDIDATE citando o caractere) e o retry do resolve reusava o operation_id preso em PENDING ('use a new operation_id'). Cura: sanitizeCandidateText no adapter (title/trigger no charset L1; body cru; caso bom identico) + freshOperationIdForRetry (id fresco -retry-N SOMENTE para id PRESO: status nao-COMMITTED e nao-PARTIAL_PENDING — PARTIAL_PENDING segue o resume canonico, contrato preservado pela suite que PEGOU a regressao do primeiro desenho). RED-first duplo (adapter charset + engine charset-retry); 2 achados da execucao: helper partialReceipt assume rota global; sufixo :: quebra paths de receipt no Windows (hifen). PROVA REAL: mineracao com hash no item COMMITTED na 0.1.17 real (theme=COMMITTED, receipt mmv2_617f..., home temporario isolado). Suite 906->908 (904+4). EMENDA adversarial (1P1/2P2/5P3): freshOperationIdForRetry reescrita por FAMILIA com contador no SUFIXO numerico (primeiro desenho regenerava id queimado na 3a tentativa — v2_receipts e SUBSTITUIDO por rodada; RED ao vivo em teste de 3 rodadas), ultimo PARTIAL_PENDING da familia devolve o MESMO id (resume canonico preservado em id sufixado), vocabulario real do receipt (FAILED, nao PENDING fabricado) + tipo Pick fechado, guard TITLE_EMPTY no writer, assert de valor do title, contadores 906+2. Zero flow-engine na emenda (camping N/A).",
     "evidence": [
       "npx vitest run tests/dex-memoria-v2-adapter.test.ts tests/flow-engine-dex-memoria-v2.test.ts -t charset (RED duplo no baseline 4326322)",
       "node .agents/TMP/prova-real-0007.mjs (receipt COMMITTED na dex-memoria 0.1.17 real)",

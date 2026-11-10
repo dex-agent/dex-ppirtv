@@ -420,7 +420,12 @@ function requireResume(executor: DexMemoriaV2Executor): NonNullable<DexMemoriaV2
 function buildWriteCandidate(slug: string, classification: DexMemoriaV2Classification): DexMemoriaV2WriteCandidate {
   const normalizedSlug = requireNonEmpty(slug, "slug");
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(normalizedSlug)) throw new Error("DEX_MEMORIA_V2_SLUG_INVALID");
-  const title = sanitizeCandidateText(classification.item).slice(0, 96);
+  // EMENDA D-37 P3 (adversarial): item composto só de metacaracteres saneia
+  // para vazio — falhar AQUI (perto da causa) em vez de INVALID_CANDIDATE
+  // "title is invalid" do outro lado do CLI (a 0.1.17 exige /\S/).
+  const sanitizedTitle = sanitizeCandidateText(classification.item);
+  if (!/\S/.test(sanitizedTitle)) throw new Error("DEX_MEMORIA_V2_CANDIDATE_TITLE_EMPTY");
+  const title = sanitizedTitle.slice(0, 96);
   const candidate: DexMemoriaV2WriteCandidate = {
     contract: "dex.memory.write.candidate.v2",
     target_layer: classification.route.target,

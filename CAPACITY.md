@@ -21,6 +21,26 @@ files 72).
 SELAGEM: record 42 do camping selado com commit ab1c63ea (parent 4326322)
 — sem dívida oculta de CONSECUTIVE_EXCEPTION; commit B persiste a selagem.
 
+EMENDA adversarial D-37 (5 revisores, 1P1/2P2/5P3, 3 classes convergentes;
+probes de 2 revisores contra o código real; consolidado em
+`.agents/TMP/adversarial-issue0007/`): **(P1, contratos+adversário
+convergentes)** `freshOperationIdForRetry` REESCRITA por família com contador
+no SUFIXO numérico — o primeiro desenho regenerava id já queimado na 3ª
+tentativa (loop base↔retry-1; `v2_receipts` é SUBSTITUÍDO por rodada, a
+contagem por receipts nunca via o id sufixado) — RED ao vivo no teste de 3
+rodadas antes do fix; **(P2)** último PARTIAL_PENDING da família devolve o
+MESMO id (resume canônico preservado inclusive em id sufixado — o desenho
+antigo perdia o resume na rodada seguinte); **(P2 vocabulário)** o receipt
+canônico real é "COMMITTED"|"PARTIAL_PENDING"|"FAILED" — o teste fabricava
+"PENDING" (impossível no caminho real; preso real = FAILED): corrigido +
+assinatura da função tipada com `Pick<DexMemoriaV2CanonicalReceipt>`;
+**(P3s)** guard `DEX_MEMORIA_V2_CANDIDATE_TITLE_EMPTY` no writer (item só de
+metacaracteres saneia para vazio — falha perto da causa em vez de
+INVALID_CANDIDATE do outro lado do CLI), assert de VALOR do title saneado no
+teste adapter (trava vazio/aparado), contadores de suíte "(906+2)" nos 2
+arquivos (checklist: decomposição não batia com o diff). Zero flow-engine
+na emenda (camping N/A para este diff).
+
 ## Reavaliação — ISSUE #16/ISSUE-LOCAL-0008 contrato goal_advance × path inexistente (D-36), 2026-11-10
 
 Capability paths tocados: src/server.ts (apenas a description da tool

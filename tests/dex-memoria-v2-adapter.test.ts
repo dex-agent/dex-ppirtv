@@ -180,6 +180,11 @@ describe("Dex Memoria V2 adapter", () => {
       const candidate = executor.execute.mock.calls[0]?.[0].candidate as { title: string; trigger: string; body: string };
       expect(candidate.title).not.toMatch(/[\^\[\]\r\n]/);
       expect(candidate.trigger).not.toMatch(/[\^\[\]\r\n]/);
+      // EMENDA D-37 P3 (adversarial): trava o VALOR — title vazio ou aparado
+      // demais não passa; os metacaracteres viram forma plana legível.
+      expect(candidate.title).toContain("{slug}-hash8$");
+      expect(candidate.title).toContain("d41d8cd9");
+      expect(candidate.trigger).toBe(candidate.title);
       // caso bom preservado: item sem metacaracteres não degrada
       const clean = await executeDexMemoriaV2Adapter({
         operation_id: "op_charset_limpo", slug: "item-limpo-charset", workspace_root: path.join(fixtureRoot, "workspace"), memory_home: path.join(fixtureRoot, "memory-home"),
