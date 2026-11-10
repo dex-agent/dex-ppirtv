@@ -60,6 +60,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-31 | ISSUE-0002: ressalva `provided_missing_paths` + não-entrada na union (expurgo rejeitado com regresso medido); emenda adversarial: aviso `provided_unconfirmed_deletions` + fronteira envelope + preflight simétrico | aceita | V✅ | 6/6 | `tests/gate-provided-paths.test.ts` + `src/gate-provided-paths.ts`; commits `0c6dda9`+emenda |
 | D-32 | ISSUE-0005: typecheck de `tests/` no pipeline (`check:types` no `check` antes do vitest; curadoria de ~130 erros herdados) | aceita | V✅ | 6/6 | `tsconfig.tests.json`; commit `3d41f26` |
 | D-33 | ISSUE-0004: fim da tool fantasma no guidance — `librarian_status` → `ppirtv_checkout`; sentinela consumida julgando contra o registro vivo | aceita | V✅ | 4/4 | `src/fiscal-blockers.ts`; commit `e5992f4` |
+| D-34 | Aviso `provided_ignored` no receipt do gate (typo nunca mais silencioso; cola pura, julgamento em gate-resolution) + erros de escopo nomeiam `offending_paths` | `rg "provided_ignored" src/gate-resolution.ts`; record 40 do ledger | 2026-11-09 · ISSUE-LOCAL-0001+0003 · 8367969 |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -217,3 +218,27 @@ nunca mais aponta tool inexistente (o teste vigia).
   de fonte; a fotografia interna correspondente nasce em `.agents/MAPAS/`.
 - Formato: L1 tabela (1 linha por decisão) + L2 âncoras `## D-xx` no mesmo
   arquivo — consumido por LLM via `rg "D-xx"` e leitura dirigida.
+
+## D-34 — diagnóstico que ensina o culpado (ISSUE-0001+0003)
+
+**Dúvida comum**: "por que o gate ignorou minha chave?" / "qual path disparou
+o UNATTRIBUTED?" — agora ambos nomeiam o culpado no ponto de erro.
+
+- **O quê**: (a) `providedIgnoredKeys` (src/gate-resolution.ts, função pura)
+  devolve `provided_ignored: ["tests_executed"]` no `GateRecord` — chaves de
+  `provided` que nenhum requisito da fase conhece (typo vira ressalva visível,
+  nunca bloqueio; `changed_files`/`deleted_files` aceitas em toda fase porque o
+  motor as lê fora do mapa de requisitos); a fachada ganhou só o cálculo+spread
+  (cola pura, camping EXCEPTION record 40, RED real). (b) `filter` no lugar do
+  `some()` nos 2 erros de escopo de `review-scope-attribution.ts`:
+  `offending_paths: a, b (+N more)` — truncagem 10 com contador, molde da irmã
+  STALE que já nomeava o evidence_id. (c) flow zumbi 2948 (stub de goal_start
+  do hardening-2, 0 evidências) arquivado pela rota canônica (vrd_4173 +
+  flow_archive) — saiu do hook de SessionStart.
+- **Por que assim e não outro**: reuso do mapa `PROVIDED_REQUIREMENT_KINDS`
+  (FE-DEBT-002) em vez de inventário novo; mensagem (como STALE) em vez de
+  campo estrutural no envelope (schema intocado); aviso nunca bloqueante —
+  mesmo desenho dos avisos D-31.
+- **Fontes**: commit 8367969; record 40 do ledger
+  `docs/architecture/flow-engine-evolution.json`; RED baseline 4c693c6
+  (`tests/gate-provided-ignored.test.ts`, `tests/review-scope-offending-paths.test.ts`).

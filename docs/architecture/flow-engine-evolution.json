@@ -1830,6 +1830,38 @@
    "rollback": "revert do commit de fechamento devolve o receipt sem o campo (mudanca aditiva); ou remover o spread provided_ignored do GateRecord restaura o comportamento anterior",
    "evidence_selectors": {
     "tests/gate-provided-ignored.test.ts": "typo plural em provided vira aviso nomeado no receipt e o gate NÃO é reprovado por ele"
+   },
+   "commit": "836796907f04fd5b6035ac158d4e9df866ec4935",
+   "parent_commit": "4c693c6ab9717d378ea77258565b393c62d3aaf2"
+  },
+  {
+   "id": "FE-2026-11-09-ISSUE0001-EMENDA-SIMETRIA-PREFLIGHT-EXCEPTION",
+   "date": "2026-11-09",
+   "spt_path": ".agents/PLAN-TASKS/2026-11-09-issue0001-0003-diagnostico-que-ensina.md",
+   "owner": "$oraculo-refatoracao",
+   "mode": "EXCEPTION",
+   "exception_reason": "integrity",
+   "expires": "2026-11-16",
+   "base_blob": "00f43f8eb627e5e5e73dca640c370d414ded4782",
+   "head_blob": "cb6bca5e40832cb45818d79affb2074afa030103",
+   "responsibility": "simetria do aviso provided_ignored: goal_gate_preflight (rota read-only) tambem nomeia o typo — invariante D-31 (preflight simetrico, a rota read-only nao silencia) vale para a familia inteira de avisos do provided",
+   "changelog_marker": "FE-2026-11-09-ISSUE0001-EMENDA-SIMETRIA-PREFLIGHT-EXCEPTION",
+   "architecture_marker": "FE-2026-11-09-ISSUE0001-EMENDA-SIMETRIA-PREFLIGHT-EXCEPTION",
+   "consumers": [
+    "src/server.ts"
+   ],
+   "evidence": [
+    "tests/gate-provided-ignored.test.ts",
+    "src/gate-resolution.ts",
+    "src/flow-engine.ts"
+   ],
+   "red_evidence": "tests/gate-provided-ignored.test.ts::EMENDA D-34 P2 simetria: goal_gate_preflight na rota read-only também nomeia o typo — invariante D-31 vale para a família inteira",
+   "red_base_blob": "00f43f8eb627e5e5e73dca640c370d414ded4782",
+   "red_command": "npx vitest run tests/gate-provided-ignored.test.ts -t \"EMENDA D-34 P2 simetria: goal_gate_preflight na rota read-only também nomeia o typo — invariante D-31 vale para a família inteira\"",
+   "red_observed_failure": "Probe do adversario (motor real compilado, dwfrun-11d8877c): preflight com provided {tests_executed: true} devolvia 18 chaves SEM provided_ignored (AUSENTE) enquanto o gate persistente com o MESMO provided nomeava ['tests_executed'] — classe do silencio sobrevivendo na rota read-only, contradizendo o invariante declarado no proprio arquivo (comentario preflight simetrico D-31). No mesmo corte: P2 falso positivo morto (PROVIDED_REVIEW_INPUT_KEYS aceita review_findings/review_artifact_path lidas por needsReviewCoherence fora do mapa — avisar essas ensinaria a remover chave que altera o julgamento) e P3s (paths entre aspas com quebras achatadas no offending_paths; amarracao PROVIDED_PATH_KEYS x sanitizePersistedProvided por teste; timeout no git do teste; satisfies Pick real no lugar de as never).",
+   "rollback": "revert do commit da emenda restaura o preflight sem o campo (aditivo) e devolve o conjunto aceito original",
+   "evidence_selectors": {
+    "tests/gate-provided-ignored.test.ts": "EMENDA D-34 P2 simetria: goal_gate_preflight na rota read-only também nomeia o typo — invariante D-31 vale para a família inteira"
    }
   }
  ]

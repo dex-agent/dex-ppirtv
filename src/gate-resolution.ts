@@ -569,14 +569,19 @@ export type ProvidedRequirementKind =
 // que NENHUM requisito da fase conhece (ressalva ensinável no receipt; o
 // julgamento de satisfação continua sendo dos requisitos, nunca deste aviso).
 // As chaves de path são aceitas em toda fase: o motor as lê fora do mapa de
-// requisitos (changed/deleted_files do gate de implementacao).
+// requisitos (changed/deleted_files do gate de implementacao). Emenda
+// adversarial D-34 (P2 falso positivo): needsReviewCoherence (fiscal-blockers)
+// também lê review_findings/review_artifact_path fora do mapa — avisar essas
+// ensinaria a REMOVER chave que altera o julgamento do blocker
+// review_evidence_coherent.
 export const PROVIDED_PATH_KEYS = new Set(["changed_files", "deleted_files"]);
+export const PROVIDED_REVIEW_INPUT_KEYS = new Set(["review_findings", "review_artifact_path"]);
 
 export function providedIgnoredKeys(
   provided: Record<string, unknown>,
   requirementKeys: string[]
 ): string[] {
-  const accepted = new Set([...requirementKeys, ...PROVIDED_PATH_KEYS]);
+  const accepted = new Set([...requirementKeys, ...PROVIDED_PATH_KEYS, ...PROVIDED_REVIEW_INPUT_KEYS]);
   return Object.keys(provided).filter((key) => !accepted.has(key));
 }
 

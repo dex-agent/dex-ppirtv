@@ -100,6 +100,44 @@ describe("provided_ignored no receipt do gate (ISSUE-LOCAL-0001)", () => {
       persist: false,
     })) as Record<string, unknown> & { provided_ignored?: string[] };
 
+    // desenho: o campo só nasce quando há ignoradas — ausência = nada a avisar
     expect(receipt.provided_ignored ?? []).toEqual([]);
+  });
+
+  it("EMENDA D-34 P2: review_findings/review_artifact_path (lidas por needsReviewCoherence fora do mapa) NUNCA viram provided_ignored — avisá-las ensinaria a remover chave que altera o julgamento", async () => {
+    const flowId = await flowAteRevisao();
+    const receipt = (await engine.goalGateCheck({
+      flow_id: flowId,
+      provided: {
+        diff_reviewed: true,
+        barata_scan: true,
+        regression_risks: ["r1"],
+        review_findings: ["achado real de review"],
+        tests_executed: true,
+      },
+      persist: false,
+    })) as Record<string, unknown> & { provided_ignored?: string[] };
+
+    expect(receipt.provided_ignored).toEqual(["tests_executed"]);
+  });
+
+  it("EMENDA D-34 P2 simetria: goal_gate_preflight na rota read-only também nomeia o typo — invariante D-31 vale para a família inteira", async () => {
+    const flowId = await flowAteRevisao();
+    const preflight = (await engine.goalGatePreflight({
+      flow_id: flowId,
+      provided: { tests_executed: true },
+    })) as Record<string, unknown> & { provided_ignored?: string[] };
+
+    expect(preflight.provided_ignored).toEqual(["tests_executed"]);
+  });
+
+  it("EMENDA D-34 P3 amarração: PROVIDED_PATH_KEYS casa com as chaves de path saneadas pelo sanitizePersistedProvided (duas enumerações do mesmo contrato não divergem em silêncio)", async () => {
+    const { PROVIDED_PATH_KEYS } = await import("../src/gate-resolution.js");
+    const { sanitizePersistedProvided } = await import("../src/input-unwrap.js");
+    const saneado = sanitizePersistedProvided({ changed_files: ["a"], deleted_files: ["b"] });
+    for (const key of saneado ? Object.keys(saneado) : []) {
+      expect(PROVIDED_PATH_KEYS.has(key), `chave de path saneada "${key}" deve ser aceita pelo aviso`).toBe(true);
+    }
+    expect([...PROVIDED_PATH_KEYS].every((key) => key === "changed_files" || key === "deleted_files")).toBe(true);
   });
 });

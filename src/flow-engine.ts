@@ -1096,6 +1096,10 @@ export class FlowEngine {
     const closureBlockers = closureBlockersFor(flow, meetings);
     const currentPhaseAdvanceAllowed = phase === flow.phase && phaseAdvanceAllowed(flow, snapshot.missing, closureBlockers);
     const evidenceCandidates = unique(snapshot.requirements.flatMap((item) => item.evidence_ids));
+    // ISSUE-LOCAL-0001 (emenda adversarial D-34, P2 simetria): o typo de
+    // chave desconhecida também é nomeado na rota read-only — o invariante
+    // D-31 vale para a família inteira de avisos do provided.
+    const providedIgnored = providedIgnoredKeys(effectiveProvided, snapshot.requirements.map((item) => item.key));
     return {
       flow_id: flow.flow_id,
       phase,
@@ -1115,6 +1119,7 @@ export class FlowEngine {
       // ISSUE-LOCAL-0002 (emenda adversarial D-31): preflight simétrico ao
       // gate persistente — a rota read-only não silencia o typo.
       ...providedPathPreviewFields(flow, effectiveProvided.changed_files, flow.deleted_files ?? [], phase),
+      ...(providedIgnored.length > 0 ? { provided_ignored: providedIgnored } : {}),
       closure_blockers: closureBlockers,
       phase_advance_allowed: currentPhaseAdvanceAllowed,
       evidence_candidates: evidenceCandidates,

@@ -79,12 +79,19 @@ function canonicalPath(workspace: string, value: string): string {
 // achava o culpado e o jogava fora, e fechar verdict no repo compartilhado
 // exigia probe externo do motor (4 rodadas no flow 136). Truncagem com
 // contador preserva o envelope (R9: erro explícito, nunca silêncio).
+// Emenda adversarial D-34 (P3 ambiguidade/injeção): cada path citado entre
+// aspas com quebras de linha achatadas — vírgula no nome de path não gera
+// contagem ambígua e conteúdo crú não fabrica linhas na mensagem.
 const OFFENDING_PATHS_LIMIT = 10;
+
+function quoteOffendingPath(value: string): string {
+  return `"${value.replace(/"/g, "'").replace(/[\r\n]+/g, " ")}"`;
+}
 
 function offendingPathsSuffix(offending: string[]): string {
   const shown = offending.slice(0, OFFENDING_PATHS_LIMIT);
   const omitted = offending.length - shown.length;
-  return `; offending_paths: ${shown.join(", ")}${omitted > 0 ? ` (+${omitted} more)` : ""}`;
+  return `; offending_paths: ${shown.map(quoteOffendingPath).join(", ")}${omitted > 0 ? ` (+${omitted} more)` : ""}`;
 }
 
 function protectedReviewPaths(flow: Flow): Set<string> {

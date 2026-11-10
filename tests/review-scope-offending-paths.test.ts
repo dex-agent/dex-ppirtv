@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { Flow } from "../src/domain.js";
+import type { Evidence, Flow } from "../src/domain.js";
 import {
   applyReviewScopeAttributions,
   bindReviewScopeAttribution,
@@ -29,7 +29,7 @@ afterEach(async () => {
 });
 
 function git(workspace: string, args: string[]) {
-  return execFileSync("git", ["-C", workspace, ...args], { encoding: "utf8" });
+  return execFileSync("git", ["-C", workspace, ...args], { encoding: "utf8", timeout: 30_000 });
 }
 
 async function workspaceGitComBase(): Promise<{ workspace: string; baseSha: string }> {
@@ -112,7 +112,7 @@ describe("erros de escopo nomeiam os paths ofensivos (ISSUE-LOCAL-0003)", () => 
             { path: "fora/y.txt", reason: "terceiro", source: "git status" },
           ],
         },
-      } as never)
+      } satisfies Pick<Evidence, "kind" | "scope_classification" | "observed_result">)
     ).rejects.toThrow(/fora\/x\.txt.*fora\/y\.txt|fora\/y\.txt.*fora\/x\.txt/s);
   });
 

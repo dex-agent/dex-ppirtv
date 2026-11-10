@@ -14,6 +14,16 @@ review-scope-offending-paths.test.ts NOVO (3: UNATTRIBUTED nomeia 2 paths,
 UNDISCOVERED nomeia, truncagem 12→10 +2 more). Suíte 896→901 (892+5 passed,
 4 skipped, files 72). RED-first 1+3 provados no baseline antes das curas.
 
+EMENDA adversarial D-34 (5 revisores, 0P1/3P2/7P3, 3 classes convergentes;
+probe do adversário no motor real): (P2) PROVIDED_REVIEW_INPUT_KEYS mata o
+falso positivo (review_findings/review_artifact_path lidas por
+needsReviewCoherence fora do mapa); (P2, 3 revisores) SIMETRIA do preflight —
+goal_gate_preflight também emite provided_ignored (cola adicional no motor,
+record 41 EXCEPTION integrity); (P3s) paths entre aspas no offending_paths,
+amarração PROVIDED_PATH_KEYS×sanitizePersistedProvided por teste, timeout no
+git do teste, satisfies Pick real. Suíte 901→904 (897→900 passed, +3 its de
+emenda; files 72).
+
 ## Reavaliação — ISSUE-0004 tool fantasma no guidance (D-33), 2026-11-09
 
 Capability paths tocados: src/fiscal-blockers.ts (1 linha: blockerOwner
