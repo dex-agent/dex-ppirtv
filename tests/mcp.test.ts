@@ -1120,6 +1120,62 @@ describe("PPIRTV MCP stdio server", () => {
     expect(completedAfterMining.missing ?? []).not.toContain("memory_required_but_empty");
   });
 
+  // ISSUE-LOCAL-0008 / GitHub #16 (2026-11-10): a description pública de
+  // goal_advance prometia "an absent changed file without deleted_files fails
+  // closed" enquanto o desenho D-31 (gate-provided-paths.ts) é DELIBERADO:
+  // ressalva nomeada, morte na nascente, nunca bloqueia. Este it caracteriza
+  // o contrato REAL por MCP (caso + controle no mesmo advance) e vigia a
+  // sentinela de classe: a description tem que citar provided_missing_paths.
+  it("contrato-goal-advance-path-inexistente: avança com ressalva nomeada e a description declara o desenho D-31", async () => {
+    await connectClient();
+    const workspace = mcpWorkspace;
+
+    // Sentinela de classe (descrição × comportamento): o contrato público
+    // declara a ressalva em vez de prometer bloqueio que o motor não faz.
+    const toolsList = await client!.listTools();
+    const advanceTool = toolsList.tools.find((tool) => tool.name === "goal_advance");
+    expect(advanceTool?.description).toContain("provided_missing_paths");
+
+    const sptPath = await writeFakeSpt(workspace, "Contrato goal advance path inexistente");
+    const envelope = {
+      workspace,
+      spt_path: sptPath,
+      objective: "Contrato goal advance path inexistente",
+      idempotency_key: "dex-code:mcp-issue16-contrato-path",
+      evidence_required: true,
+      required_evidence: [],
+      requested_verdict_policy: "evidence_required",
+      source: "dex-code",
+      mode: "full"
+    };
+    const started = await client!.callTool({ name: "goal_start", arguments: envelope });
+    const flowId = resultOf(started).flow_id as string;
+    await client!.callTool({ name: "goal_advance", arguments: { flow_id: flowId } });
+    await client!.callTool({ name: "goal_advance", arguments: { flow_id: flowId } });
+
+    // Controle (arquivo existente no disco) + caso (path inexistente, sem
+    // deleted_files) declarados NO MESMO advance: a union acolhe só o real.
+    await mkdir(path.join(workspace, "aut"), { recursive: true });
+    await writeFile(path.join(workspace, "aut", "existe.txt"), "controle do contrato\n", "utf8");
+    const advanceResult = resultOf(await client!.callTool({
+      name: "goal_advance",
+      arguments: {
+        flow_id: flowId,
+        provided: { implementation_done: true, changed_files: ["aut/inexistente.txt", "aut/existe.txt"] }
+      }
+    }));
+    expect(advanceResult.advanced).toBe(true);
+    // A ressalva mora no GateRecord do advance (gate.*), como o contrato
+    // público descreve — o receipt nomeia o path ausente sem bloquear.
+    const gateReceipt = advanceResult.gate as Record<string, unknown>;
+    expect(gateReceipt.provided_missing_paths).toEqual(["aut/inexistente.txt"]);
+    expect(gateReceipt.changed_files_snapshot).toEqual(["aut/existe.txt"]);
+
+    // Fase persistida: o avanço para revisão é real, não só receipt.
+    const status = resultOf(await client!.callTool({ name: "goal_status", arguments: { flow_id: flowId, detail: "full" } }));
+    expect(status.phase).toBe("revisao");
+  });
+
   it("does not turn negative meeting trigger text into required_cooperation over MCP", async () => {
     await connectClient();
     const workspace = mcpWorkspace;

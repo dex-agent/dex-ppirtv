@@ -1,3 +1,19 @@
+## Reavaliação — ISSUE #16/ISSUE-LOCAL-0008 contrato goal_advance × path inexistente (D-36), 2026-11-10
+
+Capability paths tocados: src/server.ts (apenas a description da tool
+goal_advance no tools/list — a frase "an absent changed file without
+deleted_files fails closed" mentia sobre o desenho D-31 deliberado de
+gate-provided-paths.ts; agora declara as 3 verdades: nunca falha o gate,
+nunca entra na union, receipt nomeia provided_missing_paths — inclusive
+quando é o único path declarado) e tests/mcp.test.ts (NOVO it
+contrato-goal-advance-path-inexistente: RED-provado na sentinela ANTES do
+fix — caracterização antes da mudança; caso + controle no MESMO advance:
+provided_missing_paths nomeia só o inexistente, changed_files_snapshot
+acolhe só o existente, fase persistida avança para revisao; sentinela de
+classe vigia a description citar provided_missing_paths — mata a mentira
+recorrente). Zero motor (gate-provided-paths/flow-engine intocados; camping
+N/A). Suíte 905→906.
+
 ## Reavaliação — ISSUE-0006 E2E golden-path SPT v3 (D-35), 2026-11-10
 
 Capability paths tocados: tests/goal-lifecycle.e2e.test.ts (NOVO it golden-path
