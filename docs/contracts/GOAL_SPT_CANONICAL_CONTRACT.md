@@ -668,6 +668,35 @@ esse match unresolved. Workspace divergente, path ausente/externo, SPT
 invalido, `goal_id` conflitante ou SHA inicial invalido continuam com
 `goal_id=null`.
 
+### Reanexacao de rastreabilidade x divergencia de fingerprint (issue #18/D-39)
+
+Sao dois mundos ortogonais que o consumidor nao deve confundir:
+
+- **Mapa de rastreabilidade ausente, binding compativel**
+  (`SPT_V3_TRACEABILITY_MISSING`): o SPT em disco ainda bate com o
+  fingerprint do binding; so o mapa canonical nao foi anexado. E a MESMA
+  verdade com um anexo perdido — `goal_start` re-bind com a MESMA
+  idempotency_key do binding original reata o mapa (key nova criaria flow
+  duplicado). Reparo mecanico, sem decisao de owner.
+- **Fingerprint divergente pos-binding** (`GOAL_BINDING_MISMATCH`,
+  guard `flow-engine.ts:4759`): o SPT em disco mudou DEPOIS do binding.
+  Sao verdades divergentes — nada se reescreve. Sub-rotas (decisao de
+  owner quando o contrato realmente mudou): restaurar o SPT aos bytes do
+  fingerprint registrado (confira `registered` vs `current` no
+  `ppirtv_trace`, reason_code `spt_contract_fingerprint_drift`) e reatar
+  com a MESMA key; OU flow sucessor com idempotency_key NOVA, predecessor
+  preservado.
+
+`goal_start` NUNCA reescreve silenciosamente um binding de contrato
+diferente: o guard lanca `GOAL_BINDING_MISMATCH` ANTES de qualquer
+mutacao — comportamento caracterizado por teste vivo (`tests/mcp.test.ts`,
+it que edita o SPT entre dois `goal_start` e o retry falha MISMATCH).
+
+Antes de atribuir novas provas ou avancar em um flow recuperado, o
+consumidor confere `ppirtv_trace` ALEM de `goal_status`: o trace expoe
+`binding_integrity.fields_compared` (registered vs current) que o status
+nao mostra, e e ele que distingue drift de binding de mapa perdido.
+
 Para seletor `spt_path` sem match:
 
 - path relativo e resolvido contra o `project_root` do runtime;

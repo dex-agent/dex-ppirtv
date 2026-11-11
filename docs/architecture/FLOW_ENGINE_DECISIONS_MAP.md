@@ -65,6 +65,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-36 | Contrato público de `goal_advance` alinhado ao desenho D-31: description declara a ressalva `provided_missing_paths` com escopo de fase; sentinela bidirecional no teste MCP (description × comportamento) | `rg "contrato-goal-advance-path-inexistente" tests/mcp.test.ts` | 2026-11-10 · GitHub #16 / ISSUE-LOCAL-0008 · bee93ea+79549cc |
 | D-37 | Gerador MM no charset L1 da dex-memoria 0.1.17 + retry com operation_id fresco por FAMÍLIA (sufixo numérico monotônico; PARTIAL_PENDING retoma pelo resume canônico) | `rg "freshOperationIdForRetry" src/memory-promotion.ts` | 2026-11-10 · ISSUE-LOCAL-0007 · ab1c63e+b2b58be |
 | D-38 | goal_verdict anuncia a mineração pós-verdict que o gate terminal exigirá (predição com o predicado EXATO da fonte única; sequência ensinada completa: mine → provided → terminal) | `rg "requiresPostVerdictMining" src/flow-engine.ts` | 2026-11-11 · GITHUB #17 · flow 4417 |
+| D-39 | Contratos de erro diferenciam reanexação de rastreabilidade (TRACEABILITY_MISSING: MESMA key reata o mapa) de fingerprint divergente (GOAL_BINDING_MISMATCH: binding imutável; restaurar bytes + MESMA key OU flow sucessor com key NOVA — decisão de owner) | `rg "idempotency_key NOVA" docs/contracts/MCP_TOOL_ERROR_ENVELOPE_CONTRACT.md` | 2026-11-11 · GITHUB #18 · flow 4460 |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -310,6 +311,37 @@ veredito positivo e a resposta não pode anunciar só o advance.
 - **Fontes**: ISSUE #17 (crsantosxx, observação stdio real); camping record
   `FE-2026-11-11-ISSUE0017-VERDICT-NEXT-ACTION-MINING-EXCEPTION` (EXCEPTION
   integrity, RED provado no baseline 9a8d2c2); suíte 910.
+
+
+## D-39 — diferenciar rebind de rastreabilidade e fingerprint SPT divergente (GITHUB #18)
+
+**Dúvida comum**: "GOAL_BINDING_MISMATCH é consertado chamando goal_start de
+novo?" → não: retry cego falha de novo (binding imutável); só o caso
+SPT_V3_TRACEABILITY_MISSING (mapa ausente, binding compatível) se reata com
+a MESMA idempotency_key.
+
+- **O quê**: corte documental puro (zero src). `GOAL_BINDING_MISMATCH` ganhou
+  linha própria no `MCP_TOOL_ERROR_ENVELOPE_CONTRACT.md` com as duas
+  sub-rotas — (1) SPT editado sem intenção de trocar de plano: restaurar os
+  bytes do fingerprint registrado (diagnóstico por `ppirtv_trace`,
+  reason_code `spt_contract_fingerprint_drift`, registered vs current) e
+  reatar com a MESMA key; (2) contrato realmente alterado: flow sucessor com
+  idempotency_key NOVA, predecessor preservado, decisão de owner. O
+  `GOAL_SPT_CANONICAL_CONTRACT.md` ganhou a seção que conecta os dois mundos
+  ortogonais (mesma verdade com anexo perdido vs verdades divergentes) e a
+  nota de o consumidor conferir `ppirtv_trace` além de `goal_status` antes
+  de atribuir provas.
+- **Por quê**: o guard (`flow-engine.ts:4759`) lança ANTES de qualquer
+  mutação — `goal_start` NUNCA reescreve silenciosamente um binding
+  diferente — mas o contrato de erro não diferenciava o reparo mecânico do
+  caso que exige decisão; consumidor travava sem saber a rota.
+- **Prova viva**: comportamento caracterizado por teste existente
+  (`tests/mcp.test.ts`, it que edita o SPT entre dois `goal_start` e o
+  retry falha MISMATCH) — a doc aponta para o teste como âncora, nunca o
+  contrário.
+- **Onde**: `docs/contracts/MCP_TOOL_ERROR_ENVELOPE_CONTRACT.md` (linha
+  própria), `docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md` (seção
+  "Reanexacao de rastreabilidade x divergencia de fingerprint").
 
 ## D-37 — Gerador MM × charset L1 da dex-memoria 0.1.17 (ISSUE-LOCAL-0007)
 

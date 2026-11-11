@@ -1,3 +1,16 @@
+## Reavaliação — ISSUE #18 diferenciar rebind de rastreabilidade x fingerprint divergente (D-39), 2026-11-11
+
+Corte DOC-ONLY (zero src, camping flow-engine NOT_APPLICABLE): edits em
+docs/contracts/MCP_TOOL_ERROR_ENVELOPE_CONTRACT.md (GOAL_BINDING_MISMATCH em
+linha própria com as 2 sub-rotas + diferenciação de
+SPT_V3_TRACEABILITY_MISSING + diagnóstico por ppirtv_trace) e
+docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md (seção conectando os dois
+mundos ortogonais + exemplo apontando para o teste vivo mcp.test.ts +
+nota ppirtv_trace do consumidor) — fonte GLOBAL sincronizada na mesma
+sessão (audit:canonical pass). D-39 nos 2 mapas + CHANGELOG; #18 CLOSED
+com comentário de prova. Suíte 910 INALTERADA (doc-only); npm run check
+exit 0. Nenhum capability path de src tocado.
+
 ## Reavaliação — ISSUE #17 verdict anuncia mineracao pos-verdict (D-38), 2026-11-11
 
 FECHAMENTO (commit de superfícies + PLAYBOOK): cerimônia flow 4417 completa —
