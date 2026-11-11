@@ -1,5 +1,15 @@
 ## Reavaliação — ISSUE #17 verdict anuncia mineracao pos-verdict (D-38), 2026-11-11
 
+FECHAMENTO (commit de superfícies + PLAYBOOK): cerimônia flow 4417 completa —
+5 critérios re-atestados 1x (STALE por CRLF; conteúdo == blob do corte;
+evd_4444..evd_4448), review estrutural v2 (evd_4451, fp pós-emenda
+f9106ebc), gate test_executed 910 re-persistido, verdict vrd_4455
+pronto_com_ressalvas (a resposta demonstrando a própria cura:
+next_required_action run_memory_mining + phase_advance_allowed false),
+re-mining pós-verdict, Trilho CONCLUSAO checklist 100%, superfícies vivas
+reconciliadas, #17 CLOSED com comentário de prova (issuecomment-6807292027).
+Suíte 910 inalterada (zero src neste commit — PLAYBOOK/README de superfície).
+
 Capability paths tocados: src/flow-engine.ts (bloco de retorno de
 goalVerdictUnlocked: predição requiresPostVerdictMining com o predicado
 EXATO hasVerdictAfterLatestMemoryMining sobre flow recarregado pós-verdict +
