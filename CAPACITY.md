@@ -1,5 +1,8 @@
 ## Reavaliação — ISSUE #18 diferenciar rebind de rastreabilidade x fingerprint divergente (D-39), 2026-11-11
 
+OPS #15 RODADA 3 (família 3 flow-a-flow, zero src): 9 flows arquivados SOMENTE via API com motivo individual citando evidência reabrível; verificador rodada 3 VERDE (9/9 + 33/33 + 0 restantes; emendado pela adversarial: lista explícita de executores + identidade da saga); adversarial 5 revisores 2P1/5P2/4P3 com emenda (2367 honesta: experimento inconclusive/no_promotion, adoção por GO do owner 2026-10-31); SAGA #15 FECHADA 33/33 (issuecomment-6809215340); suíte 910 inalterada; verificador velho SUPERSEDED.
+
+
 FECHAMENTO (superfícies + PLAYBOOK): cerimônia flow 4460 completa — re-atestações pós-emenda (evd_4482..4485), review v2 (evd_4487, fp 78f462ec), verdict vrd_4490 pronto_com_ressalvas (nra topo run_memory_mining — a cura D-38 anunciando), re-mining pós-verdict, Trilho CONCLUSAO checklist 100%, superfícies reconciliadas, #18 CLOSED. Suíte 910 inalterada; zero src neste commit.
 
 
