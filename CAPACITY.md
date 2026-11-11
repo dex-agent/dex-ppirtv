@@ -1,5 +1,15 @@
 ## Reavaliação — ISSUE #18 diferenciar rebind de rastreabilidade x fingerprint divergente (D-39), 2026-11-11
 
+EMENDA adversarial (5 revisores 1P1/5P2/8P3, claim sobreviveu): Passo 0 novo
+na doc (ler os 8 campos possíveis na própria mensagem do MISMATCH; demais
+campos = envelope divergente → goal_status.goal_envelope + mesma decisão);
+flow sucessor SEM reusar a flow_id do preso; "(decisão de owner)" movida
+para dentro da sub-rota 2; ponte com o envelope vivo
+(restore_original_binding_or_start_new_goal); ppirtv_trace discriminador
+ANTES das sub-rotas (seletor goal_id); spt_contract_fingerprint_missing
+legacy → sub-rota 2; typos. Continua DOC-ONLY, suíte 910 inalterada; global
+re-sincronizado (audit:canonical pass).
+
 Corte DOC-ONLY (zero src, camping flow-engine NOT_APPLICABLE): edits em
 docs/contracts/MCP_TOOL_ERROR_ENVELOPE_CONTRACT.md (GOAL_BINDING_MISMATCH em
 linha própria com as 2 sub-rotas + diferenciação de

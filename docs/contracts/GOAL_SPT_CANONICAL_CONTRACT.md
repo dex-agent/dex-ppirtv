@@ -674,28 +674,40 @@ Sao dois mundos ortogonais que o consumidor nao deve confundir:
 
 - **Mapa de rastreabilidade ausente, binding compativel**
   (`SPT_V3_TRACEABILITY_MISSING`): o SPT em disco ainda bate com o
-  fingerprint do binding; so o mapa canonical nao foi anexado. E a MESMA
+  fingerprint do binding; so o mapa canonical nao foi anexado. É a MESMA
   verdade com um anexo perdido — `goal_start` re-bind com a MESMA
   idempotency_key do binding original reata o mapa (key nova criaria flow
   duplicado). Reparo mecanico, sem decisao de owner.
 - **Fingerprint divergente pos-binding** (`GOAL_BINDING_MISMATCH`,
   guard `flow-engine.ts:4759`): o SPT em disco mudou DEPOIS do binding.
-  Sao verdades divergentes — nada se reescreve. Sub-rotas (decisao de
-  owner quando o contrato realmente mudou): restaurar o SPT aos bytes do
-  fingerprint registrado (confira `registered` vs `current` no
-  `ppirtv_trace`, reason_code `spt_contract_fingerprint_drift`) e reatar
-  com a MESMA key; OU flow sucessor com idempotency_key NOVA, predecessor
-  preservado.
+  Sao verdades divergentes — nada se reescreve. O mismatch pode vir de 8
+  campos (`immutable binding differs in <campos>`: objective,
+  evidence_required, required_evidence, requested_verdict_policy, source,
+  risk_level, flow_role, spt_contract[_fingerprint]) — leia os campos na
+  propria mensagem antes de escolher rota; esta secao detalha o caso
+  fingerprint. Diagnostico ANTES da escolha: `ppirtv_trace` pelo seletor
+  `goal_id` (reason_code `spt_contract_fingerprint_drift`, `registered` vs
+  `current`). Sub-rotas: (1) SPT editado sem intencao de trocar de plano —
+  restaurar os bytes do fingerprint registrado (retry sem restaurar falha
+  de novo; bytes irrecuperaveis = sub-rota 2) e reatar com a MESMA key;
+  (2) contrato realmente alterado de proposito (decisao de owner) — flow
+  sucessor com idempotency_key NOVA e SEM reusar a flow_id do flow preso,
+  predecessor preservado. Para os demais campos (envelope divergente):
+  confira a original em `goal_status.goal_envelope` e aplique a mesma
+  decisao. Binding legacy sem fingerprint registrado
+  (`spt_contract_fingerprint_missing`) nao se cura restaurando bytes —
+  trate como sub-rota 2.
 
 `goal_start` NUNCA reescreve silenciosamente um binding de contrato
 diferente: o guard lanca `GOAL_BINDING_MISMATCH` ANTES de qualquer
 mutacao — comportamento caracterizado por teste vivo (`tests/mcp.test.ts`,
-it que edita o SPT entre dois `goal_start` e o retry falha MISMATCH).
+it que edita o SPT entre dois `goal_start` e o retry falha MISMATCH). O
+envelope vivo responde `restore_original_binding_or_start_new_goal`.
 
 Antes de atribuir novas provas ou avancar em um flow recuperado, o
 consumidor confere `ppirtv_trace` ALEM de `goal_status`: o trace expoe
 `binding_integrity.fields_compared` (registered vs current) que o status
-nao mostra, e e ele que distingue drift de binding de mapa perdido.
+nao mostra, e é ele que distingue drift de binding de mapa perdido.
 
 Para seletor `spt_path` sem match:
 
