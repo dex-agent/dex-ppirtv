@@ -1,5 +1,8 @@
 ## Reavaliação — ISSUE #18 diferenciar rebind de rastreabilidade x fingerprint divergente (D-39), 2026-11-11
 
+FECHAMENTO (superfícies + PLAYBOOK): cerimônia flow 4460 completa — re-atestações pós-emenda (evd_4482..4485), review v2 (evd_4487, fp 78f462ec), verdict vrd_4490 pronto_com_ressalvas (nra topo run_memory_mining — a cura D-38 anunciando), re-mining pós-verdict, Trilho CONCLUSAO checklist 100%, superfícies reconciliadas, #18 CLOSED. Suíte 910 inalterada; zero src neste commit.
+
+
 EMENDA adversarial (5 revisores 1P1/5P2/8P3, claim sobreviveu): Passo 0 novo
 na doc (ler os 8 campos possíveis na própria mensagem do MISMATCH; demais
 campos = envelope divergente → goal_status.goal_envelope + mesma decisão);
