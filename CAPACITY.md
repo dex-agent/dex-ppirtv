@@ -13,6 +13,13 @@ Testes: 2 its novos em tests/memory-gate-loop.test.ts (caso RED→GREEN +
 controle fase não-terminal) + sentinelas de description em tests/mcp.test.ts.
 Suíte 908→910; npm run check exit 0. Guard do advance terminal intocado
 (fonte única preservada).
+EMENDA adversarial (5 revisores 0P1/5P2/9P3; high já curado no corte — diff
+congelado pré-correção; 2 P2 refutados na fonte): clareza do contrato
+mudou-se para as descriptions (server.ts — monólito restaurado ao blob do
+corte; camping NOT_APPLICABLE na emenda, padrão D-37): closure_blockers +
+primazia do next_required_action do topo sobre o snapshot; assert do
+controle pinado; ramo writer morto removido; record 43 selado
+commit 8f677b4/parent 9a8d2c2; EVOLUTION título; CHANGELOG espaçamento.
 
 ## Reavaliação — ISSUE #15 reconciliação de flows históricos (OPS + emenda + rodada 2), 2026-11-10
 

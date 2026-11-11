@@ -52,12 +52,12 @@ function configuredWriter(): DexMemoriaV2FlowWriterConfig {
   };
 }
 
-async function fixtureGoal(objective: string, opts?: { writer?: boolean }) {
+async function fixtureGoal(objective: string) {
   tempRoot = await mkdtemp(path.join(os.tmpdir(), "mgl-loop-"));
   const engine = new FlowEngine(
     new PpirtvStore(path.join(tempRoot, "workspace", ".ppirtv")),
     undefined,
-    opts?.writer === false ? undefined : { memory_writer: configuredWriter() }
+    { memory_writer: configuredWriter() }
   );
   const workspace = path.join(tempRoot, "workspace");
   const dir = path.join(workspace, ".agents", "PLAN-TASKS");
@@ -346,7 +346,10 @@ describe("issue17: next_required_action do verdict indica a mineracao pos-verdic
       } as never)) as Record<string, unknown>;
       const nra = response.next_required_action as Record<string, unknown> | null;
       expect(nra?.type).not.toBe("run_memory_mining");
-      expect(["advance_phase", "resolve_blockers"]).toContain(nra?.type);
+      // pinado (emenda adversarial): nesta fixture o snapshot cai
+      // deterministicamente em resolve_blockers (gates de revisao ainda nao
+      // providos) — aceitar lista mascararia vazamento da predicao.
+      expect(nra?.type).toBe("resolve_blockers");
     } finally {
       await rm(f.tempRoot, { recursive: true, force: true });
     }
