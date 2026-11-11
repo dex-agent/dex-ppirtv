@@ -64,6 +64,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-35 | E2E golden-path sobre SPT v3 canônico: `addDeclarativeEvidence` expande 1 evidência por critério (`criterion_proof` SINGULAR) | `rg "golden-path SPT v3" tests/goal-lifecycle.e2e.test.ts` | 2026-11-10 · ISSUE-LOCAL-0006 · c7c3779 |
 | D-36 | Contrato público de `goal_advance` alinhado ao desenho D-31: description declara a ressalva `provided_missing_paths` com escopo de fase; sentinela bidirecional no teste MCP (description × comportamento) | `rg "contrato-goal-advance-path-inexistente" tests/mcp.test.ts` | 2026-11-10 · GitHub #16 / ISSUE-LOCAL-0008 · bee93ea+79549cc |
 | D-37 | Gerador MM no charset L1 da dex-memoria 0.1.17 + retry com operation_id fresco por FAMÍLIA (sufixo numérico monotônico; PARTIAL_PENDING retoma pelo resume canônico) | `rg "freshOperationIdForRetry" src/memory-promotion.ts` | 2026-11-10 · ISSUE-LOCAL-0007 · ab1c63e+b2b58be |
+| D-38 | goal_verdict anuncia a mineração pós-verdict que o gate terminal exigirá (predição com o predicado EXATO da fonte única; sequência ensinada completa: mine → provided → terminal) | `rg "requiresPostVerdictMining" src/flow-engine.ts` | 2026-11-11 · GITHUB #17 · flow 4417 |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -283,6 +284,32 @@ não faz?" → não; e a vacina da classe mora no teste que vigia a description.
   diff que resolve inteiro, e a sentinela vacina a classe descrição×comportamento.
 - **Fontes**: commits bee93ea+79549cc; adversarial 0P1/4P2/7P3 (probe MCP
   real no CASO C pagou o escopo de fase); suíte 906 (902+4).
+
+## D-38 — goal_verdict anuncia a mineração pós-verdict (GITHUB #17)
+
+**Dúvida comum**: "por que o verdict responde run_memory_mining em vez de
+advance_terminal?" → porque o gate terminal exige uma mineração POSTERIOR ao
+veredito positivo e a resposta não pode anunciar só o advance.
+
+- **O quê**: `requiresPostVerdictMining` no bloco de retorno de
+  `goalVerdictUnlocked` — veredito positivo E fase terminal no perfil E
+  `hasVerdictAfterLatestMemoryMining(flow recarregado pós-verdict)`, o
+  predicado EXATO da fonte única (`src/memory/mining-policy.ts`); o
+  `next_required_action` responde `{type run_memory_mining, tool
+  mm_memory_mining}` com reason ensinando o ciclo completo (minerar →
+  fornecer residual_risks/next_step/memoria_viva_reconciled no terminal).
+- **Por que assim**: o requisito continua sendo avaliado no CAMINHO VIVO do
+  gate (`goal_advance` terminal, l.2990) — fonte única preservada; o verdict
+  apenas prediz com o mesmo predicado (1 reload em vez de equivalência
+  manual). Todo GOAL oficial exige mineração antes do verdict, então o aviso
+  cobre 100% dos verdicts positivos de fase terminal.
+- **Contrato público**: description de `goal_verdict` declara a predição;
+  description de `goal_advance` declara que `memoria_viva_reconciled`
+  atesta a reconciliação das superfícies vivas (incluindo o checklist do
+  Trilho vinculado) ANTES da imutabilidade terminal.
+- **Fontes**: ISSUE #17 (crsantosxx, observação stdio real); camping record
+  `FE-2026-11-11-ISSUE0017-VERDICT-NEXT-ACTION-MINING-EXCEPTION` (EXCEPTION
+  integrity, RED provado no baseline 9a8d2c2); suíte 910.
 
 ## D-37 — Gerador MM × charset L1 da dex-memoria 0.1.17 (ISSUE-LOCAL-0007)
 

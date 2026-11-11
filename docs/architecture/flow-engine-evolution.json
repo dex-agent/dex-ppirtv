@@ -1897,6 +1897,35 @@
       },
       "commit": "ab1c63ea0fbb358a8d8665ed364fad77e34e8c57",
       "parent_commit": "4326322a9b67447c54f5a31e357b896d2d432426"
+    },
+    {
+      "id": "FE-2026-11-11-ISSUE0017-VERDICT-NEXT-ACTION-MINING-EXCEPTION",
+      "date": "2026-11-11",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-11-issue17-next-required-action-terminal.md",
+      "owner": "$oraculo-refatoracao",
+      "mode": "EXCEPTION",
+      "exception_reason": "integrity",
+      "expires": "2026-11-18",
+      "base_blob": "333f324379cbf97fd4f0bb91e373eb519aff3880",
+      "head_blob": "1ee9df79610ef2d3b8992967a7a29f3ab5bea71e",
+      "responsibility": "predicao do requisito de mineracao pos-verdict na resposta do goal_verdict: o julgamento mora em hasVerdictAfterLatestMemoryMining (mining-policy, fonte unica) avaliado no flow recarregado pos-verdict; o monolito ganhou so o bloco de retorno (requiresPostVerdictMining + next_required_action run_memory_mining) — o guard do advance terminal permanece intocado e continua sendo a fonte",
+      "changelog_marker": "FE-2026-11-11-ISSUE0017-VERDICT-NEXT-ACTION-MINING-EXCEPTION",
+      "architecture_marker": "FE-2026-11-11-ISSUE0017-VERDICT-NEXT-ACTION-MINING-EXCEPTION",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/memory-gate-loop.test.ts",
+        "src/memory/mining-policy.ts"
+      ],
+      "red_evidence": "tests/memory-gate-loop.test.ts::issue17 caso: verdict positivo com mineracao no flow responde run_memory_mining",
+      "red_base_blob": "333f324379cbf97fd4f0bb91e373eb519aff3880",
+      "red_command": "npx vitest run tests/memory-gate-loop.test.ts -t \"issue17 caso: verdict positivo com mineracao no flow responde run_memory_mining\"",
+      "rollback": "revert do bloco requiresPostVerdictMining em goalVerdictUnlocked restaura a resposta antiga (guard do terminal intocado; teste novo falha sinalizando a regressao)",
+      "red_observed_failure": "Baseline 9a8d2c2 (2 execucoes antes do fix): AssertionError expected 'resolve_blockers' to be 'run_memory_mining' no it issue17 caso — a resposta do verdict anunciava apenas os provided do advance enquanto o gate terminal exigiria mineracao pos-verdict nao anunciada",
+      "evidence_selectors": {
+        "tests/memory-gate-loop.test.ts": "issue17 caso: verdict positivo com mineracao no flow responde run_memory_mining"
+      }
     }
   ]
 }

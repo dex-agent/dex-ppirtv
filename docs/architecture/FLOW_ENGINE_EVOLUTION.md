@@ -384,6 +384,26 @@ SENSITIVE_PATH)"). Record mode CONTAIN, `glue_only: true`,
 `FE-DEBT-005` (extract the strict-fingerprint option assembly from the
 facade on the next verified SHRINK seam).
 
+## FE-2026-11-11-ISSUE0017-VERDICT-NEXT-ACTION-MINING-EXCEPTION
+
+ISSUE #17 (SPT `2026-11-11-issue17-next-required-action-terminal`): the
+verdict response could announce `advance_terminal` (or a generic
+`resolve_blockers` listing only the terminal-provided keys) while the
+terminal gate would still require one `mm_memory_mining` run AFTER the
+verdict — a step no prior response had named. The requirement
+(`hasVerdictAfterLatestMemoryMining`, `src/memory/mining-policy.ts`) was only
+evaluated on the `goal_advance` terminal path; `closureBlockersFor` does not
+include it, so the verdict's `terminalAdvanceAllowed` never saw it. The fix
+stays in the verdict return block: `requiresPostVerdictMining` reuses the
+EXACT source predicate over a post-verdict reload (one extra read instead of
+a hand-derived equivalence) and `next_required_action` answers
+`run_memory_mining` with a reason teaching the full cycle (mine, then supply
+`residual_risks`/`next_step`/`memoria_viva_reconciled`). The terminal guard
+itself is untouched — single source of truth preserved; the verdict merely
+stops promising what the gate would deny. Causal RED:
+`tests/memory-gate-loop.test.ts` "issue17 caso: verdict positivo com
+mineracao no flow responde run_memory_mining (RED hoje: advance_terminal)".
+
 ## Safe seam sequence
 
 `FE-DEBT-001` was paid by `FE-2026-10-13-GOVERNED-TAG-CONTRACT`; `FE-DEBT-002` by

@@ -1,3 +1,19 @@
+## Reavaliação — ISSUE #17 verdict anuncia mineracao pos-verdict (D-38), 2026-11-11
+
+Capability paths tocados: src/flow-engine.ts (bloco de retorno de
+goalVerdictUnlocked: predição requiresPostVerdictMining com o predicado
+EXATO hasVerdictAfterLatestMemoryMining sobre flow recarregado pós-verdict +
+next_required_action run_memory_mining com reason do ciclo completo —
+~19 linhas; camping EXCEPTION integrity record
+FE-2026-11-11-ISSUE0017-VERDICT-NEXT-ACTION-MINING-EXCEPTION selado com RED
+provado no baseline 9a8d2c2) e src/server.ts (descriptions de goal_verdict e
+goal_advance: predição da mineração pós-verdict + memoria_viva_reconciled
+atestando o checklist do Trilho vinculado antes da imutabilidade terminal).
+Testes: 2 its novos em tests/memory-gate-loop.test.ts (caso RED→GREEN +
+controle fase não-terminal) + sentinelas de description em tests/mcp.test.ts.
+Suíte 908→910; npm run check exit 0. Guard do advance terminal intocado
+(fonte única preservada).
+
 ## Reavaliação — ISSUE #15 reconciliação de flows históricos (OPS + emenda + rodada 2), 2026-11-10
 
 RODADA 2 (GO do owner na pergunta da #15): nenhum capability path. +20

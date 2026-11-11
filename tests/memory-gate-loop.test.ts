@@ -52,12 +52,12 @@ function configuredWriter(): DexMemoriaV2FlowWriterConfig {
   };
 }
 
-async function fixtureGoal(objective: string) {
+async function fixtureGoal(objective: string, opts?: { writer?: boolean }) {
   tempRoot = await mkdtemp(path.join(os.tmpdir(), "mgl-loop-"));
   const engine = new FlowEngine(
     new PpirtvStore(path.join(tempRoot, "workspace", ".ppirtv")),
     undefined,
-    { memory_writer: configuredWriter() }
+    opts?.writer === false ? undefined : { memory_writer: configuredWriter() }
   );
   const workspace = path.join(tempRoot, "workspace");
   const dir = path.join(workspace, ".agents", "PLAN-TASKS");
@@ -238,6 +238,115 @@ describe("T-2 RED (decisao A): loop insolvel deixa de existir", () => {
       } as never)) as Record<string, unknown>;
       expect(advance.advanced).toBe(true); // RED hoje: blocked para sempre
       expect(advance.status).toBe("complete");
+    } finally {
+      await rm(f.tempRoot, { recursive: true, force: true });
+    }
+  });
+});
+
+// ISSUE #17 (crsantosxx, 2026-11-11): a resposta de goal_verdict não pode
+// prometer advance_terminal que o gate terminal negará por exigir mineração
+// POSTERIOR ao veredito. Predição determinística: no snapshot pós-verdict o
+// requisito do guard (hasVerdictAfterLatestMemoryMining) equivale a "existia
+// memory_mined antes do verdict" — o verdict novo é o último evento.
+describe("issue17: next_required_action do verdict indica a mineracao pos-verdict", () => {
+  async function levarAteValidacao(f: Fixture) {
+    await f.engine.goalAdvance({ flow_id: f.flowId } as never);
+    await f.engine.goalAdvance({
+      flow_id: f.flowId, provided: { implementation_done: true, changed_files: ["src/a.ts"] }
+    } as never);
+    await f.engine.addGoalEvidence({
+      flow_id: f.flowId, title: "npm run check", content: "pass", satisfies: ["npm run check"]
+    } as never);
+    const fingerprint = (await f.engine.store.loadFlow(f.flowId)).implementation_fingerprint;
+    await f.engine.addGoalEvidence({
+      flow_id: f.flowId, kind: "code_review",
+      title: "Review estrutural issue17",
+      content: "diff revisado",
+      scope_classification: "target", scope_reference: "src/a.ts",
+      reviewed_implementation_fingerprint: fingerprint,
+      satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+      observed_result: {
+        diff_reviewed: true, barata_scan: true, reviewed_targets: ["src/a.ts"],
+        searched_patterns: ["rg memory"], findings: [], regression_risks: ["baixo"]
+      }
+    } as never);
+    await f.engine.goalAdvance({
+      flow_id: f.flowId,
+      provided: { diff_reviewed: true, barata_scan: true, test_executed: true, review_findings: ["ok"] }
+    } as never); // -> validacao
+    await addDeclarativeEvidence(f.engine, f.engine, {
+      flow_id: f.flowId, title: "ER-1 — declarative",
+      declarative_proof: { task_id: "A-01", evidence_requirement_id: "ER-01", observed_value: true, paths: ["src/a.ts"] }
+    }, declarativeDefaults());
+    const evidence = await f.engine.store.loadFlow(f.flowId);
+    return evidence.evidence.map((item) => item.evidence_id);
+  }
+
+  it("issue17 caso: verdict positivo com mineracao no flow responde run_memory_mining", async () => {
+    const f = await fixtureGoal("issue17: verdict nao promete advance_terminal negavel pelo gate de re-mining");
+    try {
+      const evidenceIds = await levarAteValidacao(f);
+      await mine(f); // mining #1 pre-verdict (exigida pelo gate do verdict)
+      const response = (await f.engine.goalVerdict({
+        flow_id: f.flowId, status: "pronto_com_ressalvas",
+        rationale: "issue17: fechado com prova declarativa",
+        evidence_ids: evidenceIds, residual_risks: [], next_step: "re-minar e avancar terminal"
+      } as never)) as Record<string, unknown>;
+      const nra = response.next_required_action as Record<string, unknown> | null;
+      expect(nra?.type).toBe("run_memory_mining");
+      expect(nra?.tool).toBe("mm_memory_mining");
+      expect(response.phase_advance_allowed).toBe(false);
+      // o ciclo ensinado fecha: re-mining pos-verdict destrava o terminal
+      await mine(f);
+      const advance = (await f.engine.goalAdvance({
+        flow_id: f.flowId,
+        provided: { residual_risks: ["nenhum"], next_step: "arquivar", memoria_viva_reconciled: true }
+      } as never)) as Record<string, unknown>;
+      expect(advance.advanced).toBe(true);
+      expect(advance.status).toBe("complete");
+    } finally {
+      await rm(f.tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("issue17 controle: verdict positivo em fase NAO-terminal responde advance_phase (o aviso de mineracao e exclusivo do destino terminal)", async () => {
+    const f = await fixtureGoal("issue17 controle: fase intermediaria nao promete mining pos-verdict");
+    try {
+      // ate implementacao apenas (advance de fase, nao terminal)
+      await f.engine.goalAdvance({ flow_id: f.flowId } as never);
+      await f.engine.goalAdvance({
+        flow_id: f.flowId, provided: { implementation_done: true, changed_files: ["src/a.ts"] }
+      } as never);
+      // review estrutural: o fiscal do verdict exige revisao quando ha codigo
+      const fingerprint = (await f.engine.store.loadFlow(f.flowId)).implementation_fingerprint;
+      await f.engine.addGoalEvidence({
+        flow_id: f.flowId, kind: "code_review",
+        title: "Review estrutural issue17 controle",
+        content: "diff revisado",
+        scope_classification: "target", scope_reference: "src/a.ts",
+        reviewed_implementation_fingerprint: fingerprint,
+        satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
+        observed_result: {
+          diff_reviewed: true, barata_scan: true, reviewed_targets: ["src/a.ts"],
+          searched_patterns: ["rg memory"], findings: [], regression_risks: ["baixo"]
+        }
+      } as never);
+      await addDeclarativeEvidence(f.engine, f.engine, {
+        flow_id: f.flowId, title: "ER-1 — declarative",
+        declarative_proof: { task_id: "A-01", evidence_requirement_id: "ER-01", observed_value: true, paths: ["src/a.ts"] }
+      }, declarativeDefaults());
+      await mine(f); // mining exigida pelo gate do verdict
+      const evidence = await f.engine.store.loadFlow(f.flowId);
+      const evidenceIds = evidence.evidence.map((item) => item.evidence_id);
+      const response = (await f.engine.goalVerdict({
+        flow_id: f.flowId, status: "pronto_com_ressalvas",
+        rationale: "issue17 controle: fase intermediaria",
+        evidence_ids: evidenceIds, residual_risks: [], next_step: "avancar fase"
+      } as never)) as Record<string, unknown>;
+      const nra = response.next_required_action as Record<string, unknown> | null;
+      expect(nra?.type).not.toBe("run_memory_mining");
+      expect(["advance_phase", "resolve_blockers"]).toContain(nra?.type);
     } finally {
       await rm(f.tempRoot, { recursive: true, force: true });
     }

@@ -2633,8 +2633,18 @@ export class FlowEngine {
     }
     const statusSnapshot = await this.goalStatus({ flow_id: input.flow_id, detail: mutationStatusDetail(flow) });
     const closureBlockers = stringArray(statusSnapshot.closure_blockers);
+    // ISSUE #17: o gate terminal exige mineracao POSTERIOR ao veredito positivo
+    // (hasVerdictAfterLatestMemoryMining no goal_advance); a resposta do verdict
+    // prediz o requisito com o MESMO predicado da fonte unica sobre o flow
+    // pos-verdict, para nao anunciar apenas os provided do advance quando o
+    // gate ainda vai bloquear por uma mineracao que a resposta nao indicou.
+    const requiresPostVerdictMining =
+      (effectiveStatus === "pronto" || effectiveStatus === "pronto_com_ressalvas") &&
+      profileFor(flow.mode).nextPhase[flow.phase] === null &&
+      hasVerdictAfterLatestMemoryMining(await this.store.loadFlow(input.flow_id));
     const terminalAdvanceAllowed =
       (effectiveStatus === "pronto" || effectiveStatus === "pronto_com_ressalvas") &&
+      !requiresPostVerdictMining &&
       statusSnapshot.phase_advance_allowed === true &&
       closureBlockers.length === 0;
     return {
@@ -2643,7 +2653,14 @@ export class FlowEngine {
       memory_mining: memoryMining,
       phase_advance_allowed: terminalAdvanceAllowed,
       closure_blockers: closureBlockers,
-      next_required_action: terminalAdvanceAllowed
+      next_required_action: requiresPostVerdictMining
+        ? {
+            type: "run_memory_mining",
+            tool: "mm_memory_mining",
+            args: { flow_id: input.flow_id },
+            reason: "gate terminal exige mineracao de memoria posterior ao veredito positivo; apos minerar, forneça residual_risks/next_step/memoria_viva_reconciled no goal_advance terminal"
+          }
+        : terminalAdvanceAllowed
         ? {
             type: profileFor(flow.mode).nextPhase[flow.phase] === null ? "advance_terminal" : "advance_phase",
             tool: "goal_advance",

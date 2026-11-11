@@ -168,6 +168,14 @@ describe("PPIRTV MCP stdio server", () => {
     expect(goalVerdictTool?.description).toContain("closure_blockers");
     expect(goalVerdictTool?.description).toContain("metadata only");
     expect(goalVerdictTool?.description).toContain("implementation fingerprint");
+    // ISSUE #17: a resposta do verdict anuncia a mineracao pos-verdict que o
+    // gate terminal exigira — sentinela bidirecional (a mentira por omissao
+    // que o consumidor real pagou nao volta).
+    expect(goalVerdictTool?.description).toContain("mm_memory_mining");
+    expect(goalVerdictTool?.description).toContain("AFTER the verdict");
+    const goalAdvanceTool = tools.tools.find((tool) => tool.name === "goal_advance");
+    expect(goalAdvanceTool?.description).toContain("memoria_viva_reconciled attests the session reconciled the live continuity surfaces");
+    expect(goalAdvanceTool?.description).toContain("linked SPT trail checklist");
     const evidenceAddTool = tools.tools.find((tool) => tool.name === "evidence_add");
     const evidenceAddProperties = (evidenceAddTool?.inputSchema as { properties?: Record<string, Record<string, unknown>> }).properties;
     expect(evidenceAddTool?.description).toContain("code_review attestation");
@@ -1091,11 +1099,15 @@ describe("PPIRTV MCP stdio server", () => {
     });
 
     expect(resultOf(positiveVerdict)).toMatchObject({
-      phase_advance_allowed: true,
+      // ISSUE #17: o gate terminal exigira mineracao POSTERIOR ao veredito, e
+      // a resposta do verdict agora anuncia (run_memory_mining) em vez de
+      // prometer advance_terminal que o gate negaria; o snapshot interno
+      // (status.*) segue sem o requisito — a predicao mora na resposta.
+      phase_advance_allowed: false,
       closure_blockers: [],
       next_required_action: {
-        type: "advance_terminal",
-        tool: "goal_advance",
+        type: "run_memory_mining",
+        tool: "mm_memory_mining",
         args: { flow_id: flowId }
       },
       status: {
