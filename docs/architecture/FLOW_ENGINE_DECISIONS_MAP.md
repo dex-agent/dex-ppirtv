@@ -67,6 +67,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-38 | goal_verdict anuncia a mineração pós-verdict que o gate terminal exigirá (predição com o predicado EXATO da fonte única; sequência ensinada completa: mine → provided → terminal) | `rg "requiresPostVerdictMining" src/flow-engine.ts` | 2026-11-11 · GITHUB #17 · flow 4417 |
 | D-39 | Contratos de erro diferenciam reanexação de rastreabilidade (TRACEABILITY_MISSING: MESMA key reata o mapa) de fingerprint divergente (GOAL_BINDING_MISMATCH: binding imutável; restaurar bytes + MESMA key OU flow sucessor com key NOVA — decisão de owner) | `rg "idempotency_key NOVA" docs/contracts/MCP_TOOL_ERROR_ENVELOPE_CONTRACT.md` | 2026-11-11 · GITHUB #18 · flow 4460 |
 | D-40 | Sentinela de headroom dos budgets 5120: payload medido, ecos do flow_id contados, headroom >= 2 chars/eco provado (PID de 6 dígitos cabe; teto mantido — aumento só com reprodução, rito do precedente 5500) | `rg -c "headroom" tests/mcp.test.ts` | 2026-11-12 · GITHUB #14 · flow 4548 |
+| D-41 | Régua perene da rede símbolo×suíte: referência NOMINAL medida por `tools/test-symbol-coverage.py` em DUAS contagens (code_refs × mention_refs; denominador com exports de tipo) — "sem ref nominal" ≠ "sem cobertura" (calibração comportamento-via-motor); estacionamentos tio-testador fechados CONSUMIDO-com-régua/NÃO-REPRODUZIDO | `python -B tools/test-symbol-coverage.py` | 2026-11-12 · estacionamentos Ondas 3/5/6/7 · flow 4581 |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -365,6 +366,45 @@ teto valido e entrega a reproducao na mao se algum dia acender.
 - **Selo**: conselheiro $oraculo-clean-code — T5 "Test Boundary Conditions"
   (l.418) + G3 "Incorrect Behavior at the Boundaries" (l.363), heuristicas
   EN 2008.
+
+## D-41 — régua perene da rede símbolo×suíte (estacionamentos tio-testador)
+
+**Duvida comum**: "os módulos da maratona estão sem teste?" → a rede de
+INTEGRAÇÃO foi paga (D-30, suítes `*.integration.test.ts`); o que falta em
+parte dos símbolos é referência NOMINAL (o nome endereçável na suíte) — e
+isso agora é número, não impressão.
+
+- **O que**: `tools/test-symbol-coverage.py` mede, por módulo da maratona
+  (fiscal-blockers, gate-resolution, meeting-policy, memory-promotion,
+  review-snapshot, spt-traceability, verdict-fiscal-policy, verdict-learning),
+  quantos exports têm o nome referenciado em `tests/*.test.ts` em DUAS
+  contagens (emenda adversarial): `code_refs` (linha não-comentário) e
+  `mention_refs` (qualquer menção — 6 das 49 refs originais eram prosa);
+  denominador inclui exports de type/interface/enum (155→201 corrige
+  otimismo). Medição pós-emenda: **52/201 code, 57/201 mention, 144 sem
+  referência nominal**. Exit 0 no uso correto; **exit 2 se a âncora não
+  resolve** (cópia relocada aborta alto — nunca 0/0 silencioso).
+- **Por que**: a métrica nominal tem falso-negativo comprovado —
+  `hasReviewEvidenceWithDeps` (verdict-fiscal-policy l.263-268) tem 0 refs
+  nominais mas TODO flow com review citada no verdict a executa;
+  `staleSelectedCriterionProofPaths` (**src/spt-traceability.ts:300** —
+  endereço corrigido pela adversarial) idem via `SPT_V3_EVIDENCE_STALE` em 2
+  arquivos. Amostra da calibração é n=2 na direção falso-negativo
+  (declarado no REDE.md); cortes de rede futuros nascem do relatório guiados
+  pelo interrogador (contrato × implementação × execução por símbolo), nunca
+  144 testes às cegas. Salvaguardas no REDE.md: nunca vira gate/quota só;
+  remoção de export motivada por métrica é proibida (rito do camping).
+- **Onde**: `tools/test-symbol-coverage.py` (lista de módulos no topo;
+  mining-policy foi absorvido pela memory-promotion na Onda 7);
+  `.agents/AUDITORIAS/2026-11-12-rede-simbolos-suporte/REDE.md` + `rede.json`;
+  decisões dos estacionamentos no `.agents/ESTACIONAMENTO.md` (Ondas 3/5/6/7,
+  itens owner tio-testador: CONSUMIDO-com-régua / NÃO-REPRODUZIDO).
+- **Decisões fechadas**: Onda 5(1)/6(1)/7(1) CONSUMIDO-com-régua (roteamento
+  pago no D-30; dívida de rede segue ABERTA como fila mensurada — régua mede,
+  não paga); Onda 3(5) flaky meeting-outcome NÃO-REPRODUZIDO (≥11 rodadas
+  documentadas desde 2026-11-09 + re-teste verde; vigília natural = suíte
+  roda a cada commit; rodadas verdes não provam ausência de flake — fechado
+  por vigília com rota de reabertura, declarado).
 
 ## D-37 — Gerador MM × charset L1 da dex-memoria 0.1.17 (ISSUE-LOCAL-0007)
 

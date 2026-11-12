@@ -1,3 +1,23 @@
+## Reavaliação — estacionamentos tio-testador: régua perene da rede símbolo×suíte (D-41), 2026-11-12
+
+- Escopo: `tools/test-symbol-coverage.py` NOVO, EMENDADO pela adversarial
+  (2P1+6P2: code_refs × mention_refs — 6 das 49 refs originais eram prosa;
+  gate-resolution devolvido à lista; exports de tipo no denominador 155→201;
+  exit 2 se a âncora não resolve; try no `--json`; `errors=replace` no src) +
+  `.agents/AUDITORIAS/2026-11-12-rede-simbolos-suporte/` (REDE.md +
+  rede.json; salvaguardas contra quota/remoção-por-métrica) + decisões dos 4
+  estacionamentos owner tio-testador (Ondas 5/6/7 item 1 CONSUMIDO-com-régua
+  — dívida de rede segue ABERTA como fila mensurada; Onda 3 item 5
+  NÃO-REPRODUZIDO por vigília) + D-41 nos 2 mapas + CHANGELOG + GATILHOS-VIVOS.
+- Capacidade do produto: SEM alteração — zero src, zero tests, suíte 910
+  inalterada (a régua LÊ a suíte, não a executa). Medição pós-emenda:
+  **52/201 code_refs, 57/201 mention_refs, 144 sem referência nominal**;
+  CWD-independência provada rodando de C:/.
+- Limites: métrica nominal com falso-negativo comprovado (calibração n=2,
+  direção declarada); título de `it()` conta como code (limitação declarada);
+  glob não-recursivo = hoje coincide com o runner (73 arquivos planos);
+  módulos fora da lista da maratona não medidos (lista no topo do script).
+
 ## Reavaliação — Playbook local reconciliado, 2026-11-12
 
 - Escopo: `PLAYBOOK.md` e `PLAYBOOK.index.json`, regenerados a partir das fontes atuais.
