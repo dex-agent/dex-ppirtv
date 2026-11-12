@@ -1554,16 +1554,22 @@ describe("PPIRTV MCP stdio server", () => {
       })
     });
     expect(checkoutResult).not.toHaveProperty("ppirtv_checkout");
-    // Lean-bound guard (see the 5500 precedent above): flow_id embeds the
-    // server PID, echoed in more than one field. Issue #14 / EST-20261013-
-    // BUDGETS-5120-PID: margin characterization — the budget must survive a
-    // 6-digit PID (+2 chars per echo). If this ever fails, the reproduction
-    // is in hand: raise the ceiling documented like the 5500 precedent did.
+    // Lean-bound guard (5500 precedent above). Issue #14 / EST-20261013-
+    // BUDGETS-5120-PID: margin characterization with a CONTROLLED WIDE id.
+    // Width driver is the flow_id COUNTER (store.ts: flow_<ts17>_<count4+>_
+    // <seq3>; count grows to 5-6 digits after 9999/99999 flows), not the OS
+    // PID (narrative corrected by adversarial review — the precedent's
+    // "server PID" wording was inherited and wrong). Exercise the wide id on
+    // the real payload: every flow_id echo gains +2 chars (count 4→6 digits)
+    // and the projected payload must still fit the STRICT 5120 budget. If it
+    // fails, the reproduction is in hand: raise the ceiling documented like
+    // the 5500 precedent did.
     const checkoutPayload = JSON.stringify(checkoutResult);
-    const checkoutEchoes = Math.max(checkoutPayload.split(flowId).length - 1, 1);
-    const checkoutHeadroom = Math.floor((5120 - checkoutPayload.length) / checkoutEchoes);
+    const checkoutEchoes = checkoutPayload.split(flowId).length - 1;
+    const checkoutProjected = checkoutPayload.split(flowId).join(`${flowId}99`).length;
+    expect(checkoutEchoes).toBeGreaterThanOrEqual(1);
     expect(checkoutPayload.length).toBeLessThan(5120);
-    expect(checkoutHeadroom).toBeGreaterThanOrEqual(2);
+    expect(checkoutProjected).toBeLessThan(5120);
   });
 
   it("exposes read-only gate preflight and bounds complete compact mutation responses", async () => {
@@ -1940,11 +1946,13 @@ describe("PPIRTV MCP stdio server", () => {
     expect(sensitive).toMatchObject({ code: "SENSITIVE_CONTENT_BLOCKED", recoverable: false });
     expect(third).toMatchObject({ recorded: true, progress_event: { current: 3, percent: 75 } });
     expect(completed).toMatchObject({ recorded: true, progress_event: { current: 4, percent: 100, status: "completed" } });
-    // Lean-bound guard, not an exact-size contract: flow_id embeds the server
-    // PID, whose width varies per machine/run (4-6 digits, echoed in more than
-    // one field). 5120 broke at 5122 with a 5-digit PID (pre-existing on HEAD,
-    // proven by stash probe 2026-10-13), so the budget leaves identifier-width
-    // headroom while still failing unbounded growth.
+    // Lean-bound guard, not an exact-size contract: flow_id embeds the store
+    // COUNTER (see the checkout it: flow_<ts17>_<count4+>_<seq3>; width grows
+    // with total flows — the original "server PID" wording was inherited and
+    // wrong, corrected by the #14 adversarial review; the 5122 stash-probe
+    // failure of 2026-10-13 was this same identifier width). Echoed in more
+    // than one field; the budget leaves identifier-width headroom while
+    // still failing unbounded growth.
     expect(JSON.stringify(completed).length).toBeLessThan(5500);
 
     const status = resultOf(await client!.callTool({ name: "goal_status", arguments: { flow_id: flowId } }));
@@ -2717,15 +2725,19 @@ describe("PPIRTV MCP stdio server", () => {
     expect(display.phase_emoji).toBe("🧠");
     expect(Array.isArray(display.checklist_visual)).toBe(true);
     expect(result.default_workflow).toBeUndefined();
-    // Issue #14 / EST-20261013-BUDGETS-5120-PID margin characterization
-    // (same lean-bound rationale as the 5500 precedent): prove the 5120
-    // budget survives a 6-digit PID (+2 chars per flow_id echo); if it
-    // fails, the reproduction is in hand to raise the ceiling documented.
+    // Issue #14 / EST-20261013-BUDGETS-5120-PID margin characterization with
+    // a CONTROLLED WIDE id (same lean-bound rationale as the 5500 precedent
+    // at goal_advance, including the rite to raise a ceiling). Width driver
+    // is the flow_id COUNTER (see the checkout it above for the full note).
+    // Exercise the wide id on the real payload: every flow_id echo gains +2
+    // chars (count 4→6 digits) and the projected payload must still fit the
+    // STRICT 5120 budget; if it fails, the reproduction is in hand.
     const displayPayload = JSON.stringify(result);
-    const displayEchoes = Math.max(displayPayload.split(flowId).length - 1, 1);
-    const displayHeadroom = Math.floor((5120 - displayPayload.length) / displayEchoes);
+    const displayEchoes = displayPayload.split(flowId).length - 1;
+    const displayProjected = displayPayload.split(flowId).join(`${flowId}99`).length;
+    expect(displayEchoes).toBeGreaterThanOrEqual(1);
     expect(displayPayload.length).toBeLessThan(5120);
-    expect(displayHeadroom).toBeGreaterThanOrEqual(2);
+    expect(displayProjected).toBeLessThan(5120);
 
     const fullChecklist = resultOf(await client!.callTool({
       name: "checklist_render",

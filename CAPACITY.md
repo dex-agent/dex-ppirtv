@@ -5,7 +5,7 @@
 
 ## Reavaliação — ISSUE #18 diferenciar rebind de rastreabilidade x fingerprint divergente (D-39), 2026-11-11
 
-Reavaliação — ISSUE #14 sentinela de headroom budgets 5120 (D-40), 2026-11-12
+## Reavaliação — ISSUE #14 sentinela de headroom budgets 5120 (D-40), 2026-11-12
 
 Capability path tocado: tests/mcp.test.ts APENAS (asserts de caracterização
 de margem nos mesmos 2 its — checkout compact l.~1557 e display compact
@@ -15,6 +15,8 @@ flow_id (PID de 6 dígitos cabe; tetos 5120 MANTIDOS — aumento só com
 reprodução, rito do precedente 5500). Estacionamento EST-20261013-
 BUDGETS-5120-PID resolvido; #14 CLOSED; D-40 nos 2 mapas; npm run check
 exit 0 (suíte 910).
+EMENDA adversarial (3 revisores: P2 off-by-one — headroom>=2 aceitava len+2*ecos==5120 exato contra teto ESTRITO; P2 narrativa falsa — driver de largura e o COUNTER do flow_id (store.ts:94-101), nao PID do SO, herdada do precedente e corrigida la; P2 largura controlada diluida): blocos reescritos com PROJECAO de ID largo no payload real (split(flowId).join(flowId+'99') = +2 chars por eco, assert projected < 5120 estrito) + echoes >= 1 exigido; suíte 910 inalterada.
+
 
 
 OPS #15 RODADA 3 (família 3 flow-a-flow, zero src): 9 flows arquivados SOMENTE via API com motivo individual citando evidência reabrível; verificador rodada 3 VERDE (9/9 + 33/33 + 0 restantes; emendado pela adversarial: lista explícita de executores + identidade da saga); adversarial 5 revisores 2P1/5P2/4P3 com emenda (2367 honesta: experimento inconclusive/no_promotion, adoção por GO do owner 2026-10-31); SAGA #15 FECHADA 33/33 (issuecomment-6809215340); suíte 910 inalterada; verificador velho SUPERSEDED.
