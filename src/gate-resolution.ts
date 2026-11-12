@@ -16,14 +16,14 @@ export type GateRequirementResolution = {
   diagnostic?: ProvidedRequirementDiagnostic | null;
 };
 
-export type GateResolutionInput = {
+type GateResolutionInput = {
   flow: Flow;
   requirements: GateRequirement[];
   provided?: Record<string, unknown>;
   canonicalVerdictRequired?: boolean;
 };
 
-export type ReviewEvidenceDiagnostics = {
+type ReviewEvidenceDiagnostics = {
   valid: boolean;
   owner: "evidence_add";
   reasons: string[];
@@ -51,9 +51,9 @@ const TEST_KINDS = new Set(["test", "test_log", "test_run"]);
 // explícita. Path sem extensao (scripts/deploy, Makefile, Dockerfile,
 // Procfile, Justfile) e codigo por padrao: o fast-track mechanical nunca e
 // concedido por buraco de allowlist.
-export const DOCUMENT_FILE_EXTENSIONS: readonly string[] = [".md", ".txt", ".rst", ".adoc"];
+const DOCUMENT_FILE_EXTENSIONS: readonly string[] = [".md", ".txt", ".rst", ".adoc"];
 
-export function isDocumentalFile(file: string): boolean {
+function isDocumentalFile(file: string): boolean {
   const normalized = file.toLowerCase();
   return DOCUMENT_FILE_EXTENSIONS.some((extension) => normalized.endsWith(extension));
 }
@@ -166,7 +166,7 @@ export function isStructuredReviewEvidence(flow: Flow, evidence: Evidence): bool
 
 // SPT gate-integrity-hardening-3 (R3): review estruturada que ainda cobre o
 // implementation_fingerprint atual. Claims-only/test receipt nao contam.
-export function hasCurrentStructuredReview(flow: Flow): boolean {
+function hasCurrentStructuredReview(flow: Flow): boolean {
   return flow.evidence.some((evidence) => isStructuredReviewEvidence(flow, evidence));
 }
 
@@ -366,7 +366,7 @@ export function reviewCurrencyAppliesToPhase(phase: string): boolean {
 // SPT gate-integrity-hardening-2 (R3, laudo de revalidacao): o gate e valido
 // para o CONTEUDO revisado — paths E fingerprint. Gate sem fingerprint gravado
 // (legado) nao e reusavel quando o flow tem fingerprint atual (fail-closed).
-export function gateSnapshotMatches(
+function gateSnapshotMatches(
   gate: GateRecord,
   changedFiles: string[],
   currentFingerprint?: string | null
@@ -557,7 +557,7 @@ function sameReviewPaths(left: string[], right: string[]): boolean {
 // tem tipo contratado. O mapa substitui a interpretacao "truthy" que aceitava
 // "false", "no", [] e {} como prova de execucao (divergencia gate-resolution
 // x flow-engine medida no laudo de 2026-10-17).
-export type ProvidedRequirementKind =
+type ProvidedRequirementKind =
   | "boolean"
   | "non_empty_string"
   | "string_array"
@@ -575,7 +575,7 @@ export type ProvidedRequirementKind =
 // ensinaria a REMOVER chave que altera o julgamento do blocker
 // review_evidence_coherent.
 export const PROVIDED_PATH_KEYS = new Set(["changed_files", "deleted_files"]);
-export const PROVIDED_REVIEW_INPUT_KEYS = new Set(["review_findings", "review_artifact_path"]);
+const PROVIDED_REVIEW_INPUT_KEYS = new Set(["review_findings", "review_artifact_path"]);
 
 export function providedIgnoredKeys(
   provided: Record<string, unknown>,
@@ -586,7 +586,7 @@ export function providedIgnoredKeys(
 }
 
 
-export const PROVIDED_REQUIREMENT_KINDS: Record<string, ProvidedRequirementKind> = {
+const PROVIDED_REQUIREMENT_KINDS: Record<string, ProvidedRequirementKind> = {
   implementation_done: "boolean",
   diff_reviewed: "boolean",
   barata_scan: "boolean",
@@ -623,7 +623,7 @@ export function providedRequirementSatisfied(key: string, value: unknown): boole
 
 // Diagnostico de shape para gate bloqueado por tipo: nomeia campo, valor
 // recebido e tipo esperado (o erro deixa de ser apenas "faltando").
-export type ProvidedRequirementDiagnostic = {
+type ProvidedRequirementDiagnostic = {
   field: string;
   received: string;
   expected: string;

@@ -1,3 +1,24 @@
+## Reavaliação — D-43 EMENDADO pela adversarial, 2026-11-12
+
+- 2 mutações de amostra executadas (canonicalVerdict→1 failed;
+  reviewCurrencyMissing→2 failed — ramos vigiados); mergePathFacts = lacuna
+  de ASSERT real → it novo de caracterização (3 ramos) + mutação de vigília
+  (fallback→1 failed). Citações fantasma corrigidas; nota honesta:
+  encolhimento parcial por cirurgia de denominador (−19 acumulados).
+  Suíte 912 = 908+4 (provenance no receipt).
+
+## Reavaliação — corte de rede gate-resolution: 27 símbolos por sonda de CAMPO (D-43), 2026-11-12
+
+- Escopo: `src/gate-resolution.ts` (DES-EXPORT dos 10 sem consumidor externo —
+  35→25 exports; comportamento intocado) + TABELA por símbolo
+  (17a/0b/10c, sonda por CAMPO com evidência citável) em
+  `.agents/AUDITORIAS/2026-11-12-rede-gate-resolution/`.
+- Capacidade do produto: SEM alteração de comportamento (interface-only);
+  typecheck exit 0 prova consumidor; régua: gate-resolution 8/25,
+  TOTAL 53/182, 124 sem ref (evolução 94→106→144→134→124). Suíte 911.
+- Limites: sonda por campo prova o CAMPO coberto, não cada ramo interno;
+  liveness acumulada 19 des-exports fora do denominador (flag = corte próprio).
+
 ## Reavaliação — corte de rede fiscal-blockers EMENDADO pela adversarial (D-42), 2026-11-12
 
 - Emenda P1: loopEscalationFor reclassificado (a→nominal) — o T25c/T25d de

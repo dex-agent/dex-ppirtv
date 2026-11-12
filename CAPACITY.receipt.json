@@ -277,9 +277,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "4b239e1",
-  "tree_hash": "4f568e1cee28f9beefbd886cbf3cf5e5da0ca653",
-  "generated_at": "2026-11-12T20:39:45Z",
+  "head": "03a14ad",
+  "tree_hash": "8c185c9879b5e5df5f60197eedb1cdb8a12dd01b",
+  "generated_at": "2026-11-12T21:43:12Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -298,11 +298,11 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 907,
+    "passed": 908,
     "failed": 0,
     "skipped": 4,
     "files": 73,
-    "total": 911,
+    "total": 912,
     "command": "npm run check (audit:canonical + check:flow-engine + check:capacity + build + check:types + vitest; exit 0)"
   },
   "tools_count": 32,
@@ -1412,5 +1412,7 @@
   "reavaliacao_issue14_budgets_5120_headroom": "D-40 teste zero src: asserts de headroom (>=2 chars/eco do flow_id) nos mesmos 2 its compact; tetos 5120 mantidos (aumento so com reproducao — rito do precedente 5500); estacionamento EST-20261013-BUDGETS-5120-PID resolvido; #14 CLOSED; suite 910 inalterada. EMENDA adversarial (3 revisores): off-by-one curado com PROJECAO de ID largo no payload real (split/join +2 chars por eco, projected < 5120 estrito — aceite literal 'larguras controladas' entregue); narrativa corrigida (driver = COUNTER do flow_id store.ts:94-101, nao PID do SO; precedente corrigido); echoes >= 1 exigido; its compact 3 passed; suite 910. FECHAMENTO: cerimonia flow 4548 completa (re-atestacoes, review v2 evd_4575, verdict vrd_4576, re-mining, Trilho CONCLUSAO, superficies); #14 CLOSED — issues online zeradas; suite 910; zero src neste commit.",
   "reavaliacao_d41_rede_simbolo_suite": "tools/test-symbol-coverage.py EMENDADO pela adversarial (2P1+6P2): code_refs x mention_refs (6 das 49 refs eram prosa; falso 100% verdict-learning desmascarado), gate-resolution devolvido a lista, exports de type/interface/enum no denominador (155->201), exit 2 se ancora nao resolve (copia relocada aborta alto), try no --json, errors=replace no src; medicao final 52/201 code / 57/201 mention / 144 sem ref; salvaguardas no REDE.md (nunca quota; remocao por metrica proibida); CWD provado de C:/; zero src/tests, suite 910 inalterada.",
   "reavaliacao_d42_rede_fiscal_blockers": "src/fiscal-blockers.ts: DES-EXPORT dos 9 helpers com ZERO consumidor externo e uso interno vivo (blockerSources, graphifyReason, hasReviewEvidence, librarianExplicitlyOutOfScope, librarianReason, memoryMiningBlockedDiagnostics, memoryMiningBlockedSequence, memoryRequiredDiagnostics, statusValue) — funcao permanece, interface 48->39 exports; prova typecheck exit 0 + suite verde; TABELA por simbolo publicada (35 decididos: 25a/1b/9c) em .agents/AUDITORIAS/2026-11-12-rede-fiscal-blockers/; it novo de caracterizacao loopEscalationFor 6 ramos com vigilia por mutacao (>=9->>=99 FAIL, restaurado verde); regua re-medida: fiscal-blockers 14/39, TOTAL 53/192 code, 134 sem ref nominal.",
-  "reavaliacao_d42_rede_fiscal_blockers_emenda": "EMENDA adversarial (1P1+4P2+4P3): loopEscalationFor reclassificado (a->nominal) — T25c/T25d de engine.test ja assertava os 6 ramos (nominal x comportamental, erro da calibração D-41 pago de volta); 0 lacunas comportamentais; mutação em escopo real quebra T25c E o it novo (suíte nunca cega); liveness dos 9 des-exportados REGISTRADO (sem noUnusedLocals, corte próprio); citação blockerLoopId corrigida (T25d); copia adversarial regenerada; suite 911 = 907 passed + 4 skipped (provenance); saude nominal real do módulo 13/39 (1 prose-only conhecido)."
+  "reavaliacao_d42_rede_fiscal_blockers_emenda": "EMENDA adversarial (1P1+4P2+4P3): loopEscalationFor reclassificado (a->nominal) — T25c/T25d de engine.test ja assertava os 6 ramos (nominal x comportamental, erro da calibração D-41 pago de volta); 0 lacunas comportamentais; mutação em escopo real quebra T25c E o it novo (suíte nunca cega); liveness dos 9 des-exportados REGISTRADO (sem noUnusedLocals, corte próprio); citação blockerLoopId corrigida (T25d); copia adversarial regenerada; suite 911 = 907 passed + 4 skipped (provenance); saude nominal real do módulo 13/39 (1 prose-only conhecido).",
+  "reavaliacao_d43_rede_gate_resolution": "src/gate-resolution.ts: DES-EXPORT dos 10 sem consumidor externo (DOCUMENT_FILE_EXTENSIONS, GateResolutionInput, PROVIDED_REQUIREMENT_KINDS, PROVIDED_REVIEW_INPUT_KEYS, ProvidedRequirementDiagnostic, ProvidedRequirementKind, ReviewEvidenceDiagnostics, gateSnapshotMatches, hasCurrentStructuredReview, isDocumentalFile) — 35->25 exports, typecheck exit 0, comportamento intocado; TABELA 27 por sonda de CAMPO (17a/0b/10c; mergePathFacts com evidência DUPLA pelo campo certo); 0 testes novos (CRP no núcleo de todo advance); régua 8/25, TOTAL 53/182 code, 124 sem ref; suíte 911 = 907+4.",
+  "reavaliacao_d43_emenda": "EMENDA adversarial D-43 (2P1+4P2+3P3): 2 mutacoes de amostra executadas (canonicalVerdict->1 failed; reviewCurrencyMissing->2 failed — ramos vigiados com prova viva); mergePathFacts era lacuna de ASSERT real -> it novo de caracterizacao dos 3 ramos + mutacao de vigilia (fallback->1 failed, restaurado 29 passed); citacoes fantasma corrigidas (meeting-policy/gate-provided-removed; assert exato engine l.~3162); nota honesta: encolhimento parcial por cirurgia de denominador (-19 des-exports acumulados); regua final 54/182 code, 123 sem ref (it novo pagou 1 nominal); suite 912 = 908+4 (provenance)."
 }

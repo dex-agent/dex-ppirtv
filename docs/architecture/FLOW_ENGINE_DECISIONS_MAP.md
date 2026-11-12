@@ -69,6 +69,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-40 | Sentinela de headroom dos budgets 5120: payload medido, ecos do flow_id contados, headroom >= 2 chars/eco provado (PID de 6 dígitos cabe; teto mantido — aumento só com reprodução, rito do precedente 5500) | `rg -c "headroom" tests/mcp.test.ts` | 2026-11-12 · GITHUB #14 · flow 4548 |
 | D-41 | Régua perene da rede símbolo×suíte: referência NOMINAL medida por `tools/test-symbol-coverage.py` em DUAS contagens (code_refs × mention_refs; denominador com exports de tipo) — "sem ref nominal" ≠ "sem cobertura" (calibração comportamento-via-motor); estacionamentos tio-testador fechados CONSUMIDO-com-régua/NÃO-REPRODUZIDO | `python -B tools/test-symbol-coverage.py` | 2026-11-12 · estacionamentos Ondas 3/5/6/7 · flow 4581 |
 | D-42 | Corte de rede por módulo (fila da régua D-41): des-export de helper sem consumidor externo (função permanece; typecheck é o RED) + sondar a suíte por CAMPO antes de declarar lacuna (T25c já vigiava os 6 ramos; 0 lacunas comportamentais) — 26a/0b/9c + 1 ref nominal | `rg -c "^export" src/fiscal-blockers.ts` → 39 | 2026-11-12 · rede fiscal-blockers · flow 4621 |
+| D-43 | Segundo corte de rede (gate-resolution): sonda por CAMPO validada ao vivo (mergePathFacts: 0 por nome interno → evidência dupla pelo campo certo) — 17a/0b/10c, 0 testes novos (CRP no núcleo de todo advance); des-export 10/10 | `rg -c "^export" src/gate-resolution.ts` → 25 | 2026-11-12 · rede gate-resolution · flow 4651 |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -434,6 +435,25 @@ estimativa (3-6) cedeu à evidência (CRP).
   (nominal×comportamental, o erro que a calibração D-41 proíbe); (3) risco de
   liveness: des-exportado sai do denominador da régua e tsconfig sem
   noUnusedLocals não vigia morte interna — registrado, flag é corte próprio.
+
+
+## D-43 — corte de rede gate-resolution: sonda por campo validada ao vivo
+
+**Duvida comum**: "gate-resolution precisa de mais testes?" → a sonda por
+CAMPO (lição D-42) achou cobertura citável nos 17 vivos; 0 lacunas; o módulo
+é o núcleo de TODO advance — CRP no extremo.
+
+- **O que**: TABELA 27 (17a/0b/10c); des-export 10/10 (35→25 exports,
+  typecheck exit 0); 0 testes novos.
+- **Prova da sonda**: mergePathFacts — 0 hits por nome interno (`path_facts`);
+  evidência DUPLA pelo campo certo (`changed_files` do provided:
+  gate-provided-paths D-31 + strictPathArray nominal l.40).
+- **Onde**: `.agents/AUDITORIAS/2026-11-12-rede-gate-resolution/TABELA.md`;
+  REDE.md rodada 3 (144→134→124); src/gate-resolution.ts.
+- **Regra reutilizável**: sonda SEMPRE pelo campo que o símbolo produz
+  (nome interno do mecanismo engana — D-42 pagou por nome de arquivo, D-43
+  quase pagou de novo por nome de variável interna); liveness acumulada
+  (19 des-exports fora do denominador) monitorada — flag é corte próprio.
 
 ## D-37 — Gerador MM × charset L1 da dex-memoria 0.1.17 (ISSUE-LOCAL-0007)
 

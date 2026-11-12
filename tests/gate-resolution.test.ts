@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { Evidence, Flow } from "../src/domain.js";
 import {
   evidenceSatisfiesRequirement,
+  mergePathFacts,
   resolveGateRequirements,
   reviewedChangedFilesForVerdict,
   reviewEvidenceDiagnostics,
@@ -38,6 +39,23 @@ describe("gate requirement resolution", () => {
     expect(reviewedChangedFilesForVerdict(flow, verdict)).toEqual(["123", "a.ts"]);
     // dialeto DECLARACAO: o mesmo escalar e REJEITADO com erro explicito
     expect(() => strictPathArray({ changed_files: misto })).toThrow(/PPIRTV_INPUT_INVALID/);
+  });
+
+  it("mergePathFacts caracteriza os 3 ramos do contrato estrito de paths (D-43, rede)", () => {
+    // Endereçamento nominal + assert PRÓPRIO da semântica do merge (a rodada 3
+    // provou execução incidental via setup do D-31, sem assert da semântica):
+    // (1) facts.changed_files presente -> estrito e deduplicado;
+    // (2) key ausente -> mantém o corrente (fallback hasOwnProperty);
+    // (3) deleted_files ausente -> [] (nunca herda undefined).
+    // Vigília por mutação: trocar qualquer fallback quebra este it (provado
+    // no corte: mudar "currentChanged" por [] falha o ramo 2).
+    expect(mergePathFacts(["a.ts"], { changed_files: ["b.ts", "b.ts"] }, ["x.ts"]))
+      .toEqual({ changed_files: ["b.ts"], deleted_files: ["x.ts"] });
+    expect(mergePathFacts(["keep.ts"], {}, ["keepd.ts"]))
+      .toEqual({ changed_files: ["keep.ts"], deleted_files: ["keepd.ts"] });
+    expect(mergePathFacts(["only.ts"], { deleted_files: [] }, undefined))
+      .toEqual({ changed_files: ["only.ts"], deleted_files: [] });
+    expect(() => mergePathFacts([], { changed_files: [123] }, [])).toThrow(/PPIRTV_INPUT_INVALID/);
   });
 
   it("accepts only exact structured review satisfactions", () => {
