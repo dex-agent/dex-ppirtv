@@ -1554,7 +1554,16 @@ describe("PPIRTV MCP stdio server", () => {
       })
     });
     expect(checkoutResult).not.toHaveProperty("ppirtv_checkout");
-    expect(JSON.stringify(checkoutResult).length).toBeLessThan(5120);
+    // Lean-bound guard (see the 5500 precedent above): flow_id embeds the
+    // server PID, echoed in more than one field. Issue #14 / EST-20261013-
+    // BUDGETS-5120-PID: margin characterization — the budget must survive a
+    // 6-digit PID (+2 chars per echo). If this ever fails, the reproduction
+    // is in hand: raise the ceiling documented like the 5500 precedent did.
+    const checkoutPayload = JSON.stringify(checkoutResult);
+    const checkoutEchoes = Math.max(checkoutPayload.split(flowId).length - 1, 1);
+    const checkoutHeadroom = Math.floor((5120 - checkoutPayload.length) / checkoutEchoes);
+    expect(checkoutPayload.length).toBeLessThan(5120);
+    expect(checkoutHeadroom).toBeGreaterThanOrEqual(2);
   });
 
   it("exposes read-only gate preflight and bounds complete compact mutation responses", async () => {
@@ -2708,7 +2717,15 @@ describe("PPIRTV MCP stdio server", () => {
     expect(display.phase_emoji).toBe("🧠");
     expect(Array.isArray(display.checklist_visual)).toBe(true);
     expect(result.default_workflow).toBeUndefined();
-    expect(JSON.stringify(result).length).toBeLessThan(5120);
+    // Issue #14 / EST-20261013-BUDGETS-5120-PID margin characterization
+    // (same lean-bound rationale as the 5500 precedent): prove the 5120
+    // budget survives a 6-digit PID (+2 chars per flow_id echo); if it
+    // fails, the reproduction is in hand to raise the ceiling documented.
+    const displayPayload = JSON.stringify(result);
+    const displayEchoes = Math.max(displayPayload.split(flowId).length - 1, 1);
+    const displayHeadroom = Math.floor((5120 - displayPayload.length) / displayEchoes);
+    expect(displayPayload.length).toBeLessThan(5120);
+    expect(displayHeadroom).toBeGreaterThanOrEqual(2);
 
     const fullChecklist = resultOf(await client!.callTool({
       name: "checklist_render",

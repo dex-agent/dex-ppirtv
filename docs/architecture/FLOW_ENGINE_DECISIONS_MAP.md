@@ -66,6 +66,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-37 | Gerador MM no charset L1 da dex-memoria 0.1.17 + retry com operation_id fresco por FAMÍLIA (sufixo numérico monotônico; PARTIAL_PENDING retoma pelo resume canônico) | `rg "freshOperationIdForRetry" src/memory-promotion.ts` | 2026-11-10 · ISSUE-LOCAL-0007 · ab1c63e+b2b58be |
 | D-38 | goal_verdict anuncia a mineração pós-verdict que o gate terminal exigirá (predição com o predicado EXATO da fonte única; sequência ensinada completa: mine → provided → terminal) | `rg "requiresPostVerdictMining" src/flow-engine.ts` | 2026-11-11 · GITHUB #17 · flow 4417 |
 | D-39 | Contratos de erro diferenciam reanexação de rastreabilidade (TRACEABILITY_MISSING: MESMA key reata o mapa) de fingerprint divergente (GOAL_BINDING_MISMATCH: binding imutável; restaurar bytes + MESMA key OU flow sucessor com key NOVA — decisão de owner) | `rg "idempotency_key NOVA" docs/contracts/MCP_TOOL_ERROR_ENVELOPE_CONTRACT.md` | 2026-11-11 · GITHUB #18 · flow 4460 |
+| D-40 | Sentinela de headroom dos budgets 5120: payload medido, ecos do flow_id contados, headroom >= 2 chars/eco provado (PID de 6 dígitos cabe; teto mantido — aumento só com reprodução, rito do precedente 5500) | `rg -c "headroom" tests/mcp.test.ts` | 2026-11-12 · GITHUB #14 · flow 4548 |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -342,6 +343,28 @@ a MESMA idempotency_key.
 - **Onde**: `docs/contracts/MCP_TOOL_ERROR_ENVELOPE_CONTRACT.md` (linha
   própria), `docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md` (seção
   "Reanexacao de rastreabilidade x divergencia de fingerprint").
+
+
+## D-40 — sentinela de headroom dos budgets 5120 (GITHUB #14)
+
+**Duvida comum**: "por que nao aumentar os budgets 5120 para 5500 de uma
+vez?" → porque a issue #14 VETA aumento sem reproducao; a sentinela prova o
+teto valido e entrega a reproducao na mao se algum dia acender.
+
+- **O que**: caracterizacao de margem nos mesmos its (contagem de suíte
+  inalterada) — cada budget mede o payload real, conta os ecos do flow_id e
+  deriva `headroom = floor((5120-len)/max(ecos,1))`; asserts mantem
+  `len < 5120` e exigem `headroom >= 2` (PID de 6 digitos, +2 chars por eco,
+  cabe — o cenario do estacionamento EST-20261013-BUDGETS-5120-PID).
+- **Por que**: o teto e contrato de TESTE de payload compact (src nao tem
+  5120); o flake esperado era invisivel ate o PID do servidor crescer em
+  producao — a sentinela acende ANTES, com a reproducao na mao.
+- **Onde**: tests/mcp.test.ts (its "serves compact execution..." e "returns
+  only the current phase..."); precedente canonico l.1934-1939 (5122 provado
+  por stash-probe -> 5500 documentado) e o rito de aumento.
+- **Selo**: conselheiro $oraculo-clean-code — T5 "Test Boundary Conditions"
+  (l.418) + G3 "Incorrect Behavior at the Boundaries" (l.363), heuristicas
+  EN 2008.
 
 ## D-37 — Gerador MM × charset L1 da dex-memoria 0.1.17 (ISSUE-LOCAL-0007)
 
