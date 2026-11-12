@@ -1,5 +1,15 @@
 {
   "schema": "dex.capacity.snapshot.v1",
+  "reavaliacao_playbook_reconciliado": {
+    "date": "2026-11-12",
+    "scope": ["PLAYBOOK.md", "PLAYBOOK.index.json"],
+    "delta": "Projecao regenerada a partir das fontes atuais, sem alteracao de capacidade do produto.",
+    "evidence": [
+      "python -B tools/playbook/generate-playbook.py --repo . --check",
+      "python -B tools/playbook/generate-playbook.py --repo . --check-sent",
+      "npm run audit:canonical"
+    ]
+  },
   "reavaliacao_issue11_attribution": {
     "date": "2026-11-07",
     "scope": [

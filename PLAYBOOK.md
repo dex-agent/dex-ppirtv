@@ -4,7 +4,7 @@ description: "Regras de decisao e procedimentos deste projeto - projecao gerada 
 type: playbook
 generated_by: "tools/playbook/generate-playbook.py"
 authority: derived_projection
-sources_revision: "sha256:add0272706d36b4e376696a3f61cdd47f5eb01deae46418bf77e5e59dbd12e80"
+sources_revision: "sha256:afc7e990a60d65b586b70a9f31e9d22ca53d9f5ff8e5b835a05206edd93221d1"
 sent_revision: "sha256:c3fe3900353785713ca9fdb1d0ff4a840d2eade60eadca73b9a4ac228bd6dc0f"
 do_not_edit: true
 ---
@@ -43,29 +43,21 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 - Fonte: `docs/PLAYBOOK-RULES.md#L9-L13`
 - Selo: `pb-e48a5b0f`
 
-### Painel de Ferramentas
-
-- Localizador: `PAINEL-DE-FERRAMENTAS`
-- Gatilho: ### 4. Memorias quentes (L1 vivos — completo em `.agents/GATILHOS-VIVOS.md`)
-- Extrato: (consultar ANTES de qualquer pesquisa web — molde de ecossistema
-- Fonte: `AGENTS.md#L26-L68`
-- Selo: `pb-b04ade35`
-
 ### Regras locais
 
-- Localizador: `CONSELHEIRO-ATIVO-PADRAO-REPO`
-- Gatilho: mapa quente em `.agents/GATILHOS-VIVOS.md`).
-- Extrato: - `CONSELHEIRO-ATIVO-PADRAO-REPO` (GO do dono 2026-11-09): toda sessão de
-- Fonte: `AGENTS.md#L69-L233`
-- Selo: `pb-a4b7a55a`
+- Localizador: `PPIRTV-MANUTENCAO-CONTINUA-CRG`
+- Gatilho: Formato de ciclo: `Unreleased` ate decisao explicita de versao; gatilhos:
+- Extrato: - `PPIRTV-MANUTENCAO-CONTINUA-CRG`: antes de corte de manutencao/reuso, ler workflow/RULES.md e workflow/manutencao-iterativa-com-evidencia...
+- Fonte: `AGENTS.md#L26-L163`
+- Selo: `pb-8938be6d`
 
 ### Validacao minima
 
 - Localizador: `PPIRTV-CAPACITY-COMMIT-GATE`
 - Gatilho: ndeclarado
 - Extrato: ```powershell
-- Fonte: `AGENTS.md#L263-L285`
-- Selo: `pb-c525bb53`
+- Fonte: `AGENTS.md#L193-L215`
+- Selo: `pb-97348542`
 
 ### Ordens diretas do Comandante Owner o $chato 🗣️
 
@@ -77,29 +69,16 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
   - $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamen...
   - Ative o fluxo visual PPIRTV com checklist visual dinâmico u...
   - Sempre finalize o trabalho analisando "com lentes dos espec...
-- Fonte: `AGENTS.md#L286-L348`
-- Selo: `pb-9864e092`
+- Fonte: `AGENTS.md#L216-L278`
+- Selo: `pb-f0d4ceb4`
 
 ### Dex Agent Local
 
 - Localizador: `PPIRTV-GIT-CONSOLIDACAO-SELETIVA-MAIN`
 - Gatilho: - Antes de qualquer consolidacao Git deste repositorio, recupere o gatilho
 - Extrato: - Projeto: `dex-PPIRTV`
-- Fonte: `AGENTS.md#L349-L393`
-- Selo: `pb-234246a9`
-
-### Bootstrap (toda janela nova, nesta ordem)
-
-- Localizador: `TRACKER-LOCAL`
-- Gatilho: operar) → `.agents\GATILHOS-VIVOS.md` (hub de gatilhos quentes de reuso).
-- Extrato: 1. Leia o AGENTS global: `$env:USERPROFILE\.agents\AGENTS.md` (PowerShell) /
-- Rotas (nomes, na ordem):
-  - Leia o AGENTS global: `$env:USERPROFILE\.agents\AGENTS.md`...
-  - Leia este `AGENTS.md` inteiro.
-  - Leia o estado vivo, nesta ordem: `.agents\ACTIVE.md` → `.ag...
-  - Gatilhos L1: `.agents\lembranca.md` — abra L2/L3 somente po...
-- Fonte: `AGENTS.md#L427-L448`
-- Selo: `pb-ea6ceb8a`
+- Fonte: `AGENTS.md#L279-L323`
+- Selo: `pb-81fb4545`
 
 ### Leitura obrigatoria (bootstrap)
 
@@ -111,8 +90,8 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
   - `.agents/ACTIVE.md`
   - `.agents/HANDOFF.md`
   - `.agents/PLAN-TASKS/ACTIVE.md`
-- Fonte: `AGENTS.md#L476-L483`
-- Selo: `pb-0ab6f570`
+- Fonte: `AGENTS.md#L402-L409`
+- Selo: `pb-cad80448`
 
 ## Runbook <-> Playbook (procedimentos)
 
@@ -127,9 +106,9 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 | caminho | sha256 | Enviado? |
 | --- | --- | --- |
 | `docs/PLAYBOOK-RULES.md` | `3aebb8df98b19a4c1042973c59e14b0a8cfc728777839caa2f2c40c80e76f92c` | sim |
-| `AGENTS.md` | `d65c47554bb88f0c236a6d6e0f0a6bc2492371fd0bebffe2bbb5a3e2071edfbd` | nao |
-| `.agents/napkin.md` | `dab133af54caaf95d7f005b04c0a2933c96d71b4345210c4be293e187509ca68` | nao |
-| `.agents/PLAN-TASKS/ACTIVE.md` | `690b16815025a50e9504eff71cb351113cd3de27057f12d5af804fd35f840332` | nao |
+| `AGENTS.md` | `a80d3741c273d59ca5fd9dfa70648f245553a086155dffa9af1e7d8e80f73015` | nao |
+| `.agents/napkin.md` | `fba7a9ec155e9421a227aa9e6459511f9ee4bc076bb1256e0af089acdf43cc1c` | nao |
+| `.agents/PLAN-TASKS/ACTIVE.md` | `ed2e10e759bbe355a656c9be488c64f854d33454cff407c276933cb1d83be765` | nao |
 
 ## Superficie enviada vs local
 
@@ -139,7 +118,8 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 ## Secoes nao decodificadas
 
-- Organizacao De Artefatos E Scripts -> `AGENTS.md#L234` (sem token de localizador)
-- Graphify local -> `AGENTS.md#L394` (sem token de localizador)
-- Indexação (doutrina da casa) -> `AGENTS.md#L449` (sem token de localizador)
-- Envio a terceiros -> `AGENTS.md#L456` (sem token de localizador)
+- Organizacao De Artefatos E Scripts -> `AGENTS.md#L164` (sem token de localizador)
+- Graphify local -> `AGENTS.md#L324` (sem token de localizador)
+- Bootstrap (toda janela nova, nesta ordem) -> `AGENTS.md#L357` (sem token de localizador)
+- Indexação (doutrina da casa) -> `AGENTS.md#L375` (sem token de localizador)
+- Envio a terceiros -> `AGENTS.md#L382` (sem token de localizador)

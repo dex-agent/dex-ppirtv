@@ -1,3 +1,8 @@
+## Reavaliação — Playbook local reconciliado, 2026-11-12
+
+- Escopo: `PLAYBOOK.md` e `PLAYBOOK.index.json`, regenerados a partir das fontes atuais.
+- Capacidade do produto: sem alteração. Validação documental com `--check`, `--check-sent` e `npm run audit:canonical`.
+
 ## Reavaliação — ISSUE #18 diferenciar rebind de rastreabilidade x fingerprint divergente (D-39), 2026-11-11
 
 OPS #15 RODADA 3 (família 3 flow-a-flow, zero src): 9 flows arquivados SOMENTE via API com motivo individual citando evidência reabrível; verificador rodada 3 VERDE (9/9 + 33/33 + 0 restantes; emendado pela adversarial: lista explícita de executores + identidade da saga); adversarial 5 revisores 2P1/5P2/4P3 com emenda (2367 honesta: experimento inconclusive/no_promotion, adoção por GO do owner 2026-10-31); SAGA #15 FECHADA 33/33 (issuecomment-6809215340); suíte 910 inalterada; verificador velho SUPERSEDED.
