@@ -10,6 +10,7 @@ import {
   meetingTypeForKind,
   requiredCooperationMeetingIdMissingForPositiveVerdict,
   requiredCooperationMeetingSignal,
+  requiredMeetingKind,
   requiredCooperationStillActive,
 } from "../src/meeting-policy.js";
 import { historyEvent, makeFlow, makeMeeting } from "./helpers/policy-modules-fixture.js";
@@ -25,6 +26,26 @@ describe("meeting-policy integration (import direto do módulo)", () => {
       tasks: ["reuniao obrigatoria com cooperadores materiais neste corte"],
     });
     expect(requiredCooperationStillActive(positivo, {})).toBe(true);
+  });
+
+  it("requiredMeetingKind caracteriza a escada divergente→convergente→transversal + atalho decisao (D-44, rede)", () => {
+    // Endereçamento nominal + assert da ESCADA: a mutação de amostra
+    // "sempre transversal" SOBREVIVEU à suíte inteira (232 passed — prova viva
+    // da lacuna); este it mata a classe: qualquer regressão da escada ou do
+    // atalho decisao falha aqui (ver MUTACOES/requiredMeetingKind-transversal.txt).
+    const vazia = makeFlow({});
+    expect(requiredMeetingKind(vazia, [], false)).toBe("divergente");
+    const comDivergente = makeFlow({});
+    comDivergente.history.push(historyEvent("meeting_closed", { meeting_id: "m-div", kind: "divergente" }));
+    expect(requiredMeetingKind(comDivergente, [], false)).toBe("convergente");
+    const comAmbas = makeFlow({});
+    comAmbas.history.push(historyEvent("meeting_closed", { meeting_id: "m-div", kind: "divergente" }));
+    comAmbas.history.push(historyEvent("meeting_closed", { meeting_id: "m-conv", kind: "convergente" }));
+    expect(requiredMeetingKind(comAmbas, ["review_required"], false)).toBe("transversal");
+    // sem blocker transversal-material: escada esgota em convergente
+    expect(requiredMeetingKind(comAmbas, [], false)).toBe("convergente");
+    // atalho do limite de regressões
+    expect(requiredMeetingKind(vazia, [], true)).toBe("decisao");
   });
 
   it("verdict_recorded após o fiscal_block consome o sinal de meeting aberto", () => {

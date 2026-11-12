@@ -58,7 +58,7 @@ export function requiredCooperationMeetingSignal(flow: Flow): boolean {
   );
 }
 
-export function explicitMeetingTriggerClearedByFactsUpdate(flow: Flow, latestBlockIndex: number): boolean {
+function explicitMeetingTriggerClearedByFactsUpdate(flow: Flow, latestBlockIndex: number): boolean {
   if (explicitMeetingTrigger(fiscalText(flow, {}))) {
     return false;
   }
@@ -73,7 +73,7 @@ export function hasOpenRequiredCooperationMeetingSignal(flow: Flow, meetingIds: 
   return liveOpenMeetingIds(flow).some((meetingId) => meetingIds.includes(meetingId));
 }
 
-export function hasInsufficientRequiredCooperationMeetingSignal(flow: Flow, meetingIds: string[]): boolean {
+function hasInsufficientRequiredCooperationMeetingSignal(flow: Flow, meetingIds: string[]): boolean {
   return flow.history.some(
     (event) =>
       event.type === "meeting_closed" &&
@@ -96,7 +96,7 @@ export function liveOpenMeetingIds(flow: Flow): string[] {
   return opened.filter((meetingId) => !closed.has(meetingId));
 }
 
-export function historyAfter(flow: Flow, index: number): Flow["history"] {
+function historyAfter(flow: Flow, index: number): Flow["history"] {
   return flow.history.slice(index + 1);
 }
 
@@ -177,11 +177,11 @@ export function requiredCooperationDiagnostics(
   };
 }
 
-export function missingParticipantsFor(meeting: Meeting): string[] {
+function missingParticipantsFor(meeting: Meeting): string[] {
   return meeting.participants_required.filter((participant) => !meeting.participants_present.includes(participant));
 }
 
-export function requiredCooperationMeetingMaterial(flow: Flow, meeting: Meeting, inputMeetingIdsForVerdict: string[], latestBlockIndex: number | null): boolean {
+function requiredCooperationMeetingMaterial(flow: Flow, meeting: Meeting, inputMeetingIdsForVerdict: string[], latestBlockIndex: number | null): boolean {
   if (inputMeetingIdsForVerdict.includes(meeting.meeting_id)) {
     return true;
   }
@@ -194,12 +194,12 @@ export function requiredCooperationMeetingMaterial(flow: Flow, meeting: Meeting,
   return meetingLinkedToFiscalBlock(flow, meeting, latestBlockIndex);
 }
 
-export function meetingHasRequiredCooperationParticipants(meeting: Meeting): boolean {
+function meetingHasRequiredCooperationParticipants(meeting: Meeting): boolean {
   const requiredParticipants = requiredMeetingParticipants(["required_cooperation"]);
   return requiredParticipants.every((participant) => meeting.participants_required.includes(participant));
 }
 
-export function meetingLinkedToFiscalBlock(flow: Flow, meeting: Meeting, latestBlockIndex: number | null): boolean {
+function meetingLinkedToFiscalBlock(flow: Flow, meeting: Meeting, latestBlockIndex: number | null): boolean {
   if (latestBlockIndex === null) {
     return false;
   }
@@ -214,7 +214,7 @@ export function meetingLinkedToFiscalBlock(flow: Flow, meeting: Meeting, latestB
   return previousBlockIndex !== null && openedIndex > previousBlockIndex;
 }
 
-export function meetingOpenedIndex(flow: Flow, meetingId: string): number | null {
+function meetingOpenedIndex(flow: Flow, meetingId: string): number | null {
   const index = flow.history.findIndex((event) => event.type === "meeting_opened" && String(event.data.meeting_id ?? "") === meetingId);
   return index >= 0 ? index : null;
 }
@@ -224,7 +224,7 @@ export function meetingClosedIndex(flow: Flow, meetingId: string): number | null
   return index >= 0 ? index : null;
 }
 
-export function previousFiscalBlockIndex(flow: Flow, beforeIndex: number): number | null {
+function previousFiscalBlockIndex(flow: Flow, beforeIndex: number): number | null {
   for (let index = beforeIndex - 1; index >= 0; index -= 1) {
     if (flow.history[index]?.type === "fiscal_policy_blocked") {
       return index;
@@ -233,7 +233,7 @@ export function previousFiscalBlockIndex(flow: Flow, beforeIndex: number): numbe
   return null;
 }
 
-export function meetingConsumedByLaterVerdict(flow: Flow, meeting: Meeting): boolean {
+function meetingConsumedByLaterVerdict(flow: Flow, meeting: Meeting): boolean {
   const closedIndex = meetingClosedIndex(flow, meeting.meeting_id);
   return closedIndex !== null && flow.history.slice(closedIndex + 1).some(
     (event) => event.type === "verdict_recorded" && (
@@ -276,7 +276,7 @@ export function meetingOutcomeSummaries(flow: Flow): Array<Record<string, unknow
   });
 }
 
-export function meetingOutcomeSummary(
+function meetingOutcomeSummary(
   meetingId: string,
   traceabilityStatus: "open" | "recorded_legacy" | "closed_unconsumed" | "consumed_by_regress" | "consumed_by_verdict" | "unattributed_legacy",
   consumption: Record<string, unknown> | null
@@ -375,7 +375,7 @@ export function requiredMeetingKind(flow: Flow, blockers: string[], regressLimit
   return "convergente";
 }
 
-export function hasClosedMeetingKind(flow: Flow, kind: MeetingKind): boolean {
+function hasClosedMeetingKind(flow: Flow, kind: MeetingKind): boolean {
   return flow.history.some((event) => event.type === "meeting_closed" && String(event.data.kind) === kind);
 }
 
@@ -571,12 +571,12 @@ export function loopEscalationAction(flow: Flow, blockers: string[], backTo: Any
     ...common,
     type: "convergence_transversal_meetings",
     tool: "goal_meeting_open",
-    reason: "3 ocorrencias: abrir reunioes convergente e transversal para decidir recuperacao sem falso-verde",
+    reason: "gatilho a partir de 3 ocorrencias do loop (contador continua subindo): abrir reunioes convergente e transversal para decidir recuperacao sem falso-verde",
     required_tool_sequence: loopMeetingSequence(flow, loopMonitor, ["convergente", "transversal"])
   };
 }
 
-export function loopMeetingSequence(flow: Flow, loopMonitor: LoopMonitor, kinds: MeetingKind[]): Array<Record<string, unknown>> {
+function loopMeetingSequence(flow: Flow, loopMonitor: LoopMonitor, kinds: MeetingKind[]): Array<Record<string, unknown>> {
   const participants = requiredMeetingParticipants(loopMonitor.blockers);
   const sequence: Array<Record<string, unknown>> = kinds.flatMap((kind, index) => {
     const meetingId = `<${kind}_meeting_id>`;
@@ -648,7 +648,7 @@ export function cooperationCheckoutAccountability(flow: Flow): Record<string, un
   };
 }
 
-export function suggestedCooperatorsForFlow(flow: Flow): Cooperator[] {
+function suggestedCooperatorsForFlow(flow: Flow): Cooperator[] {
   return uniqueCooperators(
     flow.history.flatMap((event) => {
       if (event.type !== "meeting_opened") {

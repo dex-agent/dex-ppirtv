@@ -1,3 +1,20 @@
+## Reavaliação — D-44 EMENDADO pela adversarial, 2026-11-12
+
+- requiredMeetingKind = LACUNA REAL (mutação sobrevivente 232/232) → it novo
+  da escada + re-mutação falha; 5 mutações congeladas em MUTACOES/; 6
+  citações corrigidas; contradição do scope emendada (reason = comportamento
+  observável por ESCOTEIRO-ONDA). Suíte 913 = 909+4 (provenance no receipt).
+
+## Reavaliação — corte de rede meeting-policy: 29 por assert exato (D-44), 2026-11-12
+
+- Escopo: src/meeting-policy.ts (des-export 14 — 40→26 exports; P3 textual
+  da Onda 3 pago; comportamento intocado) + TABELA (15a/0b/14c) com 2
+  mutações de amostra EXECUTADAS e PEGAS (3 e 8 failed).
+- Capacidade do produto: sem alteração de comportamento (interface-only +
+  reason textual sem asserts); régua 54/168, 109 sem ref; suíte 912 = 908+4.
+- Limites: liveness acumulada 33 des-exports; cadeia interna de helpers pode
+  esconder par morto (dívida de liveness futuro).
+
 ## Reavaliação — D-43 EMENDADO pela adversarial, 2026-11-12
 
 - 2 mutações de amostra executadas (canonicalVerdict→1 failed;

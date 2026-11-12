@@ -277,9 +277,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "03a14ad",
-  "tree_hash": "8c185c9879b5e5df5f60197eedb1cdb8a12dd01b",
-  "generated_at": "2026-11-12T21:43:12Z",
+  "head": "d61129d",
+  "tree_hash": "350755a9f636b00a9730a746f3eac6528e7908e5",
+  "generated_at": "2026-11-12T22:17:43Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -298,11 +298,11 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 908,
+    "passed": 909,
     "failed": 0,
     "skipped": 4,
     "files": 73,
-    "total": 912,
+    "total": 913,
     "command": "npm run check (audit:canonical + check:flow-engine + check:capacity + build + check:types + vitest; exit 0)"
   },
   "tools_count": 32,
@@ -1414,5 +1414,7 @@
   "reavaliacao_d42_rede_fiscal_blockers": "src/fiscal-blockers.ts: DES-EXPORT dos 9 helpers com ZERO consumidor externo e uso interno vivo (blockerSources, graphifyReason, hasReviewEvidence, librarianExplicitlyOutOfScope, librarianReason, memoryMiningBlockedDiagnostics, memoryMiningBlockedSequence, memoryRequiredDiagnostics, statusValue) — funcao permanece, interface 48->39 exports; prova typecheck exit 0 + suite verde; TABELA por simbolo publicada (35 decididos: 25a/1b/9c) em .agents/AUDITORIAS/2026-11-12-rede-fiscal-blockers/; it novo de caracterizacao loopEscalationFor 6 ramos com vigilia por mutacao (>=9->>=99 FAIL, restaurado verde); regua re-medida: fiscal-blockers 14/39, TOTAL 53/192 code, 134 sem ref nominal.",
   "reavaliacao_d42_rede_fiscal_blockers_emenda": "EMENDA adversarial (1P1+4P2+4P3): loopEscalationFor reclassificado (a->nominal) — T25c/T25d de engine.test ja assertava os 6 ramos (nominal x comportamental, erro da calibração D-41 pago de volta); 0 lacunas comportamentais; mutação em escopo real quebra T25c E o it novo (suíte nunca cega); liveness dos 9 des-exportados REGISTRADO (sem noUnusedLocals, corte próprio); citação blockerLoopId corrigida (T25d); copia adversarial regenerada; suite 911 = 907 passed + 4 skipped (provenance); saude nominal real do módulo 13/39 (1 prose-only conhecido).",
   "reavaliacao_d43_rede_gate_resolution": "src/gate-resolution.ts: DES-EXPORT dos 10 sem consumidor externo (DOCUMENT_FILE_EXTENSIONS, GateResolutionInput, PROVIDED_REQUIREMENT_KINDS, PROVIDED_REVIEW_INPUT_KEYS, ProvidedRequirementDiagnostic, ProvidedRequirementKind, ReviewEvidenceDiagnostics, gateSnapshotMatches, hasCurrentStructuredReview, isDocumentalFile) — 35->25 exports, typecheck exit 0, comportamento intocado; TABELA 27 por sonda de CAMPO (17a/0b/10c; mergePathFacts com evidência DUPLA pelo campo certo); 0 testes novos (CRP no núcleo de todo advance); régua 8/25, TOTAL 53/182 code, 124 sem ref; suíte 911 = 907+4.",
-  "reavaliacao_d43_emenda": "EMENDA adversarial D-43 (2P1+4P2+3P3): 2 mutacoes de amostra executadas (canonicalVerdict->1 failed; reviewCurrencyMissing->2 failed — ramos vigiados com prova viva); mergePathFacts era lacuna de ASSERT real -> it novo de caracterizacao dos 3 ramos + mutacao de vigilia (fallback->1 failed, restaurado 29 passed); citacoes fantasma corrigidas (meeting-policy/gate-provided-removed; assert exato engine l.~3162); nota honesta: encolhimento parcial por cirurgia de denominador (-19 des-exports acumulados); regua final 54/182 code, 123 sem ref (it novo pagou 1 nominal); suite 912 = 908+4 (provenance)."
+  "reavaliacao_d43_emenda": "EMENDA adversarial D-43 (2P1+4P2+3P3): 2 mutacoes de amostra executadas (canonicalVerdict->1 failed; reviewCurrencyMissing->2 failed — ramos vigiados com prova viva); mergePathFacts era lacuna de ASSERT real -> it novo de caracterizacao dos 3 ramos + mutacao de vigilia (fallback->1 failed, restaurado 29 passed); citacoes fantasma corrigidas (meeting-policy/gate-provided-removed; assert exato engine l.~3162); nota honesta: encolhimento parcial por cirurgia de denominador (-19 des-exports acumulados); regua final 54/182 code, 123 sem ref (it novo pagou 1 nominal); suite 912 = 908+4 (provenance).",
+  "reavaliacao_d44_rede_meeting_policy": "src/meeting-policy.ts: DES-EXPORT dos 14 sem consumidor externo (40->26 exports, typecheck exit 0, comportamento intocado) + P3 textual da Onda 3 item 6 pago (reason do gatilho; 0 asserts no reason); TABELA 29 com assert exato por linha (15a/0b/14c); 2 mutacoes de amostra EXECUTADAS e PEGAS (hasVerdictRecordedAfterIndex->true = 3 failed; meetingClosedLedgerData->null = 8 failed); 0 testes novos; regua 54/168 code, 109 sem ref; suite 912 = 908+4.",
+  "reavaliacao_d44_emenda": "EMENDA adversarial D-44 (2P1+5P2+6P3): requiredMeetingKind = LACUNA REAL (citacao fantasma + mutacao sempre-transversal SOBREVIVEU 232/232) -> it novo caracteriza a escada + re-mutacao FALHA; 5 mutacoes de amostra congeladas em MUTACOES/ (classe BASELINE-RED); citacoes fantasma corrigidas em 6 linhas; contradição do scope emendada (reason = comportamento observável por ESCOTEIRO-ONDA); degrau fantasma 124 corrigido; regua 55/168 code, 108 sem ref; suite 913 = 909+4."
 }

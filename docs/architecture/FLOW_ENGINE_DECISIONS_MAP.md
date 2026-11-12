@@ -70,6 +70,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-41 | Régua perene da rede símbolo×suíte: referência NOMINAL medida por `tools/test-symbol-coverage.py` em DUAS contagens (code_refs × mention_refs; denominador com exports de tipo) — "sem ref nominal" ≠ "sem cobertura" (calibração comportamento-via-motor); estacionamentos tio-testador fechados CONSUMIDO-com-régua/NÃO-REPRODUZIDO | `python -B tools/test-symbol-coverage.py` | 2026-11-12 · estacionamentos Ondas 3/5/6/7 · flow 4581 |
 | D-42 | Corte de rede por módulo (fila da régua D-41): des-export de helper sem consumidor externo (função permanece; typecheck é o RED) + sondar a suíte por CAMPO antes de declarar lacuna (T25c já vigiava os 6 ramos; 0 lacunas comportamentais) — 26a/0b/9c + 1 ref nominal | `rg -c "^export" src/fiscal-blockers.ts` → 39 | 2026-11-12 · rede fiscal-blockers · flow 4621 |
 | D-43 | Segundo corte de rede (gate-resolution): sonda por CAMPO validada ao vivo (mergePathFacts: 0 por nome interno → evidência dupla pelo campo certo) — 17a/0b/10c, 0 testes novos (CRP no núcleo de todo advance); des-export 10/10 | `rg -c "^export" src/gate-resolution.ts` → 25 | 2026-11-12 · rede gate-resolution · flow 4651 |
+| D-44 | Terceiro corte de rede (meeting-policy): MUTAÇÃO SOBREVIVENTE virou teste (requiredMeetingKind "sempre transversal" passou 232/232 — escada podia regressar; it paga e re-mutação falha); 5 amostras congeladas (classe BASELINE-RED); des-export 14/14 (40→26) | `rg -c "^export" src/meeting-policy.ts` → 26 | 2026-11-12 · rede meeting-policy · flow 4679 |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -454,6 +455,24 @@ CAMPO (lição D-42) achou cobertura citável nos 17 vivos; 0 lacunas; o módulo
   (nome interno do mecanismo engana — D-42 pagou por nome de arquivo, D-43
   quase pagou de novo por nome de variável interna); liveness acumulada
   (19 des-exports fora do denominador) monitorada — flag é corte próprio.
+
+
+## D-44 — corte de rede meeting-policy: assert exato + amostras pegas
+
+**Duvida comum**: "e se a sonda errar de novo?" → as 2 amostras mais fracas
+foram MUTADAS e a suíte PEGOU as duas (3 e 8 failed) — "0 lacunas" saiu do
+universal-negativo e virou prova viva executada.
+
+- **O que (emendado)**: TABELA 29 (14a com assert exato válido · 1b LACUNA
+  REAL PAGA · 14c); des-export 14/14 (40→26); 1 it novo (escada
+  requiredMeetingKind); P3 da Onda 3 pago (reason = comportamento observável,
+  autorizado por ESCOTEIRO-ONDA).
+- **Onde**: `.agents/AUDITORIAS/2026-11-12-rede-meeting-policy/TABELA.md`;
+  REDE.md rodada 4 (…→109 sem ref); src/meeting-policy.ts.
+- **Regra reutilizável**: o par mínimo de confiança para classe (a) é
+  ASSERT EXATO citado + (para os fracos) MUTAÇÃO DE AMOSTRA pega — o rito
+  D-42→D-43→D-44 consolidou: sonda por campo, assert exato primeiro,
+  amostra mutada, execução incidental não conta.
 
 ## D-37 — Gerador MM × charset L1 da dex-memoria 0.1.17 (ISSUE-LOCAL-0007)
 
