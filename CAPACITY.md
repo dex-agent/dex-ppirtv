@@ -1,3 +1,26 @@
+## Reavaliação — corte de rede fiscal-blockers EMENDADO pela adversarial (D-42), 2026-11-12
+
+- Emenda P1: loopEscalationFor reclassificado (a→nominal) — o T25c/T25d de
+  engine.test.ts já assertava os 6 ramos com thresholds exatos; 0 lacunas
+  comportamentais provadas; o it novo paga o endereço NOMINAL (mutação em
+  escopo real quebra T25c E o it — a suíte nunca foi cega).
+- Risco registrado: os 9 des-exportados saíram do denominador da régua e o
+  tsconfig (sem noUnusedLocals) não vigia morte de helper interno — flag é
+  corte próprio. Suíte 911 = 907 passed + 4 skipped (provenance no receipt).
+
+## Reavaliação — corte de rede fiscal-blockers: 35 símbolos decididos (D-42), 2026-11-12
+
+- Escopo: `src/fiscal-blockers.ts` (DES-EXPORT dos 9 helpers sem consumidor
+  externo — função permanece, interface 48→39) + `tests/fiscal-blockers.integration.test.ts`
+  (it novo de caracterização `loopEscalationFor` 6 ramos, vigília por mutação
+  provada) + TABELA por símbolo (35: 25 a / 1 b / 9 c) em
+  `.agents/AUDITORIAS/2026-11-12-rede-fiscal-blockers/`.
+- Capacidade do produto: SEM alteração de comportamento (des-export +
+  caracterização); typecheck exit 0 é a prova de consumidor; régua re-medida:
+  fiscal-blockers 14/39 code, TOTAL 53/192, 134 sem ref nominal (era 144).
+- Limites: classe (a) julgada por efeito-característico citável (TABELA);
+  a fronteira a×b é julgamento documentado por linha, revisável na adversarial.
+
 ## Reavaliação — estacionamentos tio-testador: régua perene da rede símbolo×suíte (D-41), 2026-11-12
 
 - Escopo: `tools/test-symbol-coverage.py` NOVO, EMENDADO pela adversarial

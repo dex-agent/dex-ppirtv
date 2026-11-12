@@ -85,7 +85,7 @@ export type V2MemoryCandidateResolution = MemoryCandidateResolution & {
   candidate_owner_skill?: string;
 };
 
-export function hasReviewEvidence(flow: Flow, input: FiscalVerdictInput): boolean {
+function hasReviewEvidence(flow: Flow, input: FiscalVerdictInput): boolean {
   return hasReviewEvidenceWithDeps(flow, input, FISCAL_POLICY_DEPS);
 }
 
@@ -97,7 +97,7 @@ export function librarianRequired(flow: Flow, input: FiscalVerdictInput): boolea
   return /bibliotec|graphify|retorno visual/i.test(text);
 }
 
-export function librarianExplicitlyOutOfScope(flow: Flow, inputText: string): boolean {
+function librarianExplicitlyOutOfScope(flow: Flow, inputText: string): boolean {
   const scopeOutText = flow.scope.out.join("\n");
   const combined = [scopeOutText, inputText].filter(Boolean).join("\n");
   if (!/bibliotec|graphify|retorno visual/i.test(scopeOutText)) {
@@ -233,7 +233,7 @@ export function blockerDiagnosticsFor(
   return diagnostics;
 }
 
-export function blockerSources(
+function blockerSources(
   blocker: string,
   gateBlockers: string[],
   fiscalBlockers: string[],
@@ -314,7 +314,7 @@ export function whyFiscalModeNotActive(flow: Flow): string[] {
   return reasons;
 }
 
-export function memoryRequiredDiagnostics(flow: Flow): Record<string, unknown> {
+function memoryRequiredDiagnostics(flow: Flow): Record<string, unknown> {
   const status = flow.memory_mining;
   const candidates = Array.isArray(status?.candidates) ? status.candidates : [];
   const writtenCount = typeof status?.written_count === "number" ? status.written_count : 0;
@@ -363,7 +363,7 @@ export function memoryMiningVerdictStillBlocked(flow: Flow): boolean {
   );
 }
 
-export function memoryMiningBlockedDiagnostics(flow: Flow): Record<string, unknown> {
+function memoryMiningBlockedDiagnostics(flow: Flow): Record<string, unknown> {
   const status = flow.memory_mining;
   const editQueue = Array.isArray(status?.edit_queue) ? status.edit_queue : [];
   const destinationWarnings = Array.isArray(status?.destination_warnings) ? status.destination_warnings.map(String) : [];
@@ -733,7 +733,7 @@ export function memoryMiningBlockedAction(
   };
 }
 
-export function memoryMiningBlockedSequence(flow: Flow): Array<Record<string, unknown>> {
+function memoryMiningBlockedSequence(flow: Flow): Array<Record<string, unknown>> {
   return [
     {
       order: 1,
@@ -922,7 +922,7 @@ export function structuredLibrarianStatus(raw: RecallVisualStatus | null): Struc
   };
 }
 
-export function librarianReason(status: StructuredLibrarianStatus["bibliotecario"]["status"]): string {
+function librarianReason(status: StructuredLibrarianStatus["bibliotecario"]["status"]): string {
   if (status === "disabled") {
     return "await_beforePhase_or_report_disabled";
   }
@@ -935,7 +935,7 @@ export function librarianReason(status: StructuredLibrarianStatus["bibliotecario
   return `beforePhase_${status}`;
 }
 
-export function graphifyReason(status: StructuredLibrarianStatus["graphify"]["status"]): string {
+function graphifyReason(status: StructuredLibrarianStatus["graphify"]["status"]): string {
   if (status === "disabled") {
     return "optional_disabled_reported";
   }
@@ -969,7 +969,7 @@ export function librarianCheckoutAccountability(librarianStatus: StructuredLibra
   };
 }
 
-export function statusValue(value: unknown): RecallVisualStatus["status"] {
+function statusValue(value: unknown): RecallVisualStatus["status"] {
   const allowed = ["disabled", "recalled", "empty", "missing_graph", "timeout", "failed"] as const;
   return allowed.includes(value as RecallVisualStatus["status"]) ? (value as RecallVisualStatus["status"]) : "failed";
 }

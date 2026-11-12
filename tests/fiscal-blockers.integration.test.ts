@@ -10,6 +10,7 @@ import {
   isBlockerStillActive,
   latestFiscalBlock,
   librarianRequired,
+  loopEscalationFor,
   memoryMiningVerdictStillBlocked,
   phaseAdvanceDirectAction,
   reconciledBlockers,
@@ -151,5 +152,22 @@ describe("fiscal-blockers integration (import direto do módulo)", () => {
 
   it("memoryMiningVerdictStillBlocked sem mining rodado não bloqueia", () => {
     expect(memoryMiningVerdictStillBlocked(makeFlow({}))).toBe(false);
+  });
+  it("loopEscalationFor caracteriza os 6 ramos do escalonamento do loop_monitor (rede D-42)", () => {
+    // Endereçabilidade nominal (D-42): o COMPORTAMENTO já era vigiado via motor
+    // pelo T25c/T25d (tests/engine.test.ts l.~5847-5961, thresholds exatos em
+    // todos os ramos — mutação >=9→>=99 quebra T25c E este it, provado ao vivo).
+    // Este it dá ao símbolo o endereço NOMINAL direto que faltava na rede.
+    // Vigília: APERTOS de threshold (ex. >=9→>=99, >=6→>=66) quebram este it e
+    // o T25c; afroxamentos comportamentalmente nulos (ex. >=8→>=7) não quebram
+    // — os labels não são assertados (limite declarado).
+    expect(loopEscalationFor(0)).toMatchObject({ active: false, level: "monitoring", threshold: null });
+    expect(loopEscalationFor(2)).toMatchObject({ active: false, level: "monitoring" });
+    expect(loopEscalationFor(3)).toMatchObject({ active: true, level: "convergence_transversal", threshold: 3 });
+    expect(loopEscalationFor(5)).toMatchObject({ active: true, level: "divergence_transversal", threshold: 5 });
+    expect(loopEscalationFor(6)).toMatchObject({ active: true, level: "research_subagent", threshold: 6 });
+    expect(loopEscalationFor(8)).toMatchObject({ active: true, level: "emergency_meeting", threshold: 8 });
+    expect(loopEscalationFor(9)).toMatchObject({ active: true, level: "bad_loop_review_work", threshold: 9 });
+    expect(loopEscalationFor(10)).toMatchObject({ active: true, level: "bad_loop_review_work" });
   });
 });

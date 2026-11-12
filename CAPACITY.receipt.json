@@ -277,9 +277,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "8b97450",
-  "tree_hash": "49a45bfb2d993dfbf8d263e8706baa99fcd8ff3c",
-  "generated_at": "2026-11-12T19:13:12Z",
+  "head": "4b239e1",
+  "tree_hash": "4f568e1cee28f9beefbd886cbf3cf5e5da0ca653",
+  "generated_at": "2026-11-12T20:39:45Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -298,11 +298,11 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 906,
+    "passed": 907,
     "failed": 0,
     "skipped": 4,
     "files": 73,
-    "total": 910,
+    "total": 911,
     "command": "npm run check (audit:canonical + check:flow-engine + check:capacity + build + check:types + vitest; exit 0)"
   },
   "tools_count": 32,
@@ -1410,5 +1410,7 @@
   "reavaliacao_issue18_diferenciar_rebind_rastreabilidade": "D-39 doc-only: envelope contract linha propria GOAL_BINDING_MISMATCH (2 sub-rotas + diferenciação + ppirtv_trace) + GOAL_SPT seção ortogonal com exemplo do teste vivo + nota consumidor ppirtv_trace; global sincronizado (audit:canonical pass); D-39 2 mapas + CHANGELOG; #18 CLOSED; suite 910 inalterada; zero src. EMENDA adversarial (5 revisores 1P1/5P2/8P3): Passo 0 novo (ler os 8 campos possiveis na propria mensagem; demais campos = envelope divergente -> goal_envelope); flow sucessor SEM reusar flow_id; decisao de owner movida para dentro da sub-rota 2; ponte com envelope vivo restore_original_binding_or_start_new_goal; ppirtv_trace discriminador ANTES das sub-rotas; fingerprint_missing legacy -> sub-rota 2; typos; global re-sincronizado audit pass; suite 910 inalterada. FECHAMENTO: cerimonia flow 4460 completa (re-atestacoes pos-emenda, review v2, verdict vrd_4490 pronto_com_ressalvas, re-mining pos-verdict, Trilho CONCLUSAO, superficies, #18 CLOSED); suite 910 inalterada; zero src neste commit.",
   "reavaliacao_issue15_rodada3_familia3": "OPS zero src: familia 3 flow-a-flow com evidencia reabrivel (9/9 arquivados via API motivo individual); verificador rodada 3 VERDE 9/9+33/33+0 restantes (emenda adversarial: lista explicita de executores + identidade da saga); 2367 honesta (inconclusive/no_promotion; adocao por GO owner 2026-10-31); SAGA #15 FECHADA issuecomment-6809215340; suite 910 inalterada; verificador velho SUPERSEDED.",
   "reavaliacao_issue14_budgets_5120_headroom": "D-40 teste zero src: asserts de headroom (>=2 chars/eco do flow_id) nos mesmos 2 its compact; tetos 5120 mantidos (aumento so com reproducao — rito do precedente 5500); estacionamento EST-20261013-BUDGETS-5120-PID resolvido; #14 CLOSED; suite 910 inalterada. EMENDA adversarial (3 revisores): off-by-one curado com PROJECAO de ID largo no payload real (split/join +2 chars por eco, projected < 5120 estrito — aceite literal 'larguras controladas' entregue); narrativa corrigida (driver = COUNTER do flow_id store.ts:94-101, nao PID do SO; precedente corrigido); echoes >= 1 exigido; its compact 3 passed; suite 910. FECHAMENTO: cerimonia flow 4548 completa (re-atestacoes, review v2 evd_4575, verdict vrd_4576, re-mining, Trilho CONCLUSAO, superficies); #14 CLOSED — issues online zeradas; suite 910; zero src neste commit.",
-  "reavaliacao_d41_rede_simbolo_suite": "tools/test-symbol-coverage.py EMENDADO pela adversarial (2P1+6P2): code_refs x mention_refs (6 das 49 refs eram prosa; falso 100% verdict-learning desmascarado), gate-resolution devolvido a lista, exports de type/interface/enum no denominador (155->201), exit 2 se ancora nao resolve (copia relocada aborta alto), try no --json, errors=replace no src; medicao final 52/201 code / 57/201 mention / 144 sem ref; salvaguardas no REDE.md (nunca quota; remocao por metrica proibida); CWD provado de C:/; zero src/tests, suite 910 inalterada."
+  "reavaliacao_d41_rede_simbolo_suite": "tools/test-symbol-coverage.py EMENDADO pela adversarial (2P1+6P2): code_refs x mention_refs (6 das 49 refs eram prosa; falso 100% verdict-learning desmascarado), gate-resolution devolvido a lista, exports de type/interface/enum no denominador (155->201), exit 2 se ancora nao resolve (copia relocada aborta alto), try no --json, errors=replace no src; medicao final 52/201 code / 57/201 mention / 144 sem ref; salvaguardas no REDE.md (nunca quota; remocao por metrica proibida); CWD provado de C:/; zero src/tests, suite 910 inalterada.",
+  "reavaliacao_d42_rede_fiscal_blockers": "src/fiscal-blockers.ts: DES-EXPORT dos 9 helpers com ZERO consumidor externo e uso interno vivo (blockerSources, graphifyReason, hasReviewEvidence, librarianExplicitlyOutOfScope, librarianReason, memoryMiningBlockedDiagnostics, memoryMiningBlockedSequence, memoryRequiredDiagnostics, statusValue) — funcao permanece, interface 48->39 exports; prova typecheck exit 0 + suite verde; TABELA por simbolo publicada (35 decididos: 25a/1b/9c) em .agents/AUDITORIAS/2026-11-12-rede-fiscal-blockers/; it novo de caracterizacao loopEscalationFor 6 ramos com vigilia por mutacao (>=9->>=99 FAIL, restaurado verde); regua re-medida: fiscal-blockers 14/39, TOTAL 53/192 code, 134 sem ref nominal.",
+  "reavaliacao_d42_rede_fiscal_blockers_emenda": "EMENDA adversarial (1P1+4P2+4P3): loopEscalationFor reclassificado (a->nominal) — T25c/T25d de engine.test ja assertava os 6 ramos (nominal x comportamental, erro da calibração D-41 pago de volta); 0 lacunas comportamentais; mutação em escopo real quebra T25c E o it novo (suíte nunca cega); liveness dos 9 des-exportados REGISTRADO (sem noUnusedLocals, corte próprio); citação blockerLoopId corrigida (T25d); copia adversarial regenerada; suite 911 = 907 passed + 4 skipped (provenance); saude nominal real do módulo 13/39 (1 prose-only conhecido)."
 }

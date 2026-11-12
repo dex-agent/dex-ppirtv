@@ -68,6 +68,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-39 | Contratos de erro diferenciam reanexação de rastreabilidade (TRACEABILITY_MISSING: MESMA key reata o mapa) de fingerprint divergente (GOAL_BINDING_MISMATCH: binding imutável; restaurar bytes + MESMA key OU flow sucessor com key NOVA — decisão de owner) | `rg "idempotency_key NOVA" docs/contracts/MCP_TOOL_ERROR_ENVELOPE_CONTRACT.md` | 2026-11-11 · GITHUB #18 · flow 4460 |
 | D-40 | Sentinela de headroom dos budgets 5120: payload medido, ecos do flow_id contados, headroom >= 2 chars/eco provado (PID de 6 dígitos cabe; teto mantido — aumento só com reprodução, rito do precedente 5500) | `rg -c "headroom" tests/mcp.test.ts` | 2026-11-12 · GITHUB #14 · flow 4548 |
 | D-41 | Régua perene da rede símbolo×suíte: referência NOMINAL medida por `tools/test-symbol-coverage.py` em DUAS contagens (code_refs × mention_refs; denominador com exports de tipo) — "sem ref nominal" ≠ "sem cobertura" (calibração comportamento-via-motor); estacionamentos tio-testador fechados CONSUMIDO-com-régua/NÃO-REPRODUZIDO | `python -B tools/test-symbol-coverage.py` | 2026-11-12 · estacionamentos Ondas 3/5/6/7 · flow 4581 |
+| D-42 | Corte de rede por módulo (fila da régua D-41): des-export de helper sem consumidor externo (função permanece; typecheck é o RED) + sondar a suíte por CAMPO antes de declarar lacuna (T25c já vigiava os 6 ramos; 0 lacunas comportamentais) — 26a/0b/9c + 1 ref nominal | `rg -c "^export" src/fiscal-blockers.ts` → 39 | 2026-11-12 · rede fiscal-blockers · flow 4621 |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -405,6 +406,34 @@ isso agora é número, não impressão.
   documentadas desde 2026-11-09 + re-teste verde; vigília natural = suíte
   roda a cada commit; rodadas verdes não provam ausência de flake — fechado
   por vigília com rota de reabertura, declarado).
+
+
+## D-42 — corte de rede fiscal-blockers: interface enxuga, teste só onde há lacuna
+
+**Duvida comum**: "a fila de 144 pede 144 testes?" → não; o interrogatório
+por símbolo decidiu 35 em 25 cobertos / 1 lacuna / 9 sem consumidor — a
+estimativa (3-6) cedeu à evidência (CRP).
+
+- **O que**: TABELA por símbolo (35) com 3 classes; DES-EXPORT dos 9 helpers
+  zero-consumidores (função permanece, export sai; typecheck exit 0 prova que
+  nenhum consumidor externo quebrou); 1 it de caracterização `loopEscalationFor`
+  (6 ramos do escalonamento) com vigília por mutação.
+- **Por que**: SDP — fiscal-blockers é núcleo estável que todo verdict executa
+  (primeiro da fila); CRP — a suíte de integração já cobre o uso comum via
+  motor, teste nominal duplicaria contrato; interface pública só com o que o
+  consumidor usa (ISP-flavor).
+- **Onde**: TABELA em `.agents/AUDITORIAS/2026-11-12-rede-fiscal-blockers/`;
+  rodada 2 no REDE.md (144→134); `src/fiscal-blockers.ts` (48→39 exports);
+  `tests/fiscal-blockers.integration.test.ts` (it loopEscalationFor).
+- **Regra reutilizável** (emendada pela adversarial): (1) helper exportado
+  sem consumidor externo e com uso interno → des-export (a prova é o
+  typecheck; remoção de FUNÇÃO é rito do camping, outro corte); (2) antes de
+  declarar LACUNA de comportamento, sondar a suíte por CAMPO — o T25c de
+  engine.test.ts já assertava os 6 ramos de loopEscalationFor com thresholds
+  exatos enquanto a análise olhava só o arquivo com nome parecido
+  (nominal×comportamental, o erro que a calibração D-41 proíbe); (3) risco de
+  liveness: des-exportado sai do denominador da régua e tsconfig sem
+  noUnusedLocals não vigia morte interna — registrado, flag é corte próprio.
 
 ## D-37 — Gerador MM × charset L1 da dex-memoria 0.1.17 (ISSUE-LOCAL-0007)
 
