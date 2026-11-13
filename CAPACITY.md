@@ -1,3 +1,23 @@
+## Reavaliação — corte de rede verdict-fiscal-policy: 14 por evidência + harness promovido (D-46), 2026-11-13
+
+- **Deltas do corte**: `tools/mutacao-amostra.py` NOVO (harness-v2 do D-45
+  promovido — R17: 2º consumidor real; emendado pela adversarial: restauração
+  byte-exata, timeout→INVALIDO, vitest sem resumo→INVALIDO, span tolera tipo
+  de retorno objetual) + `tools/INDEX.md` NOVO; `src/` e `tests/` intocados
+  (mutações restauradas byte-exatas, sha256 do alvo conferido pré/pós-lote).
+- **Rede por evidência**: 11 (a) · 1 (b) subcampo `meeting_policy` de
+  `fiscalResultWithDeps` (M6/M6b sobrevivente repo-wide 80+199 its — código
+  morto de saída; limpeza estacionada EST-D46-MEETING-POLICY-SUBCAMPO) · 2 (c)
+  types. 9 mutações congeladas (4 PEGAS focais + 2 engine + 1 pós-fix-span +
+  2 sobreviventes). Campo-zero nominal ≠ campo-zero comportamental
+  (M1/M2 PEGAS). Adversarial: R1 "reprovado como documentado" (2 P1 citação
+  fantasma) + R2 resselvas de harness — TUDO emendado na sessão, lote
+  re-rodado; cena latente `nao_pronto+false` estacionada (EST-D46-NAO-PRONTO-FALSE).
+- **Régua**: 107 sem ref INALTERADO por design (corte behavioral: sem
+  des-export — todos os 14 têm consumidores externos; sem it nominal —
+  nenhuma lacuna de rota). Suíte 914 passed + 4 skipped = 918 (provenance
+  viva re-rodada, 147.9s; zero its novos).
+
 ## Reavaliação — corte de rede memory-promotion: 18 por evidência + incidente do harness (D-45), 2026-11-13
 
 - **Deltas do corte**: `src/memory-promotion.ts` (des-export do type

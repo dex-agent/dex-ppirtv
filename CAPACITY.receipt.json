@@ -277,9 +277,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "6159a3a9a8449c94f6c4f721ed4d26774bf0a8cf",
-  "tree_hash": "9638fcb6973c6e3caae4041aea799d5116b088ae",
-  "generated_at": "2026-11-13T15:17:27Z",
+  "head": "8c03acc359b775830f69496a7d771a3bdfaca1cb",
+  "tree_hash": "814347695ef52e1b12b923dddac5fe258f91bc08",
+  "generated_at": "2026-11-13T18:43:23Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -303,7 +303,7 @@
     "skipped": 4,
     "total": 918,
     "files": 72,
-    "command": "npx vitest run (sessão D-45 2026-11-13: 914 passed | 4 skipped (918); check:types/build verdes; audit:canonical/flow-engine/capacity no fechamento)"
+    "command": "npx vitest run (sessao D-46 2026-11-13: 914 passed | 4 skipped (918), 147.9s; check:types/build/audit/capacity no fechamento; zero its novos — nenhuma lacuna de rota)"
   },
   "tools_count": 32,
   "capabilities": [
@@ -1427,5 +1427,13 @@
     "mutacoes_literais": "11 executadas (count==1 + viva no disco): 10 PEGAS (M5 22f, M6 10f, M10 6f, demais 1f) + M8 sobrevivente real",
     "incidente_harness": "1ª rodada regex-assinatura: 10 falsos sobreviventes (replace sem match); vacina: literal verificado + releitura do disco (gatilho REDE-CORTE-POR-MODULO)",
     "regua": "108→107 sem ref; TOTAL 55/167 code"
+  },
+  "reavaliacao_d46_rede_verdict_fiscal_policy": {
+    "data": "2026-11-13",
+    "delta": "tools/mutacao-amostra.py NOVO (harness-v2 do D-45 promovido — R17, 2o consumidor real; emendado pela adversarial: bytes, timeout->INVALIDO, sem-resumo->INVALIDO, span objetual) + tools/INDEX.md NOVO + .agents/AUDITORIAS/2026-11-13-rede-verdict-fiscal-policy/ (TABELA/PROVA/MUTACOES 9 runs/adversarial CONSOLIDADO) + REDE.md rodada 6 + estacionamentos D-46; src/ e tests/ INTOCADOS (corte behavioral: mutacoes restauradas byte-exatas, sha256 e1a606ff conferido pre/pos lote)",
+    "decisao": "14 simbolos de verdict-fiscal-policy: 11 (a) · 1 (b) subcampo meeting_policy de fiscalResultWithDeps (M6/M6b sobrevivente repo-wide 80+199 its — codigo morto de saida, limpeza estacionada EST-D46-MEETING-POLICY-SUBCAMPO) · 2 (c) types; sem des-export (todos os 14 tem consumidores externos reais); sem it novo (nenhuma lacuna de ROTA — M5 e enderecamento, M6 e subcampo morto)",
+    "mutacoes": "9 runs congelados com as 4 vacinas + emenda D-46 (M1 2f, M2 10f, M3 2f engine, M4 2f, M5 sobrevive focais/M5b PEGA 3f T24/T24b/T26, M6/M6b sobreviventes repo-wide, M7 9f prova o fix do span); JSONs self-contained (literal+mutacao+vitest_saida)",
+    "harness": "promocao R17 paga: 2o consumidor real; adversarial R2 emendada no mesmo corte (bytes/tcrash/exit-codes documentados: exit 0 NAO e PEGA); decisao do dono 2026-11-13: manter Python (irma da regua e do gate playbook em tools/)",
+    "regua": "107 sem ref INALTERADO por design (TOTAL 55/167 code; corte behavioral sem des-export e sem it nominal); fila nao-decidida: spt-traceability 13, review-snapshot 8"
   }
 }

@@ -72,6 +72,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-43 | Segundo corte de rede (gate-resolution): sonda por CAMPO validada ao vivo (mergePathFacts: 0 por nome interno → evidência dupla pelo campo certo) — 17a/0b/10c, 0 testes novos (CRP no núcleo de todo advance); des-export 10/10 | `rg -c "^export" src/gate-resolution.ts` → 25 | 2026-11-12 · rede gate-resolution · flow 4651 |
 | D-44 | Terceiro corte de rede (meeting-policy): MUTAÇÃO SOBREVIVENTE virou teste (requiredMeetingKind "sempre transversal" passou 232/232 — escada podia regressar; it paga e re-mutação falha); 5 amostras congeladas (classe BASELINE-RED); des-export 14/14 (40→26) | `rg -c "^export" src/meeting-policy.ts` → 26 | 2026-11-12 · rede meeting-policy · flow 4679 |
 | D-45 | Quarto corte de rede (memory-promotion): mutações LITERAIS 10/11 PEGAS (a 1ª rodada regex-era 10 falsos sobreviventes — replace silencioso); 5 its pagam 7 lacunas (M2 pré-coberto l.1439); M8 (b) declarada (embed inline no engine) | `rg -c "^export" src/memory-promotion.ts` → 30 | 2026-11-13 · rede memory-promotion · flow 4707 |
+| D-46 | Quinto corte de rede (verdict-fiscal-policy, módulo INTACTO — behavioral): 11a/1b-subcampo/2c; M6/M6b provou `meeting_policy` MORTO (sobrevivente repo-wide); harness promovido a tools/mutacao-amostra.py + 4 emendas R2 (bytes/timeout/sem-resumo/span objetual) | `python -B tools/mutacao-amostra.py --help` + `rg meeting_policy src/` (só def l.20 + builder l.91) | 2026-11-13 · rede verdict-fiscal-policy · flow 4748 |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -473,6 +474,24 @@ CAMPO (lição D-42) achou cobertura citável nos 17 vivos; 0 lacunas; o módulo
   releitura viva do disco (e nunca confiar em 'sobrevivente' sem a prova de que a
   mutação existiu); citação por mensagem de erro exige a FONTE da mensagem
   (config.ts vs memory-promotion: a sonda l.38 era fantasma).
+
+
+## D-46 — corte de rede verdict-fiscal-policy: (b) de subcampo + harness promovido
+
+ **Duvida comum**: "símbolo coberto = todos os campos cobertos?" → NÃO. M6/M6b
+ (`meetingRequired=true` constante) sobreviveu repo-wide (80+199 its): o subcampo
+ `meeting_policy` do `FiscalPolicyResult` não tem consumidor algum. Classe (a)
+ do símbolo NÃO herda para subcampos — mutação de SUBCAMPO é a prova.
+
+- **O que**: TABELA 14 (11a · 1b subcampo morto · 2c types); 9 mutações; suíte 918
+  inalterada (corte behavioral — src/tests intocados, restauração byte-exata).
+- **Onde**: `.agents/AUDITORIAS/2026-11-13-rede-verdict-fiscal-policy/TABELA.md`;
+  harness `tools/mutacao-amostra.py` (harness-v2 promovido, R17; emendas R2:
+  bytes/timeout→INVALIDO/sem-resumo→INVALIDO/span com re-balance para tipo de
+  retorno objetual — M7 provou o fix ao vivo).
+- **Contraste com D-45**: lá o incidente foi do EMISSOR (replace sem match); aqui a
+  adversarial derrubou CITAÇÕES (fantasma × prova) e o harness ganhou robustez de
+  CRASH/bytes; a (b) migrou de "lacuna de rota" para "código morto de saída".
 
 ## D-44 — corte de rede meeting-policy: assert exato + amostras pegas
 
