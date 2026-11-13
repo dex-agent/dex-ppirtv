@@ -7,6 +7,17 @@ imune a CRLF/LF), TimeoutExpired vira INVALIDO com JSON (nunca crash seco),
 vitest sem linha de resumo vira INVALIDO (nunca falso veredito), span tolera
 tipo de retorno objetual (re-balance enquanto o span não contém `return`),
 `export const` sem `;` aborta, e o JSON congela literal+mutacao (re-auditável).
+CURADO no D-47 (incidente pago ao vivo): INVALIDO era SILENCIOSO — `return`
+de guard dentro do try pulava o print/salva/exit que vinham APÓS o finally
+(latente desde o D-45; forense por sys.settrace); agora o ciclo mora em
+`_ciclo()` e o veredito é INCONDICIONAL. Emendas adversarial D-47 (R2):
+fallback de span para FUNÇÃO INTERNA (`^function N` ancorado em linha);
+função void/throw-only ganha o 1º span balanceado com flag
+`span_heuristico` (o loop antigo inflava até a função seguinte); guard
+anti-no-op (literal==mutação) e `viva_no_disco` obrigatório. Lições de
+desenho de mutação: mutar MENSAGEM/valor (guarda de fluxo `if (false) throw`
+mata narrowing → TS18048); mutação de VIGÍLIA precisa romper substring
+(sufixo `_MUT` preserva prefixo e escapa de toThrow por substring).
 
 4 VACINAS do incidente D-45 (10 falsos sobreviventes por str.replace sem match):
 (1) LITERAL curto com count==1 em todo o arquivo + leitura viva do disco;
@@ -77,25 +88,40 @@ def span_simbolo(base: bytes, nome: str):
     (sem `;` = span indefinido → erro).
     """
     m = re.search(rb"export (?:async )?function " + re.escape(nome).encode() + rb"\([^)]*\)", base)
+    if not m:
+        # Extensão D-47 (R17, 3º consumidor): fallback para FUNÇÃO INTERNA do
+        # módulo (evaluateExpectation/staleRevisionPaths são alvos legítimos de
+        # rede mas não são exportadas); export vence quando ambos existem.
+        m = re.search(rb"(?m)^(?:async )?function " + re.escape(nome).encode() + rb"\([^)]*\)", base)
     if m:
         cursor = m.end()
+        primeiro_span = None
         for _ in range(8):  # no máximo 8 tentativas de re-balance
             chave = base.find(b"{", cursor)
             if chave == -1:
-                return None
+                break
             fim, fechou = balancear(base, chave)
             if not fechou:
-                return None
-            if b"return" in base[m.start():fim]:
-                return m.start(), fim
+                break
+            span = (m.start(), fim)
+            if primeiro_span is None:
+                primeiro_span = span
+            if re.search(rb"\breturn\b", base[m.start():fim]):
+                return span[0], span[1], False
             cursor = fim
+        # Emenda adversarial D-47/R2-P2-1: função void/throw-only NÃO contém
+        # return — o loop antigo inflava o span até a função SEGUINTE. Fallback:
+        # o PRIMEIRO span balanceado com flag span_heuristico (proveniência
+        # declarada no JSON; veredito continua decidido por tsc/vitest).
+        if primeiro_span is not None:
+            return primeiro_span[0], primeiro_span[1], True
         return None
     m = re.search(rb"export const " + re.escape(nome).encode() + rb"\b", base)
     if m:
         j = base.find(b";", m.end())
         if j == -1:
             return ("SEM_PONTO_E_VIRGULA",)
-        return m.start(), j + 1
+        return m.start(), j + 1, False
     return None
 
 
@@ -122,7 +148,13 @@ def main() -> None:
     lit_b = args.literal.encode("utf-8")
     mut_b = args.mutacao.encode("utf-8")
     base = src.read_bytes()
-    try:
+
+    def _ciclo() -> None:
+        """Ciclo muta→tsc→vitest. Guards só SAEM do ciclo (return daqui) — o
+        print/salva/exit do main são INCONDICIONAIS (cura D-47: INVALIDO
+        silencioso com exit 0 — return de guard pulava tudo que vinha depois
+        do try/finally; latente desde o harness-v2 do D-45, 1º disparo real
+        no D-47 com o mutante TS18048)."""
         span = span_simbolo(base, args.simbolo)
         if not span:
             resultado["erro"] = "simbolo nao achado"
@@ -139,8 +171,16 @@ def main() -> None:
         if not (span[0] <= pos < span[1]):
             resultado["erro"] = "literal FORA do span do simbolo (linha %d)" % resultado["linha"]
             return
+        if lit_b == mut_b:
+            resultado["erro"] = "mutacao identica ao literal (no-op) - run INVALIDO"
+            return
         src.write_bytes(base.replace(lit_b, mut_b, 1))
         resultado["viva_no_disco"] = src.read_bytes().count(mut_b) == 1
+        if not resultado["viva_no_disco"]:
+            resultado["erro"] = "mutacao nao viva no disco - run INVALIDO"
+            return
+        if span[2]:
+            resultado["span_heuristico"] = True
         try:
             tsc = subprocess.run(
                 "npx tsc --noEmit -p tsconfig.json",
@@ -172,6 +212,9 @@ def main() -> None:
             "passed": int(m.group(2)),
             "sobreviveu": proc.returncode == 0,
         })
+
+    try:
+        _ciclo()
     finally:
         try:
             src.write_bytes(base)

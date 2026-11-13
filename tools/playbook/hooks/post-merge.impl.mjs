@@ -1,3 +1,7 @@
+// Reuso: node:fs/node:child_process; pares canônicos de canonical-pairs
+// Perigo: COPIA repo->global dos 4 pares após pull/merge; RECUSA sobrescrever
+//   global divergente (grita instrução em vez de agir)
+
 // post-merge (implementacao): paridade auto-curativa dos 4 pares globais
 // apos pull/merge. COPIA repo->global quando o par mudou no merge e o global
 // esta no estado anterior; RECUSA sobrescrever global divergente de ORIG_HEAD

@@ -8,6 +8,9 @@ Criterios (intersecao de conjuntos; eco do AGENTS.md nao casa):
   4. se a regra citada tem rotas, a resposta cita >=1 rota da regra.
 
 Exit 0 = passou; exit 2 = falhou (criterios nao cumpridos acima).
+
+Reuso: tools/playbook (index gerado pelo generate-playbook.py)
+Perigo: read-only (juiz mecânico da prova cega V5)
 """
 
 import argparse

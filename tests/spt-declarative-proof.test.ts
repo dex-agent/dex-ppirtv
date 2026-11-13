@@ -4,7 +4,14 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  buildEvidenceRevision
+  assertCriterionProofRevisionCurrent,
+  buildEvidenceRevision,
+  criterionProjection,
+  evidenceRequirementProjection,
+  qualifyCriterionProof,
+  requiresGoalEvidence,
+  taskProjection,
+  type CriterionProofInput
 } from "../src/spt-traceability.js";
 import {
   buildProofSkeletons,
@@ -276,3 +283,130 @@ async function sha256File(filePath: string): Promise<string> {
   const { readFile } = await import("node:fs/promises");
   return createHash("sha256").update(await readFile(filePath)).digest("hex");
 }
+
+describe("rede D-47: caracterizacao do qualifyCriterionProof por mutacao de amostra", () => {
+  // Lacunas pagas com teste (M1b/M2b/M5b/M6b/M8b sobreviveram 914/914 no repo;
+  // congeladas em .agents/AUDITORIAS/2026-11-13-rede-spt-traceability/MUTACOES/).
+
+  function validInput(overrides: Partial<CriterionProofInput> = {}): CriterionProofInput {
+    return {
+      task_id: "A-01",
+      requirement_id: "REQ-01",
+      criterion_id: "C-01",
+      evidence_requirement_id: "ER-01",
+      observed_value: 0,
+      environment: "vitest fixture",
+      producer: "spt-declarative-proof.test",
+      limits: ["fixture local"],
+      timestamp: "2026-10-14T00:00:00.000Z",
+      revision_set: [],
+      ...overrides
+    };
+  }
+
+  function richTraceability(): SptV3Traceability {
+    return {
+      requirements: [
+        { id: "REQ-01", statement: "Eixo um", criteria: [{ id: "C-01", statement: "c1" }, { id: "C-02", statement: "c2" }] },
+        { id: "REQ-02", statement: "Eixo dois", criteria: [{ id: "C-09", statement: "c9" }] }
+      ],
+      tasks: [
+        {
+          id: "A-01", action: "Eixo um", covers: ["REQ-01"], done_when: ["C-01", "C-02"], depends_on: [],
+          evidence_requirements: [{ id: "ER-01", proves: ["C-01", "C-02"], method: "command", procedure: "run", expectation: { kind: "command_exit", expected_exit_code: 0 } }]
+        },
+        {
+          id: "A-02", action: "Eixo um parcial", covers: ["REQ-01"], done_when: ["C-01"], depends_on: [],
+          evidence_requirements: [{ id: "ER-02", proves: ["C-01"], method: "test", procedure: "run", expectation: { kind: "boolean_assertion", expected: true } }]
+        },
+        {
+          id: "A-03", action: "Eixo um completo", covers: ["REQ-01"], done_when: ["C-01", "C-02"], depends_on: [],
+          evidence_requirements: [{ id: "ER-03", proves: ["C-01"], method: "test", procedure: "run", expectation: { kind: "boolean_assertion", expected: true } }]
+        }
+      ]
+    };
+  }
+
+  it.each([
+    ["unknown_task", (i: CriterionProofInput) => i.task_id, { task_id: "A-99" }],
+    ["unknown_requirement", (i: CriterionProofInput) => i.requirement_id, { requirement_id: "REQ-99" }],
+    ["criterion_not_owned_by_requirement", (i: CriterionProofInput) => `${i.criterion_id}/${i.requirement_id}`, { criterion_id: "C-99" }],
+    ["task_does_not_cover_requirement", (i: CriterionProofInput) => `${i.task_id}/${i.requirement_id}`, { task_id: "A-01", requirement_id: "REQ-02", criterion_id: "C-09", evidence_requirement_id: "ER-01" }],
+    ["criterion_not_in_task_done_when", (i: CriterionProofInput) => `${i.task_id}/${i.criterion_id}`, { task_id: "A-02", criterion_id: "C-02" }],
+    ["evidence_requirement_not_owned_by_task", (i: CriterionProofInput) => `${i.evidence_requirement_id}/${i.task_id}`, { evidence_requirement_id: "ER-02" }],
+    ["evidence_requirement_does_not_prove_criterion", (i: CriterionProofInput) => `${i.evidence_requirement_id}/${i.criterion_id}`, { task_id: "A-03", evidence_requirement_id: "ER-03", criterion_id: "C-02" }]
+  ] as Array<[string, (i: CriterionProofInput) => string, Partial<CriterionProofInput>]>)(
+    "ownership do contrato rejeita input invalido: %s (M1b)",
+    (code, detail, overrides) => {
+      const trace = richTraceability();
+      const input = validInput(overrides);
+      expect(() => qualifyCriterionProof(trace, input)).toThrow(`SPT_V3_EVIDENCE_INVALID: ${code}: ${typeof detail === "function" ? detail(input) : detail}`);
+    }
+  );
+
+  it.each([
+    ["environment_required", { environment: " " }],
+    ["producer_required", { producer: " " }],
+    ["limits_required", { limits: [] }],
+    ["timestamp_invalid", { timestamp: "not-a-date" }],
+    ["revision_set_required", { revision_set: [] }],
+    ["revision_workspace_required", { revision_set: [{ workspace: " ", paths: [{ path: "src/example.ts", sha256: "a".repeat(64) }] }] }],
+    ["revision_paths_required", { revision_set: [{ workspace: "ws", paths: [] }] }],
+    ["revision_path_required", { revision_set: [{ workspace: "ws", paths: [{ path: " ", sha256: "a".repeat(64) }] }] }],
+    ["revision_sha256_invalid", { revision_set: [{ workspace: "ws", paths: [{ path: "src/example.ts", sha256: "zz" }] }] }]
+  ] as Array<[string, Partial<CriterionProofInput>]>)(
+    "validateProofProvenance rejeita provenance de input invalida: %s (M2b)",
+    (code, overrides) => {
+      const trace = traceability();
+      expect(() => qualifyCriterionProof(trace, validInput(overrides))).toThrow(`SPT_V3_EVIDENCE_INVALID: ${code}`);
+    }
+  );
+
+  it("assertCriterionProofRevisionCurrent rejeita prova stale com mensagem propria (R1-P1)", async () => {
+    const revision = await buildEvidenceRevision(workspace, ["src/example.ts"]);
+    const proof = qualifyCriterionProof(traceability(), validInput({ revision_set: [revision] }));
+    await writeFile(path.join(workspace, "src", "example.ts"), "export const result = false;\n", "utf8");
+    await expect(assertCriterionProofRevisionCurrent(proof, workspace))
+      .rejects.toThrow("SPT_V3_EVIDENCE_STALE: criterion proof revision differs from current files; paths=src/example.ts");
+  });
+
+  it("evaluateExpectation measurement: gte passa no limite, lte passa e gte falhando reprova (M6b)", async () => {
+    const revision = await buildEvidenceRevision(workspace, ["src/example.ts"]);
+    const trace: SptV3Traceability = {
+      requirements: [{ id: "REQ-M", statement: "Medidas", criteria: [{ id: "C-M", statement: "m" }] }],
+      tasks: [{
+        id: "A-M", action: "Medir", covers: ["REQ-M"], done_when: ["C-M"], depends_on: [],
+        evidence_requirements: [
+          { id: "ER-GTE", proves: ["C-M"], method: "measurement", procedure: "run", expectation: { kind: "measurement", operator: "gte", expected: 2, unit: "its" } },
+          { id: "ER-LTE", proves: ["C-M"], method: "measurement", procedure: "run", expectation: { kind: "measurement", operator: "lte", expected: 5 } }
+        ]
+      }]
+    };
+    const base = { task_id: "A-M", requirement_id: "REQ-M", criterion_id: "C-M", revision_set: [revision] };
+    const atGteLimit = qualifyCriterionProof(trace, validInput({ ...base, evidence_requirement_id: "ER-GTE", observed_value: 2 }));
+    expect(atGteLimit.passed).toBe(true);
+    expect(atGteLimit.evaluation).toContain("measurement 2 gte 2 its");
+    const belowGte = qualifyCriterionProof(trace, validInput({ ...base, evidence_requirement_id: "ER-GTE", observed_value: 1 }));
+    expect(belowGte.passed).toBe(false);
+    const atLteLimit = qualifyCriterionProof(trace, validInput({ ...base, evidence_requirement_id: "ER-LTE", observed_value: 5 }));
+    expect(atLteLimit.passed).toBe(true);
+  });
+
+  it("projections publicam os formatos id-first (M5b/M9/M10)", () => {
+    const trace = traceability();
+    const contract = trace as unknown as Parameters<typeof taskProjection>[0];
+    expect(taskProjection(contract))
+      .toEqual(["A-01: Rodar bateria", "A-02: Checar booleano", "A-03: Medir", "A-04: Conferir texto", "A-05: Comparar hash"]);
+    expect(criterionProjection(contract as Parameters<typeof criterionProjection>[0]).slice(0, 2))
+      .toEqual(["C-01 REQ-01: criterio um", "C-02 REQ-01: criterio dois"]);
+    expect(evidenceRequirementProjection(contract as Parameters<typeof evidenceRequirementProjection>[0]).slice(0, 2))
+      .toEqual(["ER-01 A-01: command — Rodar npm run check", "ER-02 A-02: test — Assercao booleana"]);
+  });
+
+  it("requiresGoalEvidence aceita evidence_required explicito sem policy (M8b)", () => {
+    expect(requiresGoalEvidence({ goal_binding: { envelope: { evidence_required: true } } } as never)).toBe(true);
+    expect(requiresGoalEvidence({ goal_binding: { envelope: { requested_verdict_policy: "evidence_required" } } } as never)).toBe(true);
+    expect(requiresGoalEvidence({ goal_binding: { envelope: {} } } as never)).toBe(false);
+    expect(requiresGoalEvidence({} as never)).toBe(false);
+  });
+});

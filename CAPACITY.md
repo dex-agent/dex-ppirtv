@@ -1,3 +1,14 @@
+## Reavaliação — D-47 corte de rede spt-traceability (2026-11-13)
+
+- **Deltas**: `tests/spt-declarative-proof.test.ts` (+20 its: ownership com
+  código+detail, provenance com código, measurement, projeções,
+  requiresGoalEvidence, stale na admissão) · `tools/mutacao-amostra.py` CURADO
+  (INVALIDO silencioso; emendas adversarial R2) · TOOLSBOOK regen.
+- **Rede por evidência**: 7 (a) · 6 (b→PAGAS) · 2 (c); 7 mutantes
+  repo-sobreviventes pagos; 9/9 vigias PEGA no arquivo final. Suíte
+  **938 (934+4)** (+20). Régua: spt-traceability 2/15→8/15; TOTAL 61/167,
+  101 sem ref.
+
 ## Reavaliação — TOOLSBOOK R18 instanciado (2026-11-13)
 
 - **Deltas**: `tools/TOOLSBOOK.md` NOVO (17 ferramentas de tools/+scripts/,

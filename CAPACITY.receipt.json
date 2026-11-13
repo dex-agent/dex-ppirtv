@@ -277,9 +277,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "55fa4ac20604f0e59e474225696d7b7d721f8578",
-  "tree_hash": "b942194c989a9af0f4ac73b5afa5759d5bfc51da",
-  "generated_at": "2026-11-13T19:20:03Z",
+  "head": "65a0a8002444bef958ab7048b118c1147acd7d76",
+  "tree_hash": "682061ce2089c2cfbb23f85eb5c281847d26e1ab",
+  "generated_at": "2026-11-13T20:20:54Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -298,12 +298,12 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 914,
+    "passed": 934,
     "failed": 0,
     "skipped": 4,
-    "total": 918,
+    "total": 938,
     "files": 72,
-    "command": "npx vitest run (sessao D-46 2026-11-13: 914 passed | 4 skipped (918), 147.9s; check:types/build/audit/capacity no fechamento; zero its novos — nenhuma lacuna de rota)"
+    "command": "npx vitest run (sessao D-47 2026-11-13: 934 passed | 4 skipped (938); +20 its; tsc exit 0)"
   },
   "tools_count": 32,
   "capabilities": [
@@ -1442,5 +1442,11 @@
     "criterio_de_pronto": "--check exit 0 real (FRESCO, 17/17 com Reuso, imports resolvem, invocacao existe); 7 buscas reais exit 0 com alvo correto no topo (2 lapidadas na sessao); hook no pre-commit; AGENTS.md cita o comando",
     "custo_r17": "motor mora na skill (TOOLS-FAMILIA-REUSO-GLOBAL: repo nao copia os modulos; shim local so quando houver 2o consumidor local)",
     "suite": "918 inalterada (914+4; emendas sao apenas comentarios — node --check 15/15 OK)"
+  },
+  "reavaliacao_d47_rede_spt_traceability": {
+    "data": "2026-11-13",
+    "delta": "tests/spt-declarative-proof.test.ts (+20 its D-47: 7 ownership codigo+detail, 8 provenance codigo, 1 measurement, 1 projecoes, 1 requiresGoalEvidence, 1 stale admissao, helper) + tools/mutacao-amostra.py CURADO (INVALIDO silencioso -> veredito incondicional via _ciclo; emendas adversarial: fronteira \breturn\b, span_heuristico p/ void-throw-only, ancoras, guards anti-no-op/viva) + tools/TOOLSBOOK.md regen + AUDITORIAS 2026-11-13-rede-spt-traceability (TABELA 7a/6b-PAGAS/2c, PROVA, MUTACOES, CONSOLIDADO)",
+    "suite": "934 passed + 4 skipped (938) re-rodada na sessao; arquivo-alvo 29/29; tsc exit 0; 9/9 vigias PEGA",
+    "regua": "spt-traceability 2/15->8/15 code (13->7 sem ref); TOTAL 61/167 code, 101 sem ref (maior salto da serie)"
   }
 }

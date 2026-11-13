@@ -73,7 +73,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-44 | Terceiro corte de rede (meeting-policy): MUTAÇÃO SOBREVIVENTE virou teste (requiredMeetingKind "sempre transversal" passou 232/232 — escada podia regressar; it paga e re-mutação falha); 5 amostras congeladas (classe BASELINE-RED); des-export 14/14 (40→26) | `rg -c "^export" src/meeting-policy.ts` → 26 | 2026-11-12 · rede meeting-policy · flow 4679 |
 | D-45 | Quarto corte de rede (memory-promotion): mutações LITERAIS 10/11 PEGAS (a 1ª rodada regex-era 10 falsos sobreviventes — replace silencioso); 5 its pagam 7 lacunas (M2 pré-coberto l.1439); M8 (b) declarada (embed inline no engine) | `rg -c "^export" src/memory-promotion.ts` → 30 | 2026-11-13 · rede memory-promotion · flow 4707 |
 | D-46 | Quinto corte de rede (verdict-fiscal-policy, módulo INTACTO — behavioral): 11a/1b-subcampo/2c; M6/M6b provou `meeting_policy` MORTO (sobrevivente repo-wide); harness promovido a tools/mutacao-amostra.py + 4 emendas R2 (bytes/timeout/sem-resumo/span objetual) | `python -B tools/mutacao-amostra.py --help` + `rg meeting_policy src/` (só def l.20 + builder l.91) | 2026-11-13 · rede verdict-fiscal-policy · flow 4748 |
-
+| D-47 | Sexto corte (spt-traceability): 6 (b) PAGAS (ownership/provenance/projeções/measurement/ramoB/stale-admissão); harness CURADO do INVALIDO silencioso (`_ciclo`); régua 61/167, 101 sem ref | `python -B tools/mutacao-amostra.py --help` + `rg -c "it.each" tests/spt-declarative-proof.test.ts` | 2026-11-13 · rede spt-traceability · flow 4792 |
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
 Resultado líquido: monólito **8.181 → 4.933 linhas (−40%)** com 7 ondas + 6
@@ -492,6 +492,23 @@ CAMPO (lição D-42) achou cobertura citável nos 17 vivos; 0 lacunas; o módulo
 - **Contraste com D-45**: lá o incidente foi do EMISSOR (replace sem match); aqui a
   adversarial derrubou CITAÇÕES (fantasma × prova) e o harness ganhou robustez de
   CRASH/bytes; a (b) migrou de "lacuna de rota" para "código morto de saída".
+
+
+## D-47 — spt-traceability: 6 lacunas pagas + cura do harness
+
+ **Dúvida comum**: "o gate do verdict valida input?" → o `qualifyCriterionProof`
+ tinha 6 throws de ownership e TODO o `validateProofProvenance` sem teste — a
+ validação que a sessão D-46 sofreu era do ZODLER do `evidence_add` (camada
+ vizinha). M1b/M2b sobreviveram 914/914.
+
+- **O que**: 20 its novos; 9/9 vigias PEGA; suíte 938; régua 8/15.
+- **Onde**: `.agents/AUDITORIAS/2026-11-13-rede-spt-traceability/TABELA.md`;
+  harness `tools/mutacao-amostra.py` (CURA do INVALIDO silencioso — return de
+  guard pulava o veredito pós-finally; `_ciclo()` torna o veredito
+  incondicional; forense por `sys.settrace`).
+- **Contraste com D-45/D-46**: lá o emissor mentia (replace sem match /
+  citação fantasma); aqui o VEREDITO sumia (exit 0 silencioso) e o corte
+  pagou 6 lacunas de UMA vez — o módulo do gate era o menos vigiado.
 
 ## D-44 — corte de rede meeting-policy: assert exato + amostras pegas
 
