@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""generate-playbook.py (versao generica da dex-playbook-entrada).
+"""Gerar PLAYBOOK.md do repo (projeção externa das regras) e verificar frescor.
+
+(generate-playbook.py — versao generica da dex-playbook-entrada)
 
 Projecao PLAYBOOK.md + PLAYBOOK.index.json (schema project.playbook.index.v1)
 de AGENTS.md e/ou outros markdowns de regras + napkin + trilho do repo.
@@ -21,6 +23,11 @@ demais .md = regras (secoes '## ' com token CAPS-hifen >=12 em backticks,
 primeiro token top-down; listas numeradas = rotas). Faixas entre marcadores
 <!-- nome:start/end --> (graphify-local, registry-catalog-shadow,
 playbook-pointer) sao excluidas.
+
+Reuso: fontes declaradas em tools/playbook/playbook-sources.txt (AGENTS.md,
+  docs/PLAYBOOK-RULES.md, napkin, PLAN-TASKS/ACTIVE.md)
+Perigo: --write SOBRESCREVE PLAYBOOK.md/PLAYBOOK.index.json da raiz (projeção
+  derivada; nunca editar a mão); --check é read-only
 """
 
 import argparse

@@ -1,3 +1,6 @@
+// Reuso: dist/launcher (tools MCP do goal)
+// Perigo: persiste progresso no flow (muta .ppirtv/)
+
 import path from "node:path";
 import process from "node:process";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";

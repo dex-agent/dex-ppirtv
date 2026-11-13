@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Reuso: canonical-pairs.mjs (os 4 pares global<->local)
+// Perigo: read-only (audita por hash; canonicaliza CRLF antes do SHA)
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";

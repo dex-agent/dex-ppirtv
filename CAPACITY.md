@@ -1,3 +1,15 @@
+## Reavaliação — TOOLSBOOK R18 instanciado (2026-11-13)
+
+- **Deltas**: `tools/TOOLSBOOK.md` NOVO (17 ferramentas de tools/+scripts/,
+  projeção do motor `dex-toolsbook`; gerada, nunca editada à mão) ·
+  docstrings `Reuso:/Perigo:/Custo:` nos 17 scripts do escopo (comentários,
+  zero lógica; `node --check` 15/15) · 4º gate no `tools/playbook/hooks/
+  pre-commit` (TOOLSBOOK `--check`, fallback de frota sem a skill) ·
+  AGENTS.md cita o `--buscar` antes de criar ferramenta.
+- **Critério de pronto (medido)**: `--check` exit 0 (FRESCO 17/17); 7 buscas
+  reais exit 0 (2 cabeçalhos lapidados na sessão para o alvo certo no topo);
+  hook ativo; bootstrap no AGENTS.md. Suíte 918 inalterada (914+4).
+
 ## Reavaliação — corte de rede verdict-fiscal-policy: 14 por evidência + harness promovido (D-46), 2026-11-13
 
 - **Deltas do corte**: `tools/mutacao-amostra.py` NOVO (harness-v2 do D-45

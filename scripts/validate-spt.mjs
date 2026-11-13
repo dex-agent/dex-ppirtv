@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Reuso: @modelcontextprotocol/sdk; servidor dex-ppirtv (spt_validate oficial)
+// Perigo: read-only (valida Trilho SPT; nunca escreve)
 import path from "node:path";
 import process from "node:process";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";

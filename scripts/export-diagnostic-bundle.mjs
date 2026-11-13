@@ -1,3 +1,7 @@
+// Reuso: store/flows do .ppirtv local
+// Perigo: ESCREVE bundle diagnóstico em disco (fora do git; sanitizar antes
+//   de compartilhar)
+
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";

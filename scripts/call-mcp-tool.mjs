@@ -1,5 +1,9 @@
 #!/usr/bin/env node
-// Generic dex-PPIRTV MCP stdio harness.
+// Chamar tool MCP do dex-PPIRTV via stdio (e listar tools) com args JSON de
+// arquivo — harness genérico do servidor (launcher ou index).
+// Reuso: @modelcontextprotocol/sdk (client stdio); dist/launcher.js|index.js do repo
+// Perigo: chama tool MCP REAL no workspace (efeitos persistem em .ppirtv/ e no
+//   disco; use --args-file com JSON conferido)
 // Starts the MCP server directly over stdio with the consumer workspace as
 // cwd, then lists tools and/or calls one tool with JSON arguments.
 //

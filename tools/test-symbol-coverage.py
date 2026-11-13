@@ -20,6 +20,11 @@ staleSelectedCriterionProofPaths). A calibração mora em
 Relatório, não gate: exit 0 no uso correto; exit 2 se a âncora não resolve
 (src/ ou tests/ ausentes no root derivado de __file__ — cópia relocada deve
 ABORTAR alto, nunca reportar 0/0 silencioso).
+
+Reuso: nenhum externo — stdlib (re/ast/json/pathlib)
+Perigo: read-only (varre src/ e tests/; nunca escreve)
+Custo: R17 pago na D-41 (régua da rede simbolo×suite; rodadas 1-6 documentadas
+  em .agents/AUDITORIAS/2026-11-12-rede-simbolos-suporte/REDE.md)
 """
 import argparse
 import json

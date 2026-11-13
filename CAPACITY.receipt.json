@@ -277,9 +277,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "8c03acc359b775830f69496a7d771a3bdfaca1cb",
-  "tree_hash": "814347695ef52e1b12b923dddac5fe258f91bc08",
-  "generated_at": "2026-11-13T18:43:23Z",
+  "head": "55fa4ac20604f0e59e474225696d7b7d721f8578",
+  "tree_hash": "b942194c989a9af0f4ac73b5afa5759d5bfc51da",
+  "generated_at": "2026-11-13T19:20:03Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -1435,5 +1435,12 @@
     "mutacoes": "9 runs congelados com as 4 vacinas + emenda D-46 (M1 2f, M2 10f, M3 2f engine, M4 2f, M5 sobrevive focais/M5b PEGA 3f T24/T24b/T26, M6/M6b sobreviventes repo-wide, M7 9f prova o fix do span); JSONs self-contained (literal+mutacao+vitest_saida)",
     "harness": "promocao R17 paga: 2o consumidor real; adversarial R2 emendada no mesmo corte (bytes/tcrash/exit-codes documentados: exit 0 NAO e PEGA); decisao do dono 2026-11-13: manter Python (irma da regua e do gate playbook em tools/)",
     "regua": "107 sem ref INALTERADO por design (TOTAL 55/167 code; corte behavioral sem des-export e sem it nominal); fila nao-decidida: spt-traceability 13, review-snapshot 8"
+  },
+  "reavaliacao_toolsbook_r18": {
+    "data": "2026-11-13",
+    "delta": "tools/TOOLSBOOK.md NOVO (indice reverso por intencao, 17 ferramentas tools+scripts, projecao gerada pelo motor da skill dex-toolsbook — R18) + docstrings Reuso/Perigo/Custo em 17 scripts (declaracao honesta; comentarios, zero logica) + 2 cabecalhos lapidados por intencao (call-mcp-tool, generate-playbook) + 4o gate no tools/playbook/hooks/pre-commit (TOOLSBOOK --check com fallback de frota) + AGENTS.md bootstrap citando --buscar + tools/INDEX.md linha",
+    "criterio_de_pronto": "--check exit 0 real (FRESCO, 17/17 com Reuso, imports resolvem, invocacao existe); 7 buscas reais exit 0 com alvo correto no topo (2 lapidadas na sessao); hook no pre-commit; AGENTS.md cita o comando",
+    "custo_r17": "motor mora na skill (TOOLS-FAMILIA-REUSO-GLOBAL: repo nao copia os modulos; shim local so quando houver 2o consumidor local)",
+    "suite": "918 inalterada (914+4; emendas sao apenas comentarios — node --check 15/15 OK)"
   }
 }

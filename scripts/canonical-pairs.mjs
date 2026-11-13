@@ -1,3 +1,6 @@
+// Reuso: nenhum externo (módulo de dados dos 4 pares canônicos)
+// Perigo: read-only (fonte única consumida pelo audit/post-merge)
+
 // Os 4 pares globais do repo (fonte unica; consumido pelo audit-canonical-sync
 // e pelo hook tools/playbook/hooks/post-merge). Bump aqui quando um par nascer.
 import path from "node:path";

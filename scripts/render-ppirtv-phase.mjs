@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 // render-ppirtv-phase.mjs
+// Reuso: nenhum externo (render puro)
+// Perigo: read-only (render de fase para checklist visual)
 //
 // Hook ZCode (compatível Claude Code): renderiza a barra visual de fases PPIRTV
 // do workspace ativo, lendo diretamente `.ppirtv/flows/*.json`.

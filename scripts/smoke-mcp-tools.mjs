@@ -1,3 +1,6 @@
+// Reuso: @modelcontextprotocol/sdk; dist/launcher|index
+// Perigo: chama tools/list (read-only; nunca chama tools mutantes)
+
 import { realpathSync, statSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";

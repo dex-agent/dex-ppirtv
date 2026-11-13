@@ -1,3 +1,7 @@
+# Reuso: nenhum — PowerShell puro
+# Perigo: REMOVE arquivo/diretorio com validacao rigorosa de raiz e reparse
+#   points; use -DryRun para conferir antes; emite receipt JSON
+
 # remove-safe-path.ps1
 # Owner: dex-PPIRTV (utilidades de operacao local)
 # Purpose: remover arquivo ou diretorio com validacao rigorosa de raiz e

@@ -29,3 +29,15 @@ if git diff --cached --name-only | grep -qE '^(src|tests|scripts|workflow|tools)
     echo "CRG GATE (aviso): code-review-graph ausente no PATH — banco CRG nao conferido neste commit (frota: instale a CLI para o gate cheio)"
   fi
 fi
+
+# TOOLSBOOK fresh gate (R18 — dex-toolsbook, instanciação 2026-11-13): o índice
+# por INTENÇÃO (tools/TOOLSBOOK.md) não pode driftar das ferramentas do escopo
+# (tools/ + scripts/). O motor mora na skill (padrão TOOLS-FAMILIA-REUSO-GLOBAL:
+# o repo não copia os módulos); máquina de frota sem a skill pula com aviso —
+# travar commit por falta de ferramenta é autossabotagem (P10).
+TOOLSBOOK_PY="${HOME:-$USERPROFILE}/.agents/skills/dex-toolsbook/scripts/toolsbook.py"
+if [ -f "$TOOLSBOOK_PY" ]; then
+  python -B "$TOOLSBOOK_PY" --repo . --dirs tools,scripts --check || exit 1
+else
+  echo "TOOLSBOOK GATE (aviso): motor dex-toolsbook ausente — índice por intenção não conferido neste commit"
+fi

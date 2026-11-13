@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 // PPIRTV-CAPACITY-COMMIT-GATE
+// Reuso: node:child_process/node:fs; CAPACITY.receipt.json (contrato canônico)
+// Perigo: BLOQUEIA commit sem par CAPACITY staged (gate read-only; emite
+//   dex.capacity.gate.v1)
 // Read CAPACITY.receipt.json as the canonical machine contract; CAPACITY.md is
 // the human view. Blocks a commit without a fresh re-evaluation staged.
 import { execFileSync } from "node:child_process";

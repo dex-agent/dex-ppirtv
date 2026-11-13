@@ -41,6 +41,12 @@ Uso:
     --mutacao 'if (condicao && false) {' \
     --teste 'tests/fiscal-recurrence.test.ts' \
     [--saida .agents/AUDITORIAS/<corte>/MUTACOES/M1.json]
+
+Reuso: nenhum externo — stdlib (argparse/json/re/subprocess); invoca npx tsc/vitest
+Perigo: MUTA o arquivo-alvo no disco durante o run (restauracao byte-exata em
+  try/finally; conferir sha256 pre/pos lote; mutante que quebra tsc = INVALIDO)
+Custo: R17 pago no D-46 (promocao do harness-v2 com 2o consumidor real; 9 runs
+  congelados em .agents/AUDITORIAS/2026-11-13-rede-verdict-fiscal-policy/MUTACOES/)
 """
 import argparse
 import json

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 // Auditoria do contrato de envelope de erro (PPIRTV-ERRO-QUE-ENSINA-ENVELOPE).
+// Reuso: src/error-envelope via build/dist
+// Perigo: read-only (audita mensagens do envelope fiscal)
 // Report-first: imprime codigos_sem_next_required_action=N. Virar gate de CI
 // e decisao do dono (anti-autossabotagem P10) — use --strict apenas para
 // evidencia pontal (exit 1 quando N>0).
