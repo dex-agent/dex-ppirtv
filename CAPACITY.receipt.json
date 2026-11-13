@@ -1,5 +1,19 @@
 {
   "schema": "dex.capacity.snapshot.v1",
+  "reavaliacao_d48_rede_review_snapshot": {
+    "date": "2026-11-13",
+    "scope": [
+      "tests/review-snapshot-rede-d48.test.ts",
+      ".agents/AUDITORIAS/2026-11-13-rede-review-snapshot/"
+    ],
+    "delta": "Corte de rede D-48 (review-snapshot, serie D-42..D-48 fechada): behavioral, src/ intocado. Suíte 938->947 (943 passed + 4 skipped) com 9 its de caracterizacao pagando 7 lacunas (b) provadas por mutacao repo-wide 934/934 (freeze R14 idempotência, gitHeadAt valor, rota resolved redacted, regex credenciais, restored_from formato, pendentes-vazios sem gate, wrapper casing). Régua nominal review-snapshot 8/17->15/17; TOTAL 61->68/167, 101->95 sem ref. Vigílias 7/7 PEGA.",
+    "evidence": [
+      "npx vitest run -> 943 passed | 4 skipped (947)",
+      "python -B tools/test-symbol-coverage.py -> review-snapshot 15/17 code; TOTAL 68/167",
+      "python -B tools/mutacao-amostra.py (24 runs congelados em .agents/AUDITORIAS/2026-11-13-rede-review-snapshot/MUTACOES/; vigílias M*-vigia.json 7/7 PEGA)",
+      "git diff --stat src/ vazio (motor intocado; restauração byte-exata)"
+    ]
+  },
   "reavaliacao_playbook_reconciliado": {
     "date": "2026-11-12",
     "scope": [

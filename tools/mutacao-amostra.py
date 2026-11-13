@@ -61,12 +61,34 @@ Custo: R17 pago no D-46 (promocao do harness-v2 com 2o consumidor real; 9 runs
 """
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+LOCK = ROOT / ".mutacao-amostra.lock"
+
+
+def adquirir_lock():
+    """Emenda adversarial D-48/R2-P1-1: exclusao mutua REAL entre lotes.
+
+    O incidente do D-48 (vitest concorrente leu o mutante VIVO no disco)
+    provou que 'conferir git diff antes' e TOCTOU. Lock O_EXCL no ROOT:
+    2o lote/qualquer run concorrente aborta INVALIDO com diagnostico.
+    Stale (SIGKILL do harness no finally): remover manualmente — o conteudo
+    carrega PID+timestamp para o diagnostico.
+    """
+    try:
+        fd = os.open(str(LOCK), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(fd, ("pid=%d ts=%s\n" % (os.getpid(), time.strftime("%Y-%m-%dT%H:%M:%S"))).encode())
+        os.close(fd)
+        return LOCK
+    except FileExistsError:
+        return None
 
 
 def balancear(base: bytes, inicio_chave: int):
@@ -147,6 +169,11 @@ def main() -> None:
     }
     lit_b = args.literal.encode("utf-8")
     mut_b = args.mutacao.encode("utf-8")
+    lock_path = adquirir_lock()
+    if lock_path is None:
+        resultado["erro"] = "outro lote de mutacao ATIVO (.mutacao-amostra.lock existe) — run INVALIDO (emenda R2-P1-1: exclusao mutua)"
+        print(json.dumps(resultado, ensure_ascii=False))
+        sys.exit(2)
     base = src.read_bytes()
 
     def _ciclo() -> None:
@@ -164,6 +191,12 @@ def main() -> None:
             return
         n = base.count(lit_b)
         if n != 1:
+            # Emenda adversarial D-48/R2-P2-4: literal multi-linha contra
+            # arquivo CRLF cai no count=0 generico desde o D-46 — detectar a
+            # classe e ensinar a cura (single-line) em vez de queimar o run.
+            if n == 0 and b"\n" in lit_b and base.count(lit_b.replace(b"\n", b"\r\n")) == 1:
+                resultado["erro"] = "literal multi-linha em arquivo CRLF (count=0 com \\n) — use literal SINGLE-LINE (lição D-46/D-48)"
+                return
             resultado["erro"] = "literal count=%d (exige count==1)" % n
             return
         pos = base.find(lit_b)
@@ -221,6 +254,10 @@ def main() -> None:
             resultado["restaurado"] = src.read_bytes() == base
         except Exception as e:  # pragma: no cover - defesa de crash
             resultado["restaurado"] = "ERRO: %s" % e
+        try:
+            lock_path.unlink()
+        except OSError:  # pragma: no cover - defesa de crash
+            pass
     print(json.dumps({k: v for k, v in resultado.items() if k != "vitest_saida"}, ensure_ascii=False))
     if args.saida:
         Path(args.saida).parent.mkdir(parents=True, exist_ok=True)

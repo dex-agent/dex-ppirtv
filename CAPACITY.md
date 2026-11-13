@@ -1677,3 +1677,19 @@ flowchart LR
 - Oráculo "vivo" = exercício real na sessão do corte; capacidades parciais
   têm só oráculo de suíte (declarado por linha).
 - `não comprovada` não é ausência de capacidade.
+
+## Reavaliação 2026-11-13 — corte de rede review-snapshot (D-48; série D-42..D-48 fechada)
+
+> Delta do worktree sobre o HEAD `0931caf`. Corte BEHAVIORAL: `src/` intocado
+> (zero mudança de comportamento do motor); só `tests/` + auditoria + Trilho.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| Suíte | 938→**947** (943 passed + 4 skipped; 73 arquivos) — arquivo novo `tests/review-snapshot-rede-d48.test.ts` (9 its: freeze R14 idempotência, declared 3 fontes, credenciais regex, restored_from formato+recência, pendentes-vazios sem gate, pending lean/full+ramos null, redacted por RESOLVED symlink, gitHeadAt identidade, wrapper win32) | `npx vitest run` 943+4; baseline 9/9 no limpo |
+| Cobertura nominal review-snapshot | régua 8/17→**15/17 code** (2 sem ref = 2 types (c)); TOTAL 61→**68/167**, 101→**95** sem ref — maior salto da série | `python -B tools/test-symbol-coverage.py` (rodada 8 em REDE.md) |
+| Mutações de amostra | 24 runs congelados (3 lotes + 7 vigílias 7/7 PEGA); 7 mutantes repo-sobreviventes 934/934 pagos com its | `.agents/AUDITORIAS/2026-11-13-rede-review-snapshot/MUTACOES/` |
+| Capacidades tocadas | CAP-11 (corroboração git: diverged fail-close PROVADO por mutação M2 — it NOVO-1 l.287); CAP-08 (snapshot/review: restored_from e pendentes-vazios da Issue #11 agora vigiados); CAP-02 (gates: freeze base idempotente R14 vigiado) | MUTACOES/M2.json, M8-vigia, M5-vigia |
+| Motor | `src/flow-engine.ts` e `src/review-snapshot.ts` INTACTOS (`git diff` vazio pós-lotes; restauração byte-exata conferida) | `git diff --stat src/` vazio |
+
+**Limites:** 4 skipped condicionais de ambiente (herdados); restam 95 sem ref
+nominal nos outros módulos (relatório, não gate — ver REDE.md rodada 8).
