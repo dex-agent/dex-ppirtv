@@ -2021,6 +2021,143 @@ describe("FlowEngine Dex Memoria V2 producer-consumer seam", () => {
       .rejects.toThrow("PPIRTV_DEX_MEMORIA_V2_WORKSPACE_MISMATCH");
     expect(executor.execute).not.toHaveBeenCalled();
   });
+
+  // D-45 (corte de rede memory-promotion): caracterização de 7 lacunas de assert
+  // pagas por these 5 its (mutações LITERAIS PEGAS; M2 já era coberto pelo teste
+  // l.1439; a rodada-1 "10/10 sobreviventes" era harness quebrado — ver MUTACOES/README).
+  it("D-45: committed effect keeps ledger reconciliation pending instead of throwing ledger errors", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-d45-committed-effect-"));
+    const executor = { execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => committedReceipt(input.operation_request, input.candidate)) };
+    const store = configuredStore();
+    const engine = new FlowEngine(store, undefined, { memory_writer: configuredWriter(executor) });
+    const flow = await engine.createFlow({ goal: "Efeito committed com ledger falho fica pendente, nunca lança" });
+    flow.gold_mining = ["Conhecimento profundo cujo commit externo não pode ser desfeito localmente."];
+    await store.saveFlow(flow);
+    const originalAppendLedger = store.appendLedger.bind(store);
+    store.appendLedger = async () => {
+      throw new Error("synthetic append ledger failure");
+    };
+
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "auto_write",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "deep",
+      v2_owner_skill: "dex-memoria",
+      v2_tags: TEST_TAGS
+    }) as any;
+
+    expect(mined.v2_ledger_status).toBe("pending");
+    expect(mined.v2_status).toBe("partial_pending");
+    expect(mined.blocked_verdict).toBe(true);
+    expect(mined.v2_failures.some((failure: any) => failure.stage === "memory_mined_ledger")).toBe(true);
+
+    store.appendLedger = originalAppendLedger;
+  });
+
+  it("D-45: requested v2 classification reports tags_required and owner_skill_required reasons", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-d45-classification-reasons-"));
+    const executor = { execute: vi.fn() };
+    const engine = new FlowEngine(configuredStore(), undefined, { memory_writer: configuredWriter(executor) });
+    const flow = await engine.createFlow({ goal: "Diretivas V2 incompletas viram motivo de classificação por candidato" });
+    flow.gold_mining = ["Regra operacional que exige destino declarado antes de escrever."];
+    await engine.store.saveFlow(flow);
+    const semTags = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "classify_only",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "light"
+    }) as any;
+    expect(semTags.candidates[0].classification_reason).toBe("tags_required");
+
+    const semOwner = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "classify_only",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "deep",
+      v2_tags: TEST_TAGS
+    }) as any;
+    expect(semOwner.candidates[0].classification_reason).toBe("owner_skill_required");
+  });
+
+  it("D-45: v2 writer without memory_home is rejected by the engine path", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-d45-memory-home-required-"));
+    const executor = { execute: vi.fn() };
+    const engine = new FlowEngine(configuredStore(), undefined, {
+      memory_writer: configuredWriter(executor, { memory_home: undefined })
+    });
+    const flow = await engine.createFlow({ goal: "Writer v2 sem memory_home não pode minerar" });
+    flow.gold_mining = ["Regra que exige memory_home configurado antes de qualquer escrita."];
+    await engine.store.saveFlow(flow);
+    await expect(engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "auto_write",
+      v2_destinations: [{ scope: "project" }],
+      v2_density: "light",
+      v2_tags: TEST_TAGS
+    })).rejects.toThrow("PPIRTV_DEX_MEMORIA_V2_MEMORY_HOME_REQUIRED");
+  });
+
+  it("D-45: classify_only without a v2 writer exposes an edit queue suggestion per unwritten candidate", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-d45-edit-suggestion-"));
+    const engine = new FlowEngine(configuredStore(), undefined, {});
+    const flow = await engine.createFlow({ goal: "Fila de edição sugere o próximo passo humano por candidato" });
+    flow.gold_mining = ["Regra operacional não escrita que precisa de decisão humana antes de virar memória."];
+    await engine.store.saveFlow(flow);
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "classify_only"
+    }) as any;
+    expect(mined.edit_queue.length).toBeGreaterThan(0);
+    expect(mined.edit_queue[0].suggestion).toBe(
+      "revisar candidato e aprovar uma rodada auto_write se for memoria canonica"
+    );
+  });
+
+  it("D-45: promoting a classified theme candidate carries destination theme and full resolution into the ledger", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-d45-promote-envelope-"));
+    const executor = { execute: vi.fn().mockImplementation(async (input: DexMemoriaV2ExecutionInput) => committedReceipt(input.operation_request, input.candidate)) };
+    const engine = new FlowEngine(configuredStore(), undefined, { memory_writer: configuredWriter(executor) });
+    const flow = await engine.createFlow({ goal: "Promover candidato classificado por tema com envelope completo" });
+    flow.gold_mining = ["Conhecimento profundo do tema d45 que já nasce classificado com destino tema."];
+    await engine.store.saveFlow(flow);
+    const mined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "classify_only",
+      v2_destinations: [{ scope: "theme", theme: "d45-tema" }],
+      v2_density: "light",
+      v2_tags: TEST_TAGS
+    }) as any;
+    const candidateId = mined.candidates[0].candidate_id as string;
+
+    await engine.resolveMemoryCandidates({
+      flow_id: flow.flow_id,
+      candidate_ids: [candidateId],
+      action: "promote",
+      rationale: "Tema classificado no mining; promote não repete destino manual."
+    });
+
+    const persisted = await engine.store.loadFlow(flow.flow_id);
+    const resolution = persisted.memory_candidate_resolutions![0]!;
+    expect(resolution.theme).toBe("d45-tema");
+    expect(resolution.candidate_destinations).toEqual([{ scope: "theme", theme: "d45-tema" }]);
+
+    const remined = await engine.mineMemory({
+      flow_id: flow.flow_id,
+      write_policy: "classify_only",
+      v2_destinations: [{ scope: "theme", theme: "d45-tema" }],
+      v2_density: "light",
+      v2_tags: TEST_TAGS
+    }) as any;
+    const candidate = remined.candidates.find((item: any) => item.candidate_id === candidateId);
+    expect(candidate.effective_action).toBe("promote");
+    expect(candidate.resolution).toMatchObject({
+      candidate_id: candidateId,
+      action: "promote",
+      theme: "d45-tema"
+    });
+  });
+
 });
 
 function routesFor(request: DexMemoriaV2OperationRequest) {

@@ -71,6 +71,7 @@ arquivo é a projeção pública versionada; as fotografias internas completas
 | D-42 | Corte de rede por módulo (fila da régua D-41): des-export de helper sem consumidor externo (função permanece; typecheck é o RED) + sondar a suíte por CAMPO antes de declarar lacuna (T25c já vigiava os 6 ramos; 0 lacunas comportamentais) — 26a/0b/9c + 1 ref nominal | `rg -c "^export" src/fiscal-blockers.ts` → 39 | 2026-11-12 · rede fiscal-blockers · flow 4621 |
 | D-43 | Segundo corte de rede (gate-resolution): sonda por CAMPO validada ao vivo (mergePathFacts: 0 por nome interno → evidência dupla pelo campo certo) — 17a/0b/10c, 0 testes novos (CRP no núcleo de todo advance); des-export 10/10 | `rg -c "^export" src/gate-resolution.ts` → 25 | 2026-11-12 · rede gate-resolution · flow 4651 |
 | D-44 | Terceiro corte de rede (meeting-policy): MUTAÇÃO SOBREVIVENTE virou teste (requiredMeetingKind "sempre transversal" passou 232/232 — escada podia regressar; it paga e re-mutação falha); 5 amostras congeladas (classe BASELINE-RED); des-export 14/14 (40→26) | `rg -c "^export" src/meeting-policy.ts` → 26 | 2026-11-12 · rede meeting-policy · flow 4679 |
+| D-45 | Quarto corte de rede (memory-promotion): mutações LITERAIS 10/11 PEGAS (a 1ª rodada regex-era 10 falsos sobreviventes — replace silencioso); 5 its pagam 7 lacunas (M2 pré-coberto l.1439); M8 (b) declarada (embed inline no engine) | `rg -c "^export" src/memory-promotion.ts` → 30 | 2026-11-13 · rede memory-promotion · flow 4707 |
 
 *(D-05 nunca foi atribuído — lacuna declarada, não fabricada.)*
 
@@ -456,6 +457,22 @@ CAMPO (lição D-42) achou cobertura citável nos 17 vivos; 0 lacunas; o módulo
   quase pagou de novo por nome de variável interna); liveness acumulada
   (19 des-exports fora do denominador) monitorada — flag é corte próprio.
 
+
+
+## D-45 — corte de rede memory-promotion: incidente do harness + vacina literal
+
+ **Duvida comum**: "mutação de amostra sobrevivente prova lacuna?" → só se a mutação
+ EXISTIU no disco. O gerador regex-de-assinatura do corte falhou SILENCIOSAMENTE
+ (`str.replace` sem match = arquivo intocado) e reportou 10/10 sobreviventes falsos.
+
+- **O que**: TABELA 18 (16a · 1b declarada · 1c des-export do type); 11 mutações
+  literais verificadas (10 PEGAS + M8 real); 5 its novos; suíte 918.
+- **Onde**: `.agents/AUDITORIAS/2026-11-13-rede-memory-promotion/TABELA.md`;
+  REDE.md rodada 5 (…→107 sem ref); gatilho REDE-CORTE-POR-MODULO emendado.
+- **Regra reutilizável**: mutação de amostra = LITERAL curto com count==1 +
+  releitura viva do disco (e nunca confiar em 'sobrevivente' sem a prova de que a
+  mutação existiu); citação por mensagem de erro exige a FONTE da mensagem
+  (config.ts vs memory-promotion: a sonda l.38 era fantasma).
 
 ## D-44 — corte de rede meeting-policy: assert exato + amostras pegas
 

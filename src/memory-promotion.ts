@@ -20,7 +20,7 @@ import { isWritableCandidate, memoryCandidateLedgerData } from "./memory/mining-
 import { errorMessage, requireText, unique } from "./lang-utils.js";
 import { sameRuntimePath } from "./config.js";
 
-export type V2CommittedBoundaryError = Error & {
+type V2CommittedBoundaryError = Error & {
   v2_committed_effect: true;
 };
 

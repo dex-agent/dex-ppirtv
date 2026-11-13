@@ -1,3 +1,18 @@
+## Reavaliação — corte de rede memory-promotion: 18 por evidência + incidente do harness (D-45), 2026-11-13
+
+- **Deltas do corte**: `src/memory-promotion.ts` (des-export do type
+  V2CommittedBoundaryError, 31→30 exports; comportamento intocado — typecheck exit 0) e
+  `tests/flow-engine-dex-memoria-v2.test.ts` (+5 its D-45 de caracterização; 59/59 no
+  arquivo; suíte 914 passed + 4 skipped = 918, provenance viva re-rodada).
+- **Rede por evidência**: 16 (a) · 1 (b) declarada (memoryCandidateLedgerDataWithResolution
+  — embed mora inline no engine l.1831, cena clássica não observável; dívida
+  $tio-testador) · 1 (c). 11 mutações LITERAIS (count==1 + viva no disco): 10 PEGAS
+  (M5 22f, M6 10f, M10 6f, demais 1f) + M8 sobrevivente real.
+- **Incidente do harness pago ao vivo**: 1ª rodada de mutações (gerador regex de
+  assinatura) reportou 10/10 sobreviventes FALSOS — `str.replace` sem match não aplica
+  nada; vacina da classe no gatilho REDE-CORTE-POR-MODULO (literal verificado + releitura
+  do disco). Régua: 108→107 sem ref (TOTAL 55/167 code).
+
 ## Reavaliação — D-44 EMENDADO pela adversarial, 2026-11-12
 
 - requiredMeetingKind = LACUNA REAL (mutação sobrevivente 232/232) → it novo

@@ -277,9 +277,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "d61129d",
-  "tree_hash": "350755a9f636b00a9730a746f3eac6528e7908e5",
-  "generated_at": "2026-11-12T22:17:43Z",
+  "head": "6159a3a9a8449c94f6c4f721ed4d26774bf0a8cf",
+  "tree_hash": "9638fcb6973c6e3caae4041aea799d5116b088ae",
+  "generated_at": "2026-11-13T15:17:27Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -298,12 +298,12 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 909,
+    "passed": 914,
     "failed": 0,
     "skipped": 4,
-    "files": 73,
-    "total": 913,
-    "command": "npm run check (audit:canonical + check:flow-engine + check:capacity + build + check:types + vitest; exit 0)"
+    "total": 918,
+    "files": 72,
+    "command": "npx vitest run (sessão D-45 2026-11-13: 914 passed | 4 skipped (918); check:types/build verdes; audit:canonical/flow-engine/capacity no fechamento)"
   },
   "tools_count": 32,
   "capabilities": [
@@ -1416,5 +1416,16 @@
   "reavaliacao_d43_rede_gate_resolution": "src/gate-resolution.ts: DES-EXPORT dos 10 sem consumidor externo (DOCUMENT_FILE_EXTENSIONS, GateResolutionInput, PROVIDED_REQUIREMENT_KINDS, PROVIDED_REVIEW_INPUT_KEYS, ProvidedRequirementDiagnostic, ProvidedRequirementKind, ReviewEvidenceDiagnostics, gateSnapshotMatches, hasCurrentStructuredReview, isDocumentalFile) — 35->25 exports, typecheck exit 0, comportamento intocado; TABELA 27 por sonda de CAMPO (17a/0b/10c; mergePathFacts com evidência DUPLA pelo campo certo); 0 testes novos (CRP no núcleo de todo advance); régua 8/25, TOTAL 53/182 code, 124 sem ref; suíte 911 = 907+4.",
   "reavaliacao_d43_emenda": "EMENDA adversarial D-43 (2P1+4P2+3P3): 2 mutacoes de amostra executadas (canonicalVerdict->1 failed; reviewCurrencyMissing->2 failed — ramos vigiados com prova viva); mergePathFacts era lacuna de ASSERT real -> it novo de caracterizacao dos 3 ramos + mutacao de vigilia (fallback->1 failed, restaurado 29 passed); citacoes fantasma corrigidas (meeting-policy/gate-provided-removed; assert exato engine l.~3162); nota honesta: encolhimento parcial por cirurgia de denominador (-19 des-exports acumulados); regua final 54/182 code, 123 sem ref (it novo pagou 1 nominal); suite 912 = 908+4 (provenance).",
   "reavaliacao_d44_rede_meeting_policy": "src/meeting-policy.ts: DES-EXPORT dos 14 sem consumidor externo (40->26 exports, typecheck exit 0, comportamento intocado) + P3 textual da Onda 3 item 6 pago (reason do gatilho; 0 asserts no reason); TABELA 29 com assert exato por linha (15a/0b/14c); 2 mutacoes de amostra EXECUTADAS e PEGAS (hasVerdictRecordedAfterIndex->true = 3 failed; meetingClosedLedgerData->null = 8 failed); 0 testes novos; regua 54/168 code, 109 sem ref; suite 912 = 908+4.",
-  "reavaliacao_d44_emenda": "EMENDA adversarial D-44 (2P1+5P2+6P3): requiredMeetingKind = LACUNA REAL (citacao fantasma + mutacao sempre-transversal SOBREVIVEU 232/232) -> it novo caracteriza a escada + re-mutacao FALHA; 5 mutacoes de amostra congeladas em MUTACOES/ (classe BASELINE-RED); citacoes fantasma corrigidas em 6 linhas; contradição do scope emendada (reason = comportamento observável por ESCOTEIRO-ONDA); degrau fantasma 124 corrigido; regua 55/168 code, 108 sem ref; suite 913 = 909+4."
+  "reavaliacao_d44_emenda": "EMENDA adversarial D-44 (2P1+5P2+6P3): requiredMeetingKind = LACUNA REAL (citacao fantasma + mutacao sempre-transversal SOBREVIVEU 232/232) -> it novo caracteriza a escada + re-mutacao FALHA; 5 mutacoes de amostra congeladas em MUTACOES/ (classe BASELINE-RED); citacoes fantasma corrigidas em 6 linhas; contradição do scope emendada (reason = comportamento observável por ESCOTEIRO-ONDA); degrau fantasma 124 corrigido; regua 55/168 code, 108 sem ref; suite 913 = 909+4.",
+  "reavaliacao_d45_rede_memory_promotion": {
+    "data": "2026-11-13",
+    "delta": [
+      "src/memory-promotion.ts (des-export type V2CommittedBoundaryError 31→30 exports; typecheck exit 0)",
+      "tests/flow-engine-dex-memoria-v2.test.ts (+5 its D-45; 59/59)"
+    ],
+    "decision": "16 (a) · 1 (b) declarada (memoryCandidateLedgerDataWithResolution — embed inline no engine l.1831; dívida $tio-testador) · 1 (c)",
+    "mutacoes_literais": "11 executadas (count==1 + viva no disco): 10 PEGAS (M5 22f, M6 10f, M10 6f, demais 1f) + M8 sobrevivente real",
+    "incidente_harness": "1ª rodada regex-assinatura: 10 falsos sobreviventes (replace sem match); vacina: literal verificado + releitura do disco (gatilho REDE-CORTE-POR-MODULO)",
+    "regua": "108→107 sem ref; TOTAL 55/167 code"
+  }
 }
