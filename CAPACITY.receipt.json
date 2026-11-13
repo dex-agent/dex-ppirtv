@@ -305,9 +305,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "dcbf7e5c7c0147b87947e5ac51513c162143ba1a",
+  "head": "99b435632b26e909eb38548aff50ac1f07e6c422",
   "tree_hash": "682061ce2089c2cfbb23f85eb5c281847d26e1ab",
-  "generated_at": "2026-11-13T23:49:52Z",
+  "generated_at": "2026-11-13T23:50:36Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"

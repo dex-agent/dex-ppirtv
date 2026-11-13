@@ -1958,7 +1958,9 @@
       "red_command": "cd C:/CodexProjetos/dex-PPIRTV && npx vitest run tests/goal-status-binding-drift.test.ts -t 'lean expoe spt_binding_integrity drifted quando o SPT diverge do fingerprint registrado; full mostra registered x current'",
       "evidence_selectors": {
         "tests/goal-status-binding-drift.test.ts": "lean expoe spt_binding_integrity drifted quando o SPT diverge do fingerprint registrado; full mostra registered x current"
-      }
+      },
+      "commit": "99b435632b26e909eb38548aff50ac1f07e6c422",
+      "parent_commit": "d4f86f556b18134a752e8b0677e4b64539ea1c85"
     }
   ]
 }

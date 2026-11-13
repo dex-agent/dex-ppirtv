@@ -1710,8 +1710,8 @@ nominal nos outros módulos (relatório, não gate — ver REDE.md rodada 8).
 full — honesto; lean permanece só drifted (byte-zero para a frota).
 
 **Selagem do camping:** o record FE-2026-11-13-ISSUE0019 (causal completo)
-nasceu no commit selador `dcbf7e5` (junto do target, sem campo `commit` — sha
-não existe antes); o commit seguinte apenas preenche `commit=dcbf7e5` +
+nasceu no commit selador `99b4356` (junto do target, sem campo `commit` — sha
+não existe antes); o commit seguinte apenas preenche `commit=99b4356` +
 `parent_commit=d4f86f5` no ledger (selagem pós-commit legítima,
 `evaluateCommitSealDiff`). Zero delta de capacidade — mesma fotografia do
 bloco issue19.
