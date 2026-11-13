@@ -15,7 +15,7 @@ Pergunta que este livro responde: **tenho a capacidade X, qual script uso, como 
 
 Gerado pelo motor `dex-toolsbook` a partir do codigo de cada script (docstring + argparse). Escopo: `tools/`, `scripts/`.
 
-**Universo declarado:** 19 ferramenta(s) no livro · fora do escopo: tests 77, src 56, .zcode 52, skills 8, (raiz) 2, workflow 2, docs 1, spt-kit 1.
+**Universo declarado:** 19 ferramenta(s) no livro · fora do escopo: tests 78, src 56, .zcode 52, skills 8, (raiz) 2, workflow 2, docs 1, spt-kit 1.
 Motor: `~/.agents/skills/dex-toolsbook/scripts/toolsbook.py` (ou o shim do repo) — no lugar de `<motor>` nos comandos abaixo.
 Frescor: `python -B <motor> --repo "C:/CodexProjetos/dex-PPIRTV" --dirs tools,scripts --check` (exit 2 = drift).
 Mapa de territorio por arquivo: [`INDEX.md`](INDEX.md).

@@ -1,5 +1,19 @@
 {
   "schema": "dex.capacity.snapshot.v1",
+  "reavaliacao_issue19_goal_status_binding_drift": {
+    "date": "2026-11-13",
+    "scope": [
+      "src/flow-engine.ts",
+      "src/provenance-trace.ts",
+      "tests/goal-status-binding-drift.test.ts"
+    ],
+    "delta": "Issue #19: goal_status expoe spt_binding_integrity (lean condicional drifted + full completo) com reuso total de classifyFlow via wrapper sptBindingIntegrityFor; RED-first 2/2; camping EXCEPTION public_compatibility; suíte 947->949.",
+    "evidence": [
+      "npx vitest run tests/goal-status-binding-drift.test.ts -> 2/2 (RED provado antes)",
+      "npx tsc --noEmit -p tsconfig.json -> exit 0",
+      "npm run check:flow-engine -> record no ledger (marker FE-2026-11-13-ISSUE0019)"
+    ]
+  },
   "reavaliacao_d48_rede_review_snapshot": {
     "date": "2026-11-13",
     "scope": [
@@ -291,9 +305,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "65a0a8002444bef958ab7048b118c1147acd7d76",
+  "head": "dcbf7e5c7c0147b87947e5ac51513c162143ba1a",
   "tree_hash": "682061ce2089c2cfbb23f85eb5c281847d26e1ab",
-  "generated_at": "2026-11-13T20:20:54Z",
+  "generated_at": "2026-11-13T23:49:52Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -312,12 +326,12 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 934,
+    "passed": 945,
     "failed": 0,
     "skipped": 4,
-    "total": 938,
-    "files": 72,
-    "command": "npx vitest run (sessao D-47 2026-11-13: 934 passed | 4 skipped (938); +20 its; tsc exit 0)"
+    "total": 949,
+    "files": 74,
+    "command": "npx vitest run (sessao ISSUE-19 2026-11-13: 945 passed | 4 skipped (949); +2 its goal-status-binding-drift; emenda types D-47; tsc tests exit 0)"
   },
   "tools_count": 32,
   "capabilities": [

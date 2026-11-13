@@ -10,9 +10,9 @@ import {
   evidenceRequirementProjection,
   qualifyCriterionProof,
   requiresGoalEvidence,
-  taskProjection,
-  type CriterionProofInput
+  taskProjection
 } from "../src/spt-traceability.js";
+import type { CriterionProofInput } from "../src/domain.js";
 import {
   buildProofSkeletons,
   expandDeclarativeProof,

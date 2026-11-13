@@ -56,6 +56,7 @@ import { missingValidationDiagnostic, runtimeWorkspaceMismatchDiagnostic, SptPat
 import { assertCriterionProofRevisionCurrent, criterionProjection, evidenceRequirementProjection, assertSptV3PositiveVerdictCoverage, assertCriterionProofAdmission, sptTraceabilityReattachedEventData, taskProjection, traceabilityFromContract } from "./spt-traceability.js";
 import { requiresGoalEvidence } from "./spt-traceability.js";
 import { unique, stringArray, uniqueCooperators } from "./lang-utils.js";
+import { sptBindingIntegrityFor } from "./provenance-trace.js";
 import { freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
 import { applyReviewScopeAttributions, attributedVerdictSnapshot, bindReviewScopeAttribution, prepareVerdictSnapshot, type GoalVerdictInput } from "./review-scope-attribution.js";
 import { normalizeRecallConsumptionInput, sameRecallReferences, validateRecallConsumptionReferences, type RecallConsumptionInput } from "./memory/recall-consumption-contract.js";
@@ -643,9 +644,21 @@ export class FlowEngine {
     // Issue #10 review-fixes: diagnostico de binding SPT v3 em UMA fonte
     // (SRP) compartilhada por lean (default da frota) e compact/full — 2
     // escalares, sem PII; sem isso o consumidor natural nao distingue orfao.
+    // Issue #19: drift de fingerprint do contrato SPT na MESMA fonte unica
+    // do #10 — computacao reusada do trace (classifyFlow via wrapper); lean
+    // ganha 2 escalares SOMENTE quando drifted (economia frota), full
+    // recebe o objeto completo.
+    const sptBindingIntegrity = await sptBindingIntegrityFor(
+      this.store,
+      flow,
+      path.resolve(this.store.runtimePaths.projectRoot)
+    );
     const sptBindingStatus = {
       spt_contract_version: flow.spt_contract_version ?? null,
-      spt_traceability_present: Boolean(flow.spt_traceability)
+      spt_traceability_present: Boolean(flow.spt_traceability),
+      ...(sptBindingIntegrity.status === "drifted"
+        ? { spt_binding_integrity: { status: sptBindingIntegrity.status, reason_code: sptBindingIntegrity.reason_code } }
+        : {})
     };
     // DT-04 (pragmatic/chato): detail "lean" retorna apenas nucleo do status
     // (fase, status, blockers, next_step, display, aliases) sem montar
@@ -926,6 +939,7 @@ export class FlowEngine {
       current_verdict: currentVerdict,
       goal_envelope: flow.goal_binding?.envelope ?? null,
       ...sptBindingStatus,
+      spt_binding_integrity: sptBindingIntegrity,
       aliases: checklistStatus.aliases,
       display: {
         ...checklistStatus.display,

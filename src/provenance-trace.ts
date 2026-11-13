@@ -179,6 +179,17 @@ export async function tracePpirtvArtifact(
   );
 }
 
+// Issue #19: expoe a integridade do binding SPT (drift/coherent/legacy/
+// unverifiable/not_applicable) para o goal_status — mesma computacao viva do
+// trace, sem classificacao duplicada. Early-return sem IO quando sem binding.
+export async function sptBindingIntegrityFor(
+  store: PpirtvStore,
+  flow: Flow,
+  projectRoot: string
+): Promise<PpirtvTraceBindingIntegrity> {
+  return (await classifyFlow(store, flow, projectRoot)).bindingIntegrity;
+}
+
 async function classifyFlow(store: PpirtvStore, flow: Flow, projectRoot: string): Promise<ClassifiedFlow> {
   const binding = flow.goal_binding;
   const flowRole = traceFlowRole(binding?.flow_role);

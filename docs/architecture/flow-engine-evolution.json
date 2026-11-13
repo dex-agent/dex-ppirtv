@@ -1928,6 +1928,37 @@
       },
       "commit": "8f677b4857cc904a58c1dcf716498ad09c8953a9",
       "parent_commit": "9a8d2c2628dbbb9c6763e9b5e9492700567568b3"
+    },
+    {
+      "id": "FE-2026-11-13-ISSUE0019-GOAL-STATUS-BINDING-DRIFT-EXCEPTION",
+      "date": "2026-11-13",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-13-issue19-goal-status-binding-drift.md",
+      "owner": "$oraculo-refatoracao",
+      "mode": "EXCEPTION",
+      "exception_reason": "public_compatibility",
+      "expires": "2026-11-20",
+      "base_blob": "1ee9df79610ef2d3b8992967a7a29f3ab5bea71e",
+      "head_blob": "9e83d595849c71bc99f0ba9b0e8e17861fccfd0a",
+      "responsibility": "exposicao do binding drift do SPT no goal_status (issue #19): a classificacao mora em classifyFlow (provenance-trace, fonte unica reusada via wrapper sptBindingIntegrityFor); o monolito ganhou so a extensao da fonte unica do #10 (sptBindingStatus: lean condicional drifted com 2 escalares; full recebe o objeto completo) — sem logica nova de classificacao no motor",
+      "changelog_marker": "FE-2026-11-13-ISSUE0019-GOAL-STATUS-BINDING-DRIFT-EXCEPTION",
+      "architecture_marker": "FE-2026-11-13-ISSUE0019-GOAL-STATUS-BINDING-DRIFT-EXCEPTION",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "RED 2/2 provado antes (campo inexistente)",
+        "GREEN 2/2 com a exposicao",
+        "npx tsc --noEmit exit 0",
+        "cena real flow 2252 AprendizadoConsultado (issue #19)"
+      ],
+      "rollback": "revert do commit selador 5fbabfb (git revert) restaura goalStatus sem spt_binding_integrity; o wrapper sptBindingIntegrityFor e export novo isolado no provenance-trace — removivel sem consumidor restante",
+      "red_evidence": "tests/goal-status-binding-drift.test.ts::lean expoe spt_binding_integrity drifted quando o SPT diverge do fingerprint registrado; full mostra registered x current",
+      "red_base_blob": "1ee9df79610ef2d3b8992967a7a29f3ab5bea71e",
+      "red_observed_failure": "RED 2/2 provado ANTES da implementacao: lean.spt_binding_integrity undefined (campo inexistente) — toEqual falha nos 2 its (drift e coerente)",
+      "red_command": "cd C:/CodexProjetos/dex-PPIRTV && npx vitest run tests/goal-status-binding-drift.test.ts -t 'lean expoe spt_binding_integrity drifted quando o SPT diverge do fingerprint registrado; full mostra registered x current'",
+      "evidence_selectors": {
+        "tests/goal-status-binding-drift.test.ts": "lean expoe spt_binding_integrity drifted quando o SPT diverge do fingerprint registrado; full mostra registered x current"
+      }
     }
   ]
 }

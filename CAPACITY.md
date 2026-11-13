@@ -1693,3 +1693,31 @@ flowchart LR
 
 **Limites:** 4 skipped condicionais de ambiente (herdados); restam 95 sem ref
 nominal nos outros módulos (relatório, não gate — ver REDE.md rodada 8).
+
+## Reavaliação 2026-11-13 — issue #19: goal_status expõe binding drift do SPT
+
+> Delta do worktree sobre o HEAD `d4f86f5`. TOCA `src/` (flow-engine +
+> provenance-trace) — corte de PRODUTO com Trilho + RED-first + camping.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| Contrato público goal_status | lean expõe `spt_binding_integrity {status, reason_code}` SOMENTE quando drifted (economia frota); full expõe objeto completo (fields_compared registered×current) | tests/goal-status-binding-drift.test.ts 2/2 (RED→GREEN) |
+| Motor | +15 linhas não-vazias no goalStatus (fonte única do #10 estendida) + wrapper 8 linhas no provenance-trace; classifyFlow INTACTO | git diff d4f86f5..HEAD; camping EXCEPTION public_compatibility |
+| Suíte | 947→949 (2 its novos) | npx vitest run (re-rodada no fechamento) |
+| Custo | +1 read do SPT por goal_status com binding (early-return sem IO quando ausente) | Trilho risks |
+
+**Limites:** cenas `unverifiable` (spt_path_missing etc.) expõem status no
+full — honesto; lean permanece só drifted (byte-zero para a frota).
+
+**Selagem do camping:** o record FE-2026-11-13-ISSUE0019 (causal completo)
+nasceu no commit selador `dcbf7e5` (junto do target, sem campo `commit` — sha
+não existe antes); o commit seguinte apenas preenche `commit=dcbf7e5` +
+`parent_commit=d4f86f5` no ledger (selagem pós-commit legítima,
+`evaluateCommitSealDiff`). Zero delta de capacidade — mesma fotografia do
+bloco issue19.
+
+**Emenda D-47 herdada (mesma levada):** union `method` ganha `"measurement"`
+(1 token em `src/domain.ts` — o runtime tem o case vivo l.454; o tipo negava o
+contrato executável) + teste importa `CriterionProofInput` da fonte (domain).
+Prova: tsc tests exit 0 (3 erros→0) + suíte re-rodada **945+4 (949), 74
+arquivos** (`npx vitest run`, 130s).

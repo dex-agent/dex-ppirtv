@@ -118,7 +118,7 @@ export type SptV3Requirement = {
 export type SptV3EvidenceRequirement = {
   id: string;
   proves: string[];
-  method: "command" | "test" | "inspection" | "receipt" | "review";
+  method: "command" | "test" | "inspection" | "receipt" | "review" | "measurement";
   procedure: string;
   expectation: SptEvidenceExpectation;
 };
