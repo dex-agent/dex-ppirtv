@@ -36,7 +36,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Módulos da maratona (Ondas 1-7) — um por linha; adicione ao extrair onda nova.
 # Nota: mining-policy foi absorvido pela memory-promotion (Onda 7 fecha as famílias).
+# D-50 (2026-11-14): série ampliada além da maratona — domain.ts é o maior módulo
+# nunca varrido (80 exports). Próximos candidatos medidos: principles 31,
+# ppirtv-checkin 21, config 20.
 MARATHON_MODULES = [
+    "domain",
     "fiscal-blockers",
     "gate-resolution",
     "meeting-policy",

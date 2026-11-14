@@ -321,9 +321,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "b39c009f1f57aa8b96a1bb9ca5b9b9c9587dfbf6",
+  "head": "b07daf19083b963889685c9032b2f4db9c57960e",
   "tree_hash": "682061ce2089c2cfbb23f85eb5c281847d26e1ab",
-  "generated_at": "2026-11-14T18:47:55Z",
+  "generated_at": "2026-11-14T23:07:32Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -342,12 +342,13 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 952,
+    "passed": 956,
     "failed": 0,
     "skipped": 4,
-    "total": 956,
+    "total": 960,
     "files": 75,
-    "command": "npx vitest run (sessao D-49 2026-11-14: 952 passed | 4 skipped (956); +7 its rede-d49; tsc tests exit 0)"
+    "command": "npx vitest run (sessao D-49 2026-11-14: 952 passed | 4 skipped (956); +7 its rede-d49; tsc tests exit 0)",
+    "test_files": 76
   },
   "tools_count": 32,
   "capabilities": [
@@ -1492,5 +1493,8 @@
     "delta": "tests/spt-declarative-proof.test.ts (+20 its D-47: 7 ownership codigo+detail, 8 provenance codigo, 1 measurement, 1 projecoes, 1 requiresGoalEvidence, 1 stale admissao, helper) + tools/mutacao-amostra.py CURADO (INVALIDO silencioso -> veredito incondicional via _ciclo; emendas adversarial: fronteira \breturn\b, span_heuristico p/ void-throw-only, ancoras, guards anti-no-op/viva) + tools/TOOLSBOOK.md regen + AUDITORIAS 2026-11-13-rede-spt-traceability (TABELA 7a/6b-PAGAS/2c, PROVA, MUTACOES, CONSOLIDADO)",
     "suite": "934 passed + 4 skipped (938) re-rodada na sessao; arquivo-alvo 29/29; tsc exit 0; 9/9 vigias PEGA",
     "regua": "spt-traceability 2/15->8/15 code (13->7 sem ref); TOTAL 61/167 code, 101 sem ref (maior salto da serie)"
+  },
+  "scope": {
+    "bloco": "d50"
   }
 }

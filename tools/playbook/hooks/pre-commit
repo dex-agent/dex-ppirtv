@@ -30,20 +30,24 @@ if git diff --cached --name-only | grep -qE '^(src|tests|scripts|workflow|tools)
   fi
 fi
 
-# TOOLSBOOK fresh gate (R18 — dex-toolsbook, instanciação 2026-11-13): o índice
-# por INTENÇÃO (tools/TOOLSBOOK.md) não pode driftar das ferramentas do escopo
-# (tools/ + scripts/). O motor mora na skill (padrão TOOLS-FAMILIA-REUSO-GLOBAL:
-# o repo não copia os módulos); máquina de frota sem a skill pula com aviso —
-# travar commit por falta de ferramenta é autossabotagem (P10).
+# TOOLSBOOK fresh gate (R18 — dex-toolsbook; REAPARELHADO ao contrato
+# dex.toolsbook.v2 em 2026-11-14, pagando a parte do repo da ISSUE-LOCAL-0010):
+# commit que toca ferramenta (tools/|scripts/) exige o livro STRUCTURAL_FRESH
+# (--check valida sources path->sha256 do working_tree). O gate valida o DISCO,
+# não o staged: janela paralela que commita ferramenta com o livro do disco já
+# atualizado não trava; o TOOLSBOOK.json viaja no commit do livro. Motor mora
+# na skill (TOOLS-FAMILIA-REUSO-GLOBAL); frota sem o contrato v2 (--card ausente
+# no --help) pula com aviso — travar commit por falta de ferramenta é
+# autossabotagem (P10).
 TOOLSBOOK_PY="${HOME:-$USERPROFILE}/.agents/skills/dex-toolsbook/scripts/toolsbook.py"
-if [ -f "$TOOLSBOOK_PY" ] && python -B "$TOOLSBOOK_PY" --help 2>&1 | grep -q -- '--dirs'; then
-  python -B "$TOOLSBOOK_PY" --repo . --dirs tools,scripts --check || exit 1
+if [ -f "$TOOLSBOOK_PY" ] && python -B "$TOOLSBOOK_PY" --help 2>&1 | grep -q -- '--card'; then
+  if git diff --cached --name-only | grep -qE '^(tools|scripts)/'; then
+    # RAIZ (GO do dono 2026-11-14): fonte autorada e projeções moram na raiz
+    # do repo — tools/TOOLSBOOK.json foi migrado para TOOLSBOOK.json.
+    python -B "$TOOLSBOOK_PY" --repo . --check TOOLSBOOK.json || exit 1
+  fi
 else
-  # ISSUE-LOCAL-0010 (2026-11-14): o motor da skill mudou de contrato fora do
-  # repo (--gerar/--dirs/--check-frescor saíram); enquanto o gate não é
-  # reaparelhado, aviso não-bloqueante (P10) — drift do índice é dívida
-  # declarada no TRACKER, não motivo para travar commit.
-  echo "TOOLSBOOK GATE (aviso): motor dex-toolsbook sem modo frescor (--dirs) — índice por intenção não conferido neste commit (ISSUE-LOCAL-0010)"
+  echo "TOOLSBOOK GATE (aviso): motor dex-toolsbook sem contrato v2 (--card) — livro por intenção não conferido neste commit (ISSUE-LOCAL-0010)"
 fi
 
 # DUPLICACAO-DELTA GATE (Trilho 2026-11-14-precommit-duplicacao-delta; receita da

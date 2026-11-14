@@ -1,3 +1,16 @@
+
+
+## Reavaliação — D-50 domain.ts + TOOLSBOOK v2 (2026-11-14)
+
+- Suíte medida na sessão: **956 passed | 4 skipped (960), 76 arquivos**
+  (`npx vitest run tests/`, 2 medidas — a segunda para o número citável).
+- Typecheck: `tsc -p tsconfig.json` OK + `tsc -p tsconfig.tests.json` OK
+  (após remoção do NEXT_PHASE morto).
+- Régua rodada 10: TOTAL **93/246 code, 149 sem ref** (domain 18/79).
+- TOOLSBOOK v2 na raiz: `--check` structural_fresh exit 0.
+- Deltas: src/domain.ts (−NEXT_PHASE, +comentário), tests/domain-rede-d50.test.ts
+  (+4 its), tools/test-symbol-coverage.py (+domain), tools/playbook/hooks/pre-commit
+  (gate 4 v2), TOOLSBOOK.json/.md/.index.md (raiz), tools/TOOLSBOOK.md removido.
 ## Reavaliação — pre-commit duplicação-delta: 5º gate do hook (2026-11-14)
 
 - **Deltas**: `tools/check-duplicacao-delta.py` NOVO (gate de commit

@@ -690,14 +690,9 @@ export type HygieneFinding = {
   sensitive_content_read?: boolean;
 };
 
-export const NEXT_PHASE: Record<Phase, Phase | null> = {
-  pensamentos: "planejamento",
-  planejamento: "implementacao",
-  implementacao: "revisao",
-  revisao: "teste",
-  teste: "validacao",
-  validacao: null
-};
+// D-50 (2026-11-14): NEXT_PHASE removido — const morto (rg zero consumidores em
+// src/tests; coreografia de fase vive no motor/phase-profile). DEFAULT_BACK_TO
+// segue vivo (presentation.ts importa).
 
 export const DEFAULT_BACK_TO: Record<Phase, Phase | null> = {
   pensamentos: null,

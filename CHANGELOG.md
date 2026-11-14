@@ -8,6 +8,35 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+## D-50 — corte de rede domain.ts + TOOLSBOOK v2 (2026-11-14)
+
+### Corte de rede (nono; primeiro FORA da maratona; régua ganha `domain`)
+- `src/domain.ts`: 80 exports decididos — 14 (a) + 47 (c-import) + 14 (c-interno)
+  + 4 (b→PAGAS) + 1 morto removido (`NEXT_PHASE`, rg zero-consumidor; coreografia
+  de fase vive no motor). TABELA em `.agents/AUDITORIAS/2026-11-14-rede-domain/`.
+- Classe do corte: **unions cobertos por typecheck, COLEÇÕES sem assert** — 4 its
+  de caracterização (`tests/domain-rede-d50.test.ts`) + **4/4 vigílias PEGA**
+  (VERDICTS/DEFAULT_BACK_TO/GOAL_VERDICT_POLICIES/REQUIRED_RESOURCES);
+  DEFAULT_BACK_TO sobreviveu repo-wide pré-vigória (952/952).
+- 4 unions provados vivos por mutação-de-valor quebrar tsc
+  (REQUIRED_TOOLS/MEETING_TYPES/MEMORY_WRITE_POLICIES/PROMOTE_SCOPES).
+- Suíte **952→956 passed (960, 76 arq)**; régua rodada 10: TOTAL
+  **75→93/246 code, sem ref →149** (domain 18/79).
+- R6 (dex-duplicacao-codigo, método): `PipelineFlowStatus` redeclara `VERDICTS`
+  à mão + par-positivo inline 12× em 3 arquivos → estacionamento
+  $oraculo-refatoracao; pares const+type exemplares 10/10.
+
+### TOOLSBOOK v2 (paga ISSUE-LOCAL-0010)
+- `TOOLSBOOK.json` + projeções na **RAIZ** (GO do dono); `--check`
+  **structural_fresh exit 0**; gate 4 do pre-commit no contrato novo;
+  porta `AGENTS.md` sanitizada; `tools/TOOLSBOOK.md` v1 morto (história 65a0a80).
+
+### Emenda de rito (incidente lock stale)
+- Remoção de `.mutacao-amostra.lock` stale EXIGE `git diff <src>` antes de
+  liberar o lote (SIGKILL não tem finally; VERDICTS semeado ao vivo e
+  contaminou 2 runs — curado com `git checkout` bytes + 4 vigílias limpas).
+  Nunca vitest manual com lock ativo.
+
 - 2026-11-14 — **pre-commit duplicação-delta: 5º gate do hook anti-reescrever-função (vacina executável no chokepoint)** (Trilho `.agents/PLAN-TASKS/2026-11-14-precommit-duplicacao-delta.md`; GO do dono após a admissão da skill `dex-duplicacao-codigo` no registry — corte 3.502.0/cc2c18d5, que DOCUMENTA a receita; este corte IMPLANTA no repo consumidor): `tools/check-duplicacao-delta.py` consome o motor vivo `medir-duplicacao.py` da skill global `dex-complexidade-ciclomatica` (R6/R16 — zero medição própria, determinístico por hash de AST normalizada; R13: só `.py`, `test_*` fora por natureza) e BLOQUEIA commit cujo staged participa de grupo Type-2 ENTRE arquivos com as DUAS localizações (`arquivo:linha nome <-> arquivo:linha nome`); `tools/duplicacao-allowlist.json` versiona exceção com motivo (R10, schema `dex.duplicacao.allowlist.v1`); 5º bloco do `tools/playbook/hooks/pre-commit` com padrão P10 (motor ausente na frota = aviso, nunca trava — lição ISSUE-LOCAL-0010/CRG); motor doente = falha FECHADA com ação (nunca silêncio). **RED/GREEN provados ao vivo**: fixture Type-2 gerada por AST (clone de `span_simbolo` com identificadores trocados — mesmo hash por construção) → `--check` exit 1 com as 2 localizações (44L); par na allowlist → exit 0; **commit real com a fixture staged ABORTADO pelo hook** (evidências em `.agents/AUDITORIAS/EVIDENCIAS/2026-11-14-precommit-duplicacao-delta/`). Baseline do repo nasce VERDE: 6 .py/31 funções/0 grupos entre-arquivos (allowlist commitada vazia). Custo R17 medido: **0.274s**/commit com .py staged. Bug de nascimento pego na própria prova: o motor reporta BASENAME nos membros do grupo e o filtro inicial casava path completo = falso negativo — curado casando por basename (napkin). Suíte INALTERADA **956 (952+4)** medida 2×; `npm run check` exit 0 no fechamento; CAPACITY reavaliado (bloco precommit-dupli; gate PASS 36 capabilities); TOOLSBOOK.md segue em drift declarado ISSUE-LOCAL-0010 (motor v2 exige catálogo llm_authored — corte próprio).
 
 - 2026-11-14 — **D-49 · corte de rede fiscal-blockers: 39 símbolos decididos (14a-linha/14a-mutação/7b-PAGAS/4c) — 7 lacunas EMPATAM o recorde; régua 14→21/39 (TOTAL 68→75/167, 95→88 sem ref); BARATA do harness paga: âncora não casava GENERICS** (Trilho `2026-11-14-rede-fiscal-blockers.md`, flow 4955; GO do dono por aceite da recomendação $oraculo-refatoracao — grafo rico refatoracao-903e32aa 605n pela porta consulta-tema; behavioral PURO, flow-engine intocado — camping N/A): módulo 996L/39 exports (o maior monte pós-série D-42..D-48, 25 sem ref); consumers reais — flow-engine l.48 importa 31 símbolos + ppirtv-checkin 4 + memory-promotion 1 type + gate-resolution 0 (comentário) — **sem des-export**; **23 mutações válidas** (baseline focais 228/228 ANTES) + **8 repo-wide (74 arquivos)**: 14 PEGA focais + M21 `nextRequiredActionFor` focal NÃO via e **PEGA repo-wide** (mcp.test confere `resolve_blockers` — o repo-wide salvou, igual M6 do D-48) + **7 sobreviventes 74/74 TODOS pagos com 7 its** (`tests/fiscal-blockers-rede-d49.test.ts`) e **7/7 vigílias PEGA** (M4 failed=2; M19 failed=1): `lastIndexWhere` (varre de trás SEM pular índices — [2,9]→0 discrimina passo-2), `blockerLoopId` (normalização lower/underscore/trunc-90/unknown), `blockerDiagnosticsFor` (fonte `current_fiscal_policy` p/ blocker vivo só no fiscal ATIVO — diagnóstico por fontes NUNCA assertado), `fiscalBackTo` (fallback mode-aware full→pensamentos/compact→concepcao), `hasMemoryMiningRun` (evento memory_mined OU memory_mining.last_run_at), `hasHygieneScan` (só o evento, independe de bloquear), `latestLibrarianStatusFromLedger` (ÚLTIMO recall, não o primeiro nem o último evento); **BARATA DE CLASSE no harness**: âncora de símbolo `span_simbolo` não casava GENERICS (`lastIndexWhere<T>(` → "simbolo nao achado" FALSO) — emendada `(?:<(?:[^<>]|\{[^}]*\})*>)?` (2 pontos; backup .agents/TMP/mutacao-amostra.py.bak-261114); sem a emenda 2 lacunas + 1 PEGA eram invisíveis; **INCIDENTE do driver pago ao vivo**: lote-1 com `--simbolo X` placeholder → 23 runs INVALIDOS abortados NA GUARDA (zero mutação no disco — as vacinas do D-45 seguraram) e o driver imprimiu "23/23 PEGA" lendo campo `sobreviveu` INEXISTENTE do JSON = falso verde do EMISSOR (instância VACINA-DECLARADA-NAO-EXECUTADA; leitor corrigido exige `valido=True`); tropeços de mutação catalogados: literal com valor pré-existente no arquivo (slice(0,2) l.341 → "mutação não viva"), membro fora do union (TS2367/quebra-compilação → remutar membro VÁLIDO: error→info, default→empty), literal fora do span (heurística objetual → literal do INÍCIO da função); **vigília é o juiz**: 2 its iniciais não discriminavam (M4 passo-2 só erra quando o último match NÃO é o fim; M19 último recall precisa não ser o último evento) — emendados até PEGA; suíte 949→**956 (952+4 skipped)**, 75 arquivos; `npm run check` exit 0 no fechamento; CAPACITY reavaliado (bloco d49); régua rodada 9 no REDE.md.
