@@ -1,4 +1,20 @@
 {
+  "reavaliacao_precommit_duplicacao_delta": {
+    "date": "2026-11-14",
+    "scope": [
+      "tools/check-duplicacao-delta.py",
+      "tools/duplicacao-allowlist.json",
+      "tools/playbook/hooks/pre-commit"
+    ],
+    "delta": "5o gate do pre-commit: anti-duplicacao Type-2 (hash AST via motor da skill global; deterministico R16; allowlist R10; P10 frota). RED exit 1 com 2 localizacoes; GREEN-allowlist exit 0; commit abortado ao vivo; baseline 0 grupos; custo 0.274s. Suíte inalterada 952+4 (956).",
+    "evidence": [
+      "python -B tools/check-duplicacao-delta.py --check -> exit 1 (fixture Type-2: zz-fixture-duplicata.py:12 <-> mutacao-amostra.py:104, 44L)",
+      "python -B tools/check-duplicacao-delta.py --check (par na allowlist) -> exit 0 [allowlist]",
+      "npm test -> 952 passed | 4 skipped (956) — 128.72s",
+      "time gate --check (2 .py staged, 6 arquivos/31 funcoes) -> 0.274s",
+      "git commit com fixture staged -> ABORTADO pelo 5o gate (evidencia commit-abortado.txt)"
+    ]
+  },
   "schema": "dex.capacity.snapshot.v1",
   "reavaliacao_issue19_goal_status_binding_drift": {
     "date": "2026-11-13",

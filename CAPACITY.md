@@ -1,3 +1,24 @@
+## Reavaliação — pre-commit duplicação-delta: 5º gate do hook (2026-11-14)
+
+- **Deltas**: `tools/check-duplicacao-delta.py` NOVO (gate de commit
+  anti-duplicação Type-2; consome o motor vivo `medir-duplicacao.py` da skill
+  global `dex-complexidade-ciclomatica` por rota — R6/R16, zero medição
+  própria; R13: só .py) · `tools/duplicacao-allowlist.json` NOVA (schema
+  `dex.duplicacao.allowlist.v1`, par+motivo+desde — R10) · 5º bloco do
+  `tools/playbook/hooks/pre-commit` (padrão P10: motor ausente = aviso
+  não-bloqueante). Receita da skill `dex-duplicacao-codigo` (registry 3.502.0,
+  cc2c18d5); Trilho `.agents/PLAN-TASKS/2026-11-14-precommit-duplicacao-delta.md`.
+- **RED/GREEN provados ao vivo** (fixture Type-2 gerada por AST — clone de
+  `span_simbolo` com identificadores trocados): gate `--check` exit 1 com as
+  DUAS localizações (`zz-fixture-duplicata.py:12 fixture_clone_prova_red <->
+  mutacao-amostra.py:104 span_simbolo`, 44 linhas); com par na allowlist exit 0
+  (evidências em `.agents/AUDITORIAS/EVIDENCIAS/2026-11-14-precommit-duplicacao-delta/`).
+  Commit real com a fixture staged ABORTADO pelo hook (prova do chokepoint).
+- **Baseline verde**: 6 .py tracked / 31 funções / 0 grupos entre-arquivos
+  (allowlist commitada vazia). Custo medido R17: **0.274s**/commit com .py
+  staged. Bug de nascimento pego na prova: motor reporta BASENAME nos membros
+  — filtro do gate casa por basename (memorizado no napkin).
+
 ## Reavaliação — D-47 corte de rede spt-traceability (2026-11-13)
 
 - **Deltas**: `tests/spt-declarative-proof.test.ts` (+20 its: ownership com

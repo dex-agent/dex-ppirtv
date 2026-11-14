@@ -45,3 +45,14 @@ else
   # declarada no TRACKER, não motivo para travar commit.
   echo "TOOLSBOOK GATE (aviso): motor dex-toolsbook sem modo frescor (--dirs) — índice por intenção não conferido neste commit (ISSUE-LOCAL-0010)"
 fi
+
+# DUPLICACAO-DELTA GATE (Trilho 2026-11-14-precommit-duplicacao-delta; receita da
+# skill dex-duplicacao-codigo registry 3.502.0): commit que introduz/mantem
+# duplicata Type-2 ENTRE arquivos .py e BLOQUEADO com as duas localizacoes
+# (hash de AST normalizada — deterministico, nunca regex). O motor mora na skill
+# global dex-complexidade-ciclomatica (R6: o repo nao copia); excecao legitima =
+# tools/duplicacao-allowlist.json com motivo (R10). Frota sem a skill: aviso
+# nao-bloqueante (P10 — travar commit por falta de ferramenta e autossabotagem).
+if git diff --cached --name-only -- '*.py' | grep -q .; then
+  python -B tools/check-duplicacao-delta.py --check || exit 1
+fi
