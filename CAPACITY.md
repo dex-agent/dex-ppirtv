@@ -1721,3 +1721,20 @@ bloco issue19.
 contrato executável) + teste importa `CriterionProofInput` da fonte (domain).
 Prova: tsc tests exit 0 (3 erros→0) + suíte re-rodada **945+4 (949), 74
 arquivos** (`npx vitest run`, 130s).
+
+## Reavaliação 2026-11-14 — corte de rede fiscal-blockers (D-49; rodada 9)
+
+> Delta do worktree sobre o HEAD `b39c009`. TOCA `tests/` (7 its novos) e
+> `tools/` (emenda de âncora no harness) — corte BEHAVIORAL de rede com
+> Trilho + mutações congeladas + vigílias. `src/` INTOCADO.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| Rede de testes | +7 its de caracterização (`tests/fiscal-blockers-rede-d49.test.ts`); 7 lacunas (b) pagas com vigília 7/7 PEGA | MUTACOES/M*-vigia.json |
+| Harness | `tools/mutacao-amostra.py` âncora aceita generics (barata de classe; lastIndexWhere/withDirectAction eram inalcançáveis) | backup .agents/TMP/mutacao-amostra.py.bak-261114 |
+| Suíte | 949→956 (952+4 skipped), 75 arquivos — medida na sessão (144s) | npx vitest run |
+| Régua | fiscal-blockers 14→21/39 code; TOTAL 68→75/167, 95→88 sem ref | tools/test-symbol-coverage.py |
+| Auditoria | TABELA 39 + MUTACOES (23 válidas + 8 repo-wide + 7 vigílias) + REDE rodada 9 | .agents/AUDITORIAS/2026-11-14-rede-fiscal-blockers/ |
+
+**Limites:** 18 sem-ref restantes do módulo são os (a)-por-mutação já
+decididos (13) + (c) types com consumers vivos — sem lacuna pendente.

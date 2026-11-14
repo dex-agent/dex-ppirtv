@@ -19,7 +19,7 @@ desenho de mutação: mutar MENSAGEM/valor (guarda de fluxo `if (false) throw`
 mata narrowing → TS18048); mutação de VIGÍLIA precisa romper substring
 (sufixo `_MUT` preserva prefixo e escapa de toThrow por substring).
 
-4 VACINAS do incidente D-45 (10 falsos sobreviventes por str.replace sem match):
+Emenda D-49 (2026-11-14): ancora de simbolo aceita GENERICS (nome<T>(...)) — lastIndexWhere/withDirectAction eram inalcancaveis ("simbolo nao achado" falso). 4 VACINAS do incidente D-45 (10 falsos sobreviventes por str.replace sem match):
 (1) LITERAL curto com count==1 em todo o arquivo + leitura viva do disco;
 (2) VÍNCULO sítio↔símbolo: o literal deve cair DENTRO do span do símbolo;
 (3) GUARD de compilação: `tsc --noEmit` sobre o mutante ANTES do veredito —
@@ -109,12 +109,12 @@ def span_simbolo(base: bytes, nome: str):
     tenta a PRÓXIMA `{` (heurística do corpo). Const: até o primeiro `;`
     (sem `;` = span indefinido → erro).
     """
-    m = re.search(rb"export (?:async )?function " + re.escape(nome).encode() + rb"\([^)]*\)", base)
+    m = re.search(rb"export (?:async )?function " + re.escape(nome).encode() + rb"(?:<(?:[^<>]|\{[^}]*\})*>)?\([^)]*\)", base)
     if not m:
         # Extensão D-47 (R17, 3º consumidor): fallback para FUNÇÃO INTERNA do
         # módulo (evaluateExpectation/staleRevisionPaths são alvos legítimos de
         # rede mas não são exportadas); export vence quando ambos existem.
-        m = re.search(rb"(?m)^(?:async )?function " + re.escape(nome).encode() + rb"\([^)]*\)", base)
+        m = re.search(rb"(?m)^(?:async )?function " + re.escape(nome).encode() + rb"(?:<(?:[^<>]|\{[^}]*\})*>)?\([^)]*\)", base)
     if m:
         cursor = m.end()
         primeiro_span = None

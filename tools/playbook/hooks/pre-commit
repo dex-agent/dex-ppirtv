@@ -36,8 +36,12 @@ fi
 # o repo não copia os módulos); máquina de frota sem a skill pula com aviso —
 # travar commit por falta de ferramenta é autossabotagem (P10).
 TOOLSBOOK_PY="${HOME:-$USERPROFILE}/.agents/skills/dex-toolsbook/scripts/toolsbook.py"
-if [ -f "$TOOLSBOOK_PY" ]; then
+if [ -f "$TOOLSBOOK_PY" ] && python -B "$TOOLSBOOK_PY" --help 2>&1 | grep -q -- '--dirs'; then
   python -B "$TOOLSBOOK_PY" --repo . --dirs tools,scripts --check || exit 1
 else
-  echo "TOOLSBOOK GATE (aviso): motor dex-toolsbook ausente — índice por intenção não conferido neste commit"
+  # ISSUE-LOCAL-0010 (2026-11-14): o motor da skill mudou de contrato fora do
+  # repo (--gerar/--dirs/--check-frescor saíram); enquanto o gate não é
+  # reaparelhado, aviso não-bloqueante (P10) — drift do índice é dívida
+  # declarada no TRACKER, não motivo para travar commit.
+  echo "TOOLSBOOK GATE (aviso): motor dex-toolsbook sem modo frescor (--dirs) — índice por intenção não conferido neste commit (ISSUE-LOCAL-0010)"
 fi
