@@ -321,9 +321,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "b07daf19083b963889685c9032b2f4db9c57960e",
+  "head": "1f6f75b80a79a95787234bc0f304cb528f718533",
   "tree_hash": "682061ce2089c2cfbb23f85eb5c281847d26e1ab",
-  "generated_at": "2026-11-14T23:07:32Z",
+  "generated_at": "2026-11-15T21:05:47Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -346,9 +346,8 @@
     "failed": 0,
     "skipped": 4,
     "total": 960,
-    "files": 75,
-    "command": "npx vitest run (sessao D-49 2026-11-14: 952 passed | 4 skipped (956); +7 its rede-d49; tsc tests exit 0)",
-    "test_files": 76
+    "files": 76,
+    "command": "npx vitest run (sessao D-50b 2026-11-15: 956 passed | 4 skipped (960), 76 arq, medida 2x; tsc src+tests exit 0)"
   },
   "tools_count": 32,
   "capabilities": [
@@ -1496,5 +1495,22 @@
   },
   "scope": {
     "bloco": "d50"
+  },
+  "reavaliacao_d50b_closure_verdicts": {
+    "data": "2026-11-15",
+    "trilho": ".agents/PLAN-TASKS/2026-11-15-closure-verdicts-d50b.md",
+    "objeto": "closure de VERDICTS: fonte unica do par-positivo (POSITIVE_VERDICTS + isPositiveVerdict) em src/domain.ts + PipelineFlowStatus derivado de VerdictStatus",
+    "delta_src": [
+      "src/domain.ts: +POSITIVE_VERDICTS +PositiveVerdictStatus +isPositiveVerdict(status: string | undefined); PipelineFlowStatus = VerdictStatus | \"pending\" (redeclaracao manual morta)",
+      "src/meeting-policy.ts: 3 sitios -> isPositiveVerdict (2 positivos l.106/160 + 1 NEGADO l.30 — 12o sitio descoberto no corte)",
+      "src/review-scope-attribution.ts: 1 sitio l.42",
+      "src/verdict-fiscal-policy.ts: Set privado POSITIVE_VERDICT_STATUSES l.289 removido (13a copia) -> isPositiveVerdict"
+    ],
+    "estacionado": "8 sitios src/flow-engine.ts (l.2560/2563/2656/2660/2730/3018/4007 + negado l.4714) revertidos ao HEAD: fiscal camping reprovou CONTAIN (detector assina condicao por STRING — promocao-a-funcao conta como decision added, l.410 incondicional); EXCEPTION bloqueado por CONSECUTIVE_EXCEPTION_FORBIDDEN (ultimos 5 materiais EXCEPTION) e por ausencia de RED honesto em refactor pura. EST-D50B-1 owner $oraculo-refatoracao",
+    "prova_fechamento": ".agents/AUDITORIAS/2026-11-15-closure-verdicts/FECHAMENTO.json (PRE documental 1f6f75b l.364 + POS executavel: mutacao remove 'pronto' de VERDICTS -> tsc exit 2 com 3 erros nos consumers)",
+    "camping": "check:flow-engine NOT_APPLICABLE (flow_engine_changed=false, blob 9e83d595 == HEAD)",
+    "suite_medida_2x": "956 passed | 4 skipped (960), 76 arquivos, 123s",
+    "regua": "domain 18/82 (+3 exports); TOTAL 93/249, sem ref 152",
+    "incidente": "git checkout como restauracao com working tree sujo apagou as edicoes do corte (sha -c FAILED); recriado por patch com asserts; VACINA: mutacao em working tree sujo exige backup de BYTES (cp), git checkout so vale com tree limpo"
   }
 }

@@ -1,4 +1,5 @@
 import type { AnyPhase, Cooperator, Flow, Meeting, MeetingKind, MeetingType } from "./domain.js";
+import { isPositiveVerdict } from "./domain.js";
 import type { FiscalVerdictInput } from "./memory/mining-policy.js";
 import { explicitMeetingTrigger, fiscalText, latestFiscalBlockEvent, MEMORY_MINING_BLOCKED_VERDICT_REASON } from "./verdict-fiscal-policy.js";
 import { stringArray, truthy, unique, uniqueCooperators } from "./lang-utils.js";
@@ -27,7 +28,7 @@ export function requiredCooperationStillActive(flow: Flow, input: FiscalVerdictI
 }
 
 export function requiredCooperationMeetingIdMissingForPositiveVerdict(flow: Flow, input: FiscalVerdictInput): boolean {
-  if ((input.status !== "pronto" && input.status !== "pronto_com_ressalvas") || inputMeetingIds(input).length > 0) {
+  if (!isPositiveVerdict(input.status) || inputMeetingIds(input).length > 0) {
     return false;
   }
   return flow.history.some(
@@ -103,7 +104,7 @@ function historyAfter(flow: Flow, index: number): Flow["history"] {
 
 export function hasClosedMeetingSatisfying(flow: Flow, input: FiscalVerdictInput, blocker: string): boolean {
   const meetingIds = inputMeetingIds(input);
-  if ((input.status === "pronto" || input.status === "pronto_com_ressalvas") && meetingIds.length === 0) {
+  if (isPositiveVerdict(input.status) && meetingIds.length === 0) {
     return false;
   }
   return flow.history.some((event) => {
@@ -157,7 +158,7 @@ export function requiredCooperationDiagnostics(
       (persistedInsufficientIds.has(meeting.meeting_id) || requiredCooperationMeetingMaterial(flow, meeting, inputIds, latestBlock?.index ?? null))
   );
   const inputMissingMeetingId =
-    (input.status === "pronto" || input.status === "pronto_com_ressalvas") && inputMeetingIds(input).length === 0 && eligible.length > 0;
+    isPositiveVerdict(input.status) && inputMeetingIds(input).length === 0 && eligible.length > 0;
   const persistedMissingForVerdict = inputMeetingIds(input).length > 0 ? [] : stringArray(latestPersisted?.missing_for_verdict);
   const missingForVerdict = unique([...(inputMissingMeetingId ? ["meeting_id"] : []), ...persistedMissingForVerdict]);
   const participantsRequired = requiredMeetingParticipants(blockers);

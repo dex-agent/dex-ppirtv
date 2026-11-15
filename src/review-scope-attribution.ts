@@ -2,6 +2,7 @@ import path from "node:path";
 import { lstat } from "node:fs/promises";
 import { z } from "zod";
 import type { Evidence, Flow, VerdictStatus } from "./domain.js";
+import { isPositiveVerdict } from "./domain.js";
 import { declaredReviewPaths, fingerprintReviewedImplementation, normalizeReviewPath, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
 
 export type GoalVerdictInput = {
@@ -39,7 +40,7 @@ const bindingSchema = z.object({
 });
 
 export function attributedVerdictSnapshot(input: GoalVerdictInput, flow: Flow): Flow | undefined {
-  return (input.status === "pronto" || input.status === "pronto_com_ressalvas")
+  return isPositiveVerdict(input.status)
     && input.scope_attribution_evidence_ids?.length ? flow : undefined;
 }
 

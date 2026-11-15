@@ -8,6 +8,29 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+## D-50b — closure de VERDICTS: fonte única do par-positivo (2026-11-15)
+
+### Corte de coesão (CCP l.5895; paga EST-D50-R6-1, R6-2 parcial)
+- `src/domain.ts`: nasce `POSITIVE_VERDICTS` + `PositiveVerdictStatus` +
+  `isPositiveVerdict(status: string | undefined)` (helper é DONO do conhecimento
+  "undefined não é positivo"); `PipelineFlowStatus` passa a derivar de
+  `VerdictStatus | "pending"` — redeclaração manual morta (EST-D50-R6-1 PAGO).
+- 5 de 13 sítios consumindo a fonte: meeting-policy 3 (incl. forma negada l.30,
+  12º sítio descoberto NO corte) + review-scope-attribution 1 + verdict-fiscal-policy 1
+  (Set privado `POSITIVE_VERDICT_STATUSES` morto — 13ª cópia do garimpo).
+- **8 sítios flow-engine estacionados (EST-D50B-1)**: camping fiscal reprova
+  promoção-a-função (detector assina condição por STRING — decision added,
+  l.410 incondicional); EXCEPTION bloqueado (consecutividade + sem RED honesto
+  em refatoração pura). Cláusula maratona: sem seam seguro → estacionamento.
+- Prova de fechamento congelada: PRE documental + POS executável (mutação remove
+  "pronto" de VERDICTS → tsc exit 2 com 3 erros nos consumers) em
+  `.agents/AUDITORIAS/2026-11-15-closure-verdicts/FECHAMENTO.json`.
+- Suíte 956/960 (76 arq) medida 2×; tsc src+tests exit 0; camping NOT_APPLICABLE;
+  régua domain 18/82, TOTAL 93/249, sem ref 152; `npm run check` exit 0 COMPLETO.
+- Vacina do turno: restauração de mutação com working tree SUJO exige backup de
+  BYTES (cp) — `git checkout` apagou as edições do corte (baseline era o working
+  tree, não o HEAD).
+
 ## D-50 — corte de rede domain.ts + TOOLSBOOK v2 (2026-11-14)
 
 ### Corte de rede (nono; primeiro FORA da maratona; régua ganha `domain`)

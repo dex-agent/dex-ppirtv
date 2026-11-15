@@ -31,6 +31,19 @@ export type MeetingKind = (typeof MEETING_KINDS)[number];
 export const VERDICTS = ["pronto", "pronto_com_ressalvas", "nao_pronto", "bloqueado"] as const;
 export type VerdictStatus = (typeof VERDICTS)[number];
 
+// D-50b (2026-11-15, oraculo-solid CCP l.5895): o conhecimento "veredito
+// positivo" morava em 13 cópias (11 comparações inline em 4 módulos + Set
+// privado em verdict-fiscal-policy + forma negada em meeting-policy/flow-engine).
+// Fonte única aqui, ao lado de VERDICTS — quem muda junto mora junto.
+export const POSITIVE_VERDICTS = ["pronto", "pronto_com_ressalvas"] as const;
+export type PositiveVerdictStatus = (typeof POSITIVE_VERDICTS)[number];
+
+export function isPositiveVerdict(status: string | undefined): boolean {
+  // undefined não é veredito positivo — conhecimento que os 13 sítios inline
+  // carregavam implicitamente (comparação com undefined = false).
+  return (POSITIVE_VERDICTS as readonly string[]).includes(status ?? "");
+}
+
 export const GOAL_VERDICT_POLICIES = ["evidence_required", "allow_ressalvas", "draft"] as const;
 export type GoalVerdictPolicy = (typeof GOAL_VERDICT_POLICIES)[number];
 export const GOAL_FLOW_ROLES = ["execution", "reconciliation", "recovery"] as const;
@@ -361,7 +374,10 @@ export type PipelineItem = {
   verdict_gold_mining?: string[];
 };
 
-export type PipelineFlowStatus = "pronto" | "pronto_com_ressalvas" | "nao_pronto" | "bloqueado" | "pending";
+// D-50b (EST-D50-R6-1): derivado da fonte única — a redeclaração manual dos 4
+// valores permitia drift silencioso (mudar VERDICTS não propagava para cá).
+// Prova: remover "pronto" de VERDICTS quebra tsc nos consumers (FECHAMENTO.json).
+export type PipelineFlowStatus = VerdictStatus | "pending";
 
 export type PipelineFlowResult = {
   index: number;

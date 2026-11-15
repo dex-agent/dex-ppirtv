@@ -5,6 +5,7 @@
 // review-currency/regress-count) entram via FiscalPolicyDeps até os cortes futuros
 // desses eixos; imports diretos só do que já é módulo (mining-policy, gate-resolution).
 import type { Cooperator, Evidence, Flow, Verdict } from "./domain.js";
+import { isPositiveVerdict } from "./domain.js";
 import type { PpirtvStore } from "./store.js";
 import {
   memoryRequiredByFlow,
@@ -286,13 +287,11 @@ export function hasReviewEvidenceWithDeps(flow: Flow, input: FiscalVerdictInput,
 
 // Somente verdict POSITIVO consumido encerra o relato pendente de recorrencia;
 // nao_pronto/bloqueado/rejeitado nao atenderam nada (revisao em dupla 2026-11-02).
-const POSITIVE_VERDICT_STATUSES = new Set(["pronto", "pronto_com_ressalvas"]);
-
 function pendingRecurringRisk(flow: Flow): boolean {
   const latest = [...flow.history]
     .reverse()
     .find((event) => event.type === "recurring_risk_reported"
-      || (event.type === "verdict_recorded" && POSITIVE_VERDICT_STATUSES.has(String(event.data.status))));
+      || (event.type === "verdict_recorded" && isPositiveVerdict(String(event.data.status))));
   return latest?.type === "recurring_risk_reported" && latest.data.recurring_risk === true;
 }
 

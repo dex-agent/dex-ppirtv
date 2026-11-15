@@ -1,5 +1,26 @@
 
 
+## Reavaliação — D-50b closure de VERDICTS: fonte única do par-positivo (2026-11-15)
+
+> Delta do worktree sobre o HEAD `1f6f75b`. TOCA `src/` (4 arquivos) — corte de
+> COESÃO (CCP l.5895): o conhecimento "veredito positivo" ganha fonte única.
+> Trilho `.agents/PLAN-TASKS/2026-11-15-closure-verdicts-d50b.md` (flow 5039).
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| Fonte única | domain.ts: +`POSITIVE_VERDICTS` +`PositiveVerdictStatus` +`isPositiveVerdict(string \| undefined)`; `PipelineFlowStatus = VerdictStatus \| "pending"` (redeclaração manual morta — EST-D50-R6-1 PAGO) | src/domain.ts |
+| Consumidores | 5 de 13 sítios: meeting-policy 3 (incl. forma negada l.30 — 12º sítio achado no corte) + review-scope-attribution 1 + verdict-fiscal-policy 1 (Set privado morto — 13ª cópia) | rg isPositiveVerdict |
+| Estacionado | 8 sítios flow-engine revertidos ao HEAD — camping fiscal: detector assina condição por STRING (promoção-a-função = decision added); EXCEPTION bloqueado (consecutivo + sem RED honesto). EST-D50B-1 | .agents/ESTACIONAMENTO.md |
+| Prova fechamento | PRE documental (1f6f75b l.364) + POS executável: mutação remove "pronto" de VERDICTS → tsc exit 2, 3 erros nos consumers | FECHAMENTO.json 366e5389 |
+| Suíte | 956 passed \| 4 skipped (960), 76 arq — medida 2× (123s); tsc src+tests exit 0; camping NOT_APPLICABLE | npx vitest run |
+| Régua | domain 18/82 (+3 exports); TOTAL 93/249, sem ref 152 | tools/test-symbol-coverage.py |
+
+**Limites:** isPositiveVerdict/POSITIVE_VERDICTS sem code_ref nominal (decisão do
+Trilho: prova do closure é o tsc pós-derivação — sem teste teatro; VERDICTS já
+tem vigília toEqual do D-50). Incidente do turno: restauração de mutação com
+working tree sujo exige backup de BYTES (git checkout apagou as edições;
+recriado por patch com asserts).
+
 ## Reavaliação — D-50 domain.ts + TOOLSBOOK v2 (2026-11-14)
 
 - Suíte medida na sessão: **956 passed | 4 skipped (960), 76 arquivos**
