@@ -321,9 +321,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "1f6f75b80a79a95787234bc0f304cb528f718533",
+  "head": "6d6627892d29bd8c8b1a0033b0fd1e9b8495fe50",
   "tree_hash": "682061ce2089c2cfbb23f85eb5c281847d26e1ab",
-  "generated_at": "2026-11-15T21:05:47Z",
+  "generated_at": "2026-11-15T22:35:33Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -342,12 +342,12 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 956,
+    "passed": 961,
     "failed": 0,
     "skipped": 4,
-    "total": 960,
-    "files": 76,
-    "command": "npx vitest run (sessao D-50b 2026-11-15: 956 passed | 4 skipped (960), 76 arq, medida 2x; tsc src+tests exit 0)"
+    "total": 965,
+    "files": 77,
+    "command": "npx vitest run (sessao D-51 2026-11-15: 961 passed | 4 skipped (965), 77 arq, medida 2x; +5 its rede-d51; tsc src+tests exit 0)"
   },
   "tools_count": 32,
   "capabilities": [
@@ -1512,5 +1512,20 @@
     "suite_medida_2x": "956 passed | 4 skipped (960), 76 arquivos, 123s",
     "regua": "domain 18/82 (+3 exports); TOTAL 93/249, sem ref 152",
     "incidente": "git checkout como restauracao com working tree sujo apagou as edicoes do corte (sha -c FAILED); recriado por patch com asserts; VACINA: mutacao em working tree sujo exige backup de BYTES (cp), git checkout so vale com tree limpo"
+  },
+  "reavaliacao_d51_rede_principles": {
+    "data": "2026-11-15",
+    "trilho": ".agents/PLAN-TASKS/2026-11-15-rede-principles-d51.md",
+    "objeto": "corte de rede principles.ts: 31 exports decididos (5a/5b-PAGAS/19c/2 mortos removidos)",
+    "delta": [
+      "src/principles.ts: -2 mortos (loadOperationalContract async + principleChecklistSync; rg repo-wide zero-consumidor; RED tsc+suite verdes)",
+      "tests/principles-rede-d51.test.ts: +5 its de caracterizacao toEqual (as 5 delegacoes b) + 5/5 vigilias PEGA",
+      "tools/test-symbol-coverage.py: principles em MARATHON_MODULES (régua ganha o modulo)"
+    ],
+    "sondas": "M1/M3/M4/M5/M6 SOBREVIVERAM (b); M2/M7/M8/M9 PEGA (a-por-mutacao); 14 receipts em .agents/AUDITORIAS/2026-11-15-rede-principles/MUTACOES/",
+    "suite_medida_2x": "961 passed | 4 skipped (965), 77 arquivos",
+    "regua": "principles 6/29; TOTAL 93->99/249->278 code, sem ref 152->175",
+    "classe_do_corte": "delegacoes de leitura do contrato (array/record) sem assert — mesma classe colecao-sem-assert do D-50, agora em funcoes; sondas discriminaram array-forma (sobrevive) de policy-forma (cobertura viva)",
+    "barata": "mutacao com linha identica ao irmao = count(mut)==2 -> vacina anti-duplicata rejeita (classe M2b em nova roupagem); return undefined existe 7x (nao serve de mutacao unica)"
   }
 }

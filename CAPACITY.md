@@ -1,5 +1,23 @@
 
 
+## Reavaliação — D-51 corte de rede principles.ts: 31 decididos (2026-11-15)
+
+> Delta do worktree sobre o HEAD `6d66278`. TOCA `src/` (−2 mortos) e `tests/`
+> (+5 its) e `tools/` (régua ganha principles) — behavioral de rede. Trilho
+> `.agents/PLAN-TASKS/2026-11-15-rede-principles-d51.md` (flow 5076).
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| Rede | 31 = 5 (a: 1 nominal + 4 mutação-PEGA) + 5 (b PAGAS) + 19 (c) + 2 MORTOS | TABELA.md + 14 receipts MUTACOES/ |
+| Mortos | `loadOperationalContract` (async) + `principleChecklistSync` removidos com RED (tsc src+tests 0 + engine 199/199) | rg repo-wide zero-consumidor |
+| (b) pagas | 5 its toEqual (`tests/principles-rede-d51.test.ts`) + **5/5 vigílias PEGA** | M1v/M3v/M4v/M5v/M6v |
+| Suíte | 956→**961 passed** \| 4 skipped (965), 76→77 arq — medida 2× | npx vitest run |
+| Régua | principles 6/29; TOTAL 93→**99/249→278**, sem ref 152→**175** | tools/test-symbol-coverage.py |
+
+**Limites:** 23 sem-ref do principles = 19 (c) + 4 (a-mutação sem nominal) —
+decididos por evidência, não pendência. Sub-famílias medidas para onda futura
+(que também destrava EST-D50B-1).
+
 ## Reavaliação — D-50b closure de VERDICTS: fonte única do par-positivo (2026-11-15)
 
 > Delta do worktree sobre o HEAD `1f6f75b`. TOCA `src/` (4 arquivos) — corte de

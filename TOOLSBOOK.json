@@ -88,10 +88,11 @@
       "status": "reviewed",
       "evidence": [
         ".agents/AUDITORIAS/2026-11-12-rede-simbolos-suporte/REDE.md (rodadas 1-9)",
-        "help do script (rotulo honesto)"
+        "help do script (rotulo honesto)",
+        "regua rodada 11 D-51 (2026-11-15): principles em MARATHON_MODULES; TOTAL 99/278, sem ref 175"
       ],
       "sources": {
-        "tools/test-symbol-coverage.py": "d50e4bdc1d0bfd0adb2004e30ce72338819f9204896c7550ecca1df2e84058d0"
+        "tools/test-symbol-coverage.py": "127288d98417ed3bdb9abaf137823f9b062da688cb9fe2f53c4ff7bd10dc4912"
       }
     },
     {

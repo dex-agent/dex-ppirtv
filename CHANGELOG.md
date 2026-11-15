@@ -8,6 +8,24 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+## D-51 — corte de rede principles.ts: 31 exports decididos (2026-11-15)
+
+### Corte de rede (décimo da frente ampliada; régua ganha `principles`)
+- 31 = **5 (a)** [1 nominal `loadOperationalContractSync` + 4 mutação-PEGA:
+  defaultWorkflow/operationalTrashDefinition/secretEnvConsumptionPolicy/
+  earlySecurityProportionalityPolicy] + **5 (b) PAGAS** [as delegações de
+  array: promptGuidance/readyDefinition/gateFinalOutput/finalReportModel +
+  operationalContractMeta — its toEqual + 5/5 vigílias PEGA] + **19 (c)** +
+  **2 MORTOS removidos** (`loadOperationalContract` async,
+  `principleChecklistSync` — RED: tsc src+tests 0 + engine 199/199).
+- Classe do corte: **delegações de leitura do contrato sem assert** (array/
+  record sobrevivem; policies têm cobertura viva — sonda discriminou).
+- Barata nova: mutação com linha idêntica ao irmão → count==2 → vacina
+  anti-duplicata do harness rejeita (use linha ÚNICA).
+- Suíte 956→**961/965 (77 arq)** medida 2×; régua principles **6/29**, TOTAL
+  **99/278**, sem ref **175**; camping NOT_APPLICABLE (motor intocado).
+- Sub-famílias medidas para onda de decomposição futura (destrava EST-D50B-1).
+
 ## D-50b — closure de VERDICTS: fonte única do par-positivo (2026-11-15)
 
 ### Corte de coesão (CCP l.5895; paga EST-D50-R6-1, R6-2 parcial)

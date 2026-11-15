@@ -164,10 +164,6 @@ const DEFAULT_CONTRACT: OperationalContract = {
   final_report_model: []
 };
 
-export async function loadOperationalContract(root = process.cwd()): Promise<OperationalContract> {
-  return (await resolveOperationalContract(root)).contract;
-}
-
 export function loadOperationalContractSync(root = process.cwd()): OperationalContract {
   return resolveOperationalContractSync(root).contract;
 }
@@ -175,13 +171,6 @@ export function loadOperationalContractSync(root = process.cwd()): OperationalCo
 export async function principleChecklist(root = process.cwd()): Promise<PrincipleChecklistItem[]> {
   const resolution = await resolveOperationalContract(root);
   const sourceText = await readSourceText(resolution, resolution.contract.source);
-  return checklistFromContract(resolution.contract, sourceText);
-}
-
-export function principleChecklistSync(root = process.cwd()): PrincipleChecklistItem[] {
-  const resolution = resolveOperationalContractSync(root);
-  const sourcePath = sourcePathFor(resolution, resolution.contract.source);
-  const sourceText = existsSync(sourcePath) ? readFileSync(sourcePath, "utf8") : "";
   return checklistFromContract(resolution.contract, sourceText);
 }
 

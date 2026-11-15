@@ -45,6 +45,7 @@ MARATHON_MODULES = [
     "gate-resolution",
     "meeting-policy",
     "memory-promotion",
+    "principles",
     "review-snapshot",
     "spt-traceability",
     "verdict-fiscal-policy",
