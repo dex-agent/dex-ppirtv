@@ -8,6 +8,32 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+## D-52 — corte de rede ppirtv-checkin + janela 0011 + barata de fixture (2026-11-16)
+
+### Corte de rede (décimo-primeiro da frente; régua ganha `ppirtv-checkin`)
+- 21 = **12 (c)-import** [flow-engine l.47, 2-6 usos no corpo cada] + **1
+  (c)-interno PEGA** [`memoryCheckoutAccountability`, M5] + **2 (a)-mutação-PEGA**
+  [`hasFutureAction` M8, `hasQuando` M9] + **6 (b) PAGAS**
+  [checkInTrailAlignment/evidenceCheckoutAccountability/utilityCheckoutAccountability/
+  loopCheckoutAccountability/learningCheckoutAccountability + ramo strong do
+  evidenceQualityReasons — its toEqual/toBe + **6/6 vigílias PEGA**] + **0
+  mortos** (todos com consumidor real — corte behavioral puro, `src/` intocado).
+- Classe do corte: **prestações de contas do checkout sem vigília de campo** —
+  a suíte exercitava o checkout agregado sem conferir os CAMPOS dos
+  sub-objetos de accountability.
+- Janela quebrada TRACKER-0011 curada no mesmo corte: hook do pre-commit
+  cita a dona real do motor (`dex-complexidade-ciclomatica`) — 1 linha.
+- Fronteira checkin↔verdict MAPEADA como insumo do TRACKER-0012 (sítios
+  reais na TABELA da auditoria; nenhum tocado).
+- Régua: ppirtv-checkin **15/21** (sem-ref 6, todos decididos); TOTAL
+  99→**114/299**, sem ref 175→**181**.
+- BARATA (paga ao vivo, classe nova): fixture de grandfathering com
+  `expires: "2026-11-15"` (3×) virou a suíte vermelha um dia após sem diff
+  real — vacina `futureExpiry()` (+14d, teto 30d do validador l.331-338);
+  classe impossibilitada por construção.
+- Suíte 961→**967 passed** | 4 skipped (**971**), 77→78 arq; `npm run check`
+  COMPLETO verde.
+
 ## D-51 — corte de rede principles.ts: 31 exports decididos (2026-11-15)
 
 ### Corte de rede (décimo da frente ampliada; régua ganha `principles`)

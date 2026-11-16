@@ -29,6 +29,12 @@ const baseDeclaration = {
   architecture_marker: "fixture-change"
 } satisfies Partial<FlowEngineChangeDeclaration>;
 
+// Vacina da classe "fixture com data mágica expira" (barata D-52, paga ao vivo
+// 2026-11-16: 3 records com expires "2026-11-15" viraram a suíte vermelha um
+// dia depois sem nenhum diff real): o validador aceita HOJE..HOJE+30d — data
+// DINÂMICA 14d à frente nunca expira e respeita o teto.
+const futureExpiry = () => new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+
 describe("flow-engine responsibility balance", () => {
   it("returns NOT_APPLICABLE when flow-engine.ts did not change", () => {
     const source = "export class FlowEngine { run() { return true; } }\n";
@@ -743,7 +749,7 @@ describe("flow-engine responsibility balance", () => {
       mode: "EXCEPTION",
       exception_reason: "integrity",
       rollback: "revert do commit de selagem",
-      expires: "2026-11-15",
+      expires: futureExpiry(),
       red_evidence: "tests/flow-engine-boundary.test.ts::selo vivo reprova parent_commit mentiroso do record selado (COMMIT_SEAL_PARENT_MISMATCH)",
       red_base_blob: "0".repeat(40),
       red_observed_failure: "RED da cura-2",
@@ -934,7 +940,7 @@ describe("flow-engine responsibility balance", () => {
       id: "seal-cura4-b1-cover",
       mode: "EXCEPTION",
       exception_reason: "integrity",
-      expires: "2026-11-15",
+      expires: futureExpiry(),
       base_blob: blobV1,
       head_blob: blobV2,
       evidence: ["tests/flow-engine-boundary.test.ts"],
@@ -1013,7 +1019,7 @@ describe("flow-engine responsibility balance", () => {
     execFileSync("git", ["commit", ["--allow-empty"], "-m", "c1"].flat(), { cwd: root });
     const c0 = execFileSync("git", ["rev-parse", "HEAD~1"], { cwd: root, encoding: "utf8" }).trim();
     const c1 = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
-    const legacy = { ...baseDeclaration, id: "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO", mode: "EXCEPTION", exception_reason: "integrity", expires: "2026-11-15", destination_module: undefined, changelog_marker: "seal4-marker", architecture_marker: "seal4-marker", base_blob: blob, head_blob: blob, consumers: ["src/server.ts"], evidence: ["tests/fixture-evidence.test.ts"], evidence_selectors: { "tests/fixture-evidence.test.ts": titulo }, red_evidence: `tests/fixture-evidence.test.ts::${titulo}`, red_base_blob: blob, commit: c1, parent_commit: c0, rollback: "reverte o commit", red_observed_failure: "RED provado no baseline", red_command: `npx vitest run tests/fixture-evidence.test.ts -t "${titulo}"` };
+    const legacy = { ...baseDeclaration, id: "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO", mode: "EXCEPTION", exception_reason: "integrity", expires: futureExpiry(), destination_module: undefined, changelog_marker: "seal4-marker", architecture_marker: "seal4-marker", base_blob: blob, head_blob: blob, consumers: ["src/server.ts"], evidence: ["tests/fixture-evidence.test.ts"], evidence_selectors: { "tests/fixture-evidence.test.ts": titulo }, red_evidence: `tests/fixture-evidence.test.ts::${titulo}`, red_base_blob: blob, commit: c1, parent_commit: c0, rollback: "reverte o commit", red_observed_failure: "RED provado no baseline", red_command: `npx vitest run tests/fixture-evidence.test.ts -t "${titulo}"` };
     await writeFile(path.join(root, "docs", "architecture", "flow-engine-evolution.json"), JSON.stringify({
       contract: "dex.flow-engine.evolution-ledger.v1",
       target: "src/flow-engine.ts",

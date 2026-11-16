@@ -51,7 +51,7 @@ else
 fi
 
 # DUPLICACAO-DELTA GATE (Trilho 2026-11-14-precommit-duplicacao-delta; receita da
-# skill dex-duplicacao-codigo registry 3.502.0): commit que introduz/mantem
+# skill dex-complexidade-ciclomatica, dona do motor medir-duplicacao.py): commit que introduz/mantem
 # duplicata Type-2 ENTRE arquivos .py e BLOQUEADO com as duas localizacoes
 # (hash de AST normalizada — deterministico, nunca regex). O motor mora na skill
 # global dex-complexidade-ciclomatica (R6: o repo nao copia); excecao legitima =

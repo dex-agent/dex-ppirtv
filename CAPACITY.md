@@ -1,5 +1,25 @@
 
 
+## Reavaliação — D-52 corte de rede ppirtv-checkin + janela 0011 + barata de fixture (2026-11-16)
+
+> Delta do worktree sobre o HEAD `4c2fcb7`. NÃO TOCA `src/` (corte behavioral
+> puro — 0 mortos). TOCA `tools/` (hook 1 linha de comentário + régua ganha
+> ppirtv-checkin) e `tests/` (+6 its e vacina de fixture). Trilho
+> `.agents/PLAN-TASKS/2026-11-16-rede-checkin-d52.md` (flow 5112).
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| Rede | 21 = 12 (c-import) + 1 (c-interno M5 PEGA) + 2 (a-mutação-PEGA) + 6 (b PAGAS) + **0 mortos** | `.agents/AUDITORIAS/2026-11-16-rede-checkin/TABELA.md` + 15 receipts MUTACOES/ |
+| (b) pagas | 6 its toEqual/toBe (`tests/checkin-rede-d52.test.ts`) + **6/6 vigílias PEGA** | m1/m2/m3/m4/m6b/m7 `-vigia.json` |
+| Janela 0011 | hook l.54 cita a dona real do motor (dex-complexidade-ciclomatica); TRACKER 0011 fechado | `rg dex-complexidade tools/playbook/hooks/pre-commit` |
+| Régua | ppirtv-checkin **15/21** (6 sem-ref = 5 c-import + 1 c-interno, todos decididos); TOTAL 99→**114/278→299**, sem ref 175→**181** | tools/test-symbol-coverage.py |
+| Suíte | 961→**967 passed** \| 4 skipped (971), 77→78 arq — medida 2× (78/78) + captura | npx vitest run |
+| Barata fixture | `expires: "2026-11-15"` (3×) expirou e virou a suíte vermelha sem diff real — vacina `futureExpiry()` (+14d, teto 30d l.331-338) | boundary 36/36; classe impossibilitada por construção |
+
+**Limites:** fronteira checkin↔verdict apenas MAPEADA (insumo TRACKER-0012 —
+sítios reais na TABELA.md §Fronteira); nenhum sítio tocado. Camping flow-engine
+NOT_APPLICABLE (motor intocado).
+
 ## Reavaliação — D-51 corte de rede principles.ts: 31 decididos (2026-11-15)
 
 > Delta do worktree sobre o HEAD `6d66278`. TOCA `src/` (−2 mortos) e `tests/`

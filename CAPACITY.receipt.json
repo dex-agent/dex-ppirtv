@@ -1,1531 +1,1550 @@
 {
-  "reavaliacao_precommit_duplicacao_delta": {
-    "date": "2026-11-14",
-    "scope": [
-      "tools/check-duplicacao-delta.py",
-      "tools/duplicacao-allowlist.json",
-      "tools/playbook/hooks/pre-commit"
-    ],
-    "delta": "5o gate do pre-commit: anti-duplicacao Type-2 (hash AST via motor da skill global; deterministico R16; allowlist R10; P10 frota). RED exit 1 com 2 localizacoes; GREEN-allowlist exit 0; commit abortado ao vivo; baseline 0 grupos; custo 0.274s. Suíte inalterada 952+4 (956).",
-    "evidence": [
-      "python -B tools/check-duplicacao-delta.py --check -> exit 1 (fixture Type-2: zz-fixture-duplicata.py:12 <-> mutacao-amostra.py:104, 44L)",
-      "python -B tools/check-duplicacao-delta.py --check (par na allowlist) -> exit 0 [allowlist]",
-      "npm test -> 952 passed | 4 skipped (956) — 128.72s",
-      "time gate --check (2 .py staged, 6 arquivos/31 funcoes) -> 0.274s",
-      "git commit com fixture staged -> ABORTADO pelo 5o gate (evidencia commit-abortado.txt)"
-    ]
-  },
-  "schema": "dex.capacity.snapshot.v1",
-  "reavaliacao_issue19_goal_status_binding_drift": {
-    "date": "2026-11-13",
-    "scope": [
-      "src/flow-engine.ts",
-      "src/provenance-trace.ts",
-      "tests/goal-status-binding-drift.test.ts"
-    ],
-    "delta": "Issue #19: goal_status expoe spt_binding_integrity (lean condicional drifted + full completo) com reuso total de classifyFlow via wrapper sptBindingIntegrityFor; RED-first 2/2; camping EXCEPTION public_compatibility; suíte 947->949.",
-    "evidence": [
-      "npx vitest run tests/goal-status-binding-drift.test.ts -> 2/2 (RED provado antes)",
-      "npx tsc --noEmit -p tsconfig.json -> exit 0",
-      "npm run check:flow-engine -> record no ledger (marker FE-2026-11-13-ISSUE0019)"
-    ]
-  },
-  "reavaliacao_d48_rede_review_snapshot": {
-    "date": "2026-11-13",
-    "scope": [
-      "tests/review-snapshot-rede-d48.test.ts",
-      ".agents/AUDITORIAS/2026-11-13-rede-review-snapshot/"
-    ],
-    "delta": "Corte de rede D-48 (review-snapshot, serie D-42..D-48 fechada): behavioral, src/ intocado. Suíte 938->947 (943 passed + 4 skipped) com 9 its de caracterizacao pagando 7 lacunas (b) provadas por mutacao repo-wide 934/934 (freeze R14 idempotência, gitHeadAt valor, rota resolved redacted, regex credenciais, restored_from formato, pendentes-vazios sem gate, wrapper casing). Régua nominal review-snapshot 8/17->15/17; TOTAL 61->68/167, 101->95 sem ref. Vigílias 7/7 PEGA.",
-    "evidence": [
-      "npx vitest run -> 943 passed | 4 skipped (947)",
-      "python -B tools/test-symbol-coverage.py -> review-snapshot 15/17 code; TOTAL 68/167",
-      "python -B tools/mutacao-amostra.py (24 runs congelados em .agents/AUDITORIAS/2026-11-13-rede-review-snapshot/MUTACOES/; vigílias M*-vigia.json 7/7 PEGA)",
-      "git diff --stat src/ vazio (motor intocado; restauração byte-exata)"
-    ]
-  },
-  "reavaliacao_playbook_reconciliado": {
-    "date": "2026-11-12",
-    "scope": [
-      "PLAYBOOK.md",
-      "PLAYBOOK.index.json"
-    ],
-    "delta": "Projecao regenerada a partir das fontes atuais, sem alteracao de capacidade do produto.",
-    "evidence": [
-      "python -B tools/playbook/generate-playbook.py --repo . --check",
-      "python -B tools/playbook/generate-playbook.py --repo . --check-sent",
-      "npm run audit:canonical"
-    ]
-  },
-  "reavaliacao_issue11_attribution": {
-    "date": "2026-11-07",
-    "scope": [
-      "src/review-scope-attribution.ts",
-      "src/review-snapshot.ts",
-      "src/flow-engine.ts",
-      "src/spt-traceability.ts",
-      "src/server.ts",
-      "tests/git-corroboration-commits.test.ts"
-    ],
-    "delta": "Atribuicao de escopo registrada por evidencia e revalidada na entrada publica MCP. Conjunto fiscal e snapshot gravado coerentes. Integracao preserva a Onda 1 e o ledger historico publicado em main.",
-    "evidence": [
-      "npm run build",
-      "npx vitest run tests/git-corroboration-commits.test.ts",
-      "npm run check"
-    ],
-    "limits": [
-      "Proveniencia semantica e atestada pelo revisor; o runtime verifica identidade, declaracao e vinculos.",
-      "Flow real do consumidor preservado; prova publica executada em fixtures sinteticas."
-    ]
-  },
-  "reavaliacao_playbook_localizadores": {
-    "date": "2026-11-07",
-    "scope": [
-      "tools/playbook/playbook-sources.txt",
-      "docs/PLAYBOOK-RULES.md",
-      "docs/INDEX.md",
-      "PLAYBOOK.md",
-      "PLAYBOOK.index.json",
-      ".gitattributes",
-      "CHANGELOG.md"
-    ],
-    "delta": "Fonte versionada dos dois localizadores publicados no PLAYBOOK, com rota do painel para docs/INDEX.md entregue no Git.",
-    "evidence": [
-      "python -B tools/playbook/generate-playbook.py --repo . --check",
-      "python -B tools/playbook/generate-playbook.py --repo . --check-sent"
-    ],
-    "limits": [
-      "As fontes locais opcionais continuam fora da entrega."
-    ]
-  },
-  "reavaliacao_preflight_schema_s10": {
-    "date": "2026-11-06",
-    "scope": [
-      "spt-kit/preflight.mjs",
-      "CHANGELOG.md"
-    ],
-    "delta": "Anuncio documental S00..S10 alinhado ao validador existente, sem mudanca de algoritmo.",
-    "evidence": [
-      "node spt-kit/preflight.mjs --schema",
-      "node spt-kit/preflight.mjs spt-kit/fixtures/plan-objeto.md"
-    ],
-    "observed": {
-      "schema_checks": "S00..S10",
-      "fixture_findings": 1
-    },
-    "limits": [
-      "Correcao de texto; autoridade estrutural segue no spt_validate"
-    ]
-  },
-  "reavaliacao_post_merge_paridade": {
-    "date": "2026-11-06",
-    "scope": [
-      "tools/playbook/hooks/post-merge",
-      "tools/playbook/hooks/post-merge.impl.mjs",
-      "scripts/canonical-pairs.mjs",
-      "scripts/audit-canonical-sync.mjs"
-    ],
-    "delta": "Hook post-merge auto-curativo dos 4 pares globais (repo->~/.agents) com protecao anti-sobrescrever; lista de pares extraida para modulo compartilhado com o audit.",
-    "evidence": [
-      ".agents/receipts/2026-11-06-postmerge-selftest.log"
-    ],
-    "observed": {
-      "self_test": "4/4 (COPIADO, JA-OK, RECUSADO, INALTERADO)",
-      "hook_real_no_repo": "INALTERADO (correto: ORIG_HEAD..HEAD sem par tocado)"
-    },
-    "limits": [
-      "Maquinas sem core.hooksPath ativado nao executam o hook (rito de ativacao no playbook-pointer)"
-    ]
-  },
-  "reavaliacao_spt_kit_cobertura_total": {
-    "date": "2026-11-06",
-    "scope": [
-      "spt-kit/preflight.mjs",
-      "spt-kit/GUIA.md",
-      "spt-kit/MOLDE.md",
-      "spt-kit/RULES.md",
-      "SCHEMA/dex.spt.v3.schm.md",
-      "docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md"
-    ],
-    "delta": "S00 com diagnostico (bytes de abertura + causas provaveis), tolerancia a BOM UTF-8 e S10 de shape dos 21 campos do dex.spt.v3; instrucao de copia curada (bloco YAML, nunca o arquivo integral); GUIA ensina proof_skeletons.",
-    "evidence": [
-      ".agents/receipts/2026-11-06-spt-kit-red-fixtures.log"
-    ],
-    "observed": {
-      "suite": "799|0|4",
-      "npm_run_check_exit": 0,
-      "fixtures_red_green": "5/5"
-    },
-    "limits": [
-      "S10 e antecipacao local de presenca/shape; o schema estrito e a semantica permanecem autoridade do spt_validate",
-      "atomicidade de criterio (R3) segue sentinela lexical declarada"
-    ]
-  },
-  "reavaliacao_unborn_files": {
-    "date": "2026-11-05",
-    "scope": [
-      "src/review-snapshot.ts",
-      "src/domain.ts",
-      "tests/review-snapshot-recovery.test.ts"
-    ],
-    "delta": "Recuperacao publica de arquivos regulares nao declarados ingeridos por corroboracao unborn legada, com registro e dedupe por identidade.",
-    "evidence": [
-      ".agents/receipts/snapshot-publica-20261105/unborn-files-red-causal.txt",
-      ".agents/receipts/snapshot-publica-20261105/unborn-files-green.txt",
-      "C:\\Users\\Administrator\\.agents\\skills\\.agents\\SYNC-LAB\\Sincronizacao_2026.11.05\\evidencias\\ppirtv\\unborn-files-red-causal.txt",
-      "C:\\Users\\Administrator\\.agents\\skills\\.agents\\SYNC-LAB\\Sincronizacao_2026.11.05\\evidencias\\ppirtv\\unborn-files-green.txt"
-    ],
-    "observed": {
-      "focal_passed": 20
-    },
-    "limits": [
-      "HEAD/base, falta de proveniencia e paths invalidos nao sao excluidos por esta recuperacao"
-    ],
-    "closure": "2026-11-06: codigo commitado no fechamento de coerencia (suite focal 17/17; completa 799|0|4)"
-  },
-  "reavaliacao_snapshot_publica": {
-    "date": "2026-11-05",
-    "base_sha": "ada0c0d",
-    "publication_followup": {
-      "pull_request": "https://github.com/dex-agent/dex-ppirtv/pull/7",
-      "native_restart_confirmed": true,
-      "code_changed": false,
-      "scope": [
-        "CAPACITY.md",
-        "CAPACITY.receipt.json",
-        "PLAYBOOK.md",
-        "PLAYBOOK.index.json"
-      ]
-    },
-    "scope": [
-      "src/review-snapshot.ts",
-      "src/domain.ts",
-      "tests/review-snapshot-recovery.test.ts",
-      "tests/git-corroboration-unborn.test.ts",
-      "tests/INDEX.md"
-    ],
-    "delta": "Projecao read-only do escopo legado e persistencia pela evidencia aceita; dedupe separado da exclusao com proveniencia.",
-    "evidence": [
-      "tests/review-snapshot-recovery.test.ts",
-      ".agents/receipts/snapshot-publica-20261105/red.log",
-      ".agents/receipts/snapshot-publica-20261105/check.log",
-      ".agents/receipts/snapshot-publica-20261105/green.log"
-    ],
-    "observed": {
-      "suite_passed": 794,
-      "suite_skipped": 4,
-      "suite_files": 62,
-      "focal_passed": 17,
-      "mcp_tools": 32
-    },
-    "limits": [
-      "fixture MCP nao certifica aceite do consumidor externo",
-      "runtime persistente precisa carregar o build final",
-      "EPERM intermitente no lock de reuniao observado em rodada anterior; isolado 24/24"
-    ]
-  },
-  "reavaliacao_workflow_portability": {
-    "date": "2026-11-02",
-    "base_sha": "f6daafa8f7fa09010ae73faab75c0171d66967b2",
-    "scope": [
-      "workflow/manutencao-iterativa-com-evidencia/",
-      "CAPACITY.md",
-      "CAPACITY.receipt.json",
-      "CHANGELOG.md",
-      "PLAYBOOK.md",
-      "PLAYBOOK.index.json"
-    ],
-    "delta": "Preflight e dependencias da instancia1.0.1; global1.2.0/variantes1.1.0 validados separadamente; politica local preservada.",
-    "evidence": ".agents/receipts/workflow-retrofit-20261102/FINAL-REPORT.md",
-    "observed": {
-      "relocated_packages": 5,
-      "missing_dependency_tests": 5,
-      "contact_owner_tests": 15,
-      "contact_consumer_tests": 29,
-      "schema_findings": 0,
-      "suite_passed": 776,
-      "suite_skipped": 4,
-      "suite_files": 59
-    },
-    "limits": [
-      "quatro testes condicionais skipped",
-      "instalacao em outro host nao observada",
-      "skills externas nao viajam no clone do produto"
-    ]
-  },
-  "reavaliacao_integracao_fiscal": {
-    "date": "2026-11-02",
-    "base_sha": "fbf7d9d",
-    "scope": [
-      "CAPACITY.md",
-      "CAPACITY.receipt.json",
-      "CHANGELOG.md",
-      "PLAYBOOK.md",
-      "PLAYBOOK.index.json"
-    ],
-    "delta": "Integracao validada; rota terminal exercitada em consumidor real sem reset; selagem documental sem codigo novo.",
-    "evidence": ".agents/receipts/runtime-fiscal-closeout.md",
-    "suite": {
-      "passed": 776,
-      "skipped": 4,
-      "files": 59
-    },
-    "limits": [
-      "Cliente desktop precisa reconectar transporte",
-      "Produto Hub nao aceito",
-      "Quatro testes skipped"
-    ]
-  },
-  "reavaliacao_manutencao": {
-    "date": "2026-11-02",
-    "base_sha": "77c019d87362efef12a832a92976e8a3e8f9e0fc",
-    "scope": [
-      "workflow/",
-      ".code-review-graphignore",
-      "README.md",
-      "CHANGELOG.md",
-      "PLAYBOOK.md",
-      "PLAYBOOK.index.json",
-      "CAPACITY.md",
-      "CAPACITY.receipt.json"
-    ],
-    "delta": "Instancia de manutencao com ferramentas owners; nenhuma capacidade MCP ou politica fiscal alterada.",
-    "evidence": ".agents/receipts/manutencao-continua-20261102/",
-    "suite": {
-      "passed": 769,
-      "skipped": 4,
-      "files": 59
-    },
-    "limits": [
-      "CRG parcial",
-      "extracao TS do medidor com reproducao pendente no owner",
-      "cobertura e ciclos nao medidos",
-      "runtime fiscal local nao atualizado"
-    ]
-  },
-  "reavaliacao_documental": {
-    "date": "2026-11-02",
-    "base_sha": "2e63c8c0411ae96686f62cd5ea65d6b221117b32",
-    "scope": [
-      "README.md",
-      "CHANGELOG.md",
-      "CAPACITY.md",
-      "CAPACITY.receipt.json",
-      "PLAYBOOK.md",
-      "PLAYBOOK.index.json"
-    ],
-    "delta": "Orientacao de revisao de PR draft e gates documentais; nenhuma capacidade MCP alterada.",
-    "limits": [
-      "suite e capabilities abaixo preservam evidencias historicas; publicacao real so se comprova por readback posterior do GitHub"
-    ]
-  },
-  "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
-  "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "6d6627892d29bd8c8b1a0033b0fd1e9b8495fe50",
-  "tree_hash": "682061ce2089c2cfbb23f85eb5c281847d26e1ab",
-  "generated_at": "2026-11-15T22:35:33Z",
-  "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
-  "escopo": [
-    "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
+ "reavaliacao_d52_rede_checkin_janela0011": {
+  "date": "2026-11-16",
+  "scope": [
+   "tools/playbook/hooks/pre-commit",
+   "tests/checkin-rede-d52.test.ts",
+   "tests/flow-engine-boundary.test.ts",
+   "tools/test-symbol-coverage.py"
   ],
-  "fora_de_escopo": [
-    "Skill registry global",
-    "projetos consumidores",
-    "vNext nao decidido"
+  "delta": "D-52 rede ppirtv-checkin: 21=12c/1c-PEGA(M5)/2a-PEGA(M8,M9)/6b-PAGAS/0-mortos; 6 its + 6/6 vigílias PEGA; janela TRACKER-0011 curada no hook (1 linha comentário, dona real dex-complexidade-ciclomatica); régua ganha ppirtv-checkin 15/21 (TOTAL 114/299, sem ref 181); BARATA fixture expires data-mágica (3x 2026-11-15) curada com futureExpiry() +14d dentro do teto 30d do validador l.331-338; suíte 961->967 +4 skipped (971), 77->78 arq; camping flow-engine NOT_APPLICABLE (src/ intocado).",
+  "evidence": [
+   "rg -c \"^\\| \" .agents/AUDITORIAS/2026-11-16-rede-checkin/TABELA.md -> 23 (header+sep+21)",
+   "MUTACOES: m1..m9 sondas (6 sobreviveram -> b) + m1,m2,m3,m4,m6b,m7 -vigia.json 6/6 sobreviveu=false (PEGA)",
+   "npx vitest run tests/checkin-rede-d52.test.ts -> 6 passed (568ms)",
+   "npx vitest run tests/flow-engine-boundary.test.ts -> 36 passed pós-vacina",
+   "npx vitest run (full) -> 967 passed | 4 skipped (971) 78 arq; 2 runs 78/78 + captura (181.57s)",
+   "python -B tools/test-symbol-coverage.py -> ppirtv-checkin 15/21 sem-ref 6; TOTAL 114/299 sem-ref 181",
+   "rg -n \"dex-complexidade\" tools/playbook/hooks/pre-commit -> l.54 (cura 0011); TRACKER INDEX 0011 fechado"
+  ]
+ },
+ "reavaliacao_precommit_duplicacao_delta": {
+  "date": "2026-11-14",
+  "scope": [
+   "tools/check-duplicacao-delta.py",
+   "tools/duplicacao-allowlist.json",
+   "tools/playbook/hooks/pre-commit"
   ],
-  "fontes_vivas": [
-    "dist/index.js",
-    "dist/launcher.js",
-    "src/",
-    "tests/",
-    "docs/guides/MCP_AGENT_QUICKSTART.md",
-    "CAPACITY.md"
+  "delta": "5o gate do pre-commit: anti-duplicacao Type-2 (hash AST via motor da skill global; deterministico R16; allowlist R10; P10 frota). RED exit 1 com 2 localizacoes; GREEN-allowlist exit 0; commit abortado ao vivo; baseline 0 grupos; custo 0.274s. Suíte inalterada 952+4 (956).",
+  "evidence": [
+   "python -B tools/check-duplicacao-delta.py --check -> exit 1 (fixture Type-2: zz-fixture-duplicata.py:12 <-> mutacao-amostra.py:104, 44L)",
+   "python -B tools/check-duplicacao-delta.py --check (par na allowlist) -> exit 0 [allowlist]",
+   "npm test -> 952 passed | 4 skipped (956) — 128.72s",
+   "time gate --check (2 .py staged, 6 arquivos/31 funcoes) -> 0.274s",
+   "git commit com fixture staged -> ABORTADO pelo 5o gate (evidencia commit-abortado.txt)"
+  ]
+ },
+ "schema": "dex.capacity.snapshot.v1",
+ "reavaliacao_issue19_goal_status_binding_drift": {
+  "date": "2026-11-13",
+  "scope": [
+   "src/flow-engine.ts",
+   "src/provenance-trace.ts",
+   "tests/goal-status-binding-drift.test.ts"
   ],
-  "suite": {
-    "passed": 961,
-    "failed": 0,
-    "skipped": 4,
-    "total": 965,
-    "files": 77,
-    "command": "npx vitest run (sessao D-51 2026-11-15: 961 passed | 4 skipped (965), 77 arq, medida 2x; +5 its rede-d51; tsc src+tests exit 0)"
-  },
-  "tools_count": 32,
-  "capabilities": [
-    {
-      "id": "CAP-36",
-      "capability": "Atribuicao fiscal auditavel em checkout compartilhado",
-      "owner": "review-scope-attribution",
-      "consumer": "evidence_add e goal_verdict via MCP stdio",
-      "trigger": "scope_attribution_evidence_ids seleciona evidencias review_scope_attribution",
-      "behavior": "Servidor vincula e revalida base e identidade, protege declaracoes, exige atribuicao de novos caminhos e grava o snapshot avaliado junto aos IDs utilizados.",
-      "oracle": "tests/git-corroboration-commits.test.ts: seis cenarios pela entrada MCP stdio",
-      "evidence": [
-        "tests/git-corroboration-commits.test.ts",
-        "src/review-scope-attribution.ts"
-      ],
-      "state": "comprovada",
-      "limits": [
-        "Origem semantica declarada pelo revisor; identidade e vinculos verificados pelo servidor.",
-        "Flow consumidor original preservado durante as fixtures."
-      ]
-    },
-    {
-      "id": "CAP-35",
-      "capability": "Recorrencia fiscal por declaracao tipada com historico preservado",
-      "owner": "verdict-fiscal-policy",
-      "consumer": "Agente MCP e consumidor direto FlowEngine",
-      "trigger": "goal_verdict.recurring_risk boolean ou teto historico de regressos",
-      "behavior": "Texto nao cria recorrencia; sinal pendente true sobrevive omissao/reload/bloqueio; fechamento SOMENTE por verdict positivo gravado (pronto|pronto_com_ressalvas); false so grava com veredito consumado; teto real independe do booleano e e terminal com saida provada (close_flow_with_reservation via flow_archive); retry nao duplica evento",
-      "oracle": "tests/fiscal-recurrence.test.ts 24/24 + goal-fiscal 26/26 + tools/list real",
-      "evidence": [
-        ".agents/AUDITORIAS/EVIDENCIAS/2026-11-02-fiscal-recorrencia/focused-final.log",
-        ".agents/AUDITORIAS/EVIDENCIAS/2026-11-02-fiscal-recorrencia/mcp-schema.json"
-      ],
-      "state": "comprovada",
-      "limits": [
-        "Prova de comportamento com fixtures sinteticas e engine; contrato MCP observado; outros eixos lexicais fiscais nao foram redesenhados."
-      ]
-    },
-    {
-      "id": "CAP-01",
-      "capability": "goal_start com SPT v3 (binding, idempotency_key, revalidação)",
-      "owner": "flow-engine",
-      "consumer": "Agente MCP",
-      "trigger": "`goal_start` com spt_path+objective",
-      "behavior": "Flow oficial criado/reusado; SPT revalidado; risks do contrato passam pelo guard de segredo",
-      "oracle": "Cerimônia H2 flow `flow_20261018122122542_2900_0001` + bateria R4",
-      "evidence": [
-        "goal_start vivo hoje; probe `spt.risks` rejeitou segredo ao vivo"
-      ],
-      "state": "comprovada",
-      "limits": []
-    },
-    {
-      "id": "CAP-02",
-      "capability": "Gates de fase tipados fail-closed (R2/R10)",
-      "owner": "gate-resolution + phase-profile",
-      "consumer": "Agente MCP",
-      "trigger": "`goal_gate_check`/`goal_advance` com provided",
-      "behavior": "changed_files/deleted_files estritos; []/\"false\"/0/{} nao valem; chave provided desconhecida falha fechada",
-      "oracle": "tests/gate-integrity-revalidation.test.ts 13/13 + tests/gate-integrity-hardening-3.test.ts 4/4",
-      "evidence": [
-        "Bateria R2/R10; strict paths no hardening-3; suite 675"
-      ],
-      "state": "comprovada",
-      "limits": [
-        "Provas de gate exercitam engine; host MCP externo nao foi conectado neste corte"
-      ]
-    },
-    {
-      "id": "CAP-03",
-      "capability": "Diagnóstico de shape no preflight (R8)",
-      "owner": "gate-resolution + flow-engine",
-      "consumer": "Agente MCP",
-      "trigger": "`goal_gate_preflight` com valor recusado",
-      "behavior": "`required[].diagnostic {field, received, expected}` no retorno",
-      "oracle": "Teste R8 + probe runtime dist",
-      "evidence": [
-        "Preflight vivo devolveu `diff_reviewed: received \"string \\\"false\\\"\" / expected \"boolean true\"`"
-      ],
-      "state": "comprovada",
-      "limits": []
-    },
-    {
-      "id": "CAP-04",
-      "capability": "Retorno sem salto para frente (R1)",
-      "owner": "phase-profile",
-      "consumer": "Agente MCP / fiscal",
-      "trigger": "`flow_return`/`goal_regress`",
-      "behavior": "Destino posterior rejeita `PPIRTV_PHASE_RETURN_MUST_GO_BACK`; mesma fase segue legal (regresso fiscal)",
-      "oracle": "Bateria R1 + T-HARD-P1/T24/T26 legados verdes",
-      "evidence": [
-        "Suíte engine 198/198"
-      ],
-      "state": "comprovada",
-      "limits": []
-    },
-    {
-      "id": "CAP-05",
-      "capability": "Veredito canônico com cobertura de critérios",
-      "owner": "flow-engine",
-      "consumer": "Agente MCP",
-      "trigger": "`goal_verdict` status+evidence_ids",
-      "behavior": "Veredito sem citar TODAS as expansões reprova `SPT_V3_CRITERION_COVERAGE_REQUIRED`",
-      "oracle": "Jornada viva: 1ª tentativa H2 reprovada (C-2,C-4,C-6), 2ª com 20 ids passou",
-      "evidence": [
-        "Veredito `vrd_20261018133409430_2943_0001`"
-      ],
-      "state": "comprovada",
-      "limits": []
-    },
-    {
-      "id": "CAP-06",
-      "capability": "Rota declarativa `declarative_proof` 1→N",
-      "owner": "spt-declarative-proof",
-      "consumer": "Agente MCP",
-      "trigger": "`evidence_add` com declarative_proof",
-      "behavior": "Expande server-side em criterion_proofs por `proves`; aprovado satisfaz gate de evidence",
-      "oracle": "20 criterion_proofs criados hoje; quickstart §Declarative route",
-      "evidence": [
-        "Flow H2 com 20 expansões passed"
-      ],
-      "state": "comprovada",
-      "limits": []
-    },
-    {
-      "id": "CAP-07",
-      "capability": "Review estrutural com fingerprint + cobertura integral",
-      "owner": "gate-resolution",
-      "consumer": "Revisor (agente)",
-      "trigger": "`evidence_add` kind code_review",
-      "behavior": "Review parcial (5/11 alvos) rejeitada `changed_files_not_fully_reviewed`; integral+fingerprint passa",
-      "oracle": "Jornada viva H2 (evd 2911 rejeitada → evd 2936 aceita)",
-      "evidence": [
-        "Gate revisao passed",
-        "tests/server-review-scaffold.test.ts 2/2: server boundary removes [object Object] from review scaffold"
-      ],
-      "state": "comprovada",
-      "limits": []
-    },
-    {
-      "id": "CAP-08",
-      "capability": "Invalidação de gates por fingerprint same-path (R3)",
-      "owner": "gate-resolution",
-      "consumer": "Fiscal do fluxo",
-      "trigger": "Conteúdo muda em path existente",
-      "behavior": "Recheck de revisão/teste/validação recalcula fingerprint; reuse stale bloqueado",
-      "oracle": "tests/gate-integrity-revalidation.test.ts R3 + tests/gate-integrity-hardening-3.test.ts",
-      "evidence": [
-        "Probe B: same-path bloqueia; review estruturada atual passa"
-      ],
-      "state": "comprovada",
-      "limits": []
-    },
-    {
-      "id": "CAP-09",
-      "capability": "Fluxo manual legado sem goal_binding",
-      "owner": "flow-engine",
-      "consumer": "Sessões legadas",
-      "trigger": "`flow_create`/`gate_check`/`advance`",
-      "behavior": "Compatibilidade preservada (provided verdict como status-text aceito)",
-      "oracle": "`tests/goal-fiscal.test.ts` legacy verde",
-      "evidence": [
-        "Suíte 666"
-      ],
-      "state": "comprovada",
-      "limits": [
-        "Nível suíte; sem jornada viva nova no corte"
-      ]
-    },
-    {
-      "id": "CAP-10",
-      "capability": "Segredo rejeitado antes de persistir",
-      "owner": "security/secret-redaction",
-      "consumer": "Agente MCP / dono",
-      "trigger": "Payload secret-like em provided/SPT/risks",
-      "behavior": "Erro tipado antes de escrever; flow JSON limpo",
-      "oracle": "Bateria R4 (gate_check/advance/goal_start) + probe runtime",
-      "evidence": [
-        "Flow H2 JSON sem token sintético"
-      ],
-      "state": "comprovada",
-      "limits": [
-        "Padrões de segredo conhecidos; não é promessa de anti-exfiltração geral"
-      ]
-    },
-    {
-      "id": "CAP-11",
-      "capability": "Fast-track mechanical so para diff documental (R6, allowlist + Git)",
-      "owner": "gate-resolution",
-      "consumer": "Fiscal do veredito",
-      "trigger": "Veredito mechanical com changed_files",
-      "behavior": "Extensionless = codigo; veredito cruza changed_files com git status real E commits via git diff base..HEAD (base congelada no primeiro goal_start; base orfa fail-closed exige review); runtime .git/.ppirtv/.agents fora da corroboration; sem .git no start a limitacao e declarada",
-      "oracle": "tests/gate-integrity-hardening-3.test.ts R6 + tests/gate-integrity-revalidation.test.ts",
-      "evidence": [
-        "tests/git-corroboration-commits.test.ts 4/4 RED-first; probes MCP H3 3/3 (laudo adendo 3)",
-        "teste R6 Git; probe G no-Git documentado"
-      ],
-      "state": "comprovada",
-      "limits": [
-        "Sem .git nao ha corroboracao de diff real; declarado no quickstart"
-      ]
-    },
-    {
-      "id": "CAP-12",
-      "capability": "Mineração append-only + idempotência no ledger",
-      "owner": "memory/mining-policy",
-      "consumer": "Agente MCP",
-      "trigger": "`mm_memory_mining`",
-      "behavior": "Cada tentativa anexa `memory_mined`; dedup só por reconciliation id",
-      "oracle": "3 eventos no flow H2 (pré+pós-veredito idêntico anexou)",
-      "evidence": [
-        "History do flow H2"
-      ],
-      "state": "comprovada",
-      "limits": []
-    },
-    {
-      "id": "CAP-13",
-      "capability": "Resolução de candidatos de memória",
-      "owner": "flow-engine",
-      "consumer": "Garimpeiro",
-      "trigger": "`mm_memory_candidate_resolve`",
-      "behavior": "Descarte/promoção com rationale persistido",
-      "oracle": "Recibo MGL 2026-10-18 (candidato duplicado descartado) + suíte",
-      "evidence": [
-        "`.agents/AUDITORIAS/EVIDENCIAS/` MGL"
-      ],
-      "state": "comprovada",
-      "limits": [
-        "Jornada viva foi no corte MGL (hoje, antes deste commit)"
-      ]
-    },
-    {
-      "id": "CAP-14",
-      "capability": "Integração dex-memoria V2 (writer)",
-      "owner": "dex-memoria adapter",
-      "consumer": "Sistema de memória da casa",
-      "trigger": "remember/mining com writer V2",
-      "behavior": "Receipt `COMMITTED` por rota",
-      "oracle": "2 gravadas hoje via CLI (bed6b977, 702baa76)",
-      "evidence": [
-        "Tema ppirtv L1+L2 confirmados por rg"
-      ],
-      "state": "comprovada",
-      "limits": []
-    },
-    {
-      "id": "CAP-15",
-      "capability": "Seletor de memória (bin + probe)",
-      "owner": "memory-selector",
-      "consumer": "Dono/instalação",
-      "trigger": "`npm run memory-selector`",
-      "behavior": "Seleção de writer/destino",
-      "oracle": "`tests/e2e` 12 passed + bins presentes",
-      "evidence": [
-        "e2e verde no corte"
-      ],
-      "state": "parcial",
-      "limits": [
-        "Sem jornada de consumidor viva neste corte (oracle é suíte e2e)"
-      ]
-    },
-    {
-      "id": "CAP-16",
-      "capability": "Fiscal camping (SHRINK/CONTAIN/EXCEPTION + ledger + markers)",
-      "owner": "validate-flow-engine-boundary",
-      "consumer": "Oráculo-refatoração",
-      "trigger": "Diff que toca flow-engine",
-      "behavior": "Record obrigatorio; EXCEPTION integrity desta visita PASS (RED causal, +21 nonblank, +2 decisoes); replay por janela; markers exigidos",
-      "oracle": "Replays PASS hoje (visit + cumulative) + EXCEPTION H2 aceita",
-      "evidence": [
-        "check:flow-engine PASS CONTAIN; record FE-2026-10-18-GATE-INTEGRITY-HARDENING-3"
-      ],
-      "state": "comprovada",
-      "limits": [
-        "FE-DEBT-003 aberto: extrair a cola restante da fachada"
-      ]
-    },
-    {
-      "id": "CAP-17",
-      "capability": "Selagem pós-commit de records (R7)",
-      "owner": "validate-flow-engine-boundary",
-      "consumer": "Oráculo-refatoração",
-      "trigger": "Diff de ledger só-commit pós commit",
-      "behavior": "`ledger_commit_seal: PASS`; selagem mentirosa reprova",
-      "oracle": "Probe adversarial ao vivo (FAIL `LEDGER_PREFIX_COMMIT_SEAL_MISMATCH`; restaurado PASS) + H2 selado em 947fdb4",
-      "evidence": [
-        "10 records selados"
-      ],
-      "state": "comprovada",
-      "limits": [
-        "Replay per-commit 598ae5d e excecao documentada; record foi selado em 947fdb4"
-      ]
-    },
-    {
-      "id": "CAP-18",
-      "capability": "Replay cumulativo em cadeia",
-      "owner": "validate-flow-engine-boundary",
-      "consumer": "CI/sessão",
-      "trigger": "`--base 5e7d5df --head HEAD`",
-      "behavior": "Cadeia de records valida elo a elo",
-      "oracle": "PASS hoje com cadeia de 4 records",
-      "evidence": [
-        "Receipt cumulative"
-      ],
-      "state": "comprovada",
-      "limits": [
-        "RED em cadeia conferido contra a base do próprio record (corrigido neste corte)"
-      ]
-    },
-    {
-      "id": "CAP-19",
-      "capability": "Servidor direto stdio (dist/index.js)",
-      "owner": "server.ts",
-      "consumer": "Agente MCP local",
-      "trigger": "Inicializar MCP",
-      "behavior": "32 tools com schemas vivos",
-      "oracle": "`tools/list` real hoje (receipt hardening2-tools-list)",
-      "evidence": [
-        "32 tools"
-      ],
-      "state": "comprovada",
-      "limits": []
-    },
-    {
-      "id": "CAP-20",
-      "capability": "Launcher global com contrato workspace+cwd",
-      "owner": "dist/launcher.js",
-      "consumer": "Projeto consumidor",
-      "trigger": "Instalação global / PPIRTV_WORKSPACE",
-      "behavior": "Sem sinal de workspace falha rápido com erro tipado; com `--workspace`+`cwd` serve a superfície",
-      "oracle": "Dois oracles ao vivo hoje (erro tipado; smoke ok=true)",
-      "evidence": [
-        "Receipt mapa-launcher-smoke"
-      ],
-      "state": "comprovada",
-      "limits": [
-        "Multi-root (PPIRTV_WORKSPACE_ROOTS) não exercitado ao vivo no corte"
-      ]
-    },
-    {
-      "id": "CAP-21",
-      "capability": "runtime_probe (root, runtime, writer)",
-      "owner": "server.ts",
-      "consumer": "Toda sessão MCP",
-      "trigger": "Chamada inicial",
-      "behavior": "project_root/memory writer reportados",
-      "oracle": "Presente em todos os harness calls hoje",
-      "evidence": [
-        "Receipts"
-      ],
-      "state": "comprovada",
-      "limits": []
-    },
-    {
-      "id": "CAP-22",
-      "capability": "ppirtv_trace / arqueologia evolutiva",
-      "owner": "flow-engine",
-      "consumer": "Revisão/handoff",
-      "trigger": "`ppirtv_trace`",
-      "behavior": "Traço cronológico de evolução",
-      "oracle": "Suíte cobre o traço",
-      "evidence": [
-        "tests verdes"
-      ],
-      "state": "parcial",
-      "limits": [
-        "Sem jornada viva de consumidor neste corte"
-      ]
-    },
-    {
-      "id": "CAP-23",
-      "capability": "spt_validate standalone",
-      "owner": "flow-engine",
-      "consumer": "Agente pequeno",
-      "trigger": "`spt_validate`",
-      "behavior": "Valida SPT v3 com diagnósticos",
-      "oracle": "Jornada viva no corte kit-spt-valido-por-construcao (2026-10-30) + suíte dedicada verde",
-      "evidence": [
-        "666",
-        ".agents/receipts/2026-10-30-kit-spt-validate-1a-execucao.log"
-      ],
-      "state": "comprovada",
-      "limits": [
-        "Chamada standalone comprovada no dogfood do kit SPT (MCP stdio em dist/index.js, valid=true de primeira); revalidação interna do goal_start segue a rota principal"
-      ]
-    },
-    {
-      "id": "CAP-24",
-      "capability": "Reuniões/cooperação (open/add-turn/close, required_cooperation)",
-      "owner": "flow-engine",
-      "consumer": "Decisores",
-      "trigger": "`goal_meeting_*`",
-      "behavior": "Ata e cooperadores registrados no flow",
-      "oracle": "Suíte de meetings verde",
-      "evidence": [
-        "666"
-      ],
-      "state": "parcial",
-      "limits": [
-        "Sem reunião viva neste corte"
-      ]
-    },
-    {
-      "id": "CAP-25",
-      "capability": "hygiene_scan / lixeira com manifesto",
-      "owner": "flow-engine",
-      "consumer": "Casa (higiene)",
-      "trigger": "`hygiene_scan`",
-      "behavior": "Achados + destino lixeira",
-      "oracle": "Suíte hygiene verde",
-      "evidence": [
-        "666"
-      ],
-      "state": "parcial",
-      "limits": [
-        "Sem scan vivo hoje"
-      ]
-    },
-    {
-      "id": "CAP-26",
-      "capability": "mm_pipeline_run PRONTO (orquestração)",
-      "owner": "flow-engine",
-      "consumer": "Agente em lote",
-      "trigger": "`mm_pipeline_run`",
-      "behavior": "Orquestração declarativa de flows",
-      "oracle": "Suíte pipeline verde",
-      "evidence": [
-        "666"
-      ],
-      "state": "parcial",
-      "limits": [
-        "Orquestração em lote não usada hoje (missão single-flow)"
-      ]
-    },
-    {
-      "id": "CAP-27",
-      "capability": "ppirtv_checkout (receipt final)",
-      "owner": "flow-engine",
-      "consumer": "Agente MCP",
-      "trigger": "`ppirtv_checkout`",
-      "behavior": "Recibo de fechamento com when verificável",
-      "oracle": "Suíte checkout verde",
-      "evidence": [
-        "666"
-      ],
-      "state": "parcial",
-      "limits": [
-        "Fechamento de hoje usou goal_status; checkout não chamado ao vivo"
-      ]
-    },
-    {
-      "id": "CAP-28",
-      "capability": "checklist_render (fluxo visual PPIRTV)",
-      "owner": "server.ts",
-      "consumer": "Sessão visual",
-      "trigger": "`checklist_render`",
-      "behavior": "Checklist visual por fase",
-      "oracle": "Tool viva no tools/list",
-      "evidence": [
-        "32 tools"
-      ],
-      "state": "parcial",
-      "limits": [
-        "Sem render vivo hoje; suíte não dedica arquivo próprio"
-      ]
-    },
-    {
-      "id": "CAP-29",
-      "capability": "Documentação publicada achável",
-      "owner": "docs/",
-      "consumer": "Agente/dono",
-      "trigger": "Descoberta por INDEX/README",
-      "behavior": "Guia/contratos com link direto + INDEX",
-      "oracle": "Estrutural: docs/INDEX 27 entradas + rotas AGENTS",
-      "evidence": [
-        "rg das rotas atuais"
-      ],
-      "state": "parcial",
-      "limits": [
-        "Link-checker não executado neste corte"
-      ]
-    },
-    {
-      "id": "CAP-30",
-      "capability": "PLAYBOOK projeção externa + hook anti-drift",
-      "owner": "tools/playbook",
-      "consumer": "Destinatário externo",
-      "trigger": "commit / regen",
-      "behavior": "`--check` bloqueia commit com projeção stale",
-      "oracle": "Hook rodou FRESCO nos 2 commits de hoje (bloqueou nada porque regen foi antes)",
-      "evidence": [
-        "Commits 76e9c94/947fdb4"
-      ],
-      "state": "comprovada",
-      "limits": []
-    },
-    {
-      "id": "CAP-31",
-      "capability": "Versioning/snapshot de produto",
-      "owner": "docs/contracts",
-      "consumer": "Dono",
-      "trigger": "Decisão de versão",
-      "behavior": "Contrato de versão + snapshot datado",
-      "oracle": "Apenas documental",
-      "evidence": [
-        "docs existem"
-      ],
-      "state": "não comprovada",
-      "limits": [
-        "Sem decisão/uso de versão neste corte"
-      ]
-    },
-    {
-      "id": "CAP-32",
-      "capability": "Dex Agent Telegram (áudio/proativo)",
-      "owner": "skills/dex-agent (local)",
-      "consumer": "Dono",
-      "trigger": "Pedido de áudio/print",
-      "behavior": "Voice note entregue no chat solicitante",
-      "oracle": "Receipts reais messageId 879 e 880 hoje",
-      "evidence": [
-        "Telegram API message_id"
-      ],
-      "state": "comprovada",
-      "limits": [
-        "Print e fila de startup não exercitados neste corte"
-      ]
-    },
-    {
-      "id": "CAP-33",
-      "capability": "Gate de reavaliacao de capacidades antes de commit",
-      "owner": "$oraculo-refatoracao",
-      "consumer": "Owner do commit / CI",
-      "trigger": "git commit com CAPACITY.md e CAPACITY.receipt.json",
-      "behavior": "Hook roda check:capacity; bloqueia commit sem receipt e reavaliacao staged",
-      "oracle": "tests/capacity-gate.test.ts + hook pre-commit",
-      "evidence": [
-        "CAPACITY GATE PASS 34 capacidades; teste 1/1"
-      ],
-      "state": "comprovada",
-      "limits": [
-        "O gate valida contrato e registro; nao julga a semantica da reavaliacao; --no-verify contorna hook local"
-      ]
-    },
-    {
-      "id": "CAP-34",
-      "capability": "Help/schema/usage read-only por tool MCP no entrypoint e no harness",
-      "owner": "$oraculo-refatoracao",
-      "consumer": "Agente em terminal sem MCP / host MCP",
-      "trigger": "node dist/index.js --describe|--schema|--usage <tool> (ou --list)",
-      "behavior": "O entrypoint detecta flags, le tools/list e imprime descricao/schema/usage/exemplo sem iniciar stdio nem chamar a tool; sem tool imprime help e falha com exit 1",
-      "oracle": "tests/tool-cli-entrypoint.test.ts 4/4 + tests/mcp-tool-describe.test.ts 3/3",
-      "evidence": [
-        "tests/tool-cli-entrypoint.test.ts 4/4",
-        "tests/mcp-tool-describe.test.ts 4/4 (frases do contrato nunca-bloqueante)",
-        "tests/evidence-add-review-wire.test.ts 5/5; tests/review-input.test.ts 3/3"
-      ],
-      "state": "comprovada",
-      "limits": [
-        "Exige npm run build antes do comando",
-        "--usage e generico derivado do schema",
-        "Nao corrige cliente que dobra boolean/array em objeto; o wire continua fail-closed"
-      ]
-    }
+  "delta": "Issue #19: goal_status expoe spt_binding_integrity (lean condicional drifted + full completo) com reuso total de classifyFlow via wrapper sptBindingIntegrityFor; RED-first 2/2; camping EXCEPTION public_compatibility; suíte 947->949.",
+  "evidence": [
+   "npx vitest run tests/goal-status-binding-drift.test.ts -> 2/2 (RED provado antes)",
+   "npx tsc --noEmit -p tsconfig.json -> exit 0",
+   "npm run check:flow-engine -> record no ledger (marker FE-2026-11-13-ISSUE0019)"
+  ]
+ },
+ "reavaliacao_d48_rede_review_snapshot": {
+  "date": "2026-11-13",
+  "scope": [
+   "tests/review-snapshot-rede-d48.test.ts",
+   ".agents/AUDITORIAS/2026-11-13-rede-review-snapshot/"
+  ],
+  "delta": "Corte de rede D-48 (review-snapshot, serie D-42..D-48 fechada): behavioral, src/ intocado. Suíte 938->947 (943 passed + 4 skipped) com 9 its de caracterizacao pagando 7 lacunas (b) provadas por mutacao repo-wide 934/934 (freeze R14 idempotência, gitHeadAt valor, rota resolved redacted, regex credenciais, restored_from formato, pendentes-vazios sem gate, wrapper casing). Régua nominal review-snapshot 8/17->15/17; TOTAL 61->68/167, 101->95 sem ref. Vigílias 7/7 PEGA.",
+  "evidence": [
+   "npx vitest run -> 943 passed | 4 skipped (947)",
+   "python -B tools/test-symbol-coverage.py -> review-snapshot 15/17 code; TOTAL 68/167",
+   "python -B tools/mutacao-amostra.py (24 runs congelados em .agents/AUDITORIAS/2026-11-13-rede-review-snapshot/MUTACOES/; vigílias M*-vigia.json 7/7 PEGA)",
+   "git diff --stat src/ vazio (motor intocado; restauração byte-exata)"
+  ]
+ },
+ "reavaliacao_playbook_reconciliado": {
+  "date": "2026-11-12",
+  "scope": [
+   "PLAYBOOK.md",
+   "PLAYBOOK.index.json"
+  ],
+  "delta": "Projecao regenerada a partir das fontes atuais, sem alteracao de capacidade do produto.",
+  "evidence": [
+   "python -B tools/playbook/generate-playbook.py --repo . --check",
+   "python -B tools/playbook/generate-playbook.py --repo . --check-sent",
+   "npm run audit:canonical"
+  ]
+ },
+ "reavaliacao_issue11_attribution": {
+  "date": "2026-11-07",
+  "scope": [
+   "src/review-scope-attribution.ts",
+   "src/review-snapshot.ts",
+   "src/flow-engine.ts",
+   "src/spt-traceability.ts",
+   "src/server.ts",
+   "tests/git-corroboration-commits.test.ts"
+  ],
+  "delta": "Atribuicao de escopo registrada por evidencia e revalidada na entrada publica MCP. Conjunto fiscal e snapshot gravado coerentes. Integracao preserva a Onda 1 e o ledger historico publicado em main.",
+  "evidence": [
+   "npm run build",
+   "npx vitest run tests/git-corroboration-commits.test.ts",
+   "npm run check"
   ],
   "limits": [
-    "Fotografia de worktree sobre o HEAD 6fb2dae; nova medicao exige novo pedido.",
-    "Gate valida contrato/registro; verdade semantica permanece com owner/oracle.",
-    "R5 permanece decisao documentada; CAP-17 tem excecao per-commit 598ae5d.",
-    "Sem .git nao ha corroboracao de diff real para changed_files.",
-    "4 testes skipped nao foram investigados.",
-    "Matriz completa herdada do espelho 947fdb4; o delta do corte 2026-10-23 (snapshot fantasma: sensivel de runtime de terceiro redigido) revalidou o snapshot de review e a suite 716|4. As demais linhas permanecem com a evidencia do corte anterior.",
-    "Fotografia de worktree sobre o HEAD 2e63c8c (corte fiscal-verdict-nao-positivo); nova medicao exige novo pedido.",
-    "Teto terminal muda o contrato do next_required_action do limite (open_decision_meeting -> close_flow_with_reservation); consumidores que parseavam o tipo antigo foram adaptados nos testes do repo.",
-    "Contrato canonico do teto reescrito para rota terminal (2026-11-02): janelas com processo MCP antigo + contrato antigo ensinam o loop de reuniao — frota precisa pull+build+reconnect+contrato novo.",
-    "Medidor CC correto na fonte 0.4.3 (2026-11-02): raws 0.4.2 dos receipts anteriores sao fotografia historica do motor quebrado — comparacoes de CC exigem motor 0.4.3+ (R13)."
+   "Proveniencia semantica e atestada pelo revisor; o runtime verifica identidade, declaracao e vinculos.",
+   "Flow real do consumidor preservado; prova publica executada em fixtures sinteticas."
+  ]
+ },
+ "reavaliacao_playbook_localizadores": {
+  "date": "2026-11-07",
+  "scope": [
+   "tools/playbook/playbook-sources.txt",
+   "docs/PLAYBOOK-RULES.md",
+   "docs/INDEX.md",
+   "PLAYBOOK.md",
+   "PLAYBOOK.index.json",
+   ".gitattributes",
+   "CHANGELOG.md"
   ],
-  "reavaliacao_snapshot_unborn": {
-    "date": "2026-11-05",
-    "base_sha": "fe3dc2144c78e483931761d2be263249c08dd84a",
-    "scope": [
-      "src/review-snapshot.ts",
-      "tests/git-corroboration-unborn.test.ts",
-      "tests/review-snapshot-redaction.test.ts",
-      "tests/git-porcelain-quoting.test.ts",
-      "CAPACITY.md",
-      "CAPACITY.receipt.json"
-    ],
-    "delta": "Coletor unborn->null; parser descarta trailing-slash (repo aninhado); merge dedupe por identidade fs + saneamento trailing-slash; early-return por conteudo. Strict intocado. Fechamento: flow 2950 complete, veredito vrd_2965 pronto_com_ressalvas; docs de selagem no commit seguinte.",
-    "evidence": ".agents/PLAN-TASKS/2026-11-05-snapshot-unborn-aninhado.md",
-    "suite": {
-      "passed": 781,
-      "failed": 0,
-      "skipped": 4,
-      "files": 60
-    },
-    "limits": [
-      "push fora do corte",
-      "comportamento gitlink/submodule registrado como ressalva do Trilho",
-      "guards unborn adaptados com commit-base (provas preservadas)"
-    ]
-  },
-  "reavaliacao_verdict_learning": {
-    "date": "2026-11-05",
-    "base_sha": "4bd60bc296781bbbe4ea90f08dba59d1c31defba",
-    "scope": [
-      "src/flow-engine.ts",
-      "src/verdict-learning.ts",
-      "tests/verdict-learning-filter.test.ts",
-      "docs/architecture/flow-engine-evolution.json",
-      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
-      "CHANGELOG.md",
-      "CAPACITY.md",
-      "CAPACITY.receipt.json"
-    ],
-    "delta": "SHRINK: deriveVerdictLearning+isStrongLearningText extraidas p/ src/verdict-learning.ts; findings com filtro isStrongLearningText (simetria rationale). Camping SHRINK PASS. Fechamento: flow 2993 complete, vrd_3002 pronto_com_ressalvas; onda densa estacionada EST-20261105.",
-    "evidence": ".agents/PLAN-TASKS/2026-11-05-verdict-learning-filtro-findings.md",
-    "suite": {
-      "passed": 782,
-      "failed": 0,
-      "skipped": 4,
-      "files": 61
-    },
-    "limits": [
-      "push fora do corte",
-      "filtro por keyword: porta explicita verdict_gold_mining segue disponivel"
-    ]
-  },
-  "reavaliacao_crg_gate": {
-    "date": "2026-11-05",
-    "base_sha": "ada0c0d08a5cccbaf358ebd5870a80e750c0c750",
-    "scope": [
-      "tools/playbook/hooks/pre-commit",
-      "CAPACITY.md",
-      "CAPACITY.receipt.json"
-    ],
-    "delta": "Bloco CRG-FRESH-GATE no pre-commit (auto-curativo, aviso se CLI ausente); barata --base HEAD NO-OP morta e documentada. Fechamento: flow 3022 complete, vrd_3030 pronto. Causa incendiaria eliminada: capture-cut com base DEFAULT + pos-condicao built_at==HEAD (receipt nasce failed se divergir); capacity gate alinhado (workflow/+tools, barata irma do scan).",
-    "evidence": ".agents/PLAN-TASKS/2026-11-05-crg-gate-precommit.md",
-    "limits": [
-      "push fora do corte",
-      "no-op --base HEAD reportado por feedback a skill owner"
-    ]
-  },
-  "reavaliacao_merge_pr7": {
-    "date": "2026-11-05",
-    "base_sha": "66b568c",
-    "scope": [
-      "src/domain.ts",
-      "src/review-snapshot.ts",
-      "tests/review-snapshot-recovery.test.ts",
-      "tests/git-corroboration-unborn.test.ts",
-      "docs/guides/MCP_AGENT_QUICKSTART.md"
-    ],
-    "delta": "Merge consciente PR #7 (irma): recoverLegacyReviewScope com proveniencia; dedupe volta a 1 responsabilidade; suíte 62/794|0|4; PR MERGED. Emenda: secao CAPACITY reescrita com paths/ids completos (backticks perdidos no shell).",
-    "evidence": ".agents/PLAN-TASKS/2026-11-05-merge-pr7-review-scope-recovery.md",
-    "limits": [
-      "3 lapidações menores registradas (idioma, doc domain, recover 2x)"
-    ]
-  },
-  "reavaliacao_faxina_dividas": {
-    "date": "2026-11-06",
-    "scope": [
-      "workflow/fechamento-goal-worktree-compartilhado/",
-      "workflow/INDEX.md",
-      "CHANGELOG.md"
-    ],
-    "delta": "Workflow novo 1.0.0 (pacote 6 irmaos dex.workflow.v1) capturando a receita do flow 3086: review cobre o COLETADO do worktree vivo, commit seletivo por proveniencia, fechamento de coerencia com a janela irma. Dividas locais (.agents gitignored) pagas: 37 espelhos dex, LIXEIRA .code-review-graph, pendencias VALIDO, 11 secoes 5-campos GATILHOS-VIVOS, rota absoluta fulltext clean-code (oraculo global + fonte AC commit 499ed2bb).",
-    "evidence": [
-      ".agents/receipts/2026-11-06-espelhos-lote.log",
-      ".agents/receipts/2026-11-06-garimpo-ok.json"
-    ],
-    "observed": {
-      "check_workflow": "fechamento-goal-worktree-compartilhado: OK",
-      "check_schemas_workflow": "2 schemas .schm.md, 0 findings",
-      "er_provas": "ER-01..ER-07 exit 0 (ER-04 com ressalva de case: rg -c 'E SE\\?\\?|E se\\?\\?' = 15 >= 15)"
-    },
-    "limits": [
-      "Superficies .agents/ sao gitignored: provas dos criterios C-01..C-04 vivem em receipts locais, nao no clone",
-      "Achado lateral: pacote irmao manutencao-iterativa-com-evidencia tem finding pre-existente [meta-analise] ausente (fora deste corte, estacionado)"
-    ]
-  },
-  "reavaliacao_vacina_banner": {
-    "date": "2026-11-07",
-    "scope": [
-      "tests/spt-kit-banner.test.ts",
-      "spt-kit/preflight.mjs",
-      "PLAYBOOK.md",
-      "PLAYBOOK.index.json"
-    ],
-    "delta": "Vacina da classe Obsolete Comment (issue #8): teste na suite vitest casa o range anunciado no --schema do preflight com os checks emitidos no codigo (regex add(\"Snn\")) e o cabecalho com o shape maximo; RED provado por mutacao S00..S10->S00..S09 (2 failed) antes do GREEN 2/2. PLAYBOOK regenerado: projecao do PR #9 embutia fontes .agents locais da maquina de origem (drift esperado entre maquinas); regen local FRESCO.",
-    "evidence": [
-      ".agents/receipts/2026-11-07-banner-vacina.log",
-      ".agents/receipts/2026-11-07-pull-pr9.log"
-    ],
-    "observed": {
-      "red_mutation": "2 failed (check S10 fora do range; cabecalho shape menor)",
-      "green": "2 passed | suite apos: ver check final",
-      "pull_hook_postmerge": "INALTERADO (1a mediacao real em pull)"
-    },
-    "limits": [
-      "A projecao PLAYBOOK continua dependendo de fontes .agents locais: drift entre maquinas e inerente ate a fonte .agents viajar ou sair da projecao (fora deste corte)"
-    ]
-  },
-  "reavaliacao_issue10_verdict_diagnostico": {
-    "date": "2026-11-07",
-    "scope": [
-      "src/spt-traceability.ts",
-      "src/flow-engine.ts",
-      "tests/spt-verdict-coverage-diagnostics.test.ts",
-      "docs/architecture/flow-engine-evolution.json",
-      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
-      "workflow/manutencao-iterativa-com-evidencia/WORKFLOW.md",
-      "workflow/manutencao-iterativa-com-evidencia/CHANGELOG.md"
-    ],
-    "delta": "Issue #10 rotas A+B: SPT_V3_CRITERION_COVERAGE_REQUIRED detalha por criterio (proof_not_passed com evaluation literal / no_criterion_proof com rota); goal_status expoe spt_contract_version+spt_traceability_present; re-bind reata traceability de orfao. Camping EXCEPTION urgent_hotfix com SHRINK-material embutido: gate SPT v3 do verdict extraido INTEIRO p/ assertSptV3PositiveVerdictCoverage (engine -6 linhas, -2 decisions; missingCriterionCoverage vira wrapper). Workflow pacote 1.0.3: regua anti-escoteiro-minusculo no passo 6 + Meta-analise (cura finding fiscal).",
-    "evidence": [
-      ".agents/receipts/2026-11-07-issue10-baseline.log",
-      "docs/architecture/flow-engine-evolution.json"
-    ],
-    "observed": {
-      "red_baseline": "4 failed em 25275b0",
-      "green": "4 passed",
-      "camping": "check:flow-engine PASS mode EXCEPTION reasons=[]",
-      "suite": "ver fechamento (check completo apos CAPACITY)"
-    },
-    "limits": [
-      "Rota C da issue (re-bind com contrato diferente) permanece pendencia do contrato de idempotencia",
-      "Onda densa EST-20261105-ONDA-DENSA-VERDICT-LEARNING segue pendente: proximo bloco de decomposicao (compromisso 2026-11-07)"
-    ]
-  },
-  "reavaliacao_issue10_review_fixes": {
-    "date": "2026-11-07",
-    "scope": [
-      "src/server.ts",
-      "src/flow-engine.ts",
-      "src/spt-traceability.ts",
-      "tests/spt-verdict-coverage-diagnostics.test.ts",
-      "docs/architecture/flow-engine-evolution.json",
-      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
-      "docs/contracts/MCP_TOOL_ERROR_ENVELOPE_CONTRACT.md",
-      "CHANGELOG.md"
-    ],
-    "delta": "Correcoes da revisao adversarial 6 lentes do c2e22a2: envelope TRACEABILITY_MISSING aponta goal_start (rota que cura; goal_resume nao curava); goal_status lean expoe binding via sptBindingStatus unico (spread lean/compact/full); reason 1-rodada (ER/task dona, ids citados, aprovada nao citada, pipe, cap 4000); 1 passada de diagnostics (wrapper morto removido); estreitamento goal_binding no call-site; +5 testes (9/9). P1 da revisao refutado na fonte (fingerprint = contrato inteiro). Camping CONTAIN PASS com FE-DEBT-006 aberta (sentinelas v3, evento spt_traceability_reattached, O(C+E), saneamento) pagavel pela onda densa EST-20261105.",
-    "evidence": [
-      ".agents/TMP/camping-fixes2.json",
-      "docs/architecture/flow-engine-evolution.json"
-    ],
-    "observed": {
-      "testes_fix": "9/9 (4 originais + 5 novos)",
-      "camping": "PASS CONTAIN reasons=[] (10 linhas, 0 decisoes, 0 guards added)",
-      "p1_refutado": "fingerprintSptContract = sha256(JSON.stringify(contract)) inteiro"
-    },
-    "limits": [
-      "FE-DEBT-006 aberta ate a onda densa EST-20261105 (GO do dono)",
-      "Emenda de proveniencia do modulo (11d5eb0) vive so no MD (ledger imutavel)"
-    ]
-  },
-  "observacoes": [
-    "2026-11-07 corte envelope-executavel-evidence-required: builders SSOT + vacina; +3 testes (813/817)."
+  "delta": "Fonte versionada dos dois localizadores publicados no PLAYBOOK, com rota do painel para docs/INDEX.md entregue no Git.",
+  "evidence": [
+   "python -B tools/playbook/generate-playbook.py --repo . --check",
+   "python -B tools/playbook/generate-playbook.py --repo . --check-sent"
   ],
-  "reavaliacao_familia_todas_rotas": {
-    "owner": "error-envelope/tests",
-    "delta": "terminalReservationTail com evidence_required true + source (4a copia curada, P1 do smoke); builders com true literal (P2#1); schema-index em tests/helpers + espelho contra tools/list real no mcp.test.ts (P2#2); index completado (enums goal_start, flow_role, goal_verdict integral, flow_archive)",
-    "suite_medida": "816 passed + 4 skipped = 820, 64 files (antes 813/817; files 59 era congelado)",
-    "arquivos": [
-      "src/error-envelope.ts",
-      "tests/error-envelope.test.ts",
-      "tests/helpers/sequence-schema-index.ts",
-      "tests/mcp.test.ts",
-      "CHANGELOG.md",
-      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
-      ".agents/PLAN-TASKS/2026-11-07-envelope-familia-todas-rotas.md"
-    ],
-    "flow_engine": "intocado; 3a copia flow-engine:6087 segue na FE-DEBT-006 (camping NOT_APPLICABLE)"
+  "limits": [
+   "As fontes locais opcionais continuam fora da entrega."
+  ]
+ },
+ "reavaliacao_preflight_schema_s10": {
+  "date": "2026-11-06",
+  "scope": [
+   "spt-kit/preflight.mjs",
+   "CHANGELOG.md"
+  ],
+  "delta": "Anuncio documental S00..S10 alinhado ao validador existente, sem mudanca de algoritmo.",
+  "evidence": [
+   "node spt-kit/preflight.mjs --schema",
+   "node spt-kit/preflight.mjs spt-kit/fixtures/plan-objeto.md"
+  ],
+  "observed": {
+   "schema_checks": "S00..S10",
+   "fixture_findings": 1
   },
-  "reavaliacao_issue11_verdict_snapshot": {
-    "owner": "review-snapshot/flow-engine",
-    "delta": "verdict REJEITADO restaura snapshot do ultimo gate aprovado + pending_review_additions auditaveis (restoreBlockedVerdictSnapshot + pendingReviewAdditionsFor puras em review-snapshot.ts); goal_status expoe pending (lean count/full array); avaliacao continua honesta com conjunto corrente",
-    "suite_medida": "818 passed + 4 skipped = 822, 64 files, exit 0",
-    "red_prova": "molde commit-then-verdict (commit pos-base + untracked pre-existente) RED 2/2 antes da cura",
-    "camping": "EXCEPTION (fix com RED real); flow-engine so cola ~26 linhas; marker FE-2026-11-07-ISSUE11-BLOCKED-VERDICT-SNAPSHOT"
+  "limits": [
+   "Correcao de texto; autoridade estrutural segue no spt_validate"
+  ]
+ },
+ "reavaliacao_post_merge_paridade": {
+  "date": "2026-11-06",
+  "scope": [
+   "tools/playbook/hooks/post-merge",
+   "tools/playbook/hooks/post-merge.impl.mjs",
+   "scripts/canonical-pairs.mjs",
+   "scripts/audit-canonical-sync.mjs"
+  ],
+  "delta": "Hook post-merge auto-curativo dos 4 pares globais (repo->~/.agents) com protecao anti-sobrescrever; lista de pares extraida para modulo compartilhado com o audit.",
+  "evidence": [
+   ".agents/receipts/2026-11-06-postmerge-selftest.log"
+  ],
+  "observed": {
+   "self_test": "4/4 (COPIADO, JA-OK, RECUSADO, INALTERADO)",
+   "hook_real_no_repo": "INALTERADO (correto: ORIG_HEAD..HEAD sem par tocado)"
   },
-  "reavaliacao_escoteiro_onda": {
-    "owner": "AGENTS.md local (régua da casa, gitignored por design)",
-    "delta": "diretriz ESCOTEIRO-ONDA do dono 2026-11-07: fix que tocar cluster mapeado extrai a onda inteira no mesmo corte; maratona contínua",
-    "arquivos": [
-      "CHANGELOG.md",
-      "PLAYBOOK.md",
-      "PLAYBOOK.index.json"
-    ],
-    "suite": "sem mudanca de codigo (818+4=822 continua valendo)"
+  "limits": [
+   "Maquinas sem core.hooksPath ativado nao executam o hook (rito de ativacao no playbook-pointer)"
+  ]
+ },
+ "reavaliacao_spt_kit_cobertura_total": {
+  "date": "2026-11-06",
+  "scope": [
+   "spt-kit/preflight.mjs",
+   "spt-kit/GUIA.md",
+   "spt-kit/MOLDE.md",
+   "spt-kit/RULES.md",
+   "SCHEMA/dex.spt.v3.schm.md",
+   "docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md"
+  ],
+  "delta": "S00 com diagnostico (bytes de abertura + causas provaveis), tolerancia a BOM UTF-8 e S10 de shape dos 21 campos do dex.spt.v3; instrucao de copia curada (bloco YAML, nunca o arquivo integral); GUIA ensina proof_skeletons.",
+  "evidence": [
+   ".agents/receipts/2026-11-06-spt-kit-red-fixtures.log"
+  ],
+  "observed": {
+   "suite": "799|0|4",
+   "npm_run_check_exit": 0,
+   "fixtures_red_green": "5/5"
   },
-  "reavaliacao_workflow_desmontagem_ondas": {
-    "commit_escopo": "workflow/desmontagem-monolito-ondas + workflow/INDEX.md + PLAYBOOK regen",
-    "validador": "check-workflow.py exit 0 (pacote OK)",
-    "suite": "818 passed + 4 skipped = 822 (sem mudanca de codigo)",
-    "fotografia_antes": "desmontagem-antes-4d75dd2 captured, CRG 2618n/39471a/58com",
-    "historico": "MAPAS/HISTORICO-DESMONTAGEM.md retroativo (12 ondas)",
-    "fila": "Onda 1 = 3a copia goal_start flow-engine:6087 -> SSOT error-envelope (flow 3464)"
+  "limits": [
+   "S10 e antecipacao local de presenca/shape; o schema estrito e a semantica permanecem autoridade do spt_validate",
+   "atomicidade de criterio (R3) segue sentinela lexical declarada"
+  ]
+ },
+ "reavaliacao_unborn_files": {
+  "date": "2026-11-05",
+  "scope": [
+   "src/review-snapshot.ts",
+   "src/domain.ts",
+   "tests/review-snapshot-recovery.test.ts"
+  ],
+  "delta": "Recuperacao publica de arquivos regulares nao declarados ingeridos por corroboracao unborn legada, com registro e dedupe por identidade.",
+  "evidence": [
+   ".agents/receipts/snapshot-publica-20261105/unborn-files-red-causal.txt",
+   ".agents/receipts/snapshot-publica-20261105/unborn-files-green.txt",
+   "C:\\Users\\Administrator\\.agents\\skills\\.agents\\SYNC-LAB\\Sincronizacao_2026.11.05\\evidencias\\ppirtv\\unborn-files-red-causal.txt",
+   "C:\\Users\\Administrator\\.agents\\skills\\.agents\\SYNC-LAB\\Sincronizacao_2026.11.05\\evidencias\\ppirtv\\unborn-files-green.txt"
+  ],
+  "observed": {
+   "focal_passed": 20
   },
-  "reavaliacao_onda1_goal_start_ssot": {
-    "commit_escopo": "src/flow-engine.ts + src/error-envelope.ts (export) + tests/engine.test.ts + ledger/markers/CHANGELOG",
-    "suite": "819 passed + 4 skipped = 823 (64 files) — +1 T24b",
-    "red_green": "T24b RED (evidence_required undefined na copia) -> GREEN consumindo goalStartTaughtArgs; oraculo validateSequenceSteps com schema-index",
-    "camping": "EXCEPTION public_compatibility — record FE-2026-11-07-ONDA1-GOAL-START-SSOT + selagem retroativa FE-2026-11-07-ISSUE11-BLOCKED-VERDICT-SNAPSHOT (commit 5b66f56)",
-    "finding_classe": "CONSECUTIVE_EXCEPTION_FORBIDDEN nao modela selagem retroativa de record (cadeia quebrou no 5b66f56 sem record no JSON; marker MD existia)",
-    "fila": "sentinela engine:3792 -> evaluateExpectation -> meetings (mapa de decisoes)"
+  "limits": [
+   "HEAD/base, falta de proveniencia e paths invalidos nao sao excluidos por esta recuperacao"
+  ],
+  "closure": "2026-11-06: codigo commitado no fechamento de coerencia (suite focal 17/17; completa 799|0|4)"
+ },
+ "reavaliacao_snapshot_publica": {
+  "date": "2026-11-05",
+  "base_sha": "ada0c0d",
+  "publication_followup": {
+   "pull_request": "https://github.com/dex-agent/dex-ppirtv/pull/7",
+   "native_restart_confirmed": true,
+   "code_changed": false,
+   "scope": [
+    "CAPACITY.md",
+    "CAPACITY.receipt.json",
+    "PLAYBOOK.md",
+    "PLAYBOOK.index.json"
+   ]
   },
-  "reavaliacao_selagem_onda1": {
-    "commit_escopo": "docs/architecture/flow-engine-evolution.json (selagem pos-commit)",
-    "suite": "819+4=823 do corte 115d7e5 segue valendo (sem mudanca de codigo)"
+  "scope": [
+   "src/review-snapshot.ts",
+   "src/domain.ts",
+   "tests/review-snapshot-recovery.test.ts",
+   "tests/git-corroboration-unborn.test.ts",
+   "tests/INDEX.md"
+  ],
+  "delta": "Projecao read-only do escopo legado e persistencia pela evidencia aceita; dedupe separado da exclusao com proveniencia.",
+  "evidence": [
+   "tests/review-snapshot-recovery.test.ts",
+   ".agents/receipts/snapshot-publica-20261105/red.log",
+   ".agents/receipts/snapshot-publica-20261105/check.log",
+   ".agents/receipts/snapshot-publica-20261105/green.log"
+  ],
+  "observed": {
+   "suite_passed": 794,
+   "suite_skipped": 4,
+   "suite_files": 62,
+   "focal_passed": 17,
+   "mcp_tools": 32
   },
-  "reavaliacao_path_attribution_c01": {
-    "commit_escopo": "src/review-snapshot.ts + src/flow-engine.ts (cola) + src/server.ts (schema) + tests + ledger/markers/CHANGELOG + SCHEMA status",
-    "suite": "821 passed + 4 skipped = 825 (64 files) — +2 (regressao C-01 + triagem)",
-    "red_green": "RED fiel ao roteiro do dono (motor direto, path_attribution inexistente) -> GREEN rota publica; triagem cobre sha divergente + caminho indeterminado sem aplicar nada",
-    "camping": "EXCEPTION public_compatibility — line/decision OK; resta CONSECUTIVE_EXCEPTION_FORBIDDEN (lacuna de classe estacionada)",
-    "schema_drift": "SCHEMA/dex.spt.v3.schm.md status vivo->ativo (check-schemas 0 findings)"
+  "limits": [
+   "fixture MCP nao certifica aceite do consumidor externo",
+   "runtime persistente precisa carregar o build final",
+   "EPERM intermitente no lock de reuniao observado em rodada anterior; isolado 24/24"
+  ]
+ },
+ "reavaliacao_workflow_portability": {
+  "date": "2026-11-02",
+  "base_sha": "f6daafa8f7fa09010ae73faab75c0171d66967b2",
+  "scope": [
+   "workflow/manutencao-iterativa-com-evidencia/",
+   "CAPACITY.md",
+   "CAPACITY.receipt.json",
+   "CHANGELOG.md",
+   "PLAYBOOK.md",
+   "PLAYBOOK.index.json"
+  ],
+  "delta": "Preflight e dependencias da instancia1.0.1; global1.2.0/variantes1.1.0 validados separadamente; politica local preservada.",
+  "evidence": ".agents/receipts/workflow-retrofit-20261102/FINAL-REPORT.md",
+  "observed": {
+   "relocated_packages": 5,
+   "missing_dependency_tests": 5,
+   "contact_owner_tests": 15,
+   "contact_consumer_tests": 29,
+   "schema_findings": 0,
+   "suite_passed": 776,
+   "suite_skipped": 4,
+   "suite_files": 59
   },
-  "reavaliacao_convergencia_pr12": {
-    "commit_escopo": "merge PR12 + revert path_attribution + cura validador (2 classes) + espelho index + markers",
-    "suite": "826 passed + 4 skipped = 830 (65 files) — merge trouxe testes MCP stdio; +2 RED classes no boundary",
-    "camping": "FE-2026-11-07-CONVERGENCIA-PR12 EXCEPTION public_compatibility supersedes PATH-ATTRIBUTION — reasons: [] VERDE",
-    "validador": "sealed_retroactive (copia, merge-base) + supersedes_record; regra-mae preservada (20/20)"
+  "limits": [
+   "quatro testes condicionais skipped",
+   "instalacao em outro host nao observada",
+   "skills externas nao viajam no clone do produto"
+  ]
+ },
+ "reavaliacao_integracao_fiscal": {
+  "date": "2026-11-02",
+  "base_sha": "fbf7d9d",
+  "scope": [
+   "CAPACITY.md",
+   "CAPACITY.receipt.json",
+   "CHANGELOG.md",
+   "PLAYBOOK.md",
+   "PLAYBOOK.index.json"
+  ],
+  "delta": "Integracao validada; rota terminal exercitada em consumidor real sem reset; selagem documental sem codigo novo.",
+  "evidence": ".agents/receipts/runtime-fiscal-closeout.md",
+  "suite": {
+   "passed": 776,
+   "skipped": 4,
+   "files": 59
   },
-  "reavaliacao_onda2_sentinela_v3": {
-    "commit_escopo": "src/spt-traceability.ts + src/flow-engine.ts (cola) + tests + ledger/markers/CHANGELOG",
-    "suite": "827 passed + 4 skipped = 831 — +1 teste Onda 2",
-    "camping": "FE-2026-11-08-ONDA2-SENTINELA-ADMISSAO-V3 EXCEPTION public_compatibility — reasons [] (selagem retroativa comprovada em corte real)",
-    "motor": "zero checagem SPT_V3 inline (rg SPT_V3_EVIDENCE_INVALID|SPT_V3_TRACEABILITY_MISSING|qualifyCriterionProof = vazio)"
+  "limits": [
+   "Cliente desktop precisa reconectar transporte",
+   "Produto Hub nao aceito",
+   "Quatro testes skipped"
+  ]
+ },
+ "reavaliacao_manutencao": {
+  "date": "2026-11-02",
+  "base_sha": "77c019d87362efef12a832a92976e8a3e8f9e0fc",
+  "scope": [
+   "workflow/",
+   ".code-review-graphignore",
+   "README.md",
+   "CHANGELOG.md",
+   "PLAYBOOK.md",
+   "PLAYBOOK.index.json",
+   "CAPACITY.md",
+   "CAPACITY.receipt.json"
+  ],
+  "delta": "Instancia de manutencao com ferramentas owners; nenhuma capacidade MCP ou politica fiscal alterada.",
+  "evidence": ".agents/receipts/manutencao-continua-20261102/",
+  "suite": {
+   "passed": 769,
+   "skipped": 4,
+   "files": 59
   },
-  "reavaliacao_onda2b_reattach_indice": {
-    "commit_escopo": "src/spt-traceability.ts (indice SptTraceIndex + helper evento) + src/flow-engine.ts (cola evento) + src/spt-declarative-proof.ts (indice) + tests + ledger/markers/CHANGELOG",
-    "suite": "828 passed + 4 skipped = 832 — +1 teste do evento de re-attach",
-    "camping": "FE-2026-11-08-ONDA2B-REATTACH-EVENTO-INDICE EXCEPTION integrity — reasons []; pagamento do record FE-DEBT-006 agendado no SHRINK da Onda 3 (decisao do desenho)",
-    "motor": "evento spt_traceability_reattached (history+ledger) no re-bind de orfao; zero .find linear no caminho de qualificacao (rg exit 1 em spt-traceability e spt-declarative-proof)",
-    "selagem": "record selado pos-commit em 145ac4e (commit: 145ac4e) no commit de selagem seguinte"
+  "limits": [
+   "CRG parcial",
+   "extracao TS do medidor com reproducao pendente no owner",
+   "cobertura e ciclos nao medidos",
+   "runtime fiscal local nao atualizado"
+  ]
+ },
+ "reavaliacao_documental": {
+  "date": "2026-11-02",
+  "base_sha": "2e63c8c0411ae96686f62cd5ea65d6b221117b32",
+  "scope": [
+   "README.md",
+   "CHANGELOG.md",
+   "CAPACITY.md",
+   "CAPACITY.receipt.json",
+   "PLAYBOOK.md",
+   "PLAYBOOK.index.json"
+  ],
+  "delta": "Orientacao de revisao de PR draft e gates documentais; nenhuma capacidade MCP alterada.",
+  "limits": [
+   "suite e capabilities abaixo preservam evidencias historicas; publicacao real so se comprova por readback posterior do GitHub"
+  ]
+ },
+ "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
+ "fotografia_id": "2026-11-05-merge-pr7",
+ "head": "6d6627892d29bd8c8b1a0033b0fd1e9b8495fe50",
+ "tree_hash": "682061ce2089c2cfbb23f85eb5c281847d26e1ab",
+ "generated_at": "2026-11-15T22:35:33Z",
+ "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
+ "escopo": [
+  "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
+ ],
+ "fora_de_escopo": [
+  "Skill registry global",
+  "projetos consumidores",
+  "vNext nao decidido"
+ ],
+ "fontes_vivas": [
+  "dist/index.js",
+  "dist/launcher.js",
+  "src/",
+  "tests/",
+  "docs/guides/MCP_AGENT_QUICKSTART.md",
+  "CAPACITY.md"
+ ],
+ "suite": {
+  "passed": 961,
+  "failed": 0,
+  "skipped": 4,
+  "total": 965,
+  "files": 77,
+  "command": "npx vitest run (sessao D-51 2026-11-15: 961 passed | 4 skipped (965), 77 arq, medida 2x; +5 its rede-d51; tsc src+tests exit 0)"
+ },
+ "tools_count": 32,
+ "capabilities": [
+  {
+   "id": "CAP-36",
+   "capability": "Atribuicao fiscal auditavel em checkout compartilhado",
+   "owner": "review-scope-attribution",
+   "consumer": "evidence_add e goal_verdict via MCP stdio",
+   "trigger": "scope_attribution_evidence_ids seleciona evidencias review_scope_attribution",
+   "behavior": "Servidor vincula e revalida base e identidade, protege declaracoes, exige atribuicao de novos caminhos e grava o snapshot avaliado junto aos IDs utilizados.",
+   "oracle": "tests/git-corroboration-commits.test.ts: seis cenarios pela entrada MCP stdio",
+   "evidence": [
+    "tests/git-corroboration-commits.test.ts",
+    "src/review-scope-attribution.ts"
+   ],
+   "state": "comprovada",
+   "limits": [
+    "Origem semantica declarada pelo revisor; identidade e vinculos verificados pelo servidor.",
+    "Flow consumidor original preservado durante as fixtures."
+   ]
   },
-  "reavaliacao_cura_adversarial": {
-    "commit_escopo": "src/flow-engine.ts (ordem do ledger pos-saveFlow) + scripts/validate-flow-engine-boundary.mjs (sealedParentReasons) + docs/architecture/flow-engine-evolution.json (linhagem) + tests (2 REDs + 3 gaps) + CAPACITY/CHANGELOG/MD",
-    "suite": "830 passed + 4 skipped = 834 — +2 testes (trilha falsa do ledger + pai unico cego)",
-    "camping": "FE-2026-11-08-CURA-ADVERSARIAL-LINHAGEM-LEDGER EXCEPTION integrity — reasons []",
-    "linhagem": "PATH-ATTRIBUTION parent_commit=0bdd375 full (pai real dono do base_blob); CONVERGENCIA+ONDA2B full shas; validador agora confere pai unico",
-    "selagem": "record selado pos-commit em 9facae1"
+  {
+   "id": "CAP-35",
+   "capability": "Recorrencia fiscal por declaracao tipada com historico preservado",
+   "owner": "verdict-fiscal-policy",
+   "consumer": "Agente MCP e consumidor direto FlowEngine",
+   "trigger": "goal_verdict.recurring_risk boolean ou teto historico de regressos",
+   "behavior": "Texto nao cria recorrencia; sinal pendente true sobrevive omissao/reload/bloqueio; fechamento SOMENTE por verdict positivo gravado (pronto|pronto_com_ressalvas); false so grava com veredito consumado; teto real independe do booleano e e terminal com saida provada (close_flow_with_reservation via flow_archive); retry nao duplica evento",
+   "oracle": "tests/fiscal-recurrence.test.ts 24/24 + goal-fiscal 26/26 + tools/list real",
+   "evidence": [
+    ".agents/AUDITORIAS/EVIDENCIAS/2026-11-02-fiscal-recorrencia/focused-final.log",
+    ".agents/AUDITORIAS/EVIDENCIAS/2026-11-02-fiscal-recorrencia/mcp-schema.json"
+   ],
+   "state": "comprovada",
+   "limits": [
+    "Prova de comportamento com fixtures sinteticas e engine; contrato MCP observado; outros eixos lexicais fiscais nao foram redesenhados."
+   ]
   },
-  "reavaliacao_cura2_validador_selo": {
-    "commit_escopo": "scripts/validate-flow-engine-boundary.mjs (selo vivo + fonte unica + bootstrap isento) + src/flow-engine.ts (backfill) + tests (2 REDs + regex) + docs/ledger/CAPACITY",
-    "suite": "832 passed + 4 skipped = 836 — +2 testes (selo vivo; backfill)",
-    "camping": "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO EXCEPTION integrity — reasons [] de primeira",
-    "selo_vivo": "COMMIT_SEAL_PARENT_MISMATCH no evaluateCommitSealDiff; bootstrap deixou de ser o unico caminho",
-    "selagem": "record selado pos-commit em 49524c3"
+  {
+   "id": "CAP-01",
+   "capability": "goal_start com SPT v3 (binding, idempotency_key, revalidação)",
+   "owner": "flow-engine",
+   "consumer": "Agente MCP",
+   "trigger": "`goal_start` com spt_path+objective",
+   "behavior": "Flow oficial criado/reusado; SPT revalidado; risks do contrato passam pelo guard de segredo",
+   "oracle": "Cerimônia H2 flow `flow_20261018122122542_2900_0001` + bateria R4",
+   "evidence": [
+    "goal_start vivo hoje; probe `spt.risks` rejeitou segredo ao vivo"
+   ],
+   "state": "comprovada",
+   "limits": []
   },
-  "reavaliacao_onda3_meetings_policy": {
-    "commit_escopo": "src/meeting-policy.ts (NOVO 941L) + src/lang-utils.ts (NOVO) + src/flow-engine.ts (−970L) + src/verdict-fiscal-policy.ts + docs/ledger/CAPACITY",
-    "suite": "832 passed + 4 skipped = 836 — sem editar teste (movimentação pura)",
-    "camping": "FE-2026-11-08-ONDA3-MEETINGS-POLICY-SHRINK SHRINK pays_debt_id=FE-DEBT-006 — reasons []",
-    "motor": "8180→7210 linhas (−970, −12%); 48 símbolos top-level removidos, zero adicionados (AST diff)",
-    "selagem": "record selado pos-commit em 9ad23ee COM parent_commit REAL e809b054 (emenda da sessao: one-liner gravara path por bug; o selo vivo pegou o falso COMMIT_SEAL_PARENT_MISMATCH e validou a correcao; linha do CAPACITY consertada)"
+  {
+   "id": "CAP-02",
+   "capability": "Gates de fase tipados fail-closed (R2/R10)",
+   "owner": "gate-resolution + phase-profile",
+   "consumer": "Agente MCP",
+   "trigger": "`goal_gate_check`/`goal_advance` com provided",
+   "behavior": "changed_files/deleted_files estritos; []/\"false\"/0/{} nao valem; chave provided desconhecida falha fechada",
+   "oracle": "tests/gate-integrity-revalidation.test.ts 13/13 + tests/gate-integrity-hardening-3.test.ts 4/4",
+   "evidence": [
+    "Bateria R2/R10; strict paths no hardening-3; suite 675"
+   ],
+   "state": "comprovada",
+   "limits": [
+    "Provas de gate exercitam engine; host MCP externo nao foi conectado neste corte"
+   ]
   },
-  "reavaliacao_cura3_selo_parent": {
-    "camping": "EXCEPTION integrity (motor tocado so pelo backfill-terminal; RED real do early-return)",
-    "commit_escopo": [
-      "scripts/validate-flow-engine-boundary.mjs",
-      "src/flow-engine.ts",
-      "tests/flow-engine-boundary.test.ts",
-      "tests/spt-verdict-coverage-diagnostics.test.ts",
-      "CHANGELOG.md",
-      "docs/architecture/FLOW_ENGINE_EVOLUTION.md"
-    ],
-    "selagem": "cb0b4aa selado pos-commit COM parent_commit d46a415 (full); camping EXCEPTION PASS reasons []; decision_sites +1 (reattachHistory no early-return terminal)",
-    "gates": "EVIDENCE_SELECTOR_REGEX_INVALID + RED_SELECTOR_REGEX_INVALID + COMMIT_SEAL_PARENT_MISSING/REMOVED + linhagem no LEDGER_PREFIX",
-    "suite": {
-      "passed": 835,
-      "failed": 0,
-      "skipped": 4,
-      "total": 839,
-      "red_provas": 3
-    }
+  {
+   "id": "CAP-03",
+   "capability": "Diagnóstico de shape no preflight (R8)",
+   "owner": "gate-resolution + flow-engine",
+   "consumer": "Agente MCP",
+   "trigger": "`goal_gate_preflight` com valor recusado",
+   "behavior": "`required[].diagnostic {field, received, expected}` no retorno",
+   "oracle": "Teste R8 + probe runtime dist",
+   "evidence": [
+    "Preflight vivo devolveu `diff_reviewed: received \"string \\\"false\\\"\" / expected \"boolean true\"`"
+   ],
+   "state": "comprovada",
+   "limits": []
   },
-  "reavaliacao_emenda_contagens_onda3": {
-    "date": "2026-11-08",
-    "scope": [
-      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
-      "CHANGELOG.md"
-    ],
-    "delta": "Contagens da Onda 3 reconciliadas por medição na consolidação da adversarial (0 P1); nota de convenção consumers (importador direto).",
-    "evidence": [
-      "git show e809b054:src/flow-engine.ts | wc -l (8179)",
-      "node -e removed_symbols.length=47",
-      ".agents/AUDITORIAS/adversarial-261108-onda3/CONSOLIDADO.md (veredito sessão dona)"
-    ],
-    "limits": [
-      "Record JSON imutável (LEDGER_HISTORY_MUTATED); a emenda vive no MD/CHANGELOG."
-    ]
+  {
+   "id": "CAP-04",
+   "capability": "Retorno sem salto para frente (R1)",
+   "owner": "phase-profile",
+   "consumer": "Agente MCP / fiscal",
+   "trigger": "`flow_return`/`goal_regress`",
+   "behavior": "Destino posterior rejeita `PPIRTV_PHASE_RETURN_MUST_GO_BACK`; mesma fase segue legal (regresso fiscal)",
+   "oracle": "Bateria R1 + T-HARD-P1/T24/T26 legados verdes",
+   "evidence": [
+    "Suíte engine 198/198"
+   ],
+   "state": "comprovada",
+   "limits": []
   },
-  "reavaliacao_onda4_gate_resolution": {
-    "date": "2026-11-08",
-    "scope": [
-      "src/gate-resolution.ts",
-      "src/flow-engine.ts",
-      "src/meeting-policy.ts"
-    ],
-    "delta": "11 símbolos do eixo gate-resolution migram (renomes anti-colisão verdict*; variantes evidence NÃO unificadas); higiene EST-ADV-ONDA3 itens 1-4 paga; motor −126L.",
-    "evidence": [
-      "npm run build",
-      "npx vitest run tests/gate-resolution.test.ts tests/gate-integrity-hardening.test.ts tests/flow-engine-boundary.test.ts (62/62 — emenda adversarial Onda 4: o run usou as 3 suítes)",
-      "npm test 835+4=839 sem editar teste"
-    ],
-    "limits": [
-      "unificação das variantes verdict×evidence fica para corte com RED próprio (mudaria comportamento)",
-      "needsReviewCoherence permanece no motor (orquestração fiscal, desenho Onda 0)"
-    ],
-    "suite": {
-      "passed": 835,
-      "failed": 0,
-      "skipped": 4,
-      "total": 839
-    },
-    "camping": "SHRINK PASS reasons [] (symbol_count -11, nonblank -116, exported 0); selagem pos-commit 8505275 COM parent_commit 6e0ce92",
-    "emenda_adversarial_onda4": "2026-11-08: 62/62 era citado com 2 arquivos (o run real usou 3); providedSatisfied CONFIRMADO morto (remoção na cura-4); 9 consumers corrigido para 7 no MD/CHANGELOG"
+  {
+   "id": "CAP-05",
+   "capability": "Veredito canônico com cobertura de critérios",
+   "owner": "flow-engine",
+   "consumer": "Agente MCP",
+   "trigger": "`goal_verdict` status+evidence_ids",
+   "behavior": "Veredito sem citar TODAS as expansões reprova `SPT_V3_CRITERION_COVERAGE_REQUIRED`",
+   "oracle": "Jornada viva: 1ª tentativa H2 reprovada (C-2,C-4,C-6), 2ª com 20 ids passou",
+   "evidence": [
+    "Veredito `vrd_20261018133409430_2943_0001`"
+   ],
+   "state": "comprovada",
+   "limits": []
   },
-  "reavaliacao_cura4_seal_lineage": {
-    "date": "2026-11-08",
-    "scope": [
-      "scripts/validate-flow-engine-boundary.mjs",
-      "src/flow-engine.ts",
-      "src/gate-resolution.ts",
-      "tests/flow-engine-boundary.test.ts",
-      "tests/gate-resolution.test.ts",
-      "tests/spt-verdict-coverage-diagnostics.test.ts"
-    ],
-    "delta": "Linhagem incondicional (helper único nos 3 gates; B1/B2 fechados); self-match + grandfathering (C); providedSatisfied enterrado; backfillReattachLedger único ordem unificada; dialetos pinados; guard importSpecifier undefined.",
-    "evidence": [
-      "npm run build",
-      "npx vitest run tests/flow-engine-boundary.test.ts tests/gate-resolution.test.ts tests/spt-verdict-coverage-diagnostics.test.ts (69/69)",
-      "npm test 839+4=843 sem editar teste"
-    ],
-    "limits": [
-      "grandfathering é exceção DECLARADA por id (CURA2); o gate vigia os futuros",
-      "unificação dos dialetos changed-files segue proibida sem RED próprio (pinados em teste)"
-    ],
-    "suite": {
-      "passed": 839,
-      "failed": 0,
-      "skipped": 4,
-      "total": 843,
-      "red_provas": 4
-    },
-    "camping": "EXCEPTION PASS reasons [] (base 7d5b67b); selagem pos-commit 8ad367a COM parent_commit 7d5b67b; emenda da selagem completa o LEGACY_SELECTOR_EXEMPT com os 12 ids medidos por probe (24 seletores; falsa cobertura de 1 id pega AO VIVO pelo critico-cetico na mesa QUESTIONADORES-ATIVADO)"
+  {
+   "id": "CAP-06",
+   "capability": "Rota declarativa `declarative_proof` 1→N",
+   "owner": "spt-declarative-proof",
+   "consumer": "Agente MCP",
+   "trigger": "`evidence_add` com declarative_proof",
+   "behavior": "Expande server-side em criterion_proofs por `proves`; aprovado satisfaz gate de evidence",
+   "oracle": "20 criterion_proofs criados hoje; quickstart §Declarative route",
+   "evidence": [
+    "Flow H2 com 20 expansões passed"
+   ],
+   "state": "comprovada",
+   "limits": []
   },
-  "reavaliacao_cura5_seal_error_path": {
-    "date": "2026-11-09",
-    "scope": [
-      "scripts/validate-flow-engine-boundary.mjs",
-      "tests/flow-engine-boundary.test.ts"
-    ],
-    "delta": "suíte 843->846; camping NOT_APPLICABLE (motor intocado)",
-    "evidence": "flow 3805 vrd_3815_0001; commit 1ed5dcb",
-    "summary": "Cura-5 (Trilho 2026-11-08-cura5-seal-diff-crash, flow 3805; P1 adversarial cura-4): error-path do seal-diff com receipt estruturado (rev-list no MESMO try do rev-parse do blob; commit inexistente devolve COMMIT_SEAL_COMMIT_NOT_FOUND — crash sem receipt era regressao do 8ad367a, licao REGRESSAO-ERROR-PATH-TRY-CATCH); blob do nascimento conferido no path de declaracao (COMMIT_SEAL_BLOB_MISMATCH); deselagem fechada no LEDGER_PREFIX (guard olha o par after/before + COMMIT_SEAL_COMMIT_MISSING); canonicalJson (chaves ordenadas) nas 3 comparacoes de record. 3 REDs provados no baseline c7b2ed6 (fixtures exercitam seal-diff/B2/LEDGER_PREFIX com --head WORKTREE + declaration casando o par do diff) -> GREEN; suíte 842+4=846; camping NOT_APPLICABLE (src/flow-engine.ts intocado — primeira cura 100% fiscal, sem record por desenho)."
+  {
+   "id": "CAP-07",
+   "capability": "Review estrutural com fingerprint + cobertura integral",
+   "owner": "gate-resolution",
+   "consumer": "Revisor (agente)",
+   "trigger": "`evidence_add` kind code_review",
+   "behavior": "Review parcial (5/11 alvos) rejeitada `changed_files_not_fully_reviewed`; integral+fingerprint passa",
+   "oracle": "Jornada viva H2 (evd 2911 rejeitada → evd 2936 aceita)",
+   "evidence": [
+    "Gate revisao passed",
+    "tests/server-review-scaffold.test.ts 2/2: server boundary removes [object Object] from review scaffold"
+   ],
+   "state": "comprovada",
+   "limits": []
   },
-  "reavaliacao_cura6_seal_remaining": {
-    "date": "2026-11-09",
-    "scope": [
-      "scripts/validate-flow-engine-boundary.mjs",
-      "tests/flow-engine-boundary.test.ts",
-      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
-      "CAPACITY.md",
-      "CAPACITY.receipt.json",
-      "CHANGELOG.md"
-    ],
-    "delta": "suíte 846->850; reasons produzidos: LEDGER_PREFIX_RECORD_REMOVED/COMMIT_SEAL_TARGET_MISSING; enums unificados; camping NOT_APPLICABLE",
-    "evidence": "flow 3834 (cerimônia em curso); REDs baseline 1ed5dcb; mutação da vacina E provada",
-    "summary": "P2-A reason falso eliminado; P2-B chain inteira conferida no nascimento; P2-C vacinas de invariância com RED-por-mutação; P3s Provide Context."
+  {
+   "id": "CAP-08",
+   "capability": "Invalidação de gates por fingerprint same-path (R3)",
+   "owner": "gate-resolution",
+   "consumer": "Fiscal do fluxo",
+   "trigger": "Conteúdo muda em path existente",
+   "behavior": "Recheck de revisão/teste/validação recalcula fingerprint; reuse stale bloqueado",
+   "oracle": "tests/gate-integrity-revalidation.test.ts R3 + tests/gate-integrity-hardening-3.test.ts",
+   "evidence": [
+    "Probe B: same-path bloqueia; review estruturada atual passa"
+   ],
+   "state": "comprovada",
+   "limits": []
   },
-  "reavaliacao_cura6_p1_grandfathering": {
-    "date": "2026-11-09",
-    "scope": [
-      "scripts/validate-flow-engine-boundary.mjs",
-      "tests/flow-engine-boundary.test.ts",
-      "CAPACITY.md",
-      "CAPACITY.receipt.json",
-      "CHANGELOG.md"
-    ],
-    "delta": "suíte 850->852; probe real 4bf8aab..HEAD: 5 PARENT_MISSING falsos -> 0",
-    "evidence": "RED F baseline beef440; .agents/AUDITORIAS/adversarial-261109-cura6/CONSOLIDADO.md (P1 3 revisores)",
-    "summary": "grandfathering por selo ja commitado (committedSealKeys) + RED F + cat-file chain com try (P3) + id fallback + typo."
+  {
+   "id": "CAP-09",
+   "capability": "Fluxo manual legado sem goal_binding",
+   "owner": "flow-engine",
+   "consumer": "Sessões legadas",
+   "trigger": "`flow_create`/`gate_check`/`advance`",
+   "behavior": "Compatibilidade preservada (provided verdict como status-text aceito)",
+   "oracle": "`tests/goal-fiscal.test.ts` legacy verde",
+   "evidence": [
+    "Suíte 666"
+   ],
+   "state": "comprovada",
+   "limits": [
+    "Nível suíte; sem jornada viva nova no corte"
+   ]
   },
-  "reavaliacao_onda5_fiscal_blockers": {
-    "date": "2026-11-09",
-    "scope": [
-      "src/flow-engine.ts",
-      "src/fiscal-blockers.ts",
-      "src/lang-utils.ts",
-      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
-      "docs/architecture/flow-engine-evolution.json",
-      "CHANGELOG.md",
-      "CAPACITY.md",
-      "CAPACITY.receipt.json"
-    ],
-    "delta": "monólito 7072->6170 (−902L); fiscal-blockers 995L; suíte 852 sem editar teste",
-    "evidence": "flow 3874; camping SHRINK FE-2026-11-09-ONDA5-FISCAL-BLOCKERS-SHRINK",
-    "summary": "família de diagnóstico de bloqueio + ações diretas sai do monólito (onda densa por coesão)."
+  {
+   "id": "CAP-10",
+   "capability": "Segredo rejeitado antes de persistir",
+   "owner": "security/secret-redaction",
+   "consumer": "Agente MCP / dono",
+   "trigger": "Payload secret-like em provided/SPT/risks",
+   "behavior": "Erro tipado antes de escrever; flow JSON limpo",
+   "oracle": "Bateria R4 (gate_check/advance/goal_start) + probe runtime",
+   "evidence": [
+    "Flow H2 JSON sem token sintético"
+   ],
+   "state": "comprovada",
+   "limits": [
+    "Padrões de segredo conhecidos; não é promessa de anti-exfiltração geral"
+   ]
   },
-  "reavaliacao_decisions_map_publico": {
-    "date": "2026-11-09",
-    "scope": [
-      "docs/architecture/FLOW_ENGINE_DECISIONS_MAP.md",
-      "README.md",
-      "docs/INDEX.md",
-      "docs/architecture/INDEX.md",
-      "PLAYBOOK.md",
-      "PLAYBOOK.index.json"
-    ],
-    "delta": "Mapa publico de decisoes D-01..D-29 do flow-engine (projecao versionada da fotografia interna 261109b): tabela duvida-comum->decisao + L1/L2 consumivel por LLM (rg D-xx). Publicacao em 5 superficies (README, docs/INDEX 2 secoes, architecture/INDEX, AGENTS rota, INDEX raiz gitignored); PLAYBOOK regen porque AGENTS e fonte. Zero src.",
-    "evidence": [
-      "python -B tools/playbook/generate-playbook.py --repo . --check",
-      "rg -n \"PPIRTV-FLOW-ENGINE-DECISIONS-MAP\" README.md docs/INDEX.md docs/architecture/INDEX.md"
-    ],
-    "limits": [
-      "Documento nao executa chamadas MCP; fontes citadas sao Git-permanentes (commits, CHANGELOG, ledger).",
-      "Fotografia interna completa (.agents/MAPAS/261109b) nao versiona por design."
-    ]
+  {
+   "id": "CAP-11",
+   "capability": "Fast-track mechanical so para diff documental (R6, allowlist + Git)",
+   "owner": "gate-resolution",
+   "consumer": "Fiscal do veredito",
+   "trigger": "Veredito mechanical com changed_files",
+   "behavior": "Extensionless = codigo; veredito cruza changed_files com git status real E commits via git diff base..HEAD (base congelada no primeiro goal_start; base orfa fail-closed exige review); runtime .git/.ppirtv/.agents fora da corroboration; sem .git no start a limitacao e declarada",
+   "oracle": "tests/gate-integrity-hardening-3.test.ts R6 + tests/gate-integrity-revalidation.test.ts",
+   "evidence": [
+    "tests/git-corroboration-commits.test.ts 4/4 RED-first; probes MCP H3 3/3 (laudo adendo 3)",
+    "teste R6 Git; probe G no-Git documentado"
+   ],
+   "state": "comprovada",
+   "limits": [
+    "Sem .git nao ha corroboracao de diff real; declarado no quickstart"
+   ]
   },
-  "reavaliacao_testes_integracao_e2e": {
-    "date": "2026-11-09",
-    "scope": [
-      "tests/helpers/policy-modules-fixture.ts",
-      "tests/meeting-policy.integration.test.ts",
-      "tests/fiscal-blockers.integration.test.ts",
-      "tests/ppirtv-checkin.integration.test.ts",
-      "tests/memory-promotion.integration.test.ts",
-      "tests/goal-lifecycle.e2e.test.ts"
-    ],
-    "delta": "4 modulos de politica sem consumidor de teste direto ganham suite de integracao propria (import direto de src/<modulo>.js, fixtures Flow/Meeting/Cooperator/Evidence/Candidate REAIS COMPLETAS sem casts, casos adversariais) + E2E golden-path do ciclo completo PELA MAQUINA DE ESTADOS (3 goalAdvance reais ate revisao; gate bloqueado -> review estrutural -> gate verde -> status -> verdict pronto) com artefatos persistidos conferidos no disco (flow json goal_started/evidence_attached/verdict_recorded + ledger ndjson) + idempotencia do goal_start. Vigilia por mutacao 5/5 RED com revert imediato e src/ byte-igual. Emendas da adversarial consolidada (5 revisores, 23 achados 1P1/10P2/12P3; veredito oraculo-clean-code confirmado_documental cap.9): P1 fixturexschema curado com tsc strict pontual LIMPO (pegou 3 props fantasmas 'phase' em goalAdvance); P2 teleporte de fase curado (advances reais); P2 tool fantasma librarian_status->memory_recall = SENTINELA + estacionamento (bug de produto pre-existente); formas fechadas e documentais. Suite 852->887 medido (883 passed + 4 skipped). Zero src/ no corte final. EMENDA 3 (consolidado auto completou): P2 receipt re-ancorado com head/tree_hash REAIS da arvore medida; P3 missing_context exercitado (3 faltantes); E2E SPT v3 estacionado; nao-curados deliberados declarados (acentuacao cosmética, freeze incompleto = licao).",
-    "evidence": [
-      "npx vitest run tests/meeting-policy.integration.test.ts tests/fiscal-blockers.integration.test.ts tests/ppirtv-checkin.integration.test.ts tests/memory-promotion.integration.test.ts tests/goal-lifecycle.e2e.test.ts",
-      "./node_modules/.bin/tsc --noEmit --strict --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --types node tests/helpers/policy-modules-fixture.ts tests/meeting-policy.integration.test.ts tests/fiscal-blockers.integration.test.ts tests/ppirtv-checkin.integration.test.ts tests/memory-promotion.integration.test.ts tests/goal-lifecycle.e2e.test.ts",
-      "npm run check"
-    ],
-    "limits": [
-      "Cobertura de simbolos publicos e amostral (ramos adversariais), nao exaustiva.",
-      "E2E usa o motor real com store em disco no workspace temporal; a camada stdio ja coberta por 36 its do mcp.test.ts nao e re-testada aqui.",
-      "Anchors head/tree_hash re-ancorados por write-tree staged (cura do P2 checklist; precedente Onda 5)."
-    ]
+  {
+   "id": "CAP-12",
+   "capability": "Mineração append-only + idempotência no ledger",
+   "owner": "memory/mining-policy",
+   "consumer": "Agente MCP",
+   "trigger": "`mm_memory_mining`",
+   "behavior": "Cada tentativa anexa `memory_mined`; dedup só por reconciliation id",
+   "oracle": "3 eventos no flow H2 (pré+pós-veredito idêntico anexou)",
+   "evidence": [
+    "History do flow H2"
+   ],
+   "state": "comprovada",
+   "limits": []
   },
-  "reavaliacao_d31_issue0002_union_paths": {
-    "date": "2026-11-09",
-    "scope": [
-      "src/flow-engine.ts",
-      "src/domain.ts",
-      "tests/gate-provided-paths.test.ts"
-    ],
-    "delta": "ISSUE-LOCAL-0002 (P1) curada com RED-first: gate de implementacao com path inexistente em provided.changed_files devolve ressalva provided_missing_paths (nunca bloqueia) e NAO persiste na union flow.changed_files. Expurgo literal por deleted_files implementado, testado e REJEITADO com regresso medido (quebrava atestacao de delecao real do desenho #6; criterio 3 fechado pelo aceite alternativo da issue). GateRecord.provided_missing_paths? documentado. Camping EXCEPTION urgent_hotfix (record 38). Suite 887->891.",
-    "evidence": [
-      "npx vitest run tests/gate-provided-paths.test.ts -t \"path inexistente em provided.changed_files vira ressalva provided_missing_paths e NAO entra na union\" (RED no baseline)",
-      "npm run check:flow-engine (PASS EXCEPTION)",
-      "npm run check"
-    ],
-    "limits": [
-      "Ressalva usa existsSync no workspace do envelope; estados especiais do snapshot (non_file/unborn) prevalecem no fingerprint — a ressalva e ensinavel, nao autoritativa.",
-      "Paths declarados antes de existir ficam fora da union ate existirem (comportamento declarado no CHANGELOG)."
-    ]
+  {
+   "id": "CAP-13",
+   "capability": "Resolução de candidatos de memória",
+   "owner": "flow-engine",
+   "consumer": "Garimpeiro",
+   "trigger": "`mm_memory_candidate_resolve`",
+   "behavior": "Descarte/promoção com rationale persistido",
+   "oracle": "Recibo MGL 2026-10-18 (candidato duplicado descartado) + suíte",
+   "evidence": [
+    "`.agents/AUDITORIAS/EVIDENCIAS/` MGL"
+   ],
+   "state": "comprovada",
+   "limits": [
+    "Jornada viva foi no corte MGL (hoje, antes deste commit)"
+   ]
   },
-  "reavaliacao_issue16_contrato_goal_advance": {
-    "date": "2026-11-10",
-    "scope": [
-      "src/server.ts",
-      "tests/mcp.test.ts"
-    ],
-    "delta": "ISSUE #16 / ISSUE-LOCAL-0008 (P2): description da tool goal_advance no tools/list prometia 'an absent changed file without deleted_files fails closed' enquanto o desenho D-31 (gate-provided-paths.ts, deliberado) devolve ressalva provided_missing_paths. Corte de contrato + EMENDA adversarial (0P1/4P2/7P3): frase com escopo de fase ('when the implementation gate advances ... changed_files paths are only inspected during the implementation gate'), caso diretorio ('or not a regular file'), ancora legivel (gate.provided_missing_paths) e markers negativos do next_step; it MCP com caso+controle no mesmo advance, caso SOLO (2o flow, path unico inexistente: ressalva nomeada, snapshot vazio, fase persistida), sentinela BIDIRECIONAL provada por mutacao CASO E (campo citado + 'fails closed' ao lado -> RED exato; restore -> GREEN) e fail-near (setup asserta phase implementacao). Zero motor (camping N/A). Suite re-medida 905->906 (902+4, files 72).",
-    "evidence": [
-      "npx vitest run tests/mcp.test.ts -t \"contrato-goal-advance-path-inexistente\" (RED na sentinela com a description antiga; GREEN apos o fix)",
-      "npm run build (dist/index.js e o servidor do teste MCP)",
-      "npm run check"
-    ],
-    "limits": [
-      "Description e ajuda textual do tools/list (nao-breaking por definicao); consumidores nao devem fazer parsing dela.",
-      "A ressalva continua ensinavel, nao autoritativa: julgamento de existencia mora em gate-provided-paths.ts com envelope do flow."
-    ]
+  {
+   "id": "CAP-14",
+   "capability": "Integração dex-memoria V2 (writer)",
+   "owner": "dex-memoria adapter",
+   "consumer": "Sistema de memória da casa",
+   "trigger": "remember/mining com writer V2",
+   "behavior": "Receipt `COMMITTED` por rota",
+   "oracle": "2 gravadas hoje via CLI (bed6b977, 702baa76)",
+   "evidence": [
+    "Tema ppirtv L1+L2 confirmados por rg"
+   ],
+   "state": "comprovada",
+   "limits": []
   },
-  "reavaliacao_issue0007_gerador_mm_charset": {
-    "date": "2026-11-10",
-    "scope": [
-      "src/memory/dex-memoria-v2-adapter.ts",
-      "src/memory-promotion.ts",
-      "src/flow-engine.ts",
-      "tests/dex-memoria-v2-adapter.test.ts",
-      "tests/flow-engine-dex-memoria-v2.test.ts"
-    ],
-    "delta": "ISSUE-LOCAL-0007 (P2): writer da MM entregava title/trigger com os metacaracteres ^ [ ] CR LF do item da mineracao (caso graphify com shape-MM) — a dex-memoria 0.1.17 rejeita em request-stage (INVALID_CANDIDATE citando o caractere) e o retry do resolve reusava o operation_id preso em PENDING ('use a new operation_id'). Cura: sanitizeCandidateText no adapter (title/trigger no charset L1; body cru; caso bom identico) + freshOperationIdForRetry (id fresco -retry-N SOMENTE para id PRESO: status nao-COMMITTED e nao-PARTIAL_PENDING — PARTIAL_PENDING segue o resume canonico, contrato preservado pela suite que PEGOU a regressao do primeiro desenho). RED-first duplo (adapter charset + engine charset-retry); 2 achados da execucao: helper partialReceipt assume rota global; sufixo :: quebra paths de receipt no Windows (hifen). PROVA REAL: mineracao com hash no item COMMITTED na 0.1.17 real (theme=COMMITTED, receipt mmv2_617f..., home temporario isolado). Suite 906->908 (904+4). EMENDA adversarial (1P1/2P2/5P3): freshOperationIdForRetry reescrita por FAMILIA com contador no SUFIXO numerico (primeiro desenho regenerava id queimado na 3a tentativa — v2_receipts e SUBSTITUIDO por rodada; RED ao vivo em teste de 3 rodadas), ultimo PARTIAL_PENDING da familia devolve o MESMO id (resume canonico preservado em id sufixado), vocabulario real do receipt (FAILED, nao PENDING fabricado) + tipo Pick fechado, guard TITLE_EMPTY no writer, assert de valor do title, contadores 906+2. Zero flow-engine na emenda (camping N/A).",
-    "evidence": [
-      "npx vitest run tests/dex-memoria-v2-adapter.test.ts tests/flow-engine-dex-memoria-v2.test.ts -t charset (RED duplo no baseline 4326322)",
-      "node .agents/TMP/prova-real-0007.mjs (receipt COMMITTED na dex-memoria 0.1.17 real)",
-      "npm run check"
-    ],
-    "limits": [
-      "Prova real usa tema de prova em memory_home temporario (o vault real da casa nao e tocado pela suíte).",
-      "Sufixo -retry-N e opaco para consumidores de operation_id (string); nenhum parser de formato encontrado (rg)."
-    ]
+  {
+   "id": "CAP-15",
+   "capability": "Seletor de memória (bin + probe)",
+   "owner": "memory-selector",
+   "consumer": "Dono/instalação",
+   "trigger": "`npm run memory-selector`",
+   "behavior": "Seleção de writer/destino",
+   "oracle": "`tests/e2e` 12 passed + bins presentes",
+   "evidence": [
+    "e2e verde no corte"
+   ],
+   "state": "parcial",
+   "limits": [
+    "Sem jornada de consumidor viva neste corte (oracle é suíte e2e)"
+   ]
   },
-  "reavaliacao_issue15_reconciliacao_flows": "OPS ISSUE #15 (2026-11-10): nenhum capability path tocado (corte de ops sem src; camping NOT_APPLICABLE). 4 flows historicos arquivados via API flow_archive com motivo citando o status do SPT (2374 CONCLUIDO_COM_RESSALVA; 2036/2078 CONCLUIDO_NAO_PRONTO; 2313 EM_VALIDACAO_NAO_PRONTO) + readback (status=archived, evento flow_archived, evidencias/verdicts preservados); 29 ambiguos/externos intactos (zero eventos flow_archived). Suite 908 inalterada (904 passed + 4 skipped, files 72) re-medida no ciclo; npm run check exit 0. Prova executavel: .agents/TMP/verify-issue15.py (gitignored) exit 0; tabela: .agents/AUDITORIAS/2026-11-10-issue15-reconciliacao-flows.md. EMENDA: verificador movido para .agents/AUDITORIAS/2026-11-10-issue15-verify.py com CWD ancorado por __file__ + detector de 5o arquivado implicito (P2s da adversarial, provados verdes de CWD externo); proveniencia do corpo da issue fechada (inventario f0477a4/197 arquivos = outra instalacao da frota; nesta maquina o 2374 arquivado unicamente por este corte as 23:04Z); nuance archived_blocked_flow=true em 3/4 (preserved_blockers vazio) e ressalva de vocabulario legado interpretativo registradas em comentario de emenda na #15. Zero src; suite 908. PLAYBOOK regen pos-fechamento (ACTIVE/HANDOFF/INDEX PLAN-TASKS atualizados na sessao — quem edita fonte regenera). RODADA 2 (GO do owner): +20 arquivamentos administrativos via API (18 stubs externos + 2 SPT ausente), motivo citando classe+autorizacao; readback 24 archived pelo corte / 9 familia 3 preservados flow-a-flow. Regen pos-rodada2 (ACTIVE/HANDOFF/PLAN-TASKS 24/9).",
-  "reavaliacao_issue17_verdict_next_action_mining": "D-38 GITHUB #17 (2026-11-11): src/flow-engine.ts (predicao requiresPostVerdictMining no retorno de goalVerdictUnlocked com o predicado EXATO hasVerdictAfterLatestMemoryMining sobre flow recarregado pos-verdict + next_required_action run_memory_mining; camping EXCEPTION integrity record FE-2026-11-11-ISSUE0017-VERDICT-NEXT-ACTION-MINING-EXCEPTION com RED no baseline 9a8d2c2) e src/server.ts (descriptions goal_verdict/goal_advance: predicao + memoria_viva_reconciled atestando o checklist do Trilho vinculado antes da imutabilidade). 2 its novos (caso RED->GREEN + controle) + sentinelas tools/list; guard do advance terminal intocado. Suite 908->910 (906 passed + 4 skipped); npm run check exit 0. EMENDA: contrato publico ampliado nas descriptions (closure_blockers antes do terminal + primazia do next_required_action do topo sobre o snapshot status.*); controle pinado em resolve_blockers; ramo writer morto removido; record 43 selado 8f677b4/9a8d2c2; monolito restaurado ao blob do corte (camping NOT_APPLICABLE na emenda). EMENDA: contrato publico ampliado nas descriptions (closure_blockers antes do terminal + primazia do next_required_action do topo sobre o snapshot status.*); controle pinado em resolve_blockers; ramo writer morto removido; record 43 selado 8f677b4/9a8d2c2; monolito restaurado ao blob do corte (camping NOT_APPLICABLE na emenda). FECHAMENTO: cerimonia flow 4417 completa (5 criterios re-atestados por STALE de CRLF, review estrutural v2 fp pos-emenda, verdict vrd_4455 pronto_com_ressalvas, re-mining pos-verdict, Trilho CONCLUSAO, superficies vivas, #17 CLOSED issuecomment-6807292027); suite 910 inalterada; zero src neste commit.",
-  "reavaliacao_issue18_diferenciar_rebind_rastreabilidade": "D-39 doc-only: envelope contract linha propria GOAL_BINDING_MISMATCH (2 sub-rotas + diferenciação + ppirtv_trace) + GOAL_SPT seção ortogonal com exemplo do teste vivo + nota consumidor ppirtv_trace; global sincronizado (audit:canonical pass); D-39 2 mapas + CHANGELOG; #18 CLOSED; suite 910 inalterada; zero src. EMENDA adversarial (5 revisores 1P1/5P2/8P3): Passo 0 novo (ler os 8 campos possiveis na propria mensagem; demais campos = envelope divergente -> goal_envelope); flow sucessor SEM reusar flow_id; decisao de owner movida para dentro da sub-rota 2; ponte com envelope vivo restore_original_binding_or_start_new_goal; ppirtv_trace discriminador ANTES das sub-rotas; fingerprint_missing legacy -> sub-rota 2; typos; global re-sincronizado audit pass; suite 910 inalterada. FECHAMENTO: cerimonia flow 4460 completa (re-atestacoes pos-emenda, review v2, verdict vrd_4490 pronto_com_ressalvas, re-mining pos-verdict, Trilho CONCLUSAO, superficies, #18 CLOSED); suite 910 inalterada; zero src neste commit.",
-  "reavaliacao_issue15_rodada3_familia3": "OPS zero src: familia 3 flow-a-flow com evidencia reabrivel (9/9 arquivados via API motivo individual); verificador rodada 3 VERDE 9/9+33/33+0 restantes (emenda adversarial: lista explicita de executores + identidade da saga); 2367 honesta (inconclusive/no_promotion; adocao por GO owner 2026-10-31); SAGA #15 FECHADA issuecomment-6809215340; suite 910 inalterada; verificador velho SUPERSEDED.",
-  "reavaliacao_issue14_budgets_5120_headroom": "D-40 teste zero src: asserts de headroom (>=2 chars/eco do flow_id) nos mesmos 2 its compact; tetos 5120 mantidos (aumento so com reproducao — rito do precedente 5500); estacionamento EST-20261013-BUDGETS-5120-PID resolvido; #14 CLOSED; suite 910 inalterada. EMENDA adversarial (3 revisores): off-by-one curado com PROJECAO de ID largo no payload real (split/join +2 chars por eco, projected < 5120 estrito — aceite literal 'larguras controladas' entregue); narrativa corrigida (driver = COUNTER do flow_id store.ts:94-101, nao PID do SO; precedente corrigido); echoes >= 1 exigido; its compact 3 passed; suite 910. FECHAMENTO: cerimonia flow 4548 completa (re-atestacoes, review v2 evd_4575, verdict vrd_4576, re-mining, Trilho CONCLUSAO, superficies); #14 CLOSED — issues online zeradas; suite 910; zero src neste commit.",
-  "reavaliacao_d41_rede_simbolo_suite": "tools/test-symbol-coverage.py EMENDADO pela adversarial (2P1+6P2): code_refs x mention_refs (6 das 49 refs eram prosa; falso 100% verdict-learning desmascarado), gate-resolution devolvido a lista, exports de type/interface/enum no denominador (155->201), exit 2 se ancora nao resolve (copia relocada aborta alto), try no --json, errors=replace no src; medicao final 52/201 code / 57/201 mention / 144 sem ref; salvaguardas no REDE.md (nunca quota; remocao por metrica proibida); CWD provado de C:/; zero src/tests, suite 910 inalterada.",
-  "reavaliacao_d42_rede_fiscal_blockers": "src/fiscal-blockers.ts: DES-EXPORT dos 9 helpers com ZERO consumidor externo e uso interno vivo (blockerSources, graphifyReason, hasReviewEvidence, librarianExplicitlyOutOfScope, librarianReason, memoryMiningBlockedDiagnostics, memoryMiningBlockedSequence, memoryRequiredDiagnostics, statusValue) — funcao permanece, interface 48->39 exports; prova typecheck exit 0 + suite verde; TABELA por simbolo publicada (35 decididos: 25a/1b/9c) em .agents/AUDITORIAS/2026-11-12-rede-fiscal-blockers/; it novo de caracterizacao loopEscalationFor 6 ramos com vigilia por mutacao (>=9->>=99 FAIL, restaurado verde); regua re-medida: fiscal-blockers 14/39, TOTAL 53/192 code, 134 sem ref nominal.",
-  "reavaliacao_d42_rede_fiscal_blockers_emenda": "EMENDA adversarial (1P1+4P2+4P3): loopEscalationFor reclassificado (a->nominal) — T25c/T25d de engine.test ja assertava os 6 ramos (nominal x comportamental, erro da calibração D-41 pago de volta); 0 lacunas comportamentais; mutação em escopo real quebra T25c E o it novo (suíte nunca cega); liveness dos 9 des-exportados REGISTRADO (sem noUnusedLocals, corte próprio); citação blockerLoopId corrigida (T25d); copia adversarial regenerada; suite 911 = 907 passed + 4 skipped (provenance); saude nominal real do módulo 13/39 (1 prose-only conhecido).",
-  "reavaliacao_d43_rede_gate_resolution": "src/gate-resolution.ts: DES-EXPORT dos 10 sem consumidor externo (DOCUMENT_FILE_EXTENSIONS, GateResolutionInput, PROVIDED_REQUIREMENT_KINDS, PROVIDED_REVIEW_INPUT_KEYS, ProvidedRequirementDiagnostic, ProvidedRequirementKind, ReviewEvidenceDiagnostics, gateSnapshotMatches, hasCurrentStructuredReview, isDocumentalFile) — 35->25 exports, typecheck exit 0, comportamento intocado; TABELA 27 por sonda de CAMPO (17a/0b/10c; mergePathFacts com evidência DUPLA pelo campo certo); 0 testes novos (CRP no núcleo de todo advance); régua 8/25, TOTAL 53/182 code, 124 sem ref; suíte 911 = 907+4.",
-  "reavaliacao_d43_emenda": "EMENDA adversarial D-43 (2P1+4P2+3P3): 2 mutacoes de amostra executadas (canonicalVerdict->1 failed; reviewCurrencyMissing->2 failed — ramos vigiados com prova viva); mergePathFacts era lacuna de ASSERT real -> it novo de caracterizacao dos 3 ramos + mutacao de vigilia (fallback->1 failed, restaurado 29 passed); citacoes fantasma corrigidas (meeting-policy/gate-provided-removed; assert exato engine l.~3162); nota honesta: encolhimento parcial por cirurgia de denominador (-19 des-exports acumulados); regua final 54/182 code, 123 sem ref (it novo pagou 1 nominal); suite 912 = 908+4 (provenance).",
-  "reavaliacao_d44_rede_meeting_policy": "src/meeting-policy.ts: DES-EXPORT dos 14 sem consumidor externo (40->26 exports, typecheck exit 0, comportamento intocado) + P3 textual da Onda 3 item 6 pago (reason do gatilho; 0 asserts no reason); TABELA 29 com assert exato por linha (15a/0b/14c); 2 mutacoes de amostra EXECUTADAS e PEGAS (hasVerdictRecordedAfterIndex->true = 3 failed; meetingClosedLedgerData->null = 8 failed); 0 testes novos; regua 54/168 code, 109 sem ref; suite 912 = 908+4.",
-  "reavaliacao_d44_emenda": "EMENDA adversarial D-44 (2P1+5P2+6P3): requiredMeetingKind = LACUNA REAL (citacao fantasma + mutacao sempre-transversal SOBREVIVEU 232/232) -> it novo caracteriza a escada + re-mutacao FALHA; 5 mutacoes de amostra congeladas em MUTACOES/ (classe BASELINE-RED); citacoes fantasma corrigidas em 6 linhas; contradição do scope emendada (reason = comportamento observável por ESCOTEIRO-ONDA); degrau fantasma 124 corrigido; regua 55/168 code, 108 sem ref; suite 913 = 909+4.",
-  "reavaliacao_d45_rede_memory_promotion": {
-    "data": "2026-11-13",
-    "delta": [
-      "src/memory-promotion.ts (des-export type V2CommittedBoundaryError 31→30 exports; typecheck exit 0)",
-      "tests/flow-engine-dex-memoria-v2.test.ts (+5 its D-45; 59/59)"
-    ],
-    "decision": "16 (a) · 1 (b) declarada (memoryCandidateLedgerDataWithResolution — embed inline no engine l.1831; dívida $tio-testador) · 1 (c)",
-    "mutacoes_literais": "11 executadas (count==1 + viva no disco): 10 PEGAS (M5 22f, M6 10f, M10 6f, demais 1f) + M8 sobrevivente real",
-    "incidente_harness": "1ª rodada regex-assinatura: 10 falsos sobreviventes (replace sem match); vacina: literal verificado + releitura do disco (gatilho REDE-CORTE-POR-MODULO)",
-    "regua": "108→107 sem ref; TOTAL 55/167 code"
+  {
+   "id": "CAP-16",
+   "capability": "Fiscal camping (SHRINK/CONTAIN/EXCEPTION + ledger + markers)",
+   "owner": "validate-flow-engine-boundary",
+   "consumer": "Oráculo-refatoração",
+   "trigger": "Diff que toca flow-engine",
+   "behavior": "Record obrigatorio; EXCEPTION integrity desta visita PASS (RED causal, +21 nonblank, +2 decisoes); replay por janela; markers exigidos",
+   "oracle": "Replays PASS hoje (visit + cumulative) + EXCEPTION H2 aceita",
+   "evidence": [
+    "check:flow-engine PASS CONTAIN; record FE-2026-10-18-GATE-INTEGRITY-HARDENING-3"
+   ],
+   "state": "comprovada",
+   "limits": [
+    "FE-DEBT-003 aberto: extrair a cola restante da fachada"
+   ]
   },
-  "reavaliacao_d46_rede_verdict_fiscal_policy": {
-    "data": "2026-11-13",
-    "delta": "tools/mutacao-amostra.py NOVO (harness-v2 do D-45 promovido — R17, 2o consumidor real; emendado pela adversarial: bytes, timeout->INVALIDO, sem-resumo->INVALIDO, span objetual) + tools/INDEX.md NOVO + .agents/AUDITORIAS/2026-11-13-rede-verdict-fiscal-policy/ (TABELA/PROVA/MUTACOES 9 runs/adversarial CONSOLIDADO) + REDE.md rodada 6 + estacionamentos D-46; src/ e tests/ INTOCADOS (corte behavioral: mutacoes restauradas byte-exatas, sha256 e1a606ff conferido pre/pos lote)",
-    "decisao": "14 simbolos de verdict-fiscal-policy: 11 (a) · 1 (b) subcampo meeting_policy de fiscalResultWithDeps (M6/M6b sobrevivente repo-wide 80+199 its — codigo morto de saida, limpeza estacionada EST-D46-MEETING-POLICY-SUBCAMPO) · 2 (c) types; sem des-export (todos os 14 tem consumidores externos reais); sem it novo (nenhuma lacuna de ROTA — M5 e enderecamento, M6 e subcampo morto)",
-    "mutacoes": "9 runs congelados com as 4 vacinas + emenda D-46 (M1 2f, M2 10f, M3 2f engine, M4 2f, M5 sobrevive focais/M5b PEGA 3f T24/T24b/T26, M6/M6b sobreviventes repo-wide, M7 9f prova o fix do span); JSONs self-contained (literal+mutacao+vitest_saida)",
-    "harness": "promocao R17 paga: 2o consumidor real; adversarial R2 emendada no mesmo corte (bytes/tcrash/exit-codes documentados: exit 0 NAO e PEGA); decisao do dono 2026-11-13: manter Python (irma da regua e do gate playbook em tools/)",
-    "regua": "107 sem ref INALTERADO por design (TOTAL 55/167 code; corte behavioral sem des-export e sem it nominal); fila nao-decidida: spt-traceability 13, review-snapshot 8"
+  {
+   "id": "CAP-17",
+   "capability": "Selagem pós-commit de records (R7)",
+   "owner": "validate-flow-engine-boundary",
+   "consumer": "Oráculo-refatoração",
+   "trigger": "Diff de ledger só-commit pós commit",
+   "behavior": "`ledger_commit_seal: PASS`; selagem mentirosa reprova",
+   "oracle": "Probe adversarial ao vivo (FAIL `LEDGER_PREFIX_COMMIT_SEAL_MISMATCH`; restaurado PASS) + H2 selado em 947fdb4",
+   "evidence": [
+    "10 records selados"
+   ],
+   "state": "comprovada",
+   "limits": [
+    "Replay per-commit 598ae5d e excecao documentada; record foi selado em 947fdb4"
+   ]
   },
-  "reavaliacao_toolsbook_r18": {
-    "data": "2026-11-13",
-    "delta": "tools/TOOLSBOOK.md NOVO (indice reverso por intencao, 17 ferramentas tools+scripts, projecao gerada pelo motor da skill dex-toolsbook — R18) + docstrings Reuso/Perigo/Custo em 17 scripts (declaracao honesta; comentarios, zero logica) + 2 cabecalhos lapidados por intencao (call-mcp-tool, generate-playbook) + 4o gate no tools/playbook/hooks/pre-commit (TOOLSBOOK --check com fallback de frota) + AGENTS.md bootstrap citando --buscar + tools/INDEX.md linha",
-    "criterio_de_pronto": "--check exit 0 real (FRESCO, 17/17 com Reuso, imports resolvem, invocacao existe); 7 buscas reais exit 0 com alvo correto no topo (2 lapidadas na sessao); hook no pre-commit; AGENTS.md cita o comando",
-    "custo_r17": "motor mora na skill (TOOLS-FAMILIA-REUSO-GLOBAL: repo nao copia os modulos; shim local so quando houver 2o consumidor local)",
-    "suite": "918 inalterada (914+4; emendas sao apenas comentarios — node --check 15/15 OK)"
+  {
+   "id": "CAP-18",
+   "capability": "Replay cumulativo em cadeia",
+   "owner": "validate-flow-engine-boundary",
+   "consumer": "CI/sessão",
+   "trigger": "`--base 5e7d5df --head HEAD`",
+   "behavior": "Cadeia de records valida elo a elo",
+   "oracle": "PASS hoje com cadeia de 4 records",
+   "evidence": [
+    "Receipt cumulative"
+   ],
+   "state": "comprovada",
+   "limits": [
+    "RED em cadeia conferido contra a base do próprio record (corrigido neste corte)"
+   ]
   },
-  "reavaliacao_d47_rede_spt_traceability": {
-    "data": "2026-11-13",
-    "delta": "tests/spt-declarative-proof.test.ts (+20 its D-47: 7 ownership codigo+detail, 8 provenance codigo, 1 measurement, 1 projecoes, 1 requiresGoalEvidence, 1 stale admissao, helper) + tools/mutacao-amostra.py CURADO (INVALIDO silencioso -> veredito incondicional via _ciclo; emendas adversarial: fronteira \breturn\b, span_heuristico p/ void-throw-only, ancoras, guards anti-no-op/viva) + tools/TOOLSBOOK.md regen + AUDITORIAS 2026-11-13-rede-spt-traceability (TABELA 7a/6b-PAGAS/2c, PROVA, MUTACOES, CONSOLIDADO)",
-    "suite": "934 passed + 4 skipped (938) re-rodada na sessao; arquivo-alvo 29/29; tsc exit 0; 9/9 vigias PEGA",
-    "regua": "spt-traceability 2/15->8/15 code (13->7 sem ref); TOTAL 61/167 code, 101 sem ref (maior salto da serie)"
+  {
+   "id": "CAP-19",
+   "capability": "Servidor direto stdio (dist/index.js)",
+   "owner": "server.ts",
+   "consumer": "Agente MCP local",
+   "trigger": "Inicializar MCP",
+   "behavior": "32 tools com schemas vivos",
+   "oracle": "`tools/list` real hoje (receipt hardening2-tools-list)",
+   "evidence": [
+    "32 tools"
+   ],
+   "state": "comprovada",
+   "limits": []
   },
-  "scope": {
-    "bloco": "d50"
+  {
+   "id": "CAP-20",
+   "capability": "Launcher global com contrato workspace+cwd",
+   "owner": "dist/launcher.js",
+   "consumer": "Projeto consumidor",
+   "trigger": "Instalação global / PPIRTV_WORKSPACE",
+   "behavior": "Sem sinal de workspace falha rápido com erro tipado; com `--workspace`+`cwd` serve a superfície",
+   "oracle": "Dois oracles ao vivo hoje (erro tipado; smoke ok=true)",
+   "evidence": [
+    "Receipt mapa-launcher-smoke"
+   ],
+   "state": "comprovada",
+   "limits": [
+    "Multi-root (PPIRTV_WORKSPACE_ROOTS) não exercitado ao vivo no corte"
+   ]
   },
-  "reavaliacao_d50b_closure_verdicts": {
-    "data": "2026-11-15",
-    "trilho": ".agents/PLAN-TASKS/2026-11-15-closure-verdicts-d50b.md",
-    "objeto": "closure de VERDICTS: fonte unica do par-positivo (POSITIVE_VERDICTS + isPositiveVerdict) em src/domain.ts + PipelineFlowStatus derivado de VerdictStatus",
-    "delta_src": [
-      "src/domain.ts: +POSITIVE_VERDICTS +PositiveVerdictStatus +isPositiveVerdict(status: string | undefined); PipelineFlowStatus = VerdictStatus | \"pending\" (redeclaracao manual morta)",
-      "src/meeting-policy.ts: 3 sitios -> isPositiveVerdict (2 positivos l.106/160 + 1 NEGADO l.30 — 12o sitio descoberto no corte)",
-      "src/review-scope-attribution.ts: 1 sitio l.42",
-      "src/verdict-fiscal-policy.ts: Set privado POSITIVE_VERDICT_STATUSES l.289 removido (13a copia) -> isPositiveVerdict"
-    ],
-    "estacionado": "8 sitios src/flow-engine.ts (l.2560/2563/2656/2660/2730/3018/4007 + negado l.4714) revertidos ao HEAD: fiscal camping reprovou CONTAIN (detector assina condicao por STRING — promocao-a-funcao conta como decision added, l.410 incondicional); EXCEPTION bloqueado por CONSECUTIVE_EXCEPTION_FORBIDDEN (ultimos 5 materiais EXCEPTION) e por ausencia de RED honesto em refactor pura. EST-D50B-1 owner $oraculo-refatoracao",
-    "prova_fechamento": ".agents/AUDITORIAS/2026-11-15-closure-verdicts/FECHAMENTO.json (PRE documental 1f6f75b l.364 + POS executavel: mutacao remove 'pronto' de VERDICTS -> tsc exit 2 com 3 erros nos consumers)",
-    "camping": "check:flow-engine NOT_APPLICABLE (flow_engine_changed=false, blob 9e83d595 == HEAD)",
-    "suite_medida_2x": "956 passed | 4 skipped (960), 76 arquivos, 123s",
-    "regua": "domain 18/82 (+3 exports); TOTAL 93/249, sem ref 152",
-    "incidente": "git checkout como restauracao com working tree sujo apagou as edicoes do corte (sha -c FAILED); recriado por patch com asserts; VACINA: mutacao em working tree sujo exige backup de BYTES (cp), git checkout so vale com tree limpo"
+  {
+   "id": "CAP-21",
+   "capability": "runtime_probe (root, runtime, writer)",
+   "owner": "server.ts",
+   "consumer": "Toda sessão MCP",
+   "trigger": "Chamada inicial",
+   "behavior": "project_root/memory writer reportados",
+   "oracle": "Presente em todos os harness calls hoje",
+   "evidence": [
+    "Receipts"
+   ],
+   "state": "comprovada",
+   "limits": []
   },
-  "reavaliacao_d51_rede_principles": {
-    "data": "2026-11-15",
-    "trilho": ".agents/PLAN-TASKS/2026-11-15-rede-principles-d51.md",
-    "objeto": "corte de rede principles.ts: 31 exports decididos (5a/5b-PAGAS/19c/2 mortos removidos)",
-    "delta": [
-      "src/principles.ts: -2 mortos (loadOperationalContract async + principleChecklistSync; rg repo-wide zero-consumidor; RED tsc+suite verdes)",
-      "tests/principles-rede-d51.test.ts: +5 its de caracterizacao toEqual (as 5 delegacoes b) + 5/5 vigilias PEGA",
-      "tools/test-symbol-coverage.py: principles em MARATHON_MODULES (régua ganha o modulo)"
-    ],
-    "sondas": "M1/M3/M4/M5/M6 SOBREVIVERAM (b); M2/M7/M8/M9 PEGA (a-por-mutacao); 14 receipts em .agents/AUDITORIAS/2026-11-15-rede-principles/MUTACOES/",
-    "suite_medida_2x": "961 passed | 4 skipped (965), 77 arquivos",
-    "regua": "principles 6/29; TOTAL 93->99/249->278 code, sem ref 152->175",
-    "classe_do_corte": "delegacoes de leitura do contrato (array/record) sem assert — mesma classe colecao-sem-assert do D-50, agora em funcoes; sondas discriminaram array-forma (sobrevive) de policy-forma (cobertura viva)",
-    "barata": "mutacao com linha identica ao irmao = count(mut)==2 -> vacina anti-duplicata rejeita (classe M2b em nova roupagem); return undefined existe 7x (nao serve de mutacao unica)"
+  {
+   "id": "CAP-22",
+   "capability": "ppirtv_trace / arqueologia evolutiva",
+   "owner": "flow-engine",
+   "consumer": "Revisão/handoff",
+   "trigger": "`ppirtv_trace`",
+   "behavior": "Traço cronológico de evolução",
+   "oracle": "Suíte cobre o traço",
+   "evidence": [
+    "tests verdes"
+   ],
+   "state": "parcial",
+   "limits": [
+    "Sem jornada viva de consumidor neste corte"
+   ]
+  },
+  {
+   "id": "CAP-23",
+   "capability": "spt_validate standalone",
+   "owner": "flow-engine",
+   "consumer": "Agente pequeno",
+   "trigger": "`spt_validate`",
+   "behavior": "Valida SPT v3 com diagnósticos",
+   "oracle": "Jornada viva no corte kit-spt-valido-por-construcao (2026-10-30) + suíte dedicada verde",
+   "evidence": [
+    "666",
+    ".agents/receipts/2026-10-30-kit-spt-validate-1a-execucao.log"
+   ],
+   "state": "comprovada",
+   "limits": [
+    "Chamada standalone comprovada no dogfood do kit SPT (MCP stdio em dist/index.js, valid=true de primeira); revalidação interna do goal_start segue a rota principal"
+   ]
+  },
+  {
+   "id": "CAP-24",
+   "capability": "Reuniões/cooperação (open/add-turn/close, required_cooperation)",
+   "owner": "flow-engine",
+   "consumer": "Decisores",
+   "trigger": "`goal_meeting_*`",
+   "behavior": "Ata e cooperadores registrados no flow",
+   "oracle": "Suíte de meetings verde",
+   "evidence": [
+    "666"
+   ],
+   "state": "parcial",
+   "limits": [
+    "Sem reunião viva neste corte"
+   ]
+  },
+  {
+   "id": "CAP-25",
+   "capability": "hygiene_scan / lixeira com manifesto",
+   "owner": "flow-engine",
+   "consumer": "Casa (higiene)",
+   "trigger": "`hygiene_scan`",
+   "behavior": "Achados + destino lixeira",
+   "oracle": "Suíte hygiene verde",
+   "evidence": [
+    "666"
+   ],
+   "state": "parcial",
+   "limits": [
+    "Sem scan vivo hoje"
+   ]
+  },
+  {
+   "id": "CAP-26",
+   "capability": "mm_pipeline_run PRONTO (orquestração)",
+   "owner": "flow-engine",
+   "consumer": "Agente em lote",
+   "trigger": "`mm_pipeline_run`",
+   "behavior": "Orquestração declarativa de flows",
+   "oracle": "Suíte pipeline verde",
+   "evidence": [
+    "666"
+   ],
+   "state": "parcial",
+   "limits": [
+    "Orquestração em lote não usada hoje (missão single-flow)"
+   ]
+  },
+  {
+   "id": "CAP-27",
+   "capability": "ppirtv_checkout (receipt final)",
+   "owner": "flow-engine",
+   "consumer": "Agente MCP",
+   "trigger": "`ppirtv_checkout`",
+   "behavior": "Recibo de fechamento com when verificável",
+   "oracle": "Suíte checkout verde",
+   "evidence": [
+    "666"
+   ],
+   "state": "parcial",
+   "limits": [
+    "Fechamento de hoje usou goal_status; checkout não chamado ao vivo"
+   ]
+  },
+  {
+   "id": "CAP-28",
+   "capability": "checklist_render (fluxo visual PPIRTV)",
+   "owner": "server.ts",
+   "consumer": "Sessão visual",
+   "trigger": "`checklist_render`",
+   "behavior": "Checklist visual por fase",
+   "oracle": "Tool viva no tools/list",
+   "evidence": [
+    "32 tools"
+   ],
+   "state": "parcial",
+   "limits": [
+    "Sem render vivo hoje; suíte não dedica arquivo próprio"
+   ]
+  },
+  {
+   "id": "CAP-29",
+   "capability": "Documentação publicada achável",
+   "owner": "docs/",
+   "consumer": "Agente/dono",
+   "trigger": "Descoberta por INDEX/README",
+   "behavior": "Guia/contratos com link direto + INDEX",
+   "oracle": "Estrutural: docs/INDEX 27 entradas + rotas AGENTS",
+   "evidence": [
+    "rg das rotas atuais"
+   ],
+   "state": "parcial",
+   "limits": [
+    "Link-checker não executado neste corte"
+   ]
+  },
+  {
+   "id": "CAP-30",
+   "capability": "PLAYBOOK projeção externa + hook anti-drift",
+   "owner": "tools/playbook",
+   "consumer": "Destinatário externo",
+   "trigger": "commit / regen",
+   "behavior": "`--check` bloqueia commit com projeção stale",
+   "oracle": "Hook rodou FRESCO nos 2 commits de hoje (bloqueou nada porque regen foi antes)",
+   "evidence": [
+    "Commits 76e9c94/947fdb4"
+   ],
+   "state": "comprovada",
+   "limits": []
+  },
+  {
+   "id": "CAP-31",
+   "capability": "Versioning/snapshot de produto",
+   "owner": "docs/contracts",
+   "consumer": "Dono",
+   "trigger": "Decisão de versão",
+   "behavior": "Contrato de versão + snapshot datado",
+   "oracle": "Apenas documental",
+   "evidence": [
+    "docs existem"
+   ],
+   "state": "não comprovada",
+   "limits": [
+    "Sem decisão/uso de versão neste corte"
+   ]
+  },
+  {
+   "id": "CAP-32",
+   "capability": "Dex Agent Telegram (áudio/proativo)",
+   "owner": "skills/dex-agent (local)",
+   "consumer": "Dono",
+   "trigger": "Pedido de áudio/print",
+   "behavior": "Voice note entregue no chat solicitante",
+   "oracle": "Receipts reais messageId 879 e 880 hoje",
+   "evidence": [
+    "Telegram API message_id"
+   ],
+   "state": "comprovada",
+   "limits": [
+    "Print e fila de startup não exercitados neste corte"
+   ]
+  },
+  {
+   "id": "CAP-33",
+   "capability": "Gate de reavaliacao de capacidades antes de commit",
+   "owner": "$oraculo-refatoracao",
+   "consumer": "Owner do commit / CI",
+   "trigger": "git commit com CAPACITY.md e CAPACITY.receipt.json",
+   "behavior": "Hook roda check:capacity; bloqueia commit sem receipt e reavaliacao staged",
+   "oracle": "tests/capacity-gate.test.ts + hook pre-commit",
+   "evidence": [
+    "CAPACITY GATE PASS 34 capacidades; teste 1/1"
+   ],
+   "state": "comprovada",
+   "limits": [
+    "O gate valida contrato e registro; nao julga a semantica da reavaliacao; --no-verify contorna hook local"
+   ]
+  },
+  {
+   "id": "CAP-34",
+   "capability": "Help/schema/usage read-only por tool MCP no entrypoint e no harness",
+   "owner": "$oraculo-refatoracao",
+   "consumer": "Agente em terminal sem MCP / host MCP",
+   "trigger": "node dist/index.js --describe|--schema|--usage <tool> (ou --list)",
+   "behavior": "O entrypoint detecta flags, le tools/list e imprime descricao/schema/usage/exemplo sem iniciar stdio nem chamar a tool; sem tool imprime help e falha com exit 1",
+   "oracle": "tests/tool-cli-entrypoint.test.ts 4/4 + tests/mcp-tool-describe.test.ts 3/3",
+   "evidence": [
+    "tests/tool-cli-entrypoint.test.ts 4/4",
+    "tests/mcp-tool-describe.test.ts 4/4 (frases do contrato nunca-bloqueante)",
+    "tests/evidence-add-review-wire.test.ts 5/5; tests/review-input.test.ts 3/3"
+   ],
+   "state": "comprovada",
+   "limits": [
+    "Exige npm run build antes do comando",
+    "--usage e generico derivado do schema",
+    "Nao corrige cliente que dobra boolean/array em objeto; o wire continua fail-closed"
+   ]
   }
+ ],
+ "limits": [
+  "Fotografia de worktree sobre o HEAD 6fb2dae; nova medicao exige novo pedido.",
+  "Gate valida contrato/registro; verdade semantica permanece com owner/oracle.",
+  "R5 permanece decisao documentada; CAP-17 tem excecao per-commit 598ae5d.",
+  "Sem .git nao ha corroboracao de diff real para changed_files.",
+  "4 testes skipped nao foram investigados.",
+  "Matriz completa herdada do espelho 947fdb4; o delta do corte 2026-10-23 (snapshot fantasma: sensivel de runtime de terceiro redigido) revalidou o snapshot de review e a suite 716|4. As demais linhas permanecem com a evidencia do corte anterior.",
+  "Fotografia de worktree sobre o HEAD 2e63c8c (corte fiscal-verdict-nao-positivo); nova medicao exige novo pedido.",
+  "Teto terminal muda o contrato do next_required_action do limite (open_decision_meeting -> close_flow_with_reservation); consumidores que parseavam o tipo antigo foram adaptados nos testes do repo.",
+  "Contrato canonico do teto reescrito para rota terminal (2026-11-02): janelas com processo MCP antigo + contrato antigo ensinam o loop de reuniao — frota precisa pull+build+reconnect+contrato novo.",
+  "Medidor CC correto na fonte 0.4.3 (2026-11-02): raws 0.4.2 dos receipts anteriores sao fotografia historica do motor quebrado — comparacoes de CC exigem motor 0.4.3+ (R13)."
+ ],
+ "reavaliacao_snapshot_unborn": {
+  "date": "2026-11-05",
+  "base_sha": "fe3dc2144c78e483931761d2be263249c08dd84a",
+  "scope": [
+   "src/review-snapshot.ts",
+   "tests/git-corroboration-unborn.test.ts",
+   "tests/review-snapshot-redaction.test.ts",
+   "tests/git-porcelain-quoting.test.ts",
+   "CAPACITY.md",
+   "CAPACITY.receipt.json"
+  ],
+  "delta": "Coletor unborn->null; parser descarta trailing-slash (repo aninhado); merge dedupe por identidade fs + saneamento trailing-slash; early-return por conteudo. Strict intocado. Fechamento: flow 2950 complete, veredito vrd_2965 pronto_com_ressalvas; docs de selagem no commit seguinte.",
+  "evidence": ".agents/PLAN-TASKS/2026-11-05-snapshot-unborn-aninhado.md",
+  "suite": {
+   "passed": 781,
+   "failed": 0,
+   "skipped": 4,
+   "files": 60
+  },
+  "limits": [
+   "push fora do corte",
+   "comportamento gitlink/submodule registrado como ressalva do Trilho",
+   "guards unborn adaptados com commit-base (provas preservadas)"
+  ]
+ },
+ "reavaliacao_verdict_learning": {
+  "date": "2026-11-05",
+  "base_sha": "4bd60bc296781bbbe4ea90f08dba59d1c31defba",
+  "scope": [
+   "src/flow-engine.ts",
+   "src/verdict-learning.ts",
+   "tests/verdict-learning-filter.test.ts",
+   "docs/architecture/flow-engine-evolution.json",
+   "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+   "CHANGELOG.md",
+   "CAPACITY.md",
+   "CAPACITY.receipt.json"
+  ],
+  "delta": "SHRINK: deriveVerdictLearning+isStrongLearningText extraidas p/ src/verdict-learning.ts; findings com filtro isStrongLearningText (simetria rationale). Camping SHRINK PASS. Fechamento: flow 2993 complete, vrd_3002 pronto_com_ressalvas; onda densa estacionada EST-20261105.",
+  "evidence": ".agents/PLAN-TASKS/2026-11-05-verdict-learning-filtro-findings.md",
+  "suite": {
+   "passed": 782,
+   "failed": 0,
+   "skipped": 4,
+   "files": 61
+  },
+  "limits": [
+   "push fora do corte",
+   "filtro por keyword: porta explicita verdict_gold_mining segue disponivel"
+  ]
+ },
+ "reavaliacao_crg_gate": {
+  "date": "2026-11-05",
+  "base_sha": "ada0c0d08a5cccbaf358ebd5870a80e750c0c750",
+  "scope": [
+   "tools/playbook/hooks/pre-commit",
+   "CAPACITY.md",
+   "CAPACITY.receipt.json"
+  ],
+  "delta": "Bloco CRG-FRESH-GATE no pre-commit (auto-curativo, aviso se CLI ausente); barata --base HEAD NO-OP morta e documentada. Fechamento: flow 3022 complete, vrd_3030 pronto. Causa incendiaria eliminada: capture-cut com base DEFAULT + pos-condicao built_at==HEAD (receipt nasce failed se divergir); capacity gate alinhado (workflow/+tools, barata irma do scan).",
+  "evidence": ".agents/PLAN-TASKS/2026-11-05-crg-gate-precommit.md",
+  "limits": [
+   "push fora do corte",
+   "no-op --base HEAD reportado por feedback a skill owner"
+  ]
+ },
+ "reavaliacao_merge_pr7": {
+  "date": "2026-11-05",
+  "base_sha": "66b568c",
+  "scope": [
+   "src/domain.ts",
+   "src/review-snapshot.ts",
+   "tests/review-snapshot-recovery.test.ts",
+   "tests/git-corroboration-unborn.test.ts",
+   "docs/guides/MCP_AGENT_QUICKSTART.md"
+  ],
+  "delta": "Merge consciente PR #7 (irma): recoverLegacyReviewScope com proveniencia; dedupe volta a 1 responsabilidade; suíte 62/794|0|4; PR MERGED. Emenda: secao CAPACITY reescrita com paths/ids completos (backticks perdidos no shell).",
+  "evidence": ".agents/PLAN-TASKS/2026-11-05-merge-pr7-review-scope-recovery.md",
+  "limits": [
+   "3 lapidações menores registradas (idioma, doc domain, recover 2x)"
+  ]
+ },
+ "reavaliacao_faxina_dividas": {
+  "date": "2026-11-06",
+  "scope": [
+   "workflow/fechamento-goal-worktree-compartilhado/",
+   "workflow/INDEX.md",
+   "CHANGELOG.md"
+  ],
+  "delta": "Workflow novo 1.0.0 (pacote 6 irmaos dex.workflow.v1) capturando a receita do flow 3086: review cobre o COLETADO do worktree vivo, commit seletivo por proveniencia, fechamento de coerencia com a janela irma. Dividas locais (.agents gitignored) pagas: 37 espelhos dex, LIXEIRA .code-review-graph, pendencias VALIDO, 11 secoes 5-campos GATILHOS-VIVOS, rota absoluta fulltext clean-code (oraculo global + fonte AC commit 499ed2bb).",
+  "evidence": [
+   ".agents/receipts/2026-11-06-espelhos-lote.log",
+   ".agents/receipts/2026-11-06-garimpo-ok.json"
+  ],
+  "observed": {
+   "check_workflow": "fechamento-goal-worktree-compartilhado: OK",
+   "check_schemas_workflow": "2 schemas .schm.md, 0 findings",
+   "er_provas": "ER-01..ER-07 exit 0 (ER-04 com ressalva de case: rg -c 'E SE\\?\\?|E se\\?\\?' = 15 >= 15)"
+  },
+  "limits": [
+   "Superficies .agents/ sao gitignored: provas dos criterios C-01..C-04 vivem em receipts locais, nao no clone",
+   "Achado lateral: pacote irmao manutencao-iterativa-com-evidencia tem finding pre-existente [meta-analise] ausente (fora deste corte, estacionado)"
+  ]
+ },
+ "reavaliacao_vacina_banner": {
+  "date": "2026-11-07",
+  "scope": [
+   "tests/spt-kit-banner.test.ts",
+   "spt-kit/preflight.mjs",
+   "PLAYBOOK.md",
+   "PLAYBOOK.index.json"
+  ],
+  "delta": "Vacina da classe Obsolete Comment (issue #8): teste na suite vitest casa o range anunciado no --schema do preflight com os checks emitidos no codigo (regex add(\"Snn\")) e o cabecalho com o shape maximo; RED provado por mutacao S00..S10->S00..S09 (2 failed) antes do GREEN 2/2. PLAYBOOK regenerado: projecao do PR #9 embutia fontes .agents locais da maquina de origem (drift esperado entre maquinas); regen local FRESCO.",
+  "evidence": [
+   ".agents/receipts/2026-11-07-banner-vacina.log",
+   ".agents/receipts/2026-11-07-pull-pr9.log"
+  ],
+  "observed": {
+   "red_mutation": "2 failed (check S10 fora do range; cabecalho shape menor)",
+   "green": "2 passed | suite apos: ver check final",
+   "pull_hook_postmerge": "INALTERADO (1a mediacao real em pull)"
+  },
+  "limits": [
+   "A projecao PLAYBOOK continua dependendo de fontes .agents locais: drift entre maquinas e inerente ate a fonte .agents viajar ou sair da projecao (fora deste corte)"
+  ]
+ },
+ "reavaliacao_issue10_verdict_diagnostico": {
+  "date": "2026-11-07",
+  "scope": [
+   "src/spt-traceability.ts",
+   "src/flow-engine.ts",
+   "tests/spt-verdict-coverage-diagnostics.test.ts",
+   "docs/architecture/flow-engine-evolution.json",
+   "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+   "workflow/manutencao-iterativa-com-evidencia/WORKFLOW.md",
+   "workflow/manutencao-iterativa-com-evidencia/CHANGELOG.md"
+  ],
+  "delta": "Issue #10 rotas A+B: SPT_V3_CRITERION_COVERAGE_REQUIRED detalha por criterio (proof_not_passed com evaluation literal / no_criterion_proof com rota); goal_status expoe spt_contract_version+spt_traceability_present; re-bind reata traceability de orfao. Camping EXCEPTION urgent_hotfix com SHRINK-material embutido: gate SPT v3 do verdict extraido INTEIRO p/ assertSptV3PositiveVerdictCoverage (engine -6 linhas, -2 decisions; missingCriterionCoverage vira wrapper). Workflow pacote 1.0.3: regua anti-escoteiro-minusculo no passo 6 + Meta-analise (cura finding fiscal).",
+  "evidence": [
+   ".agents/receipts/2026-11-07-issue10-baseline.log",
+   "docs/architecture/flow-engine-evolution.json"
+  ],
+  "observed": {
+   "red_baseline": "4 failed em 25275b0",
+   "green": "4 passed",
+   "camping": "check:flow-engine PASS mode EXCEPTION reasons=[]",
+   "suite": "ver fechamento (check completo apos CAPACITY)"
+  },
+  "limits": [
+   "Rota C da issue (re-bind com contrato diferente) permanece pendencia do contrato de idempotencia",
+   "Onda densa EST-20261105-ONDA-DENSA-VERDICT-LEARNING segue pendente: proximo bloco de decomposicao (compromisso 2026-11-07)"
+  ]
+ },
+ "reavaliacao_issue10_review_fixes": {
+  "date": "2026-11-07",
+  "scope": [
+   "src/server.ts",
+   "src/flow-engine.ts",
+   "src/spt-traceability.ts",
+   "tests/spt-verdict-coverage-diagnostics.test.ts",
+   "docs/architecture/flow-engine-evolution.json",
+   "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+   "docs/contracts/MCP_TOOL_ERROR_ENVELOPE_CONTRACT.md",
+   "CHANGELOG.md"
+  ],
+  "delta": "Correcoes da revisao adversarial 6 lentes do c2e22a2: envelope TRACEABILITY_MISSING aponta goal_start (rota que cura; goal_resume nao curava); goal_status lean expoe binding via sptBindingStatus unico (spread lean/compact/full); reason 1-rodada (ER/task dona, ids citados, aprovada nao citada, pipe, cap 4000); 1 passada de diagnostics (wrapper morto removido); estreitamento goal_binding no call-site; +5 testes (9/9). P1 da revisao refutado na fonte (fingerprint = contrato inteiro). Camping CONTAIN PASS com FE-DEBT-006 aberta (sentinelas v3, evento spt_traceability_reattached, O(C+E), saneamento) pagavel pela onda densa EST-20261105.",
+  "evidence": [
+   ".agents/TMP/camping-fixes2.json",
+   "docs/architecture/flow-engine-evolution.json"
+  ],
+  "observed": {
+   "testes_fix": "9/9 (4 originais + 5 novos)",
+   "camping": "PASS CONTAIN reasons=[] (10 linhas, 0 decisoes, 0 guards added)",
+   "p1_refutado": "fingerprintSptContract = sha256(JSON.stringify(contract)) inteiro"
+  },
+  "limits": [
+   "FE-DEBT-006 aberta ate a onda densa EST-20261105 (GO do dono)",
+   "Emenda de proveniencia do modulo (11d5eb0) vive so no MD (ledger imutavel)"
+  ]
+ },
+ "observacoes": [
+  "2026-11-07 corte envelope-executavel-evidence-required: builders SSOT + vacina; +3 testes (813/817)."
+ ],
+ "reavaliacao_familia_todas_rotas": {
+  "owner": "error-envelope/tests",
+  "delta": "terminalReservationTail com evidence_required true + source (4a copia curada, P1 do smoke); builders com true literal (P2#1); schema-index em tests/helpers + espelho contra tools/list real no mcp.test.ts (P2#2); index completado (enums goal_start, flow_role, goal_verdict integral, flow_archive)",
+  "suite_medida": "816 passed + 4 skipped = 820, 64 files (antes 813/817; files 59 era congelado)",
+  "arquivos": [
+   "src/error-envelope.ts",
+   "tests/error-envelope.test.ts",
+   "tests/helpers/sequence-schema-index.ts",
+   "tests/mcp.test.ts",
+   "CHANGELOG.md",
+   "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+   ".agents/PLAN-TASKS/2026-11-07-envelope-familia-todas-rotas.md"
+  ],
+  "flow_engine": "intocado; 3a copia flow-engine:6087 segue na FE-DEBT-006 (camping NOT_APPLICABLE)"
+ },
+ "reavaliacao_issue11_verdict_snapshot": {
+  "owner": "review-snapshot/flow-engine",
+  "delta": "verdict REJEITADO restaura snapshot do ultimo gate aprovado + pending_review_additions auditaveis (restoreBlockedVerdictSnapshot + pendingReviewAdditionsFor puras em review-snapshot.ts); goal_status expoe pending (lean count/full array); avaliacao continua honesta com conjunto corrente",
+  "suite_medida": "818 passed + 4 skipped = 822, 64 files, exit 0",
+  "red_prova": "molde commit-then-verdict (commit pos-base + untracked pre-existente) RED 2/2 antes da cura",
+  "camping": "EXCEPTION (fix com RED real); flow-engine so cola ~26 linhas; marker FE-2026-11-07-ISSUE11-BLOCKED-VERDICT-SNAPSHOT"
+ },
+ "reavaliacao_escoteiro_onda": {
+  "owner": "AGENTS.md local (régua da casa, gitignored por design)",
+  "delta": "diretriz ESCOTEIRO-ONDA do dono 2026-11-07: fix que tocar cluster mapeado extrai a onda inteira no mesmo corte; maratona contínua",
+  "arquivos": [
+   "CHANGELOG.md",
+   "PLAYBOOK.md",
+   "PLAYBOOK.index.json"
+  ],
+  "suite": "sem mudanca de codigo (818+4=822 continua valendo)"
+ },
+ "reavaliacao_workflow_desmontagem_ondas": {
+  "commit_escopo": "workflow/desmontagem-monolito-ondas + workflow/INDEX.md + PLAYBOOK regen",
+  "validador": "check-workflow.py exit 0 (pacote OK)",
+  "suite": "818 passed + 4 skipped = 822 (sem mudanca de codigo)",
+  "fotografia_antes": "desmontagem-antes-4d75dd2 captured, CRG 2618n/39471a/58com",
+  "historico": "MAPAS/HISTORICO-DESMONTAGEM.md retroativo (12 ondas)",
+  "fila": "Onda 1 = 3a copia goal_start flow-engine:6087 -> SSOT error-envelope (flow 3464)"
+ },
+ "reavaliacao_onda1_goal_start_ssot": {
+  "commit_escopo": "src/flow-engine.ts + src/error-envelope.ts (export) + tests/engine.test.ts + ledger/markers/CHANGELOG",
+  "suite": "819 passed + 4 skipped = 823 (64 files) — +1 T24b",
+  "red_green": "T24b RED (evidence_required undefined na copia) -> GREEN consumindo goalStartTaughtArgs; oraculo validateSequenceSteps com schema-index",
+  "camping": "EXCEPTION public_compatibility — record FE-2026-11-07-ONDA1-GOAL-START-SSOT + selagem retroativa FE-2026-11-07-ISSUE11-BLOCKED-VERDICT-SNAPSHOT (commit 5b66f56)",
+  "finding_classe": "CONSECUTIVE_EXCEPTION_FORBIDDEN nao modela selagem retroativa de record (cadeia quebrou no 5b66f56 sem record no JSON; marker MD existia)",
+  "fila": "sentinela engine:3792 -> evaluateExpectation -> meetings (mapa de decisoes)"
+ },
+ "reavaliacao_selagem_onda1": {
+  "commit_escopo": "docs/architecture/flow-engine-evolution.json (selagem pos-commit)",
+  "suite": "819+4=823 do corte 115d7e5 segue valendo (sem mudanca de codigo)"
+ },
+ "reavaliacao_path_attribution_c01": {
+  "commit_escopo": "src/review-snapshot.ts + src/flow-engine.ts (cola) + src/server.ts (schema) + tests + ledger/markers/CHANGELOG + SCHEMA status",
+  "suite": "821 passed + 4 skipped = 825 (64 files) — +2 (regressao C-01 + triagem)",
+  "red_green": "RED fiel ao roteiro do dono (motor direto, path_attribution inexistente) -> GREEN rota publica; triagem cobre sha divergente + caminho indeterminado sem aplicar nada",
+  "camping": "EXCEPTION public_compatibility — line/decision OK; resta CONSECUTIVE_EXCEPTION_FORBIDDEN (lacuna de classe estacionada)",
+  "schema_drift": "SCHEMA/dex.spt.v3.schm.md status vivo->ativo (check-schemas 0 findings)"
+ },
+ "reavaliacao_convergencia_pr12": {
+  "commit_escopo": "merge PR12 + revert path_attribution + cura validador (2 classes) + espelho index + markers",
+  "suite": "826 passed + 4 skipped = 830 (65 files) — merge trouxe testes MCP stdio; +2 RED classes no boundary",
+  "camping": "FE-2026-11-07-CONVERGENCIA-PR12 EXCEPTION public_compatibility supersedes PATH-ATTRIBUTION — reasons: [] VERDE",
+  "validador": "sealed_retroactive (copia, merge-base) + supersedes_record; regra-mae preservada (20/20)"
+ },
+ "reavaliacao_onda2_sentinela_v3": {
+  "commit_escopo": "src/spt-traceability.ts + src/flow-engine.ts (cola) + tests + ledger/markers/CHANGELOG",
+  "suite": "827 passed + 4 skipped = 831 — +1 teste Onda 2",
+  "camping": "FE-2026-11-08-ONDA2-SENTINELA-ADMISSAO-V3 EXCEPTION public_compatibility — reasons [] (selagem retroativa comprovada em corte real)",
+  "motor": "zero checagem SPT_V3 inline (rg SPT_V3_EVIDENCE_INVALID|SPT_V3_TRACEABILITY_MISSING|qualifyCriterionProof = vazio)"
+ },
+ "reavaliacao_onda2b_reattach_indice": {
+  "commit_escopo": "src/spt-traceability.ts (indice SptTraceIndex + helper evento) + src/flow-engine.ts (cola evento) + src/spt-declarative-proof.ts (indice) + tests + ledger/markers/CHANGELOG",
+  "suite": "828 passed + 4 skipped = 832 — +1 teste do evento de re-attach",
+  "camping": "FE-2026-11-08-ONDA2B-REATTACH-EVENTO-INDICE EXCEPTION integrity — reasons []; pagamento do record FE-DEBT-006 agendado no SHRINK da Onda 3 (decisao do desenho)",
+  "motor": "evento spt_traceability_reattached (history+ledger) no re-bind de orfao; zero .find linear no caminho de qualificacao (rg exit 1 em spt-traceability e spt-declarative-proof)",
+  "selagem": "record selado pos-commit em 145ac4e (commit: 145ac4e) no commit de selagem seguinte"
+ },
+ "reavaliacao_cura_adversarial": {
+  "commit_escopo": "src/flow-engine.ts (ordem do ledger pos-saveFlow) + scripts/validate-flow-engine-boundary.mjs (sealedParentReasons) + docs/architecture/flow-engine-evolution.json (linhagem) + tests (2 REDs + 3 gaps) + CAPACITY/CHANGELOG/MD",
+  "suite": "830 passed + 4 skipped = 834 — +2 testes (trilha falsa do ledger + pai unico cego)",
+  "camping": "FE-2026-11-08-CURA-ADVERSARIAL-LINHAGEM-LEDGER EXCEPTION integrity — reasons []",
+  "linhagem": "PATH-ATTRIBUTION parent_commit=0bdd375 full (pai real dono do base_blob); CONVERGENCIA+ONDA2B full shas; validador agora confere pai unico",
+  "selagem": "record selado pos-commit em 9facae1"
+ },
+ "reavaliacao_cura2_validador_selo": {
+  "commit_escopo": "scripts/validate-flow-engine-boundary.mjs (selo vivo + fonte unica + bootstrap isento) + src/flow-engine.ts (backfill) + tests (2 REDs + regex) + docs/ledger/CAPACITY",
+  "suite": "832 passed + 4 skipped = 836 — +2 testes (selo vivo; backfill)",
+  "camping": "FE-2026-11-08-CURA2-VALIDADOR-SELO-VIVO EXCEPTION integrity — reasons [] de primeira",
+  "selo_vivo": "COMMIT_SEAL_PARENT_MISMATCH no evaluateCommitSealDiff; bootstrap deixou de ser o unico caminho",
+  "selagem": "record selado pos-commit em 49524c3"
+ },
+ "reavaliacao_onda3_meetings_policy": {
+  "commit_escopo": "src/meeting-policy.ts (NOVO 941L) + src/lang-utils.ts (NOVO) + src/flow-engine.ts (−970L) + src/verdict-fiscal-policy.ts + docs/ledger/CAPACITY",
+  "suite": "832 passed + 4 skipped = 836 — sem editar teste (movimentação pura)",
+  "camping": "FE-2026-11-08-ONDA3-MEETINGS-POLICY-SHRINK SHRINK pays_debt_id=FE-DEBT-006 — reasons []",
+  "motor": "8180→7210 linhas (−970, −12%); 48 símbolos top-level removidos, zero adicionados (AST diff)",
+  "selagem": "record selado pos-commit em 9ad23ee COM parent_commit REAL e809b054 (emenda da sessao: one-liner gravara path por bug; o selo vivo pegou o falso COMMIT_SEAL_PARENT_MISMATCH e validou a correcao; linha do CAPACITY consertada)"
+ },
+ "reavaliacao_cura3_selo_parent": {
+  "camping": "EXCEPTION integrity (motor tocado so pelo backfill-terminal; RED real do early-return)",
+  "commit_escopo": [
+   "scripts/validate-flow-engine-boundary.mjs",
+   "src/flow-engine.ts",
+   "tests/flow-engine-boundary.test.ts",
+   "tests/spt-verdict-coverage-diagnostics.test.ts",
+   "CHANGELOG.md",
+   "docs/architecture/FLOW_ENGINE_EVOLUTION.md"
+  ],
+  "selagem": "cb0b4aa selado pos-commit COM parent_commit d46a415 (full); camping EXCEPTION PASS reasons []; decision_sites +1 (reattachHistory no early-return terminal)",
+  "gates": "EVIDENCE_SELECTOR_REGEX_INVALID + RED_SELECTOR_REGEX_INVALID + COMMIT_SEAL_PARENT_MISSING/REMOVED + linhagem no LEDGER_PREFIX",
+  "suite": {
+   "passed": 835,
+   "failed": 0,
+   "skipped": 4,
+   "total": 839,
+   "red_provas": 3
+  }
+ },
+ "reavaliacao_emenda_contagens_onda3": {
+  "date": "2026-11-08",
+  "scope": [
+   "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+   "CHANGELOG.md"
+  ],
+  "delta": "Contagens da Onda 3 reconciliadas por medição na consolidação da adversarial (0 P1); nota de convenção consumers (importador direto).",
+  "evidence": [
+   "git show e809b054:src/flow-engine.ts | wc -l (8179)",
+   "node -e removed_symbols.length=47",
+   ".agents/AUDITORIAS/adversarial-261108-onda3/CONSOLIDADO.md (veredito sessão dona)"
+  ],
+  "limits": [
+   "Record JSON imutável (LEDGER_HISTORY_MUTATED); a emenda vive no MD/CHANGELOG."
+  ]
+ },
+ "reavaliacao_onda4_gate_resolution": {
+  "date": "2026-11-08",
+  "scope": [
+   "src/gate-resolution.ts",
+   "src/flow-engine.ts",
+   "src/meeting-policy.ts"
+  ],
+  "delta": "11 símbolos do eixo gate-resolution migram (renomes anti-colisão verdict*; variantes evidence NÃO unificadas); higiene EST-ADV-ONDA3 itens 1-4 paga; motor −126L.",
+  "evidence": [
+   "npm run build",
+   "npx vitest run tests/gate-resolution.test.ts tests/gate-integrity-hardening.test.ts tests/flow-engine-boundary.test.ts (62/62 — emenda adversarial Onda 4: o run usou as 3 suítes)",
+   "npm test 835+4=839 sem editar teste"
+  ],
+  "limits": [
+   "unificação das variantes verdict×evidence fica para corte com RED próprio (mudaria comportamento)",
+   "needsReviewCoherence permanece no motor (orquestração fiscal, desenho Onda 0)"
+  ],
+  "suite": {
+   "passed": 835,
+   "failed": 0,
+   "skipped": 4,
+   "total": 839
+  },
+  "camping": "SHRINK PASS reasons [] (symbol_count -11, nonblank -116, exported 0); selagem pos-commit 8505275 COM parent_commit 6e0ce92",
+  "emenda_adversarial_onda4": "2026-11-08: 62/62 era citado com 2 arquivos (o run real usou 3); providedSatisfied CONFIRMADO morto (remoção na cura-4); 9 consumers corrigido para 7 no MD/CHANGELOG"
+ },
+ "reavaliacao_cura4_seal_lineage": {
+  "date": "2026-11-08",
+  "scope": [
+   "scripts/validate-flow-engine-boundary.mjs",
+   "src/flow-engine.ts",
+   "src/gate-resolution.ts",
+   "tests/flow-engine-boundary.test.ts",
+   "tests/gate-resolution.test.ts",
+   "tests/spt-verdict-coverage-diagnostics.test.ts"
+  ],
+  "delta": "Linhagem incondicional (helper único nos 3 gates; B1/B2 fechados); self-match + grandfathering (C); providedSatisfied enterrado; backfillReattachLedger único ordem unificada; dialetos pinados; guard importSpecifier undefined.",
+  "evidence": [
+   "npm run build",
+   "npx vitest run tests/flow-engine-boundary.test.ts tests/gate-resolution.test.ts tests/spt-verdict-coverage-diagnostics.test.ts (69/69)",
+   "npm test 839+4=843 sem editar teste"
+  ],
+  "limits": [
+   "grandfathering é exceção DECLARADA por id (CURA2); o gate vigia os futuros",
+   "unificação dos dialetos changed-files segue proibida sem RED próprio (pinados em teste)"
+  ],
+  "suite": {
+   "passed": 839,
+   "failed": 0,
+   "skipped": 4,
+   "total": 843,
+   "red_provas": 4
+  },
+  "camping": "EXCEPTION PASS reasons [] (base 7d5b67b); selagem pos-commit 8ad367a COM parent_commit 7d5b67b; emenda da selagem completa o LEGACY_SELECTOR_EXEMPT com os 12 ids medidos por probe (24 seletores; falsa cobertura de 1 id pega AO VIVO pelo critico-cetico na mesa QUESTIONADORES-ATIVADO)"
+ },
+ "reavaliacao_cura5_seal_error_path": {
+  "date": "2026-11-09",
+  "scope": [
+   "scripts/validate-flow-engine-boundary.mjs",
+   "tests/flow-engine-boundary.test.ts"
+  ],
+  "delta": "suíte 843->846; camping NOT_APPLICABLE (motor intocado)",
+  "evidence": "flow 3805 vrd_3815_0001; commit 1ed5dcb",
+  "summary": "Cura-5 (Trilho 2026-11-08-cura5-seal-diff-crash, flow 3805; P1 adversarial cura-4): error-path do seal-diff com receipt estruturado (rev-list no MESMO try do rev-parse do blob; commit inexistente devolve COMMIT_SEAL_COMMIT_NOT_FOUND — crash sem receipt era regressao do 8ad367a, licao REGRESSAO-ERROR-PATH-TRY-CATCH); blob do nascimento conferido no path de declaracao (COMMIT_SEAL_BLOB_MISMATCH); deselagem fechada no LEDGER_PREFIX (guard olha o par after/before + COMMIT_SEAL_COMMIT_MISSING); canonicalJson (chaves ordenadas) nas 3 comparacoes de record. 3 REDs provados no baseline c7b2ed6 (fixtures exercitam seal-diff/B2/LEDGER_PREFIX com --head WORKTREE + declaration casando o par do diff) -> GREEN; suíte 842+4=846; camping NOT_APPLICABLE (src/flow-engine.ts intocado — primeira cura 100% fiscal, sem record por desenho)."
+ },
+ "reavaliacao_cura6_seal_remaining": {
+  "date": "2026-11-09",
+  "scope": [
+   "scripts/validate-flow-engine-boundary.mjs",
+   "tests/flow-engine-boundary.test.ts",
+   "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+   "CAPACITY.md",
+   "CAPACITY.receipt.json",
+   "CHANGELOG.md"
+  ],
+  "delta": "suíte 846->850; reasons produzidos: LEDGER_PREFIX_RECORD_REMOVED/COMMIT_SEAL_TARGET_MISSING; enums unificados; camping NOT_APPLICABLE",
+  "evidence": "flow 3834 (cerimônia em curso); REDs baseline 1ed5dcb; mutação da vacina E provada",
+  "summary": "P2-A reason falso eliminado; P2-B chain inteira conferida no nascimento; P2-C vacinas de invariância com RED-por-mutação; P3s Provide Context."
+ },
+ "reavaliacao_cura6_p1_grandfathering": {
+  "date": "2026-11-09",
+  "scope": [
+   "scripts/validate-flow-engine-boundary.mjs",
+   "tests/flow-engine-boundary.test.ts",
+   "CAPACITY.md",
+   "CAPACITY.receipt.json",
+   "CHANGELOG.md"
+  ],
+  "delta": "suíte 850->852; probe real 4bf8aab..HEAD: 5 PARENT_MISSING falsos -> 0",
+  "evidence": "RED F baseline beef440; .agents/AUDITORIAS/adversarial-261109-cura6/CONSOLIDADO.md (P1 3 revisores)",
+  "summary": "grandfathering por selo ja commitado (committedSealKeys) + RED F + cat-file chain com try (P3) + id fallback + typo."
+ },
+ "reavaliacao_onda5_fiscal_blockers": {
+  "date": "2026-11-09",
+  "scope": [
+   "src/flow-engine.ts",
+   "src/fiscal-blockers.ts",
+   "src/lang-utils.ts",
+   "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+   "docs/architecture/flow-engine-evolution.json",
+   "CHANGELOG.md",
+   "CAPACITY.md",
+   "CAPACITY.receipt.json"
+  ],
+  "delta": "monólito 7072->6170 (−902L); fiscal-blockers 995L; suíte 852 sem editar teste",
+  "evidence": "flow 3874; camping SHRINK FE-2026-11-09-ONDA5-FISCAL-BLOCKERS-SHRINK",
+  "summary": "família de diagnóstico de bloqueio + ações diretas sai do monólito (onda densa por coesão)."
+ },
+ "reavaliacao_decisions_map_publico": {
+  "date": "2026-11-09",
+  "scope": [
+   "docs/architecture/FLOW_ENGINE_DECISIONS_MAP.md",
+   "README.md",
+   "docs/INDEX.md",
+   "docs/architecture/INDEX.md",
+   "PLAYBOOK.md",
+   "PLAYBOOK.index.json"
+  ],
+  "delta": "Mapa publico de decisoes D-01..D-29 do flow-engine (projecao versionada da fotografia interna 261109b): tabela duvida-comum->decisao + L1/L2 consumivel por LLM (rg D-xx). Publicacao em 5 superficies (README, docs/INDEX 2 secoes, architecture/INDEX, AGENTS rota, INDEX raiz gitignored); PLAYBOOK regen porque AGENTS e fonte. Zero src.",
+  "evidence": [
+   "python -B tools/playbook/generate-playbook.py --repo . --check",
+   "rg -n \"PPIRTV-FLOW-ENGINE-DECISIONS-MAP\" README.md docs/INDEX.md docs/architecture/INDEX.md"
+  ],
+  "limits": [
+   "Documento nao executa chamadas MCP; fontes citadas sao Git-permanentes (commits, CHANGELOG, ledger).",
+   "Fotografia interna completa (.agents/MAPAS/261109b) nao versiona por design."
+  ]
+ },
+ "reavaliacao_testes_integracao_e2e": {
+  "date": "2026-11-09",
+  "scope": [
+   "tests/helpers/policy-modules-fixture.ts",
+   "tests/meeting-policy.integration.test.ts",
+   "tests/fiscal-blockers.integration.test.ts",
+   "tests/ppirtv-checkin.integration.test.ts",
+   "tests/memory-promotion.integration.test.ts",
+   "tests/goal-lifecycle.e2e.test.ts"
+  ],
+  "delta": "4 modulos de politica sem consumidor de teste direto ganham suite de integracao propria (import direto de src/<modulo>.js, fixtures Flow/Meeting/Cooperator/Evidence/Candidate REAIS COMPLETAS sem casts, casos adversariais) + E2E golden-path do ciclo completo PELA MAQUINA DE ESTADOS (3 goalAdvance reais ate revisao; gate bloqueado -> review estrutural -> gate verde -> status -> verdict pronto) com artefatos persistidos conferidos no disco (flow json goal_started/evidence_attached/verdict_recorded + ledger ndjson) + idempotencia do goal_start. Vigilia por mutacao 5/5 RED com revert imediato e src/ byte-igual. Emendas da adversarial consolidada (5 revisores, 23 achados 1P1/10P2/12P3; veredito oraculo-clean-code confirmado_documental cap.9): P1 fixturexschema curado com tsc strict pontual LIMPO (pegou 3 props fantasmas 'phase' em goalAdvance); P2 teleporte de fase curado (advances reais); P2 tool fantasma librarian_status->memory_recall = SENTINELA + estacionamento (bug de produto pre-existente); formas fechadas e documentais. Suite 852->887 medido (883 passed + 4 skipped). Zero src/ no corte final. EMENDA 3 (consolidado auto completou): P2 receipt re-ancorado com head/tree_hash REAIS da arvore medida; P3 missing_context exercitado (3 faltantes); E2E SPT v3 estacionado; nao-curados deliberados declarados (acentuacao cosmética, freeze incompleto = licao).",
+  "evidence": [
+   "npx vitest run tests/meeting-policy.integration.test.ts tests/fiscal-blockers.integration.test.ts tests/ppirtv-checkin.integration.test.ts tests/memory-promotion.integration.test.ts tests/goal-lifecycle.e2e.test.ts",
+   "./node_modules/.bin/tsc --noEmit --strict --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --types node tests/helpers/policy-modules-fixture.ts tests/meeting-policy.integration.test.ts tests/fiscal-blockers.integration.test.ts tests/ppirtv-checkin.integration.test.ts tests/memory-promotion.integration.test.ts tests/goal-lifecycle.e2e.test.ts",
+   "npm run check"
+  ],
+  "limits": [
+   "Cobertura de simbolos publicos e amostral (ramos adversariais), nao exaustiva.",
+   "E2E usa o motor real com store em disco no workspace temporal; a camada stdio ja coberta por 36 its do mcp.test.ts nao e re-testada aqui.",
+   "Anchors head/tree_hash re-ancorados por write-tree staged (cura do P2 checklist; precedente Onda 5)."
+  ]
+ },
+ "reavaliacao_d31_issue0002_union_paths": {
+  "date": "2026-11-09",
+  "scope": [
+   "src/flow-engine.ts",
+   "src/domain.ts",
+   "tests/gate-provided-paths.test.ts"
+  ],
+  "delta": "ISSUE-LOCAL-0002 (P1) curada com RED-first: gate de implementacao com path inexistente em provided.changed_files devolve ressalva provided_missing_paths (nunca bloqueia) e NAO persiste na union flow.changed_files. Expurgo literal por deleted_files implementado, testado e REJEITADO com regresso medido (quebrava atestacao de delecao real do desenho #6; criterio 3 fechado pelo aceite alternativo da issue). GateRecord.provided_missing_paths? documentado. Camping EXCEPTION urgent_hotfix (record 38). Suite 887->891.",
+  "evidence": [
+   "npx vitest run tests/gate-provided-paths.test.ts -t \"path inexistente em provided.changed_files vira ressalva provided_missing_paths e NAO entra na union\" (RED no baseline)",
+   "npm run check:flow-engine (PASS EXCEPTION)",
+   "npm run check"
+  ],
+  "limits": [
+   "Ressalva usa existsSync no workspace do envelope; estados especiais do snapshot (non_file/unborn) prevalecem no fingerprint — a ressalva e ensinavel, nao autoritativa.",
+   "Paths declarados antes de existir ficam fora da union ate existirem (comportamento declarado no CHANGELOG)."
+  ]
+ },
+ "reavaliacao_issue16_contrato_goal_advance": {
+  "date": "2026-11-10",
+  "scope": [
+   "src/server.ts",
+   "tests/mcp.test.ts"
+  ],
+  "delta": "ISSUE #16 / ISSUE-LOCAL-0008 (P2): description da tool goal_advance no tools/list prometia 'an absent changed file without deleted_files fails closed' enquanto o desenho D-31 (gate-provided-paths.ts, deliberado) devolve ressalva provided_missing_paths. Corte de contrato + EMENDA adversarial (0P1/4P2/7P3): frase com escopo de fase ('when the implementation gate advances ... changed_files paths are only inspected during the implementation gate'), caso diretorio ('or not a regular file'), ancora legivel (gate.provided_missing_paths) e markers negativos do next_step; it MCP com caso+controle no mesmo advance, caso SOLO (2o flow, path unico inexistente: ressalva nomeada, snapshot vazio, fase persistida), sentinela BIDIRECIONAL provada por mutacao CASO E (campo citado + 'fails closed' ao lado -> RED exato; restore -> GREEN) e fail-near (setup asserta phase implementacao). Zero motor (camping N/A). Suite re-medida 905->906 (902+4, files 72).",
+  "evidence": [
+   "npx vitest run tests/mcp.test.ts -t \"contrato-goal-advance-path-inexistente\" (RED na sentinela com a description antiga; GREEN apos o fix)",
+   "npm run build (dist/index.js e o servidor do teste MCP)",
+   "npm run check"
+  ],
+  "limits": [
+   "Description e ajuda textual do tools/list (nao-breaking por definicao); consumidores nao devem fazer parsing dela.",
+   "A ressalva continua ensinavel, nao autoritativa: julgamento de existencia mora em gate-provided-paths.ts com envelope do flow."
+  ]
+ },
+ "reavaliacao_issue0007_gerador_mm_charset": {
+  "date": "2026-11-10",
+  "scope": [
+   "src/memory/dex-memoria-v2-adapter.ts",
+   "src/memory-promotion.ts",
+   "src/flow-engine.ts",
+   "tests/dex-memoria-v2-adapter.test.ts",
+   "tests/flow-engine-dex-memoria-v2.test.ts"
+  ],
+  "delta": "ISSUE-LOCAL-0007 (P2): writer da MM entregava title/trigger com os metacaracteres ^ [ ] CR LF do item da mineracao (caso graphify com shape-MM) — a dex-memoria 0.1.17 rejeita em request-stage (INVALID_CANDIDATE citando o caractere) e o retry do resolve reusava o operation_id preso em PENDING ('use a new operation_id'). Cura: sanitizeCandidateText no adapter (title/trigger no charset L1; body cru; caso bom identico) + freshOperationIdForRetry (id fresco -retry-N SOMENTE para id PRESO: status nao-COMMITTED e nao-PARTIAL_PENDING — PARTIAL_PENDING segue o resume canonico, contrato preservado pela suite que PEGOU a regressao do primeiro desenho). RED-first duplo (adapter charset + engine charset-retry); 2 achados da execucao: helper partialReceipt assume rota global; sufixo :: quebra paths de receipt no Windows (hifen). PROVA REAL: mineracao com hash no item COMMITTED na 0.1.17 real (theme=COMMITTED, receipt mmv2_617f..., home temporario isolado). Suite 906->908 (904+4). EMENDA adversarial (1P1/2P2/5P3): freshOperationIdForRetry reescrita por FAMILIA com contador no SUFIXO numerico (primeiro desenho regenerava id queimado na 3a tentativa — v2_receipts e SUBSTITUIDO por rodada; RED ao vivo em teste de 3 rodadas), ultimo PARTIAL_PENDING da familia devolve o MESMO id (resume canonico preservado em id sufixado), vocabulario real do receipt (FAILED, nao PENDING fabricado) + tipo Pick fechado, guard TITLE_EMPTY no writer, assert de valor do title, contadores 906+2. Zero flow-engine na emenda (camping N/A).",
+  "evidence": [
+   "npx vitest run tests/dex-memoria-v2-adapter.test.ts tests/flow-engine-dex-memoria-v2.test.ts -t charset (RED duplo no baseline 4326322)",
+   "node .agents/TMP/prova-real-0007.mjs (receipt COMMITTED na dex-memoria 0.1.17 real)",
+   "npm run check"
+  ],
+  "limits": [
+   "Prova real usa tema de prova em memory_home temporario (o vault real da casa nao e tocado pela suíte).",
+   "Sufixo -retry-N e opaco para consumidores de operation_id (string); nenhum parser de formato encontrado (rg)."
+  ]
+ },
+ "reavaliacao_issue15_reconciliacao_flows": "OPS ISSUE #15 (2026-11-10): nenhum capability path tocado (corte de ops sem src; camping NOT_APPLICABLE). 4 flows historicos arquivados via API flow_archive com motivo citando o status do SPT (2374 CONCLUIDO_COM_RESSALVA; 2036/2078 CONCLUIDO_NAO_PRONTO; 2313 EM_VALIDACAO_NAO_PRONTO) + readback (status=archived, evento flow_archived, evidencias/verdicts preservados); 29 ambiguos/externos intactos (zero eventos flow_archived). Suite 908 inalterada (904 passed + 4 skipped, files 72) re-medida no ciclo; npm run check exit 0. Prova executavel: .agents/TMP/verify-issue15.py (gitignored) exit 0; tabela: .agents/AUDITORIAS/2026-11-10-issue15-reconciliacao-flows.md. EMENDA: verificador movido para .agents/AUDITORIAS/2026-11-10-issue15-verify.py com CWD ancorado por __file__ + detector de 5o arquivado implicito (P2s da adversarial, provados verdes de CWD externo); proveniencia do corpo da issue fechada (inventario f0477a4/197 arquivos = outra instalacao da frota; nesta maquina o 2374 arquivado unicamente por este corte as 23:04Z); nuance archived_blocked_flow=true em 3/4 (preserved_blockers vazio) e ressalva de vocabulario legado interpretativo registradas em comentario de emenda na #15. Zero src; suite 908. PLAYBOOK regen pos-fechamento (ACTIVE/HANDOFF/INDEX PLAN-TASKS atualizados na sessao — quem edita fonte regenera). RODADA 2 (GO do owner): +20 arquivamentos administrativos via API (18 stubs externos + 2 SPT ausente), motivo citando classe+autorizacao; readback 24 archived pelo corte / 9 familia 3 preservados flow-a-flow. Regen pos-rodada2 (ACTIVE/HANDOFF/PLAN-TASKS 24/9).",
+ "reavaliacao_issue17_verdict_next_action_mining": "D-38 GITHUB #17 (2026-11-11): src/flow-engine.ts (predicao requiresPostVerdictMining no retorno de goalVerdictUnlocked com o predicado EXATO hasVerdictAfterLatestMemoryMining sobre flow recarregado pos-verdict + next_required_action run_memory_mining; camping EXCEPTION integrity record FE-2026-11-11-ISSUE0017-VERDICT-NEXT-ACTION-MINING-EXCEPTION com RED no baseline 9a8d2c2) e src/server.ts (descriptions goal_verdict/goal_advance: predicao + memoria_viva_reconciled atestando o checklist do Trilho vinculado antes da imutabilidade). 2 its novos (caso RED->GREEN + controle) + sentinelas tools/list; guard do advance terminal intocado. Suite 908->910 (906 passed + 4 skipped); npm run check exit 0. EMENDA: contrato publico ampliado nas descriptions (closure_blockers antes do terminal + primazia do next_required_action do topo sobre o snapshot status.*); controle pinado em resolve_blockers; ramo writer morto removido; record 43 selado 8f677b4/9a8d2c2; monolito restaurado ao blob do corte (camping NOT_APPLICABLE na emenda). EMENDA: contrato publico ampliado nas descriptions (closure_blockers antes do terminal + primazia do next_required_action do topo sobre o snapshot status.*); controle pinado em resolve_blockers; ramo writer morto removido; record 43 selado 8f677b4/9a8d2c2; monolito restaurado ao blob do corte (camping NOT_APPLICABLE na emenda). FECHAMENTO: cerimonia flow 4417 completa (5 criterios re-atestados por STALE de CRLF, review estrutural v2 fp pos-emenda, verdict vrd_4455 pronto_com_ressalvas, re-mining pos-verdict, Trilho CONCLUSAO, superficies vivas, #17 CLOSED issuecomment-6807292027); suite 910 inalterada; zero src neste commit.",
+ "reavaliacao_issue18_diferenciar_rebind_rastreabilidade": "D-39 doc-only: envelope contract linha propria GOAL_BINDING_MISMATCH (2 sub-rotas + diferenciação + ppirtv_trace) + GOAL_SPT seção ortogonal com exemplo do teste vivo + nota consumidor ppirtv_trace; global sincronizado (audit:canonical pass); D-39 2 mapas + CHANGELOG; #18 CLOSED; suite 910 inalterada; zero src. EMENDA adversarial (5 revisores 1P1/5P2/8P3): Passo 0 novo (ler os 8 campos possiveis na propria mensagem; demais campos = envelope divergente -> goal_envelope); flow sucessor SEM reusar flow_id; decisao de owner movida para dentro da sub-rota 2; ponte com envelope vivo restore_original_binding_or_start_new_goal; ppirtv_trace discriminador ANTES das sub-rotas; fingerprint_missing legacy -> sub-rota 2; typos; global re-sincronizado audit pass; suite 910 inalterada. FECHAMENTO: cerimonia flow 4460 completa (re-atestacoes pos-emenda, review v2, verdict vrd_4490 pronto_com_ressalvas, re-mining pos-verdict, Trilho CONCLUSAO, superficies, #18 CLOSED); suite 910 inalterada; zero src neste commit.",
+ "reavaliacao_issue15_rodada3_familia3": "OPS zero src: familia 3 flow-a-flow com evidencia reabrivel (9/9 arquivados via API motivo individual); verificador rodada 3 VERDE 9/9+33/33+0 restantes (emenda adversarial: lista explicita de executores + identidade da saga); 2367 honesta (inconclusive/no_promotion; adocao por GO owner 2026-10-31); SAGA #15 FECHADA issuecomment-6809215340; suite 910 inalterada; verificador velho SUPERSEDED.",
+ "reavaliacao_issue14_budgets_5120_headroom": "D-40 teste zero src: asserts de headroom (>=2 chars/eco do flow_id) nos mesmos 2 its compact; tetos 5120 mantidos (aumento so com reproducao — rito do precedente 5500); estacionamento EST-20261013-BUDGETS-5120-PID resolvido; #14 CLOSED; suite 910 inalterada. EMENDA adversarial (3 revisores): off-by-one curado com PROJECAO de ID largo no payload real (split/join +2 chars por eco, projected < 5120 estrito — aceite literal 'larguras controladas' entregue); narrativa corrigida (driver = COUNTER do flow_id store.ts:94-101, nao PID do SO; precedente corrigido); echoes >= 1 exigido; its compact 3 passed; suite 910. FECHAMENTO: cerimonia flow 4548 completa (re-atestacoes, review v2 evd_4575, verdict vrd_4576, re-mining, Trilho CONCLUSAO, superficies); #14 CLOSED — issues online zeradas; suite 910; zero src neste commit.",
+ "reavaliacao_d41_rede_simbolo_suite": "tools/test-symbol-coverage.py EMENDADO pela adversarial (2P1+6P2): code_refs x mention_refs (6 das 49 refs eram prosa; falso 100% verdict-learning desmascarado), gate-resolution devolvido a lista, exports de type/interface/enum no denominador (155->201), exit 2 se ancora nao resolve (copia relocada aborta alto), try no --json, errors=replace no src; medicao final 52/201 code / 57/201 mention / 144 sem ref; salvaguardas no REDE.md (nunca quota; remocao por metrica proibida); CWD provado de C:/; zero src/tests, suite 910 inalterada.",
+ "reavaliacao_d42_rede_fiscal_blockers": "src/fiscal-blockers.ts: DES-EXPORT dos 9 helpers com ZERO consumidor externo e uso interno vivo (blockerSources, graphifyReason, hasReviewEvidence, librarianExplicitlyOutOfScope, librarianReason, memoryMiningBlockedDiagnostics, memoryMiningBlockedSequence, memoryRequiredDiagnostics, statusValue) — funcao permanece, interface 48->39 exports; prova typecheck exit 0 + suite verde; TABELA por simbolo publicada (35 decididos: 25a/1b/9c) em .agents/AUDITORIAS/2026-11-12-rede-fiscal-blockers/; it novo de caracterizacao loopEscalationFor 6 ramos com vigilia por mutacao (>=9->>=99 FAIL, restaurado verde); regua re-medida: fiscal-blockers 14/39, TOTAL 53/192 code, 134 sem ref nominal.",
+ "reavaliacao_d42_rede_fiscal_blockers_emenda": "EMENDA adversarial (1P1+4P2+4P3): loopEscalationFor reclassificado (a->nominal) — T25c/T25d de engine.test ja assertava os 6 ramos (nominal x comportamental, erro da calibração D-41 pago de volta); 0 lacunas comportamentais; mutação em escopo real quebra T25c E o it novo (suíte nunca cega); liveness dos 9 des-exportados REGISTRADO (sem noUnusedLocals, corte próprio); citação blockerLoopId corrigida (T25d); copia adversarial regenerada; suite 911 = 907 passed + 4 skipped (provenance); saude nominal real do módulo 13/39 (1 prose-only conhecido).",
+ "reavaliacao_d43_rede_gate_resolution": "src/gate-resolution.ts: DES-EXPORT dos 10 sem consumidor externo (DOCUMENT_FILE_EXTENSIONS, GateResolutionInput, PROVIDED_REQUIREMENT_KINDS, PROVIDED_REVIEW_INPUT_KEYS, ProvidedRequirementDiagnostic, ProvidedRequirementKind, ReviewEvidenceDiagnostics, gateSnapshotMatches, hasCurrentStructuredReview, isDocumentalFile) — 35->25 exports, typecheck exit 0, comportamento intocado; TABELA 27 por sonda de CAMPO (17a/0b/10c; mergePathFacts com evidência DUPLA pelo campo certo); 0 testes novos (CRP no núcleo de todo advance); régua 8/25, TOTAL 53/182 code, 124 sem ref; suíte 911 = 907+4.",
+ "reavaliacao_d43_emenda": "EMENDA adversarial D-43 (2P1+4P2+3P3): 2 mutacoes de amostra executadas (canonicalVerdict->1 failed; reviewCurrencyMissing->2 failed — ramos vigiados com prova viva); mergePathFacts era lacuna de ASSERT real -> it novo de caracterizacao dos 3 ramos + mutacao de vigilia (fallback->1 failed, restaurado 29 passed); citacoes fantasma corrigidas (meeting-policy/gate-provided-removed; assert exato engine l.~3162); nota honesta: encolhimento parcial por cirurgia de denominador (-19 des-exports acumulados); regua final 54/182 code, 123 sem ref (it novo pagou 1 nominal); suite 912 = 908+4 (provenance).",
+ "reavaliacao_d44_rede_meeting_policy": "src/meeting-policy.ts: DES-EXPORT dos 14 sem consumidor externo (40->26 exports, typecheck exit 0, comportamento intocado) + P3 textual da Onda 3 item 6 pago (reason do gatilho; 0 asserts no reason); TABELA 29 com assert exato por linha (15a/0b/14c); 2 mutacoes de amostra EXECUTADAS e PEGAS (hasVerdictRecordedAfterIndex->true = 3 failed; meetingClosedLedgerData->null = 8 failed); 0 testes novos; regua 54/168 code, 109 sem ref; suite 912 = 908+4.",
+ "reavaliacao_d44_emenda": "EMENDA adversarial D-44 (2P1+5P2+6P3): requiredMeetingKind = LACUNA REAL (citacao fantasma + mutacao sempre-transversal SOBREVIVEU 232/232) -> it novo caracteriza a escada + re-mutacao FALHA; 5 mutacoes de amostra congeladas em MUTACOES/ (classe BASELINE-RED); citacoes fantasma corrigidas em 6 linhas; contradição do scope emendada (reason = comportamento observável por ESCOTEIRO-ONDA); degrau fantasma 124 corrigido; regua 55/168 code, 108 sem ref; suite 913 = 909+4.",
+ "reavaliacao_d45_rede_memory_promotion": {
+  "data": "2026-11-13",
+  "delta": [
+   "src/memory-promotion.ts (des-export type V2CommittedBoundaryError 31→30 exports; typecheck exit 0)",
+   "tests/flow-engine-dex-memoria-v2.test.ts (+5 its D-45; 59/59)"
+  ],
+  "decision": "16 (a) · 1 (b) declarada (memoryCandidateLedgerDataWithResolution — embed inline no engine l.1831; dívida $tio-testador) · 1 (c)",
+  "mutacoes_literais": "11 executadas (count==1 + viva no disco): 10 PEGAS (M5 22f, M6 10f, M10 6f, demais 1f) + M8 sobrevivente real",
+  "incidente_harness": "1ª rodada regex-assinatura: 10 falsos sobreviventes (replace sem match); vacina: literal verificado + releitura do disco (gatilho REDE-CORTE-POR-MODULO)",
+  "regua": "108→107 sem ref; TOTAL 55/167 code"
+ },
+ "reavaliacao_d46_rede_verdict_fiscal_policy": {
+  "data": "2026-11-13",
+  "delta": "tools/mutacao-amostra.py NOVO (harness-v2 do D-45 promovido — R17, 2o consumidor real; emendado pela adversarial: bytes, timeout->INVALIDO, sem-resumo->INVALIDO, span objetual) + tools/INDEX.md NOVO + .agents/AUDITORIAS/2026-11-13-rede-verdict-fiscal-policy/ (TABELA/PROVA/MUTACOES 9 runs/adversarial CONSOLIDADO) + REDE.md rodada 6 + estacionamentos D-46; src/ e tests/ INTOCADOS (corte behavioral: mutacoes restauradas byte-exatas, sha256 e1a606ff conferido pre/pos lote)",
+  "decisao": "14 simbolos de verdict-fiscal-policy: 11 (a) · 1 (b) subcampo meeting_policy de fiscalResultWithDeps (M6/M6b sobrevivente repo-wide 80+199 its — codigo morto de saida, limpeza estacionada EST-D46-MEETING-POLICY-SUBCAMPO) · 2 (c) types; sem des-export (todos os 14 tem consumidores externos reais); sem it novo (nenhuma lacuna de ROTA — M5 e enderecamento, M6 e subcampo morto)",
+  "mutacoes": "9 runs congelados com as 4 vacinas + emenda D-46 (M1 2f, M2 10f, M3 2f engine, M4 2f, M5 sobrevive focais/M5b PEGA 3f T24/T24b/T26, M6/M6b sobreviventes repo-wide, M7 9f prova o fix do span); JSONs self-contained (literal+mutacao+vitest_saida)",
+  "harness": "promocao R17 paga: 2o consumidor real; adversarial R2 emendada no mesmo corte (bytes/tcrash/exit-codes documentados: exit 0 NAO e PEGA); decisao do dono 2026-11-13: manter Python (irma da regua e do gate playbook em tools/)",
+  "regua": "107 sem ref INALTERADO por design (TOTAL 55/167 code; corte behavioral sem des-export e sem it nominal); fila nao-decidida: spt-traceability 13, review-snapshot 8"
+ },
+ "reavaliacao_toolsbook_r18": {
+  "data": "2026-11-13",
+  "delta": "tools/TOOLSBOOK.md NOVO (indice reverso por intencao, 17 ferramentas tools+scripts, projecao gerada pelo motor da skill dex-toolsbook — R18) + docstrings Reuso/Perigo/Custo em 17 scripts (declaracao honesta; comentarios, zero logica) + 2 cabecalhos lapidados por intencao (call-mcp-tool, generate-playbook) + 4o gate no tools/playbook/hooks/pre-commit (TOOLSBOOK --check com fallback de frota) + AGENTS.md bootstrap citando --buscar + tools/INDEX.md linha",
+  "criterio_de_pronto": "--check exit 0 real (FRESCO, 17/17 com Reuso, imports resolvem, invocacao existe); 7 buscas reais exit 0 com alvo correto no topo (2 lapidadas na sessao); hook no pre-commit; AGENTS.md cita o comando",
+  "custo_r17": "motor mora na skill (TOOLS-FAMILIA-REUSO-GLOBAL: repo nao copia os modulos; shim local so quando houver 2o consumidor local)",
+  "suite": "918 inalterada (914+4; emendas sao apenas comentarios — node --check 15/15 OK)"
+ },
+ "reavaliacao_d47_rede_spt_traceability": {
+  "data": "2026-11-13",
+  "delta": "tests/spt-declarative-proof.test.ts (+20 its D-47: 7 ownership codigo+detail, 8 provenance codigo, 1 measurement, 1 projecoes, 1 requiresGoalEvidence, 1 stale admissao, helper) + tools/mutacao-amostra.py CURADO (INVALIDO silencioso -> veredito incondicional via _ciclo; emendas adversarial: fronteira \breturn\b, span_heuristico p/ void-throw-only, ancoras, guards anti-no-op/viva) + tools/TOOLSBOOK.md regen + AUDITORIAS 2026-11-13-rede-spt-traceability (TABELA 7a/6b-PAGAS/2c, PROVA, MUTACOES, CONSOLIDADO)",
+  "suite": "934 passed + 4 skipped (938) re-rodada na sessao; arquivo-alvo 29/29; tsc exit 0; 9/9 vigias PEGA",
+  "regua": "spt-traceability 2/15->8/15 code (13->7 sem ref); TOTAL 61/167 code, 101 sem ref (maior salto da serie)"
+ },
+ "scope": {
+  "bloco": "d50"
+ },
+ "reavaliacao_d50b_closure_verdicts": {
+  "data": "2026-11-15",
+  "trilho": ".agents/PLAN-TASKS/2026-11-15-closure-verdicts-d50b.md",
+  "objeto": "closure de VERDICTS: fonte unica do par-positivo (POSITIVE_VERDICTS + isPositiveVerdict) em src/domain.ts + PipelineFlowStatus derivado de VerdictStatus",
+  "delta_src": [
+   "src/domain.ts: +POSITIVE_VERDICTS +PositiveVerdictStatus +isPositiveVerdict(status: string | undefined); PipelineFlowStatus = VerdictStatus | \"pending\" (redeclaracao manual morta)",
+   "src/meeting-policy.ts: 3 sitios -> isPositiveVerdict (2 positivos l.106/160 + 1 NEGADO l.30 — 12o sitio descoberto no corte)",
+   "src/review-scope-attribution.ts: 1 sitio l.42",
+   "src/verdict-fiscal-policy.ts: Set privado POSITIVE_VERDICT_STATUSES l.289 removido (13a copia) -> isPositiveVerdict"
+  ],
+  "estacionado": "8 sitios src/flow-engine.ts (l.2560/2563/2656/2660/2730/3018/4007 + negado l.4714) revertidos ao HEAD: fiscal camping reprovou CONTAIN (detector assina condicao por STRING — promocao-a-funcao conta como decision added, l.410 incondicional); EXCEPTION bloqueado por CONSECUTIVE_EXCEPTION_FORBIDDEN (ultimos 5 materiais EXCEPTION) e por ausencia de RED honesto em refactor pura. EST-D50B-1 owner $oraculo-refatoracao",
+  "prova_fechamento": ".agents/AUDITORIAS/2026-11-15-closure-verdicts/FECHAMENTO.json (PRE documental 1f6f75b l.364 + POS executavel: mutacao remove 'pronto' de VERDICTS -> tsc exit 2 com 3 erros nos consumers)",
+  "camping": "check:flow-engine NOT_APPLICABLE (flow_engine_changed=false, blob 9e83d595 == HEAD)",
+  "suite_medida_2x": "956 passed | 4 skipped (960), 76 arquivos, 123s",
+  "regua": "domain 18/82 (+3 exports); TOTAL 93/249, sem ref 152",
+  "incidente": "git checkout como restauracao com working tree sujo apagou as edicoes do corte (sha -c FAILED); recriado por patch com asserts; VACINA: mutacao em working tree sujo exige backup de BYTES (cp), git checkout so vale com tree limpo"
+ },
+ "reavaliacao_d51_rede_principles": {
+  "data": "2026-11-15",
+  "trilho": ".agents/PLAN-TASKS/2026-11-15-rede-principles-d51.md",
+  "objeto": "corte de rede principles.ts: 31 exports decididos (5a/5b-PAGAS/19c/2 mortos removidos)",
+  "delta": [
+   "src/principles.ts: -2 mortos (loadOperationalContract async + principleChecklistSync; rg repo-wide zero-consumidor; RED tsc+suite verdes)",
+   "tests/principles-rede-d51.test.ts: +5 its de caracterizacao toEqual (as 5 delegacoes b) + 5/5 vigilias PEGA",
+   "tools/test-symbol-coverage.py: principles em MARATHON_MODULES (régua ganha o modulo)"
+  ],
+  "sondas": "M1/M3/M4/M5/M6 SOBREVIVERAM (b); M2/M7/M8/M9 PEGA (a-por-mutacao); 14 receipts em .agents/AUDITORIAS/2026-11-15-rede-principles/MUTACOES/",
+  "suite_medida_2x": "961 passed | 4 skipped (965), 77 arquivos",
+  "regua": "principles 6/29; TOTAL 93->99/249->278 code, sem ref 152->175",
+  "classe_do_corte": "delegacoes de leitura do contrato (array/record) sem assert — mesma classe colecao-sem-assert do D-50, agora em funcoes; sondas discriminaram array-forma (sobrevive) de policy-forma (cobertura viva)",
+  "barata": "mutacao com linha identica ao irmao = count(mut)==2 -> vacina anti-duplicata rejeita (classe M2b em nova roupagem); return undefined existe 7x (nao serve de mutacao unica)"
+ }
 }

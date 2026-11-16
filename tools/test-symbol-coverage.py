@@ -45,6 +45,7 @@ MARATHON_MODULES = [
     "gate-resolution",
     "meeting-policy",
     "memory-promotion",
+    "ppirtv-checkin",
     "principles",
     "review-snapshot",
     "spt-traceability",
