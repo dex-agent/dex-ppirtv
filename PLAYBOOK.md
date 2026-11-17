@@ -4,7 +4,7 @@ description: "Regras de decisao e procedimentos deste projeto - projecao gerada 
 type: playbook
 generated_by: "tools/playbook/generate-playbook.py"
 authority: derived_projection
-sources_revision: "sha256:b6b31488df9105b18c04f1aae7ae0e479c436d759c652b0905fded183e4413ca"
+sources_revision: "sha256:3c31087137de0d9a0cba19fde1dbeb33dc707a594189a01edc40430e67ca1e70"
 sent_revision: "sha256:c3fe3900353785713ca9fdb1d0ff4a840d2eade60eadca73b9a4ac228bd6dc0f"
 do_not_edit: true
 ---
@@ -56,16 +56,16 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 - Localizador: `CONSELHEIRO-ATIVO-PADRAO-REPO`
 - Gatilho: mapa quente em `.agents/GATILHOS-VIVOS.md`).
 - Extrato: - `CONSELHEIRO-ATIVO-PADRAO-REPO` (GO do dono 2026-11-09): toda sessão de
-- Fonte: `AGENTS.md#L69-L233`
-- Selo: `pb-a4b7a55a`
+- Fonte: `AGENTS.md#L69-L237`
+- Selo: `pb-01ed2d56`
 
 ### Validacao minima
 
 - Localizador: `PPIRTV-CAPACITY-COMMIT-GATE`
 - Gatilho: ndeclarado
 - Extrato: ```powershell
-- Fonte: `AGENTS.md#L283-L305`
-- Selo: `pb-aa2b8a82`
+- Fonte: `AGENTS.md#L287-L309`
+- Selo: `pb-3e6f78ec`
 
 ### Ordens diretas do Comandante Owner o $chato 🗣️
 
@@ -77,16 +77,16 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
   - $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamen...
   - Ative o fluxo visual PPIRTV com checklist visual dinâmico u...
   - Sempre finalize o trabalho analisando "com lentes dos espec...
-- Fonte: `AGENTS.md#L306-L368`
-- Selo: `pb-d231982b`
+- Fonte: `AGENTS.md#L310-L372`
+- Selo: `pb-5216c380`
 
 ### Dex Agent Local
 
 - Localizador: `PPIRTV-GIT-CONSOLIDACAO-SELETIVA-MAIN`
 - Gatilho: - Antes de qualquer consolidacao Git deste repositorio, recupere o gatilho
 - Extrato: - Projeto: `dex-PPIRTV`
-- Fonte: `AGENTS.md#L369-L413`
-- Selo: `pb-7c487d57`
+- Fonte: `AGENTS.md#L373-L417`
+- Selo: `pb-6d083ff3`
 
 ### Bootstrap (toda janela nova, nesta ordem)
 
@@ -98,8 +98,8 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
   - Leia este `AGENTS.md` inteiro.
   - Leia o estado vivo, nesta ordem: `.agents\ACTIVE.md` → `.ag...
   - Gatilhos L1: `.agents\lembranca.md` — abra L2/L3 somente po...
-- Fonte: `AGENTS.md#L447-L468`
-- Selo: `pb-1879dae8`
+- Fonte: `AGENTS.md#L451-L472`
+- Selo: `pb-620dff48`
 
 ### Leitura obrigatoria (bootstrap)
 
@@ -111,8 +111,8 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
   - `.agents/ACTIVE.md`
   - `.agents/HANDOFF.md`
   - `.agents/PLAN-TASKS/ACTIVE.md`
-- Fonte: `AGENTS.md#L496-L503`
-- Selo: `pb-db185679`
+- Fonte: `AGENTS.md#L500-L507`
+- Selo: `pb-5dd28a00`
 
 ## Runbook <-> Playbook (procedimentos)
 
@@ -127,9 +127,9 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 | caminho | sha256 | Enviado? |
 | --- | --- | --- |
 | `docs/PLAYBOOK-RULES.md` | `3aebb8df98b19a4c1042973c59e14b0a8cfc728777839caa2f2c40c80e76f92c` | sim |
-| `AGENTS.md` | `0683ffaf899862b1b1e08473570ee56b87c0d1d8a058fcbdfba5c1906af6f843` | nao |
-| `.agents/napkin.md` | `084f1c7056ae7f2832924172c7767934c4504b507979df48f7022e1938c1f0d2` | nao |
-| `.agents/PLAN-TASKS/ACTIVE.md` | `be951a7d251d19dd629c8ae086630407556e343d74dcd524fa71f1046b183cea` | nao |
+| `AGENTS.md` | `b8a896755e80b369c861b8a3787a76a67e1815a40c23504c5ab6127754d1aa0a` | nao |
+| `.agents/napkin.md` | `5fa6b6ac08c075d3070b2db57b9585f501ed38a686b8d9e7382226c28f9d9263` | nao |
+| `.agents/PLAN-TASKS/ACTIVE.md` | `aa8ecf045377049616f8864a76fe384d222c3dd1082ec9878da6ffeff0e8811f` | nao |
 
 ## Superficie enviada vs local
 
@@ -139,7 +139,7 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 ## Secoes nao decodificadas
 
-- Organizacao De Artefatos E Scripts -> `AGENTS.md#L234` (sem token de localizador)
-- Graphify local -> `AGENTS.md#L414` (sem token de localizador)
-- Indexação (doutrina da casa) -> `AGENTS.md#L469` (sem token de localizador)
-- Envio a terceiros -> `AGENTS.md#L476` (sem token de localizador)
+- Organizacao De Artefatos E Scripts -> `AGENTS.md#L238` (sem token de localizador)
+- Graphify local -> `AGENTS.md#L418` (sem token de localizador)
+- Indexação (doutrina da casa) -> `AGENTS.md#L473` (sem token de localizador)
+- Envio a terceiros -> `AGENTS.md#L480` (sem token de localizador)

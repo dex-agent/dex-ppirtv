@@ -1,4 +1,21 @@
 {
+ "reavaliacao_instalacao_gate_merge_staleness_261116": {
+  "date": "2026-11-16",
+  "scope": [
+   "tools/playbook/hooks/pre-merge-commit",
+   "tools/playbook/hooks/merge-check.conf",
+   "tools/INDEX.md"
+  ],
+  "delta": "INSTALACAO do dono ( Parte A): gate de git merge-check tres vias no pre-merge-commit (hooksPath vigente tools/playbook/hooks preservado; hooks antigos intactos). Suíte declarada npm test; escapes MERGE_CHECK_SKIP=1/--no-verify; sem suíte avisa e nao bloqueia; resolved-merge roda suíte no worktree; exit 1 bloqueia, execution_error reporta sem bloquear. Parte B: ficha STALENESS-ARTEFATOS-DERIVADOS atualizada (MAPAS real + TOOLSBOOK projecoes + emenda 2026-11-16 com doctor) + ficha nova MERGE-CHECK-HOOK-PRE-MERGE 5W2H + linha AGENTS.md. Zero mudanca em src/.",
+  "evidence": [
+   "code-review-graph --version -> 2.4.0+dex.1; merge-check --help -> exit 0",
+   "bash -n pre-merge-commit -> SINTAXE_OK; invocacao fora de merge -> exit 0 (silencioso e com SKIP=1 imprimindo 1 linha)",
+   "git config core.hooksPath -> tools/playbook/hooks (inalterado); pre-commit/post-merge intactos (ls)",
+   "merge-check manual ours==theirs (base 4c2fcb7) -> outcome passed; laboratorio proprio em temp (crg-merge-*)",
+   "rg STALENESS|MERGE-CHECK .agents/GATILHOS-VIVOS.md -> hits l.105/107/163",
+   "PLAYBOOK estava drift (check exit 2) -> regen --write -> check exit 0"
+  ]
+ },
  "reavaliacao_d52_rede_checkin_janela0011": {
   "date": "2026-11-16",
   "scope": [

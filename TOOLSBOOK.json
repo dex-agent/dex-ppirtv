@@ -574,7 +574,7 @@
     "AGENTS.md global plaquinha ES-PRIMEIRA-BATIDA-POR-NOME (caso pago 2x)"
    ],
    "sources": {
-    "AGENTS.md": "0683ffaf899862b1b1e08473570ee56b87c0d1d8a058fcbdfba5c1906af6f843"
+    "AGENTS.md": "b8a896755e80b369c861b8a3787a76a67e1815a40c23504c5ab6127754d1aa0a"
    },
    "external_sources": [
     "owner: voidtools (ES CLI) | locator: $env:USERPROFILE\\.local\bin\\es.exe | revision: 1.1.0.37 | evidence: AGENTS.md plaquinha ES-PRIMEIRA-BATIDA-POR-NOME (caso pago 2x); skill busca-arquivos-everything"

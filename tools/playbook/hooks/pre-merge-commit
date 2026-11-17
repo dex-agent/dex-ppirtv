@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# pre-merge-commit gate — merge-check tres vias (padrao da casa: hook commitado
+# + core.hooksPath, como dex-playbook-entrada). Instalado 2026-11-16 por pedido
+# do dono: "sem gate, merge que quebra nasce". NAO use code-review-graph install
+# aqui (isso registra MCP/skills de plataforma; o gate e este hook).
+
+# A3a: nao e merge -> exit 0 silencioso
+[ -f "$GIT_DIR/MERGE_HEAD" ] || exit 0
+
+# A3b: escapes registrados (1 linha no stdout)
+if [ "$MERGE_CHECK_SKIP" = "1" ]; then
+  echo "merge-check gate: SKIP por MERGE_CHECK_SKIP=1"
+  exit 0
+fi
+
+# A2: suíte declarada em merge-check.conf (1 linha SUITE="...")
+CONF="$(dirname "$0")/merge-check.conf"
+SUITE=""
+[ -f "$CONF" ] && . "$CONF"
+RUN_SUITE="$SUITE"
+[ -n "$RUN_SUITE" ] || echo "merge-check gate: sem suíte declarada em $CONF — proponha a suíte mínima como pendência (não bloqueia por falta de suíte)"
+
+OURS=$(git rev-parse HEAD)
+THEIRS=$(git rev-parse "$GIT_DIR/MERGE_HEAD")
+BASE=$(git merge-base HEAD MERGE_HEAD)
+
+if grep -q "# Conflicts" "$GIT_DIR/MERGE_MSG" 2>/dev/null; then
+  # A3f: resolução manual — a camada textual do merge-check daria falso-positivo
+  # (refaz o merge sem a resolução humana); roda a camada comportamental DIRETO
+  # no estado resolvido.
+  if [ -z "$SUITE" ]; then
+    echo "merge-check gate: resolved-merge sem suíte declarada — nada a rodar, exit 0"
+    exit 0
+  fi
+  echo "merge-check gate: resolved-merge, suíte no worktree ($SUITE)"
+  if ! $SUITE; then
+    echo "merge-check gate: FALHOU — suíte vermelha no worktree resolvido"
+    echo "  inspecione fora do hook: $SUITE"
+    exit 1
+  fi
+  exit 0
+fi
+
+# A3e: gate completo (três vias + suíte). Sem suíte: no-op 'true' mantém o gate
+# textual/semântico sem parte comportamental (P10: falta de suíte não bloqueia).
+[ -n "$RUN_SUITE" ] || RUN_SUITE="true"
+code-review-graph merge-check --repo . --base "$BASE" --ours "$OURS" --theirs "$THEIRS" \
+  --test-failure-exit 1 -- $RUN_SUITE
+rc=$?
+case "$rc" in
+  0) exit 0 ;;
+  1)
+    echo "merge-check gate: FALHOU (exit 1) — conflito texto/semântico ou suíte vermelha no merge $OURS x $THEIRS (base $BASE)"
+    echo "  inspecione fora do hook: code-review-graph merge-check --repo . --base $BASE --ours $OURS --theirs $THEIRS --test-failure-exit 1 -- $RUN_SUITE"
+    exit 1 ;;
+  *)
+    echo "merge-check gate: execution_error (exit $rc) — reportado, NÃO bloqueia (suíte doente não é veredito de integração)"
+    exit 0 ;;
+esac

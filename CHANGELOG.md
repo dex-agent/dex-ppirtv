@@ -8,6 +8,19 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+## Instalação — gate merge-check (pre-merge-commit) + fichas staleness (2026-11-16)
+
+- **Parte A**: hook `tools/playbook/hooks/pre-merge-commit` (hooksPath vigente
+  preservado, hooks antigos intactos) — merge-check três vias do fork da casa
+  `2.4.0+dex.1`; `merge-check.conf` com `SUITE="npm test"`; escapes
+  `MERGE_CHECK_SKIP=1`/`--no-verify`; resolved-merge roda a suíte no worktree
+  (camada textual daria falso-positivo); exit 1 bloqueia, execution_error
+  reporta sem bloquear. Próximo `git merge` real o exercita.
+- **Parte B**: ficha `STALENESS-ARTEFATOS-DERIVADOS` emendada (MAPAS real,
+  projeções TOOLSBOOK, doctor 2026-11-16) + ficha nova
+  `MERGE-CHECK-HOOK-PRE-MERGE` (5W2H com E-ses) no `.agents/GATILHOS-VIVOS.md`
+  + 1 linha no `AGENTS.md` junto à regra do CRG. PLAYBOOK regen (estava drift).
+
 ## D-52 — corte de rede ppirtv-checkin + janela 0011 + barata de fixture (2026-11-16)
 
 ### Corte de rede (décimo-primeiro da frente; régua ganha `ppirtv-checkin`)

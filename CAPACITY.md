@@ -1,6 +1,21 @@
 
 
-## Reavaliação — D-52 corte de rede ppirtv-checkin + janela 0011 + barata de fixture (2026-11-16)
+## Reavaliação — instalação do gate merge-check + fichas staleness (2026-11-16)
+
+> Delta do worktree sobre o HEAD `0f92f79`. NÃO TOCA `src/`. TOCA `tools/`
+> (hook `pre-merge-commit` + `merge-check.conf` + INDEX). Instalação por
+> pedido do dono (paste 2 partes) — Parte A gate de git, Parte B fichas.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| Gate merge | hook novo em `tools/playbook/hooks/` (hooksPath vigente preservado); suíte `npm test`; escapes; resolved-merge no worktree | `bash -n` OK; fora de merge exit 0; smoke `outcome: passed` |
+| Fichas | STALENESS emendada (MAPAS real + TOOLSBOOK + doctor 2026-11-16) + MERGE-CHECK nova 5W2H + linha AGENTS.md | `rg` hits l.105/107/163 |
+| PLAYBOOK | estava drift (exit 2) → regen → exit 0 | generate-playbook `--check` |
+
+**Limites:** o próximo `git merge` real exercita o gate (não houve merge no
+bloco); merge por PR remoto não passa por hook local (E-se da ficha).
+
+## Reavaliação — D-52 corte de rede ppirtv-checkin + janela 0011 + barata de fixture (2026-11-16) + janela 0011 + barata de fixture (2026-11-16)
 
 > Delta do worktree sobre o HEAD `4c2fcb7`. NÃO TOCA `src/` (corte behavioral
 > puro — 0 mortos). TOCA `tools/` (hook 1 linha de comentário + régua ganha
