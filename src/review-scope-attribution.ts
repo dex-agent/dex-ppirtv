@@ -144,13 +144,41 @@ export async function bindReviewScopeAttribution(
   };
 }
 
+// ISSUE-LOCAL-0012 (2026-11-17): o binding aprovado é o predicado de validade
+// já exigido para citação explícita (abaixo, no loop). Extraído em função
+// pequena para o reuso automático do early-return — a adoção NUNCA promove
+// attribution stale; sem válida, o comportamento atual permanece.
+async function attributionBindingCurrent(
+  evidence: Evidence,
+  workspace: string,
+  flow: Flow
+): Promise<boolean> {
+  const attribution = attributionSchema.safeParse(evidence.observed_result);
+  const binding = bindingSchema.safeParse(evidence.observed_result?.attribution_binding);
+  if (!attribution.success || !binding.success) return false;
+  if (binding.data.git_head_base !== (flow.git_head_base ?? null)) return false;
+  const paths = attribution.data.excluded_paths.map((entry) => canonicalPath(workspace, entry.path));
+  return binding.data.fingerprint === await excludedPathsFingerprint(workspace, paths);
+}
+
 export async function applyReviewScopeAttributions(
   flow: Flow,
   corroborated: Flow,
   evidenceIds: string[] = []
 ): Promise<Flow> {
-  if (evidenceIds.length === 0) return corroborated;
   const workspace = flow.goal_binding!.envelope.workspace;
+  if (evidenceIds.length === 0) {
+    // ISSUE-LOCAL-0012: verdict sem citação reutiliza attribution aprovada
+    // com binding válido (janela paralela não re-traz alheios). As adotadas
+    // passam pelo MESMO crivo do loop abaixo — duplicata intencional.
+    const adotadas: string[] = [];
+    for (const evidence of flow.evidence) {
+      if (evidence.flow_id !== flow.flow_id || evidence.kind !== "review_scope_attribution" || evidence.scope_classification !== "outside") continue;
+      if (await attributionBindingCurrent(evidence, workspace, flow)) adotadas.push(evidence.evidence_id);
+    }
+    if (adotadas.length === 0) return corroborated;
+    evidenceIds = adotadas;
+  }
   const exclusions = new Set<string>();
   for (const evidenceId of new Set(evidenceIds)) {
     const evidence = flow.evidence.find((item) => item.evidence_id === evidenceId);

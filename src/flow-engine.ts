@@ -5,7 +5,7 @@ import { providedPathFindingsFields, providedPathFindingsFor, providedPathPrevie
 import { PHASES, COMPACT_PHASES, GOAL_FLOW_ROLES, type AnyPhase, type Cooperator, type CriterionProofInput, type Evidence, type Flow, type GateRecord, type GoalBinding, type GoalEnvelope, type GoalFlowRole, type HygieneFinding, type Meeting, type MemoryCandidatePromoteScope, type MemoryCandidateResolution, type MemoryCandidateResolutionAction, type MeetingKind, type MeetingType, type MemoryMiningSummary, type MemoryPostWriteValidation, type MemoryReviewStatus, type MemoryWritePolicy, type PipelineFlowResult, type PipelineItem, type PresentationEnvelope, type Phase, type Scope, type SptValidationResult, type Verdict, type VerdictStatus, type WorkProgressEvent, type WorkProgressStatus, type WorkProgressSummary } from "./domain.js";
 import { canonicalVerdictChangedFiles, hasRequirement, invalidateStaleDownstreamGates, isStructuredReviewEvidence, mergePathFacts, officialGoalNeedsCanonicalVerdict, providedIgnoredKeys, providedRequirementDiagnostic, resolveGateRequirements, reviewCurrencyAppliesToPhase, reviewCurrencyMissing, reviewEvidenceDiagnostics, reviewEvidenceRequested, reviewEvidenceValidity, savedGateReusable, strictPathArray, structuredReviewAttestationRequested, type GateRequirementResolution } from "./gate-resolution.js";
 import { requiredCooperationDiagnostics, meetingClosedIndex, meetingOutcomeSummaries, meetingOutcomeCounts, requiredCooperationNeedsMeetingIdRetry, meetingKindForType, meetingTypeForKind, requiredMeetingKind, requiredMeetingParticipants, meetingClosedLedgerData, applyClosedMeetingToFlow, assertMeetingClosed } from "./meeting-policy.js";
-import { evaluateFiscalPolicyWithDeps, countHistory, countRegressions, explicitMeetingTrigger, fiscalResultWithDeps, fiscalText, MEMORY_MINING_BLOCKED_VERDICT_REASON, reportFiscalSignals, reportRecurringRiskCleared, requiredCooWithDeps, type FiscalPolicyResult } from "./verdict-fiscal-policy.js";
+import { attributionHint, evaluateFiscalPolicyWithDeps, countHistory, countRegressions, explicitMeetingTrigger, fiscalResultWithDeps, fiscalText, MEMORY_MINING_BLOCKED_VERDICT_REASON, reportFiscalSignals, reportRecurringRiskCleared, requiredCooWithDeps, type FiscalPolicyResult } from "./verdict-fiscal-policy.js";
 import { sanitizePersistedProvided } from "./input-unwrap.js";
 import { assertNoSecretLikeItems, assertNoSecretLikePayload, assertNoSecretLikeText } from "./security/secret-redaction.js";
 import { assertLegacyFlowCanReceiveFirstGoalBinding, ensureLedgerTransitionRecorded, GoalIdempotencyDuplicateBindingsError } from "./goal-ledger-recovery.js";
@@ -59,7 +59,7 @@ import { unique, stringArray, uniqueCooperators } from "./lang-utils.js";
 import { normalizePipelineItem, pipelineEvidenceText } from "./pipeline-policy.js";
 import { assertCompatibleGoalBinding } from "./goal-binding-compat.js";
 import { sptBindingIntegrityFor } from "./provenance-trace.js";
-import { freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
+import { freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles, withRestoredBlockedVerdictSnapshot } from "./review-snapshot.js";
 import { applyReviewScopeAttributions, attributedVerdictSnapshot, bindReviewScopeAttribution, prepareVerdictSnapshot, type GoalVerdictInput } from "./review-scope-attribution.js";
 import { normalizeRecallConsumptionInput, sameRecallReferences, validateRecallConsumptionReferences, type RecallConsumptionInput } from "./memory/recall-consumption-contract.js";
 import { assertGovernedTag } from "./memory/governed-tag.js";
@@ -2599,8 +2599,11 @@ export class FlowEngine {
         // como pending auditaveis no evento de bloqueio — a AVALIACAO acima
         // continua honesta com o conjunto corrente corroborado.
         const restoration = restoreBlockedVerdictSnapshot(flow, fiscalFlow);
+        // ISSUE-LOCAL-0012: restauro ATÔMICO — o fingerprint persiste recomputado
+        // sobre o conjunto restaurado (antes: híbrido bloqueava evidence_add).
+        const restoredFlow = await withRestoredBlockedVerdictSnapshot(flow, fiscalFlow);
         await this.persistFiscalBlock(
-          { ...fiscalFlow, changed_files: restoration.changed_files, deleted_files: restoration.deleted_files },
+          restoredFlow,
           fiscal,
           "goal_verdict",
           input,
@@ -2613,7 +2616,13 @@ export class FlowEngine {
         const meetingRetryHint = missingForVerdict.includes("meeting_id")
           ? `; missing_for_verdict=${missingForVerdict.join("|")}; eligible_meeting_ids=${eligibleMeetingIds.join("|")}`
           : "";
-        throw new Error(`PPIRTV_FISCAL_BLOCKED: ${fiscal.blocking_reasons.join(", ")}; ${fiscalStateSegment(countHistory(fiscalFlow, "verdict_recorded"), countRegressions(fiscalFlow), FISCAL_CONFIG.maxRegressions, meetings.length)}; required_cooperation=${fiscal.required_cooperation.map((item) => item.name).join("|")}${meetingRetryHint}`);
+        // ISSUE-LOCAL-0012 (erro-que-ensina): o reason-string permanece exato;
+        // a MENSAGEM nomeia o campo quando existe attribution reutilizável.
+        const attributionRetryHint = fiscal.blocking_reasons.includes("review_required")
+          ? attributionHint(fiscalFlow, input.scope_attribution_evidence_ids)
+          : null;
+        const attributionRetrySuffix = attributionRetryHint ? `; ${attributionRetryHint}` : "";
+        throw new Error(`PPIRTV_FISCAL_BLOCKED: ${fiscal.blocking_reasons.join(", ")}; ${fiscalStateSegment(countHistory(fiscalFlow, "verdict_recorded"), countRegressions(fiscalFlow), FISCAL_CONFIG.maxRegressions, meetings.length)}; required_cooperation=${fiscal.required_cooperation.map((item) => item.name).join("|")}${meetingRetryHint}${attributionRetrySuffix}`);
       }
     }
     let effectiveStatus = input.status;

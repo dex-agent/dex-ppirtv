@@ -48,6 +48,23 @@ export interface FiscalPolicyDeps {
   reviewRemainsCurrent(flow: Flow, verdict: Verdict): boolean;
 }
 
+// ISSUE-LOCAL-0012 (2026-11-17, erro-que-ensina da família 0003/D-34): com
+// attribution aprovada presente no flow e NÃO citada na chamada, o bloqueio
+// review_required ganha na MENSAGEM o nome do campo e os ids reutilizáveis —
+// o reason-string permanece exato (8+ sítios casam "review_required" por
+// igualdade; a cura nunca muda a chave, só ensina o operador).
+export function attributionHint(flow: Flow, scopeAttributionEvidenceIds?: string[]): string | null {
+  if (!Array.isArray(flow.evidence)) return null;
+  const citados = new Set(scopeAttributionEvidenceIds ?? []);
+  const reutilizaveis = flow.evidence
+    .filter((item) => item.kind === "review_scope_attribution"
+      && item.scope_classification === "outside"
+      && !citados.has(item.evidence_id))
+    .map((item) => item.evidence_id);
+  if (reutilizaveis.length === 0) return null;
+  return `attribution aprovada reutilizavel: cite scope_attribution_evidence_ids (${reutilizaveis.join(", ")})`;
+}
+
 export function evaluateFiscalPolicyWithDeps(
   flow: Flow,
   input: FiscalVerdictInput,

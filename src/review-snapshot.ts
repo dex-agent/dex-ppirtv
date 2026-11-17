@@ -545,6 +545,24 @@ export function restoreBlockedVerdictSnapshot(
 }
 
 /**
+ * ISSUE-LOCAL-0012 (2026-11-17): restauro ATÔMICO do snapshot de verdict
+ * rejeitado. A restauração antiga devolvia changed_files do último gate
+ * aprovado enquanto o implementation_fingerprint do flow permanecia o do
+ * conjunto corroborado (híbrido) — evidence_add code_review morria em
+ * FINGERPRINT_MISMATCH e a única saída era gastar regress. Substituir
+ * Variável Derivada por Consulta (Fowler cap9): o fingerprint é recomputado
+ * sobre o MESMO conjunto restaurado, na mesma escrita — os dois ou nenhum.
+ */
+export async function withRestoredBlockedVerdictSnapshot(persisted: Flow, corroborated: Flow): Promise<Flow> {
+  const restoration = restoreBlockedVerdictSnapshot(persisted, corroborated);
+  return withCurrentImplementationFingerprint({
+    ...corroborated,
+    changed_files: restoration.changed_files,
+    deleted_files: restoration.deleted_files,
+  });
+}
+
+/**
  * Issue #11 (recuperacao publica no mesmo flow): expoe os acrescimos da
  * corroboracao git que o ultimo veredito REJEITADO deixou como pending
  * auditavel (evento fiscal_policy_blocked). Modo "lean" devolve count + receita

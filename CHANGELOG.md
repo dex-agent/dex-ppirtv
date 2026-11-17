@@ -8,6 +8,28 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+## verdict reutiliza attribution aprovada e restaura atomicamente (ISSUE-LOCAL-0012) (2026-11-17, flow 5250)
+
+- **FE-2026-11-17-VERDICT-ATTRIBUTION-0012**: cura das 2 arestas do
+  ISSUE-LOCAL-0012 no fechamento de GOAL v3 com janela paralela. **(a)**
+  `goal_verdict` SEM `scope_attribution_evidence_ids` agora REUTILIZA
+  attribution aprovada com binding válido (`git_head_base` + fingerprint das
+  exclusões — predicado extraído `attributionBindingCurrent`, reuso do crivo
+  l.165-167) em vez de re-executar com lista vazia e re-trazer alheios;
+  sem attribution válida o comportamento atual permanece. O reason-string
+  `review_required` NÃO muda (8+ sítios casam por igualdade) — a MENSAGEM
+  `PPIRTV_FISCAL_BLOCKED` ganha sufixo `attributionHint` nomeando o campo e
+  os ids reutilizáveis (erro-que-ensina, família 0003/D-34). **(b)** verdict
+  rejeitado restaura ATOMICAMENTE `changed_files` +
+  `implementation_fingerprint` (`withRestoredBlockedVerdictSnapshot` em
+  review-snapshot: restauro + recompute na mesma escrita — Substituir
+  Variável Derivada por Consulta, Fowler cap. 9) — acaba o híbrido que
+  bloqueava `evidence_add` com `FINGERPRINT_MISMATCH` e custava 2 regress.
+  RED-first 3/5 (receipt), GREEN 5/5, vigília M1 PEGA (adoção derrubada →
+  it reprova; `sobreviveu: false`, restaurada por bytes); veredito
+  `$oraculo-refatoracao` GO-PADRAO (grafo rico 1212n comunidade 39 + citação
+  autenticada cap. 9). Trilho `2026-11-17-verdict-attribution-0012`.
+
 ## Modo PRUNE do camping: dead-code sai com morte comprovada (2026-11-17, flow 5214)
 
 - **FE-2026-11-17-PRUNE-MATERIAL-ACTIVE-CREDITS**: 4º modo `PRUNE` no fiscal

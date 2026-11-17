@@ -2078,6 +2078,34 @@
         "tests/flow-engine-boundary.test.ts": "accepts PRUNE when removed symbols carry death proofs and no destination"
       },
       "rollback": "git revert do commit selador devolve a funcao morta ao monolito e o modo PRUNE permanece (4 its de caracterizacao vigiam o contrato do modo)"
+    },
+    {
+      "id": "FE-2026-11-17-VERDICT-ATTRIBUTION-0012",
+      "date": "2026-11-17",
+      "mode": "EXCEPTION",
+      "base_blob": "8f04e30c601fd3dec03640abe1d59b855d16792e",
+      "head_blob": "00bbd6597e28f9cd520af5bbb0f6c56f9b067686",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-17-verdict-attribution-0012.md",
+      "responsibility": "Verdict reutiliza attribution aprovada com binding valido e restaura snapshot rejeitado atomicamente (fingerprint do mesmo conjunto).",
+      "owner": "$refactoring-fowler-rich",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/review-scope-attribution-0012.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/review-scope-attribution-0012.test.ts": "cura a1 chamada SEM ids com attribution aprovada válida NÃO re-traz alheios"
+      },
+      "changelog_marker": "verdict reutiliza attribution aprovada e restaura atomicamente (ISSUE-LOCAL-0012)",
+      "architecture_marker": "FE-2026-11-17-VERDICT-ATTRIBUTION-0012",
+      "exception_reason": "integrity",
+      "rollback": "Reverta o early-return de adocao em applyReviewScopeAttributions, o sufixo attributionHint na mensagem FISCAL_BLOCKED e a chamada withRestoredBlockedVerdictSnapshot no persistFiscalBlock para restaurar o comportamento anterior.",
+      "expires": "next diff that touches src/flow-engine.ts",
+      "red_evidence": "tests/review-scope-attribution-0012.test.ts::cura a1 chamada SEM ids com attribution aprovada válida NÃO re-traz alheios",
+      "red_base_blob": "8f04e30c601fd3dec03640abe1d59b855d16792e",
+      "red_observed_failure": "Sem a cura, goal_verdict sem scope_attribution_evidence_ids re-executava applyReviewScopeAttributions com lista vazia: corroborated.changed_files voltava ao git inteiro (alheios incluidos) e o fiscal rejeitava review_required sem nomear o campo; verdict rejeitado persistia changed_files restaurado + fingerprint do conjunto corroborado (hibrido FINGERPRINT_MISMATCH).",
+      "red_command": "npx vitest run tests/review-scope-attribution-0012.test.ts -t cura a1 chamada SEM ids com attribution aprovada válida NÃO re-traz alheios"
     }
   ]
 }

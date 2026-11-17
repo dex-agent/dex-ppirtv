@@ -1,5 +1,18 @@
 
 
+## Reavaliação — cura ISSUE-LOCAL-0012: verdict reutiliza attribution + restauro atômico (2026-11-17)
+
+Delta: 4 arquivos src (review-scope-attribution, verdict-fiscal-policy,
+review-snapshot, flow-engine região verdict) + teste novo com 5 its.
+(a) adoção automática de attribution aprovada com binding válido no
+early-return (predicado extraído, reuso do crivo de citação explícita);
+mensagem `PPIRTV_FISCAL_BLOCKED` ganha `attributionHint` — reason-string
+intacto. (b) `withRestoredBlockedVerdictSnapshot`: restauro atômico com
+fingerprint recomputado (Substituir Variável Derivada por Consulta, Fowler
+cap. 9 autenticado). RED 3/5 → GREEN 5/5; vigília M1 PEGA; camping
+EXCEPTION PASS reasons []. Detalhe no receipt
+`reavaliacao_verdict_attribution_0012_261117`.
+
 ## Reavaliação — modo PRUNE do camping (2026-11-17)
 
 > Delta do worktree sobre o HEAD `33a34b9`. TOCA `scripts/` (fiscal +4º modo,
