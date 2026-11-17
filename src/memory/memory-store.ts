@@ -17,13 +17,6 @@ export class MemoryRuntimeStore {
     await mkdir(this.memoryDir, { recursive: true });
   }
 
-  async append(stream: RuntimeStream, record: MemoryRuntimeRecord): Promise<void> {
-    await this.init();
-    const prepared = scrubRuntimeValue(record) as MemoryRuntimeRecord;
-    await appendFile(this.streamPath(stream), `${JSON.stringify(prepared)}\n`, "utf8");
-    this.signatureCache.get(stream)?.add(runtimeRecordSignature(prepared));
-  }
-
   async appendUnique(stream: RuntimeStream, record: MemoryRuntimeRecord): Promise<boolean> {
     await this.init();
     const prepared = scrubRuntimeValue(record) as MemoryRuntimeRecord;

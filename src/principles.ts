@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { RUNTIME_ENV, resolveConfiguredPrinciplesPath, resolveUserHome } from "./config.js";
 import type { HygieneFinding } from "./domain.js";
 import { declaresV2Unit, inspectCanonicalV2Routes, parseV2UnitMetadata, selectExactPortableName, selectPhysicalCaseEquivalent } from "./memory/memory-v2-layout.js";
+import { stringArray } from "./lang-utils.js";
 
 export type PrincipleSeverity = "info" | "warning" | "error";
 export type ContractVersion = number | string;
@@ -841,10 +842,6 @@ function normalizeSyncContract(value: unknown): SyncContract | undefined {
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
-}
-
-function stringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
 function optionalString(value: unknown): string | undefined {

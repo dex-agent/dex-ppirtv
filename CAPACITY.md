@@ -1,6 +1,24 @@
 
 
-## Reavaliação — instalação do gate merge-check + fichas staleness (2026-11-16)
+## Reavaliação — untangle estrutural CRG-driven (2026-11-17)
+
+> Delta do worktree sobre o HEAD `f247579`. TOCA `src/` (−6 sobras/cópias em
+> 6 arquivos, zero mudança de comportamento) e `tests/` (−1 it tautológico).
+> Fronteira TRACKER-0012 intocada (motor revertido por bytes).
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| Sobras | −resolvePpirtvHome, −PositiveVerdictStatus, −NullMemoryGraphProvider(+it), −MemoryRuntimeStore.append | rg zero-consumidor + dead-code pós-build + varredora |
+| Cópias | stringArray (principles) e unique (verdict-learning) → lang-utils (dona) | importers_of lang-utils = 8, direção correta |
+| Camping | NOT_APPLICABLE — materialActiveCredits REVERTIDA (sem modo sem destination) | EST-UNTANGLE-261117; check:flow-engine exit 0 |
+| Suíte | 967→**966** \| 4 skipped (**970**; −1 = it podado), 78/78 | vitest 2×; tsc duplo 0; check COMPLETO exit 0 |
+| Grafo | build full purgou 26 nós stale; detect-changes risk **0.00**, 0 gaps | `.agents/UNTANGLE-LOG.md` |
+
+**Limites:** 2 árvores pendentes no motor (normalizePipelineItem 58L,
+assertCompatibleGoalBinding CC18 — clusters da maratona, Trilho próprio);
+varredura de comments proporcional ao recorte (vacuidade).
+
+## Reavaliação — instalação do gate merge-check + fichas staleness (2026-11-16) + fichas staleness (2026-11-16)
 
 > Delta do worktree sobre o HEAD `0f92f79`. NÃO TOCA `src/`. TOCA `tools/`
 > (hook `pre-merge-commit` + `merge-check.conf` + INDEX). Instalação por

@@ -36,7 +36,6 @@ export type VerdictStatus = (typeof VERDICTS)[number];
 // privado em verdict-fiscal-policy + forma negada em meeting-policy/flow-engine).
 // Fonte única aqui, ao lado de VERDICTS — quem muda junto mora junto.
 export const POSITIVE_VERDICTS = ["pronto", "pronto_com_ressalvas"] as const;
-export type PositiveVerdictStatus = (typeof POSITIVE_VERDICTS)[number];
 
 export function isPositiveVerdict(status: string | undefined): boolean {
   // undefined não é veredito positivo — conhecimento que os 13 sítios inline

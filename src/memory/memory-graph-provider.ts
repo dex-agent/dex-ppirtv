@@ -57,12 +57,6 @@ export type GraphifyRecallProviderOptions = {
   runner?: GraphifyCommandRunner;
 };
 
-export class NullMemoryGraphProvider implements MemoryGraphProvider {
-  async recall(input: MemoryGraphQuery): Promise<MemoryGraphResult> {
-    return emptyGraphResult(input, []);
-  }
-}
-
 export class GraphifyRecallProvider implements MemoryGraphProvider {
   private readonly enabled: boolean;
   private readonly command: string;

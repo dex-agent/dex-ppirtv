@@ -6,11 +6,8 @@
 // de mineração; finding fraco fica evidência do verdict (review_findings
 // persistido) e a porta explícita do operador continua verdict_gold_mining.
 import type { Evidence } from "./domain.js";
+import { unique } from "./lang-utils.js";
 import type { FiscalVerdictInput } from "./memory/mining-policy.js";
-
-function unique(values: string[]): string[] {
-  return [...new Set(values)];
-}
 
 function isStrongLearningText(value: string | undefined): boolean {
   return Boolean(value && /(falso verde|contrato|princip|harness|canonical|case|CPU|RTX|CUDA|Graphify|MCP|PPIRTV|loop|bloque|regress|falh)/i.test(value));

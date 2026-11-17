@@ -1,4 +1,25 @@
 {
+ "reavaliacao_untangle_estrutural_crg_261117": {
+  "date": "2026-11-17",
+  "scope": [
+   "src/config.ts",
+   "src/domain.ts",
+   "src/memory/memory-graph-provider.ts",
+   "src/memory/memory-store.ts",
+   "src/principles.ts",
+   "src/verdict-learning.ts",
+   "tests/memory-graph-provider.test.ts"
+  ],
+  "delta": "Untangle estrutural CRG-driven (skills dex-untangle-codebase + dex-untangle-prune-tests; pedido do dono 8 fases): 4 sobras mortas removidas (resolvePpirtvHome wrapper, PositiveVerdictStatus type orfao, NullMemoryGraphProvider + it tautologico, MemoryRuntimeStore.append metodo morto da varredora); 2 copias consolidadas na fonte dona lang-utils (stringArray/unique); fronteira TRACKER-0012 intocada (motor revertido por bytes; EST-UNTANGLE-261117); camping NOT_APPLICABLE; vereditos comments/tests por interrogatorio documental citado; suite 966/970 (78 arq) medida 2x; tsc src+tests 0; detect-changes risk 0.00 0 gaps.",
+  "evidence": [
+   "code-review-graph build full (47->21 dead-code: 26 nos stale purgados) + doctor built at HEAD",
+   "detect-changes --files <5 tocados> -> risk_score 0.0, test_gaps_total 0",
+   "npx vitest run -> 966 passed | 4 skipped (970) 78/78 arq, 2 medidas",
+   "npx tsc -p tsconfig.json && -p tsconfig.tests.json -> 0 erros",
+   "npm run check COMPLETO exit 0 (pipefail)",
+   "medir-cc flow-engine antes==depois (motor intocado; 2 arvores pendentes declaradas no log)"
+  ]
+ },
  "reavaliacao_instalacao_gate_merge_staleness_261116": {
   "date": "2026-11-16",
   "scope": [

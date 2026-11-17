@@ -8,6 +8,27 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+## Untangle estrutural CRG-driven (2026-11-17, flow 5150)
+
+- Skills `dex-untangle-codebase` + `dex-untangle-prune-tests` com CRG
+  (fork 2.4.0+dex.1) como motor de evidência; fronteira TRACKER-0012
+  respeitada (motor da área verdict intocado; `goalVerdictUnlocked` só
+  registrado).
+- Vereditos por interrogatório documental (citações no `.agents/UNTANGLE-LOG.md`):
+  Comments=SIM (clean-code l.5378/5428; vacuidade no recorte), Tests=SIM
+  (AGENTS l.163-165).
+- Sobras removidas: `resolvePpirtvHome` (wrapper morto), `PositiveVerdictStatus`
+  (type órfão), `NullMemoryGraphProvider` + it tautológico,
+  `MemoryRuntimeStore.append` (método morto, achado da varredora). Cópias
+  consolidadas na fonte dona lang-utils: `stringArray` (principles) e
+  `unique` (verdict-learning).
+- Camping flow-engine: NOT_APPLICABLE (remoção de `materialActiveCredits`
+  REVERTIDA por bytes — validador não tem modo sem destination; lacuna
+  EST-UNTANGLE-261117 estacionada com owner $oraculo-refatoracao).
+- Suíte 967→**966 passed** | 4 skipped (**970**; −1 = it podado), 78/78
+  arq; tsc src+tests 0; `detect-changes` risk 0.00, 0 test gaps; npm run
+  check COMPLETO exit 0.
+
 ## Instalação — gate merge-check (pre-merge-commit) + fichas staleness (2026-11-16)
 
 - **Parte A**: hook `tools/playbook/hooks/pre-merge-commit` (hooksPath vigente

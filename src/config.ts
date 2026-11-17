@@ -158,10 +158,6 @@ export function runtimePathsFromHome(projectRoot: string, ppirtvHome: string): P
   };
 }
 
-export function resolvePpirtvHome(cwd = process.cwd(), env: NodeJS.ProcessEnv = process.env): string {
-  return resolveRuntimePaths(cwd, env).ppirtvHome;
-}
-
 export function resolveDexMemoriaHome(cwd = process.cwd()): string {
   return path.resolve(
     process.env[RUNTIME_ENV.dexMemoriaHome] ??

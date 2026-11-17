@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   GraphifyRecallProvider,
   MemoryLibrarian,
-  NullMemoryGraphProvider,
   type MemoryGraphProvider,
   parseGraphifyNodes,
   type GraphifyCommandRunner
@@ -29,20 +28,6 @@ afterEach(async () => {
 });
 
 describe("memory graph providers", () => {
-  it("returns empty results from the null provider", async () => {
-    const provider = new NullMemoryGraphProvider();
-
-    const result = await provider.recall({
-      flow_id: "flow_1",
-      phase: "planejamento",
-      question: "Bibliotecario beforePhase",
-      workspace
-    });
-
-    expect(result.items).toEqual([]);
-    expect(result.warnings).toEqual([]);
-  });
-
   it("does not call Graphify when the provider is not enabled", async () => {
     let called = false;
     const runner: GraphifyCommandRunner = async () => {
