@@ -4811,19 +4811,6 @@ function normalizeSuggestedCooperators(values: Cooperator[]): Cooperator[] {
   );
 }
 
-function materialActiveCredits(cooperators: Cooperator[], requestedCredits: string[]): string[] {
-  const materialCooperators = cooperators.filter((cooperator) => cooperator.material);
-  if (materialCooperators.length === 0) {
-    return [];
-  }
-  const generatedCredits = materialCooperators.map((cooperator) => `${cooperator.name}: ${cooperator.reason}`);
-  const allowedNames = materialCooperators.map((cooperator) => cooperator.name.toLowerCase());
-  const acceptedRequestedCredits = requestedCredits.filter((credit) =>
-    allowedNames.some((name) => credit.toLowerCase().includes(name))
-  );
-  return unique([...acceptedRequestedCredits, ...generatedCredits]);
-}
-
 function memoryWriterRuntimeSummary(
   config: FlowEngineOptions["memory_writer"],
   projectRoot: string

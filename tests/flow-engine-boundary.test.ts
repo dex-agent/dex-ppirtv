@@ -1413,4 +1413,90 @@ describe("flow-engine responsibility balance", () => {
     expect(architecture).toContain("PPIRTV-FLOW-ENGINE-RESPONSIBILITY-BALANCE");
     expect(JSON.parse(ledger)).toMatchObject({ contract: "dex.flow-engine.evolution-ledger.v1" });
   });
+
+  // Modo PRUNE (Trilho modo-prune-fiscal-261117, ISSUE-LOCAL-0013): remoção de
+  // dead-code SEM destination com morte comprovada por símbolo. OCP: 4º modo
+  // estende o regime sem tocar SHRINK/CONTAIN/EXCEPTION; SRP: política de
+  // morte ≠ política de extração. Caracterizações da maratona NUNCA podam.
+  const pruneBaseSource = `
+    export class FlowEngine {
+      run() { return 1; }
+      deadCreditsPolicy() { return "dead"; }
+    }
+  `;
+  const pruneHeadSource = `
+    export class FlowEngine {
+      run() { return 1; }
+    }
+  `;
+
+  it("accepts PRUNE when removed symbols carry death proofs and no destination", () => {
+    const result = evaluateFlowEngineChange({
+      baseSource: pruneBaseSource,
+      headSource: pruneHeadSource,
+      declaration: {
+        ...baseDeclaration,
+        destination_module: undefined,
+        mode: "PRUNE",
+        removed_symbols: ["deadCreditsPolicy"],
+        death_proofs: {
+          deadCreditsPolicy: ["callers_of=0 (CRG build + rg repo-wide, receipt anexado)", "tests_for=0"]
+        }
+      }
+    });
+
+    expect(result.status).toBe("PASS");
+    expect(result.mode).toBe("PRUNE");
+    expect(result.metrics!.nonblank_lines.delta).toBeLessThan(0);
+  });
+
+  it("rejects PRUNE when a removed symbol lacks a death proof", () => {
+    const result = evaluateFlowEngineChange({
+      baseSource: pruneBaseSource,
+      headSource: pruneHeadSource,
+      declaration: {
+        ...baseDeclaration,
+        destination_module: undefined,
+        mode: "PRUNE",
+        removed_symbols: ["deadCreditsPolicy"],
+        death_proofs: {}
+      }
+    });
+
+    expect(result.status).toBe("FAIL");
+    expect(result.reasons).toContain("PRUNE_REQUIRES_DEATH_PROOF");
+  });
+
+  it("rejects PRUNE that declares a destination module", () => {
+    const result = evaluateFlowEngineChange({
+      baseSource: pruneBaseSource,
+      headSource: pruneHeadSource,
+      declaration: {
+        ...baseDeclaration,
+        mode: "PRUNE",
+        removed_symbols: ["deadCreditsPolicy"],
+        death_proofs: { deadCreditsPolicy: ["callers_of=0 com receipt"] }
+      }
+    });
+
+    expect(result.status).toBe("FAIL");
+    expect(result.reasons).toContain("PRUNE_FORBIDS_DESTINATION_MODULE");
+  });
+
+  it("rejects PRUNE that removes no real symbol", () => {
+    const result = evaluateFlowEngineChange({
+      baseSource: pruneBaseSource,
+      headSource: pruneHeadSource,
+      declaration: {
+        ...baseDeclaration,
+        destination_module: undefined,
+        mode: "PRUNE",
+        removed_symbols: [],
+        death_proofs: {}
+      }
+    });
+
+    expect(result.status).toBe("FAIL");
+    expect(result.reasons).toContain("PRUNE_REQUIRES_REMOVED_SYMBOL");
+  });
 });

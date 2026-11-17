@@ -2040,7 +2040,44 @@
       ],
       "evidence_selectors": {
         "tests/goal-binding-compat.test.ts": "reporta cada campo divergente pelo nome na ordem historica"
-      }
+      },
+      "commit": "33a34b9440caf6b738b8e8742dc0e96f90dde69b",
+      "parent_commit": "a12c49af49f8582a02b45499974249cb0ba38ecd"
+    },
+    {
+      "id": "FE-2026-11-17-PRUNE-MATERIAL-ACTIVE-CREDITS",
+      "date": "2026-11-17",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-17-modo-prune-fiscal.md",
+      "owner": "$oraculo-refatoracao",
+      "mode": "PRUNE",
+      "base_blob": "36027ec64dde17d2b5a7cfd56bdb4e22855c3098",
+      "head_blob": "8f04e30c601fd3dec03640abe1d59b855d16792e",
+      "responsibility": "remocao de dead-code com morte comprovada: materialActiveCredits (computador orfao do campo active_credits, nascido no commit inicial d9ddada) sai do monolito pelo 4o modo PRUNE do camping — sem destination por design; ISSUE-LOCAL-0013 fechada com o modo que a motivou (OCP cap9 p99: regime estendido, SHRINK intocado; SRP: politica de morte difere de extracao; veredito oraculo-solid autenticado)",
+      "removed_symbols": [
+        "materialActiveCredits"
+      ],
+      "death_proofs": {
+        "materialActiveCredits": [
+          "callers_of=0 em 2 builds CRG independentes (built at a12c49a no untangle e built 2026-11-17 na maratona) + rg repo-wide zero-consumidor",
+          "tests_for=0 (nenhum teste cita o simbolo — rg zero em tests/)",
+          "rota viva do campo active_credits grava direto de input.active_credits em meetings/evidence (varredura 2026-11-17: usos sao campos de dominio, nao funcao coesa)",
+          "suite 990/994 verde e tsc src+tests 0 apos a remocao"
+        ]
+      },
+      "changelog_marker": "FE-2026-11-17-PRUNE-MATERIAL-ACTIVE-CREDITS",
+      "architecture_marker": "FE-2026-11-17-PRUNE-MATERIAL-ACTIVE-CREDITS",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/flow-engine-boundary.test.ts",
+        ".agents/AUDITORIAS/2026-11-17-modo-prune-fiscal/RED-vitest.txt",
+        ".agents/AUDITORIAS/2026-11-17-modo-prune-fiscal/MUTACOES/m1-death-proof.json"
+      ],
+      "evidence_selectors": {
+        "tests/flow-engine-boundary.test.ts": "accepts PRUNE when removed symbols carry death proofs and no destination"
+      },
+      "rollback": "git revert do commit selador devolve a funcao morta ao monolito e o modo PRUNE permanece (4 its de caracterizacao vigiam o contrato do modo)"
     }
   ]
 }

@@ -15,7 +15,7 @@ const ARCHITECTURE_PATH = "docs/architecture/FLOW_ENGINE_EVOLUTION.md";
 // stays valid so the immutable ledger history and its replay keep passing.
 const EXPECTED_OWNER = "$oraculo-refatoracao";
 const CAMPING_OWNERS = new Set(["$refactoring-fowler-rich", "$oraculo-refatoracao"]);
-const ALLOWED_MODES = new Set(["SHRINK", "CONTAIN", "EXCEPTION"]);
+const ALLOWED_MODES = new Set(["SHRINK", "CONTAIN", "EXCEPTION", "PRUNE"]);
 const EXCEPTION_REASONS = new Set(["integrity", "security", "public_compatibility", "urgent_hotfix"]);
 
 export function analyzeFlowEngineSource(source) {
@@ -225,7 +225,7 @@ function openDebt(history) {
 function failureAction() {
   return {
     owner: EXPECTED_OWNER,
-    action: "Move policy/validation/projection outside FlowEngine, pay the open debt with SHRINK, or document a bounded EXCEPTION with causal RED. Update the architecture ledger and CHANGELOG, then rerun npm run check:flow-engine.",
+    action: "Move policy/validation/projection outside FlowEngine, pay the open debt with SHRINK, remove proven-dead code with PRUNE (death proofs per symbol), or document a bounded EXCEPTION with causal RED. Update the architecture ledger and CHANGELOG, then rerun npm run check:flow-engine.",
     when: "before review or commit of the diff that touches src/flow-engine.ts"
   };
 }
@@ -401,6 +401,25 @@ export function evaluateFlowEngineChange({ baseSource, headSource, declaration, 
     if (metrics.exported_symbols.delta > 0) reasons.push("SHRINK_EXPANDED_PUBLIC_SURFACE");
     if (metrics.nonblank_lines.delta >= 0) reasons.push("SHRINK_REQUIRES_NEGATIVE_NONBLANK_BALANCE");
     if (debt && declaration?.pays_debt_id !== debt.id) reasons.push(`OPEN_DEBT_MUST_BE_PAID:${debt.id}`);
+  }
+
+  if (mode === "PRUNE") {
+    const removedSymbols = Array.isArray(declaration?.removed_symbols) ? declaration.removed_symbols : [];
+    const actuallyRemoved = removedSymbols.filter((name) => before.symbols.includes(name) && !after.symbols.includes(name));
+    const deathProofs = declaration?.death_proofs && typeof declaration.death_proofs === "object"
+      ? declaration.death_proofs
+      : {};
+    if (removedSymbols.length === 0 || actuallyRemoved.length !== removedSymbols.length) {
+      reasons.push("PRUNE_REQUIRES_REMOVED_SYMBOL");
+    }
+    if (removedSymbols.some((name) => !nonEmptyStrings(deathProofs[name]))) {
+      reasons.push("PRUNE_REQUIRES_DEATH_PROOF");
+    }
+    if (nonEmptyString(declaration?.destination_module)) reasons.push("PRUNE_FORBIDS_DESTINATION_MODULE");
+    if (metrics.decision_points.delta > 0) reasons.push("PRUNE_ADDED_DECISION_POINT");
+    if (metrics.decision_sites.added.length > 0) reasons.push("PRUNE_ADDED_OR_RELOCATED_DECISION");
+    if (metrics.exported_symbols.delta > 0) reasons.push("PRUNE_EXPANDED_PUBLIC_SURFACE");
+    if (metrics.nonblank_lines.delta >= 0) reasons.push("PRUNE_REQUIRES_NEGATIVE_NONBLANK_BALANCE");
   }
 
   if (mode === "CONTAIN") {
@@ -649,7 +668,7 @@ function validateBootstrapRecords({ cwd, records, manifest, headBlob }) {
     // Cura-2: mesma isencao do path de declaracao corrente — EXCEPTION sem
     // destination_module nao exige destino (l.900+); a assimetria reprovaria o
     // proprio record CURA se o bootstrap rodasse.
-    if ((record.mode !== "EXCEPTION" || nonEmptyString(record.destination_module))
+    if ((record.mode !== "EXCEPTION" && record.mode !== "PRUNE" || nonEmptyString(record.destination_module))
       && (!safeProjectPath(record.destination_module, "src") || record.destination_module === TARGET_PATH)) {
       add(record, "DESTINATION_MODULE_INVALID");
     } else if (nonEmptyString(record.destination_module)) {
@@ -1131,7 +1150,7 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
     }
 
     if (
-      (declaration.mode !== "EXCEPTION" || nonEmptyString(declaration.destination_module))
+      (declaration.mode !== "EXCEPTION" && declaration.mode !== "PRUNE" || nonEmptyString(declaration.destination_module))
       && (!safeProjectPath(declaration.destination_module, "src") || declaration.destination_module === TARGET_PATH)
     ) {
       receipt.reasons.push("DESTINATION_MODULE_INVALID");

@@ -8,6 +8,24 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+## Modo PRUNE do camping: dead-code sai com morte comprovada (2026-11-17, flow 5214)
+
+- **FE-2026-11-17-PRUNE-MATERIAL-ACTIVE-CREDITS**: 4º modo `PRUNE` no fiscal
+  do camping (`scripts/validate-flow-engine-boundary.mjs`) — remoção de
+  dead-code **sem destination** com `death_proofs` por símbolo (callers=0 por
+  grafo/rg com receipt + tests_for=0 + suíte verde + tsc 0); PROÍBE
+  destination_module; herda os tetos do SHRINK (linhas<0, sem decision/export
+  novos). **OCP** (cap. 9 p.99): regime estendido, SHRINK/CONTAIN/EXCEPTION
+  intocados — veredito `$oraculo-solid` autenticado (grafo 106 nós + SRP
+  `full_text.md:2573` + Viscosidade whitepaper PT). RED-first 4 its
+  (`DECLARATION_MODE_INVALID` ×6 no receipt) → GREEN 40/40 → vigília M1 PEGA.
+- **Uso real no mesmo corte**: `materialActiveCredits` (morto desde d9ddada,
+  0-callers em 2 builds CRG) removido — **fecha ISSUE-LOCAL-0013 e
+  EST-UNTANGLE-261117**; cadeia do ledger encadeia com a maratona
+  (36027ec→8f04e30c) e o elo final BINDING selado com 33a34b9.
+- `FLOW_ENGINE_EVOLUTION.md` ganha seção do modo PRUNE (contrato público);
+  linha do camping no AGENTS passa a 4 modos.
+
 ## Onda da maratona: clusters pipeline + binding (2026-11-17, flow 5182)
 
 - GO-PADRAO do dono (`$oraculo-refatoracao`); Trilho

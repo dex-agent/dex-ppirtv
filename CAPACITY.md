@@ -1,5 +1,18 @@
 
 
+## Reavaliação — modo PRUNE do camping (2026-11-17)
+
+> Delta do worktree sobre o HEAD `33a34b9`. TOCA `scripts/` (fiscal +4º modo,
+> só-adições), `tests/` (+4 its), `src/flow-engine.ts` (SÓ a remoção do morto
+> `materialActiveCredits`) e docs do camping. Fronteira 0012 zero diff.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| Fiscal | 4º modo `PRUNE`: death_proofs por símbolo, sem destination, tetos do SHRINK; SHRINK/CONTAIN/EXCEPTION intocados (OCP) | bloco l.~406 + isenção l.652/l.1152 |
+| RED→GREEN | 4 its PRUNE: reprovavam (`DECLARATION_MODE_INVALID` ×6) → **40/40** | `RED-vitest.txt`; vigília M1 PEGA |
+| Uso real | `materialActiveCredits` REMOVIDO (0-callers ×2 builds CRG) — **0013 + EST-UNTANGLE fechados**; elo BINDING selado `33a34b9` | camping `PASS mode PRUNE reasons []` |
+| Cadeia | 36027ec→`8f04e30c` encadeia com a maratona | ledger 47 records |
+
 ## Reavaliação — onda da maratona: clusters pipeline + binding (2026-11-17)
 
 > Delta do worktree sobre o HEAD `a12c49a`. TOCA `src/` (2 extrações SHRINK +

@@ -1,4 +1,22 @@
 {
+ "reavaliacao_modo_prune_fiscal_261117": {
+  "date": "2026-11-17",
+  "scope": [
+   "scripts/validate-flow-engine-boundary.mjs",
+   "tests/flow-engine-boundary.test.ts",
+   "src/flow-engine.ts",
+   "docs/architecture/flow-engine-evolution.json",
+   "docs/architecture/FLOW_ENGINE_EVOLUTION.md"
+  ],
+  "delta": "Modo PRUNE do camping (GO-silencio pela recomendada do oraculo-solid; OCP cap9 p99 + SRP + Viscosidade autenticados): 4o modo no fiscal para remocao de dead-code SEM destination com death_proofs por simbolo (callers=0 por grafo/rg com receipt + tests_for=0 + suite verde + tsc 0; PRUNE_FORBIDS_DESTINATION_MODULE; tetos herdados do SHRINK). SHRINK/CONTAIN/EXCEPTION intocados em semantica (diff so-adicoes + isencao destination analogica a EXCEPTION nos 2 sitios l.652/l.1152). Uso real no mesmo corte: materialActiveCredits (morto desde d9ddada, 0-callers em 2 builds CRG) removido — ISSUE-LOCAL-0013 e EST-UNTANGLE-261117 fechados; cadeia do ledger encadeia com a maratona (base 36027ec do elo selado -> head 8f04e30c) e elo final BINDING selado com 33a34b9. Camping PASS mode PRUNE reasons []. Fronteira TRACKER-0012 intocada (so a remocao do morto em l.~4965).",
+  "evidence": [
+   "RED 4/4 its PRUNE com DECLARATION_MODE_INVALID (receipt .agents/AUDITORIAS/2026-11-17-modo-prune-fiscal/RED-vitest.txt)",
+   "GREEN 40/40 na suite do validador; vigilia M1 PEGA no gate death_proofs (restaurado por bytes)",
+   "npm run check:flow-engine -> PASS mode PRUNE reasons [] (declaration FE-2026-11-17-PRUNE-MATERIAL-ACTIVE-CREDITS)",
+   "rg -c materialActiveCredits src/ tests/ -> ZERO usos; tsc src+tests 0",
+   "npm run check COMPLETO exit 0 (pipefail) apos re-foto"
+  ]
+ },
  "reavaliacao_maratona_pipeline_binding_261117": {
   "date": "2026-11-17",
   "scope": [

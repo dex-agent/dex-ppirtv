@@ -3,7 +3,7 @@
   "generated_by": "tools/playbook/generate-playbook.py",
   "authority": "derived_projection",
   "repo_name": "dex-PPIRTV",
-  "sources_revision": "sha256:8376618c3eafbcfe098bb1d60bf4eee93e700bdcf47fc4cdbb59324ae2bb8e05",
+  "sources_revision": "sha256:27cb5d01904ae556ba62b2dbda7b081680e3de752e45e5a1831c0be0d879f995",
   "sent_revision": "sha256:c3fe3900353785713ca9fdb1d0ff4a840d2eade60eadca73b9a4ac228bd6dc0f",
   "rules": [
     {
@@ -40,25 +40,25 @@
       "fonte": "AGENTS.md#L26-L68"
     },
     {
-      "seal": "pb-01ed2d56",
+      "seal": "pb-06b352f2",
       "locator": "CONSELHEIRO-ATIVO-PADRAO-REPO",
       "title": "Regras locais",
       "gatilho": "mapa quente em `.agents/GATILHOS-VIVOS.md`).",
       "extrato": "- `CONSELHEIRO-ATIVO-PADRAO-REPO` (GO do dono 2026-11-09): toda sessão de",
       "rotas": [],
-      "fonte": "AGENTS.md#L69-L237"
+      "fonte": "AGENTS.md#L69-L239"
     },
     {
-      "seal": "pb-3e6f78ec",
+      "seal": "pb-4cfa8c97",
       "locator": "PPIRTV-CAPACITY-COMMIT-GATE",
       "title": "Validacao minima",
       "gatilho": "ndeclarado",
       "extrato": "```powershell",
       "rotas": [],
-      "fonte": "AGENTS.md#L287-L309"
+      "fonte": "AGENTS.md#L289-L311"
     },
     {
-      "seal": "pb-5216c380",
+      "seal": "pb-e564e30f",
       "locator": "PPIRTV-CHATO-LIVE-PREFLIGHT",
       "title": "Ordens diretas do Comandante Owner o $chato 🗣️",
       "gatilho": "2. $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamento da $estacionamento ao lado da $garimpeiro e tudo que for achado MEMORÁVEL...",
@@ -69,19 +69,19 @@
         "Ative o fluxo visual PPIRTV com checklist visual dinâmico u...",
         "Sempre finalize o trabalho analisando \"com lentes dos espec..."
       ],
-      "fonte": "AGENTS.md#L310-L372"
+      "fonte": "AGENTS.md#L312-L374"
     },
     {
-      "seal": "pb-6d083ff3",
+      "seal": "pb-89ba9245",
       "locator": "PPIRTV-GIT-CONSOLIDACAO-SELETIVA-MAIN",
       "title": "Dex Agent Local",
       "gatilho": "- Antes de qualquer consolidacao Git deste repositorio, recupere o gatilho",
       "extrato": "- Projeto: `dex-PPIRTV`",
       "rotas": [],
-      "fonte": "AGENTS.md#L373-L417"
+      "fonte": "AGENTS.md#L375-L419"
     },
     {
-      "seal": "pb-620dff48",
+      "seal": "pb-7ade542d",
       "locator": "TRACKER-LOCAL",
       "title": "Bootstrap (toda janela nova, nesta ordem)",
       "gatilho": "operar) → `.agents\\GATILHOS-VIVOS.md` (hub de gatilhos quentes de reuso).",
@@ -92,10 +92,10 @@
         "Leia o estado vivo, nesta ordem: `.agents\\ACTIVE.md` → `.ag...",
         "Gatilhos L1: `.agents\\lembranca.md` — abra L2/L3 somente po..."
       ],
-      "fonte": "AGENTS.md#L451-L472"
+      "fonte": "AGENTS.md#L453-L474"
     },
     {
-      "seal": "pb-5dd28a00",
+      "seal": "pb-ef47a378",
       "locator": "PENDENTES-LEDGER",
       "title": "Leitura obrigatoria (bootstrap)",
       "gatilho": "5. `.agents/PENDENTES.md` — ledger de pendências append-only (schema `dex.pendencias.v2`; gatilho `PENDENTES-LEDGER`)",
@@ -106,7 +106,7 @@
         "`.agents/HANDOFF.md`",
         "`.agents/PLAN-TASKS/ACTIVE.md`"
       ],
-      "fonte": "AGENTS.md#L500-L507"
+      "fonte": "AGENTS.md#L502-L509"
     }
   ],
   "mesa": {
@@ -120,19 +120,19 @@
   "nao_decodificadas": [
     {
       "titulo": "Organizacao De Artefatos E Scripts",
-      "ancora": "AGENTS.md#L238"
+      "ancora": "AGENTS.md#L240"
     },
     {
       "titulo": "Graphify local",
-      "ancora": "AGENTS.md#L418"
+      "ancora": "AGENTS.md#L420"
     },
     {
       "titulo": "Indexação (doutrina da casa)",
-      "ancora": "AGENTS.md#L473"
+      "ancora": "AGENTS.md#L475"
     },
     {
       "titulo": "Envio a terceiros",
-      "ancora": "AGENTS.md#L480"
+      "ancora": "AGENTS.md#L482"
     }
   ],
   "fontes": [
@@ -143,7 +143,7 @@
     },
     {
       "caminho": "AGENTS.md",
-      "sha256": "b8a896755e80b369c861b8a3787a76a67e1815a40c23504c5ab6127754d1aa0a",
+      "sha256": "5aa0e4500535c5277ef7c19cb3863634bcc3a7f08830bad330b0af7778133f2b",
       "enviado": false
     },
     {
@@ -153,7 +153,7 @@
     },
     {
       "caminho": ".agents/PLAN-TASKS/ACTIVE.md",
-      "sha256": "98dd6e484895045255a4d303c0b5f6cb35397dc50dbba1fc768d44d39c8e696b",
+      "sha256": "c9867ce6e8a7a514ba720bf24be506be2ba2ba1ed9ad15b64f7e6cc92082a4f8",
       "enviado": false
     }
   ]
