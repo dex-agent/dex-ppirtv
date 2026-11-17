@@ -8,6 +8,31 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+## Onda da maratona: clusters pipeline + binding (2026-11-17, flow 5182)
+
+- GO-PADRAO do dono (`$oraculo-refatoracao`); Trilho
+  `maratona-pipeline-binding-261117` (flow 5182). 2 árvores fora do teto
+  CC/linhas extraídas sob cláusula de maratona (SHRINK fiscal com
+  `behavior_preserved_by`):
+  - **FE-2026-11-17-MARATONA-PIPELINE-SHRINK**: cluster pipeline (58L>50) →
+    `src/pipeline-policy.ts` (`normalizePipelineItem` + `pipelineEvidenceText`
+    + `NormalizedPipelineItem`); 9 its de caracterização; vigílias M1/M2 PEGA.
+  - **FE-2026-11-17-MARATONA-BINDING-SHRINK**: cluster binding
+    (`assertCompatibleGoalBinding` CC18>10 + `sameStringSet`) →
+    `src/goal-binding-compat.ts` com **Decompor Condicional** (CC 18→6,
+    predicates nomeados por campo; mensagens e ordem do
+    `GOAL_BINDING_MISMATCH` preservadas); 9 its de caracterização; vigílias
+    M3/M4 PEGA.
+  - **FE-2026-11-17-MARATONA-NORMALIZE-COMPARABLE-SHRINK**: helper
+    `normalizeComparable` (consumidor duplo: motor + binding) → `lang-utils`.
+- Motor canônico de CC: `medir_cc_engine.py` (correção do dono ao vivo;
+  `medir-cc.py` é legado silencioso). Baseline/depois com número medido.
+- TRACKER novo: lacuna do camping para dead-code sem destination (SHRINK exige
+  mapping presente no destino, validador l.661-663) — `materialActiveCredits`
+  permanece (EST-UNTANGLE-261117).
+- Fronteira TRACKER-0012 respeitada (zero diff em l.2500-2650 e arquivos do
+  0012).
+
 ## Untangle estrutural CRG-driven (2026-11-17, flow 5150)
 
 - Skills `dex-untangle-codebase` + `dex-untangle-prune-tests` com CRG

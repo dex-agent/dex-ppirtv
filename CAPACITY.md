@@ -1,5 +1,25 @@
 
 
+## Reavaliação — onda da maratona: clusters pipeline + binding (2026-11-17)
+
+> Delta do worktree sobre o HEAD `a12c49a`. TOCA `src/` (2 extrações SHRINK +
+> helper p/ lang-utils, comportamento preservado) e `tests/` (+20 its de
+> caracterização). Fronteira TRACKER-0012 intocada (l.2500-2650 zero diff).
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| Cluster pipeline | `src/pipeline-policy.ts` novo: normalizePipelineItem (58L>50) + pipelineEvidenceText + tipo; helpers das fontes donas | 9 its + M1/M2 PEGA; SHRINK `FE-…-PIPELINE` |
+| Cluster binding | `src/goal-binding-compat.ts` novo: assert **CC 18→6** (Decompor Condicional, predicates por campo; mensagens/ordem EXATAS) + sameStringSet | 10 its + M3/M4 PEGA; SHRINK `FE-…-BINDING` |
+| Helper | `normalizeComparable` → `lang-utils` (consumidor duplo motor+binding) | teste direto `lang-utils-compat.test.ts` |
+| Camping | **PASS mode SHRINK reasons []** — cadeia 2 elos (9e83d59→blobA→36027ec) com evidence_selectors | `check:flow-engine` |
+| Suíte | 966/970 → **984/988** (+18; depois +2 diretos = conta auditada), 80/80 arq | vitest; tsc duplo 0 |
+| Régua CC | defs das 2 árvores **zero no motor** (rg exit 1); medir_cc_engine (canônico) | `.agents/TMP/maratona-depois-cc.json` |
+| Detect-changes | gaps das árvores zerados; residuais: `normalize` (lambda interna — falso positivo do parser) + `MemoryRuntimeStore` (lateral pré-existente, rg-zero em tests/, fora do diff) | CRG update+detect |
+
+**Limites:** `materialActiveCredits` permanece (TRACKER-LOCAL-0013 — camping
+sem modo para dead-code sem destination; EST-UNTANGLE-261117 emendado);
+2 test gaps residuais classificados (linha acima).
+
 ## Reavaliação — untangle estrutural CRG-driven (2026-11-17)
 
 > Delta do worktree sobre o HEAD `f247579`. TOCA `src/` (−6 sobras/cópias em

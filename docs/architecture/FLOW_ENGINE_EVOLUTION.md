@@ -6,6 +6,18 @@ This is the living public map for editing `src/flow-engine.ts`. It explains
 where responsibilities belong, how earlier extractions were performed and what
 proof every future editor must provide.
 
+### FE-2026-11-17-MARATONA-PIPELINE-SHRINK — SHRINK
+
+Onda da maratona 2026-11-17 (Trilho `maratona-pipeline-binding-261117`, flow 5182, GO-PADRAO do dono com `$oraculo-refatoracao` no comando; veredito documental Fowler p.106/121-180 autenticado, SHA 2e85bb71): a **política de pipeline do `mm_pipeline_run`** mora fora do monólito — `src/pipeline-policy.ts`. `normalizePipelineItem` (58L > teto 50) + `pipelineEvidenceText` + `NormalizedPipelineItem` movidos íntegros (defaults, fallbacks `changed_files<-scope_in`/`evidence<-expected_evidence`, dedup `unique`, assert agregada de segredo); helpers importados das fontes donas (`lang-utils.requireText/unique`, `security/secret-redaction`); `runPipelineItem`/`runPipeline` ficam como orquestração. Prova: 9 its de caracterização (`tests/pipeline-policy.test.ts`) + vigílias M1/M2 PEGA (default risks, evidence text) + tsc duplo 0.
+
+### FE-2026-11-17-MARATONA-BINDING-SHRINK — SHRINK
+
+Arvore 2 da mesma onda: a **compatibilidade de goal binding em re-start** mora fora do monólito — `src/goal-binding-compat.ts`. `assertCompatibleGoalBinding` (CC 18 > teto 10) decomposta por **Decompor Condicional** (Fowler p.301-360): os 9 checks de campo viram predicates nomeados em `BINDING_FIELD_CHECKS`; CC **18→6**; sequência de erros (idempotency → workspace/spt_path → mismatch colecionado) e mensagens EXATAS preservadas; `sameStringSet` co-extraída. Prova: 9 its de caracterização com mensagens/ordem ancoradas + vigílias M3/M4 PEGA + tsc duplo 0; 3 call sites em `startGoalUnlocked` só trocaram o import.
+
+### FE-2026-11-17-MARATONA-NORMALIZE-COMPARABLE-SHRINK — SHRINK
+
+Helper `normalizeComparable` (comparação tolerante de `objective`) com consumidor duplo (motor `startGoal` l.316 + `goal-binding-compat`) movido para a fonte dona de utilitários de string: `src/lang-utils.ts`. Âncora de comportamento: it "compara objective de forma tolerante" na caracterização do binding.
+
 ### FE-2026-11-09-ONDA6-PPIRTV-CHECKIN-SHRINK — SHRINK
 
 Onda 6 (Trilho `2026-11-09-onda6-ppirtv-checkin`, flow 3917; GO único do dono com mesa QUESTIONADORES-ATIVADO; fotografia declarada com RESPIRA antes do corte): a família de **apresentação de status `ppirtv_checkin`/`ppirtv_checkout`** mora fora do monólito — `src/ppirtv-checkin.ts` (696L). 23 funções + 2 consts em 3 blocos contíguos: check-in/out (`ppirtvCheckIn/Out`, `checkInTrailAlignment`, `compactPpirtvCheckout`), accountability (evidence/learning/loop/memory/utility + irmãs internas), evidence-quality (acompanha o `evidenceCheckoutAccountability` migrante) e work-progress (`progressText`/`validate`/`events`/`summary`) + `memoryMiningStatus`. Bloco **autônomo** (zero função não-migrante consumida — probe antes do corte); motor importa 13 símbolos. Motor 6156→**5503 (−652L líquido)** com zero símbolo novo; suíte 848+4=852 sem editar teste; **vacina Onda 5 paga no primeiro uso** (varredura anti-import-morto pegou 2 mortos antes do commit). Ficam: eixo memory-v2/promotion (onda futura) e utils do motor (`progressReceipt`, `assertPhase`, `normalizeSuggestedCooperators`, `materialActiveCredits`, `memoryWriterRuntimeSummary`, `collectTempFiles`).

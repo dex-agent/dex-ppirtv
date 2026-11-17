@@ -1961,6 +1961,86 @@
       },
       "commit": "99b435632b26e909eb38548aff50ac1f07e6c422",
       "parent_commit": "d4f86f556b18134a752e8b0677e4b64539ea1c85"
+    },
+    {
+      "id": "FE-2026-11-17-MARATONA-PIPELINE-SHRINK",
+      "date": "2026-11-17",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-17-maratona-pipeline-binding.md",
+      "owner": "$oraculo-refatoracao",
+      "mode": "SHRINK",
+      "base_blob": "9e83d595849c71bc99f0ba9b0e8e17861fccfd0a",
+      "head_blob": "7901ecac971d3605f0e07a7be27ab88b43612ac7",
+      "responsibility": "normalizacao e evidence text dos itens do mm_pipeline_run (cluster pipeline): defaults de risks/uncertainties, fallbacks changed_files<-scope_in e evidence<-expected_evidence, dedup unique e assert agregada de segredo — movidos integrais para src/pipeline-policy.ts (arvore 1 da onda da maratona; 58L > teto 50 da casa)",
+      "destination_module": "src/pipeline-policy.ts",
+      "removed_symbols": [
+        "normalizePipelineItem",
+        "pipelineEvidenceText"
+      ],
+      "symbol_mappings": {
+        "normalizePipelineItem": "normalizePipelineItem",
+        "pipelineEvidenceText": "pipelineEvidenceText"
+      },
+      "same_responsibility": true,
+      "behavior_preserved_by": [
+        "tests/pipeline-policy.test.ts 9 its de caracterizacao (defaults, fallbacks, dedup, segrego agregado, ordem das secoes do evidence text) derivados do comportamento historico l.4539-4634",
+        "vigilias por mutacao M1/M2 PEGA (default risks e evidence text; sobreviveu=false, receipts em .agents/AUDITORIAS/2026-11-17-maratona-pipeline-binding/MUTACOES/)",
+        "npx tsc --noEmit src e tests exit 0; consumidores runPipelineItem/runPipeline intocados em comportamento (so o import mudou)"
+      ],
+      "changelog_marker": "FE-2026-11-17-MARATONA-PIPELINE-SHRINK",
+      "architecture_marker": "FE-2026-11-17-MARATONA-PIPELINE-SHRINK",
+      "consumers": [
+        "src/flow-engine.ts"
+      ],
+      "rollback": "git revert do commit selador restaura as 3 definicoes no monolito e remove src/pipeline-policy.ts + teste; nenhum outro consumidor fora do motor",
+      "evidence": [
+        "tests/pipeline-policy.test.ts",
+        ".agents/AUDITORIAS/2026-11-17-maratona-pipeline-binding/MUTACOES/m1-default-risks.json",
+        ".agents/AUDITORIAS/2026-11-17-maratona-pipeline-binding/MUTACOES/m2-evidence-text.json"
+      ],
+      "evidence_selectors": {
+        "tests/pipeline-policy.test.ts": "aplica defaults de risks/uncertainties e fallback de context quando ausentes"
+      }
+    },
+    {
+      "id": "FE-2026-11-17-MARATONA-BINDING-SHRINK",
+      "date": "2026-11-17",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-17-maratona-pipeline-binding.md",
+      "owner": "$oraculo-refatoracao",
+      "mode": "SHRINK",
+      "base_blob": "7901ecac971d3605f0e07a7be27ab88b43612ac7",
+      "head_blob": "36027ec64dde17d2b5a7cfd56bdb4e22855c3098",
+      "responsibility": "compatibilidade de goal binding em re-start (cluster binding): validacao do envelope imutavel (idempotency_key/workspace/spt_path) e reporte de divergencias por campo — movidos para src/goal-binding-compat.ts com Decompor Condicional (CC 18 -> 6; predicates nomeados, ordem historica preservada). O helper normalizeComparable (consumidor duplo: startGoal do motor + binding) saiu do monolito na mesma janela real de edicao e mora em src/lang-utils.ts (fonte dona de utilitarios de string), consumido pelo destino via import.",
+      "destination_module": "src/goal-binding-compat.ts",
+      "removed_symbols": [
+        "assertCompatibleGoalBinding",
+        "sameStringSet",
+        "normalizeComparable"
+      ],
+      "symbol_mappings": {
+        "assertCompatibleGoalBinding": "assertCompatibleGoalBinding",
+        "sameStringSet": "sameStringSet",
+        "normalizeComparable": "normalizeComparable"
+      },
+      "same_responsibility": true,
+      "behavior_preserved_by": [
+        "tests/goal-binding-compat.test.ts 9 its de caracterizacao com mensagens EXATAS e ordem dos campos do mismatch ancorada (derivados do comportamento historico l.4730-4779)",
+        "vigilias por mutacao M3/M4 PEGA (mensagem GOAL_BINDING_MISMATCH e mensagem de idempotency_key; sobreviveu=false)",
+        "npx tsc --noEmit src e tests exit 0; 3 call sites em startGoalUnlocked intocados (so o import mudou)"
+      ],
+      "changelog_marker": "FE-2026-11-17-MARATONA-BINDING-SHRINK",
+      "architecture_marker": "FE-2026-11-17-MARATONA-BINDING-SHRINK",
+      "consumers": [
+        "src/flow-engine.ts"
+      ],
+      "rollback": "git revert do commit selador restaura as 2 definicoes no monolito e remove src/goal-binding-compat.ts + teste; nenhum outro consumidor fora do motor",
+      "evidence": [
+        "tests/goal-binding-compat.test.ts",
+        ".agents/AUDITORIAS/2026-11-17-maratona-pipeline-binding/MUTACOES/m3-mismatch-msg.json",
+        ".agents/AUDITORIAS/2026-11-17-maratona-pipeline-binding/MUTACOES/m4-idempotency-msg.json"
+      ],
+      "evidence_selectors": {
+        "tests/goal-binding-compat.test.ts": "reporta cada campo divergente pelo nome na ordem historica"
+      }
     }
   ]
 }

@@ -10,7 +10,7 @@ import { sanitizePersistedProvided } from "./input-unwrap.js";
 import { assertNoSecretLikeItems, assertNoSecretLikePayload, assertNoSecretLikeText } from "./security/secret-redaction.js";
 import { assertLegacyFlowCanReceiveFirstGoalBinding, ensureLedgerTransitionRecorded, GoalIdempotencyDuplicateBindingsError } from "./goal-ledger-recovery.js";
 import { classifyDexMemoriaV2MiningCandidate, classifyMemoryCandidate, classifyDexMemoriaV2Intent, collectMemoryNuggets, executeDexMemoriaV2Adapter, governAutoWriteCandidate, isWritableCandidate, linkParkingToGold, MemoryLibrarian, miningVisibilityEgress, resolveDexMemoriaHome, validateMemoryPostWrite, writeMemoryCandidate, type DexMemoriaV2CanonicalReceipt, type DexMemoriaV2Destination, type DexMemoriaV2FlowWriterConfig, type DexMemoriaV2MiningClassification, type DexMemoriaV2ValidationReceiptRef, type MemoryHookRunner } from "./memory/index.js";
-import { errorMessage, requireText, nowIso } from "./lang-utils.js";
+import { errorMessage, requireText, nowIso, normalizeComparable } from "./lang-utils.js";
 import { presentArtifact, presentChecklist, presentFlow, presentGate } from "./presentation.js";
 import {
   applyMemoryCandidateResolution,
@@ -56,6 +56,8 @@ import { missingValidationDiagnostic, runtimeWorkspaceMismatchDiagnostic, SptPat
 import { assertCriterionProofRevisionCurrent, criterionProjection, evidenceRequirementProjection, assertSptV3PositiveVerdictCoverage, assertCriterionProofAdmission, sptTraceabilityReattachedEventData, taskProjection, traceabilityFromContract } from "./spt-traceability.js";
 import { requiresGoalEvidence } from "./spt-traceability.js";
 import { unique, stringArray, uniqueCooperators } from "./lang-utils.js";
+import { normalizePipelineItem, pipelineEvidenceText } from "./pipeline-policy.js";
+import { assertCompatibleGoalBinding } from "./goal-binding-compat.js";
 import { sptBindingIntegrityFor } from "./provenance-trace.js";
 import { freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
 import { applyReviewScopeAttributions, attributedVerdictSnapshot, bindReviewScopeAttribution, prepareVerdictSnapshot, type GoalVerdictInput } from "./review-scope-attribution.js";
@@ -4536,103 +4538,6 @@ export class FlowEngine {
   }
 }
 
-type NormalizedPipelineItem = {
-  goal: string;
-  context: string;
-  scope_in: string[];
-  scope_out: string[];
-  tasks: string[];
-  done_criteria: string[];
-  expected_evidence: string[];
-  risks: string[];
-  uncertainties: string[];
-  changed_files: string[];
-  evidence: string[];
-  residual_risks: string[];
-  verdict_parking_lot: string[];
-  verdict_gold_mining: string[];
-};
-
-function normalizePipelineItem(item: PipelineItem, index: number): NormalizedPipelineItem {
-  requireText(item.goal, `pipeline[${index}].goal`);
-  assertNoSecretLikeText(item.goal, `pipeline[${index}].goal`);
-  assertNoSecretLikeText(item.context, `pipeline[${index}].context`);
-  const scopeIn = unique(item.scope_in ?? []);
-  const scopeOut = unique(item.scope_out ?? []);
-  const tasks = unique(item.tasks ?? []);
-  const doneCriteria = unique(item.done_criteria ?? []);
-  const expectedEvidence = unique(item.expected_evidence ?? []);
-  const changedFiles = unique(item.changed_files?.length ? item.changed_files : scopeIn);
-  const evidence = unique(item.evidence?.length ? item.evidence : expectedEvidence);
-  const residualRisks = unique(item.residual_risks ?? []);
-  const verdictParkingLot = unique(item.verdict_parking_lot ?? []);
-  const verdictGoldMining = unique(item.verdict_gold_mining ?? []);
-  const risks = unique(
-    item.risks?.length
-      ? item.risks
-      : ["Automacao de pipeline nao substitui evidencia externa quando a tarefa exigir execucao real."]
-  );
-  const uncertainties = unique(
-    item.uncertainties?.length
-      ? item.uncertainties
-      : ["mm_pipeline_run orquestra gates PPIRTV; execucao externa deve ser anexada como evidencia quando existir."]
-  );
-  assertNoSecretLikeItems(
-    [
-      ...scopeIn,
-      ...scopeOut,
-      ...tasks,
-      ...doneCriteria,
-      ...expectedEvidence,
-      ...changedFiles,
-      ...evidence,
-      ...risks,
-      ...uncertainties,
-      ...residualRisks,
-      ...verdictParkingLot,
-      ...verdictGoldMining
-    ],
-    `pipeline[${index}]`
-  );
-  return {
-    goal: item.goal.trim(),
-    context: item.context?.trim() || `Pipeline item ${index + 1}: ${item.goal.trim()}`,
-    scope_in: scopeIn,
-    scope_out: scopeOut,
-    tasks,
-    done_criteria: doneCriteria,
-    expected_evidence: expectedEvidence,
-    risks,
-    uncertainties,
-    changed_files: changedFiles,
-    evidence,
-    residual_risks: residualRisks,
-    verdict_parking_lot: verdictParkingLot,
-    verdict_gold_mining: verdictGoldMining
-  };
-}
-
-function pipelineEvidenceText(item: NormalizedPipelineItem): string {
-  return [
-    `Goal: ${item.goal}`,
-    "",
-    "Scope in:",
-    ...item.scope_in.map((entry) => `- ${entry}`),
-    "",
-    "Tasks:",
-    ...item.tasks.map((entry) => `- ${entry}`),
-    "",
-    "Expected evidence declared:",
-    ...item.expected_evidence.map((entry) => `- ${entry}`),
-    "",
-    "Done criteria:",
-    ...item.done_criteria.map((entry) => `- ${entry}`),
-    "",
-    "Pipeline evidence:",
-    ...(item.evidence.length > 0 ? item.evidence.map((entry) => `- ${entry}`) : ["- no extra evidence declared"])
-  ].join("\n");
-}
-
 function isBlockedAdvance(result: Record<string, unknown>): boolean {
   return result.advanced === false || result.status === "blocked";
 }
@@ -4641,11 +4546,6 @@ function pipelineBlocker(result: Record<string, unknown>): string {
   const missing = Array.isArray(result.missing) ? result.missing.join(", ") : "";
   const next = typeof result.next === "string" ? result.next : "complete_current_gate";
   return missing ? `${next}: ${missing}` : next;
-}
-
-function normalizeComparable(text: string): string {
-  const normalize = (value: string) => value.toLowerCase().replace(/\s+/g, " ").trim();
-  return normalize(text);
 }
 
 function normalizeGoalEnvelope(input: GoalEnvelope): CanonicalGoalEnvelope {
@@ -4725,57 +4625,6 @@ function closureBlockersFor(flow: Flow, meetings: Meeting[]): string[] {
   return requiredCooperationNeedsMeetingIdRetry(flow, meetings)
     ? unique([...blockers, "required_cooperation"])
     : blockers;
-}
-
-function assertCompatibleGoalBinding(
-  binding: GoalBinding | undefined,
-  envelope: GoalEnvelope,
-  contractFingerprint: string | null
-): void {
-  if (!binding) {
-    return;
-  }
-  const existing = binding.envelope;
-  if (existing.idempotency_key !== envelope.idempotency_key) {
-    throw new Error("flow_id is already bound to a different idempotency_key");
-  }
-  if (path.resolve(existing.workspace) !== path.resolve(envelope.workspace) || path.resolve(existing.spt_path) !== path.resolve(envelope.spt_path)) {
-    throw new Error("idempotency_key is already bound to a different workspace or spt_path");
-  }
-  const mismatches: string[] = [];
-  if (normalizeComparable(existing.objective) !== normalizeComparable(envelope.objective)) {
-    mismatches.push("objective");
-  }
-  if (existing.evidence_required !== envelope.evidence_required) {
-    mismatches.push("evidence_required");
-  }
-  if (!sameStringSet(existing.required_evidence, envelope.required_evidence)) {
-    mismatches.push("required_evidence");
-  }
-  if (existing.requested_verdict_policy !== envelope.requested_verdict_policy) {
-    mismatches.push("requested_verdict_policy");
-  }
-  if (existing.source !== envelope.source) {
-    mismatches.push("source");
-  }
-  if (envelope.risk_level !== undefined && existing.risk_level !== envelope.risk_level) {
-    mismatches.push("risk_level");
-  }
-  if (envelope.flow_role !== undefined && binding.flow_role !== envelope.flow_role) {
-    mismatches.push("flow_role");
-  }
-  if (!binding.spt_contract_fingerprint || !contractFingerprint) {
-    mismatches.push("spt_contract_fingerprint");
-  } else if (binding.spt_contract_fingerprint !== contractFingerprint) {
-    mismatches.push("spt_contract");
-  }
-  if (mismatches.length > 0) {
-    throw new Error(`GOAL_BINDING_MISMATCH: immutable binding differs in ${mismatches.join(", ")}`);
-  }
-}
-
-function sameStringSet(left: string[], right: string[]): boolean {
-  return JSON.stringify([...new Set(left)].sort()) === JSON.stringify([...new Set(right)].sort());
 }
 
 function goalLedgerData(binding: GoalBinding, flow?: Flow): Record<string, unknown> {

@@ -1,4 +1,25 @@
 {
+ "reavaliacao_maratona_pipeline_binding_261117": {
+  "date": "2026-11-17",
+  "scope": [
+   "src/flow-engine.ts",
+   "src/lang-utils.ts",
+   "src/goal-binding-compat.ts",
+   "src/pipeline-policy.ts",
+   "tests/goal-binding-compat.test.ts",
+   "tests/pipeline-policy.test.ts",
+   "tests/lang-utils-compat.test.ts"
+  ],
+  "delta": "Onda da maratona de decomposicao (GO-PADRAO do dono, $oraculo-refatoracao no comando; Trilho maratona-pipeline-binding-261117, flow 5182): cluster pipeline extraido para src/pipeline-policy.ts (normalizePipelineItem 58L>50 + pipelineEvidenceText + NormalizedPipelineItem — defaults/fallbacks/dedup/assert de segredo integrais) e cluster binding extraido para src/goal-binding-compat.ts (assertCompatibleGoalBinding CC18>10 decomposta em predicates nomeados por Decompor Condicional — CC 18->6, mensagens e ordem do GOAL_BINDING_MISMATCH preservadas; sameStringSet co-extraida); helper normalizeComparable (consumidor duplo motor+binding) movido para lang-utils. Motor 4933L->-145 linhas nao-vazias; camping fiscal 2 records SHRINK encadeados (base 9e83d59 -> blobA 7901ecac -> head 36027ec) com behavior_preserved_by e evidence_selectors — check:flow-engine PASS mode SHRINK reasons []. Caracterizacoes 9+10+1 its (nunca podar); vigilias por mutacao 4/4 PEGA (M1 default risks, M2 evidence text, M3 mismatch msg, M4 idempotency msg). Fronteira TRACKER-0012 intocada (l.2500-2650 zero diff). TRACKER-LOCAL-0013 aberto: camping sem modo para dead-code sem destination (materialActiveCredits permanece, EST-UNTANGLE-261117 emendado).",
+  "evidence": [
+   "npm run check:flow-engine -> PASS mode SHRINK reasons [] (cadeia 2 elos)",
+   "tools/mutacao-amostra.py 4/4 PEGA (sobreviveu=false; receipts .agents/AUDITORIAS/2026-11-17-maratona-pipeline-binding/MUTACOES/)",
+   "npx vitest run -> 984 passed | 4 skipped (988) 80/80 arq",
+   "npx tsc -p tsconfig.json && -p tsconfig.tests.json -> 0 erros",
+   "medir_cc_engine.py (canonico): CC assertCompatibleGoalBinding 18->6 no destino; defs zero no motor (rg exit 1)",
+   "detect-changes: gaps das arvores zerados (sameStringSet/normalizeComparable testes diretos); residuais classificados: normalize (lambda interna, falso positivo parser) + MemoryRuntimeStore (lateral pre-existente, rg-zero em tests/, arquivo fora do diff)"
+  ]
+ },
  "reavaliacao_untangle_estrutural_crg_261117": {
   "date": "2026-11-17",
   "scope": [

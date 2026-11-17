@@ -50,6 +50,15 @@ export function nowIso(): string {
   return new Date().toISOString();
 }
 
+// Comparacao tolerante de textos de envelope (objective): case e espacos
+// colapsados. Nasceu no monolito e saiu junto da politica de goal binding
+// (onda da maratona 2026-11-17; consumidores: flow-engine startGoal e
+// goal-binding-compat).
+export function normalizeComparable(text: string): string {
+  const normalize = (value: string) => value.toLowerCase().replace(/\s+/g, " ").trim();
+  return normalize(text);
+}
+
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
