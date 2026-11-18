@@ -1,3 +1,9 @@
+## Reavaliação — Emenda A2 deadlock anexo×fiscal (2026-11-18)
+
+Delta: review-snapshot (pendingReviewScopeForAttach pura) + motor (bloqueio
+registra escopo corroborado; anexo valida união) + teste 4 its. Fiscal sem
+diff. Detalhe no receipt `reavaliacao_emenda_a2_261118`.
+
 ## Reavaliação — Corte A issue #21 attribution (2026-11-18)
 
 Delta: review-scope-attribution (snapshot sempre no positivo + crivo de colisão

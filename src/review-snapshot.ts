@@ -605,3 +605,38 @@ export function pendingReviewAdditionsFor(
     ...(detail === "full" ? { additions } : {})
   };
 }
+
+// EMENDA A2 — DEADLOCK-ANEXO-FISCAL (2026-11-18, GO-PADRAO ao veredito do
+// $oraculo-legado: Pontos de Intercepção cap.13): quando o commit sai entre
+// goal_start e goal_verdict, o anexo validava o fingerprint contra o conjunto
+// PERSISTIDO-restaurado enquanto o fiscal valida contra o CORROBORADO. O
+// ponto de intercepção é o próprio evento de bloqueio: ele passa a registrar
+// o escopo corroborado avaliado (pending_changed_files + pending_review_
+// fingerprint) e o anexo aceita esse fp na validação estrita. O fiscal segue
+// exigindo o corroborado real — esta função é pura leitura do evento.
+export function pendingReviewScopeForAttach(
+  flow: Flow
+): { changed_files: string[]; fingerprint: string } | null {
+  let latestEvent: Flow["history"][number] | null = null;
+  let latestIndex = -1;
+  for (let index = flow.history.length - 1; index >= 0; index -= 1) {
+    const event = flow.history[index];
+    if (event.type === "fiscal_policy_blocked") {
+      latestEvent = event;
+      latestIndex = index;
+      break;
+    }
+  }
+  if (!latestEvent) return null;
+  const verdictRecordedAfterBlock = flow.history
+    .slice(latestIndex + 1)
+    .some((event) => event.type === "verdict_recorded");
+  if (verdictRecordedAfterBlock) return null;
+  const rawFiles = latestEvent.data.pending_changed_files;
+  const fingerprint = latestEvent.data.pending_review_fingerprint;
+  const changedFiles = Array.isArray(rawFiles) ? rawFiles.filter((item): item is string => typeof item === "string") : [];
+  if (changedFiles.length === 0 || typeof fingerprint !== "string" || fingerprint.length === 0) {
+    return null;
+  }
+  return { changed_files: changedFiles, fingerprint };
+}

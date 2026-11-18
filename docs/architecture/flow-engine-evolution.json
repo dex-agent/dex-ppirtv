@@ -2149,6 +2149,8 @@
       "mode": "EXCEPTION",
       "base_blob": "34ffabc47cee0920088a73b16fe7916647b96edc",
       "head_blob": "7ae5fd51e4022991199378e4429588b43e8c9158",
+      "commit": "ae11cfa6fa39667891ac70201002dc7ae5f9db2d",
+      "parent_commit": "2336e3acdbc9115c99fa2addb2511a9e003c4d9b",
       "spt_path": ".agents/PLAN-TASKS/2026-11-18-issue21-attribution-corte-a.md",
       "responsibility": "Snapshot de versao do veredito positivo e assinatura incondicional nos dois modos; adocao automatica nunca promove exclusao colidente; hint oferece so ids utilizaveis.",
       "owner": "$oraculo-refatoracao",
@@ -2172,6 +2174,36 @@
       "red_base_blob": "34ffabc47cee0920088a73b16fe7916647b96edc",
       "red_observed_failure": "RED 5/7 no base 34ffabc4 (repros da issue #21 publicadas): o modo automatico de prepareVerdictSnapshot aceitava gravacao com fingerprint mudado apos a avaliacao (avaliava uma revisao e gravava outra); a exclusao historica colidente com path incorporado travava com REVIEW_SCOPE_DECLARED_PATH sem nomear path nos 3 modos; attributionHint oferecia id e1 que a citacao explicita rejeitava com REVIEW_SCOPE_ATTRIBUTION_STALE.",
       "red_command": "npx vitest run tests/issue-0021-attribution.test.ts -t cura P1-1 modo automatico rejeita gravacao quando bytes mudam apos a avaliacao"
+    },
+    {
+      "id": "FE-2026-11-18-EMENDA-A2-DEADLOCK-ANEXO-FISCAL",
+      "date": "2026-11-18",
+      "mode": "EXCEPTION",
+      "base_blob": "7ae5fd51e4022991199378e4429588b43e8c9158",
+      "head_blob": "e2de65e8068bc5d0754e1c7fdae56b5fd90eb430",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-18-emenda-a2-deadlock-anexo-fiscal.md",
+      "responsibility": "Anexo de review aceita o escopo corroborado registrado como pending no bloqueio fiscal; fiscal intacto.",
+      "owner": "$oraculo-refatoracao",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/emenda-a2-deadlock.test.ts",
+        ".agents/AUDITORIAS/2026-11-18-emenda-a2/RED-vitest.txt",
+        ".agents/AUDITORIAS/2026-11-18-emenda-a2/MUTACOES/m1-pending.json"
+      ],
+      "evidence_selectors": {
+        "tests/emenda-a2-deadlock.test.ts": "cura ciclo fingerprint da uniao persistido com pending iguala o corroborado"
+      },
+      "changelog_marker": "anexo de review aceita o escopo corroborado pendente",
+      "architecture_marker": "FE-2026-11-18-EMENDA-A2-DEADLOCK-ANEXO-FISCAL",
+      "exception_reason": "integrity",
+      "rollback": "Reverta o registro pending_changed_files e pending_review_fingerprint no evento de bloqueio, a leitura pendingReviewScopeForAttach em review-snapshot e o uso da uniao na atestacao estrita do anexo para restaurar o comportamento anterior.",
+      "expires": "next diff that touches src/flow-engine.ts",
+      "red_evidence": "tests/emenda-a2-deadlock.test.ts::cura ciclo pendingReviewScopeForAttach devolve o escopo do ultimo bloqueio pendente",
+      "red_base_blob": "7ae5fd51e4022991199378e4429588b43e8c9158",
+      "red_observed_failure": "RED 2/4 no base 7ae5fd51: o anexo de review validava o fingerprint contra o conjunto persistido-restaurado enquanto o fiscal valida contra o corroborado-recomputado (commit entre goal_start e goal_verdict) — nenhuma review satisfazia ambos; o ciclo de retry do flow 5344 ficou preso em review_required com 4 reviews validas rejeitadas por um dos dois lados.",
+      "red_command": "npx vitest run tests/emenda-a2-deadlock.test.ts -t cura ciclo pendingReviewScopeForAttach devolve o escopo do ultimo bloqueio pendente"
     }
   ]
 }

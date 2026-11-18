@@ -1,4 +1,14 @@
 {
+  "reavaliacao_emenda_a2_261118": {
+    "date": "2026-11-18",
+    "scope": [
+      "src/review-snapshot.ts",
+      "src/flow-engine.ts",
+      "tests/emenda-a2-deadlock.test.ts",
+      "docs/architecture/flow-engine-evolution.json"
+    ],
+    "delta": "Emenda A2 (GO-PADRAO ao veredito oraculo-legado autenticado): evento fiscal_policy_blocked registra pending_changed_files+pending_review_fingerprint do corroborado; anexo valida fp contra strict da UNIAO via pendingReviewScopeForAttach (pura nova em review-snapshot, irma da pendingReviewAdditionsFor); FISCAL INTACTO (verdict-fiscal-policy e gate-resolution sem diff — caracterizacao vigia). Sem bloqueio pendente: comportamento exato do anexo preservado. RED ciclo 2/4 -> GREEN 4/4; M1 PEGA (mutante 3 failed restaurado). Selo ISSUE21-CORTE-A pago (ae11cfa+2336e3a blobs conferidos)."
+  },
   "reavaliacao_issue21_corte_a_261118": {
     "date": "2026-11-18",
     "scope": [

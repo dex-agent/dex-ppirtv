@@ -8,6 +8,23 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+## Emenda A2: anexo de review aceita o escopo corroborado pendente — fim do deadlock anexo×fiscal (2026-11-18, flow 5384)
+
+- **DEADLOCK-ANEXO-FISCAL curado pelo ponto de intercepção** (veredito
+  $oraculo-legado autenticado: Esboço de Efeitos cap.12 + Pontos de
+  Intercepção cap.13, ptbr-2013-bookman-ocr; grafo rico legado-eficaz 405n):
+  quando o commit sai entre goal_start e goal_verdict, o evento
+  `fiscal_policy_blocked` agora registra `pending_changed_files` +
+  `pending_review_fingerprint` do conjunto corroborado avaliado, e o anexo
+  (`evidence_add`) valida o `reviewed_implementation_fingerprint` contra o
+  strict da UNIÃO persistido∪pending (função pura nova
+  `pendingReviewScopeForAttach` em review-snapshot.ts, irmã da
+  `pendingReviewAdditionsFor`). **O fiscal permanece INTACTO** (exige o
+  corroborado real — nunca afrouxar). RED do CICLO 2/4 → GREEN 4/4; vigília
+  M1 PEGA. Selo do record ISSUE21-CORTE-A pago neste corte (commit ae11cfa +
+  parent 2336e3a, blobs conferidos — vencimento era este commit). Flow 5344
+  destravado e fechado até terminal.
+
 ## Corte A da issue #21: as 3 falhas de attribution curadas + selo D50B1 pago (2026-11-18, flow 5344)
 
 - **P1-1** — veredito positivo carrega o flow avaliado para a gravação

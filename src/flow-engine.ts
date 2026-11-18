@@ -59,7 +59,7 @@ import { unique, stringArray, uniqueCooperators } from "./lang-utils.js";
 import { normalizePipelineItem, pipelineEvidenceText } from "./pipeline-policy.js";
 import { assertCompatibleGoalBinding } from "./goal-binding-compat.js";
 import { sptBindingIntegrityFor } from "./provenance-trace.js";
-import { freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles, withRestoredBlockedVerdictSnapshot } from "./review-snapshot.js";
+import { freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, pendingReviewScopeForAttach, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles, withRestoredBlockedVerdictSnapshot } from "./review-snapshot.js";
 import { applyReviewScopeAttributions, attributedVerdictSnapshot, bindReviewScopeAttribution, collectAdoptableAttributionIds, prepareVerdictSnapshot, type GoalVerdictInput } from "./review-scope-attribution.js";
 import { normalizeRecallConsumptionInput, sameRecallReferences, validateRecallConsumptionReferences, type RecallConsumptionInput } from "./memory/recall-consumption-contract.js";
 import { assertGovernedTag } from "./memory/governed-tag.js";
@@ -2607,7 +2607,15 @@ export class FlowEngine {
           fiscal,
           "goal_verdict",
           input,
-          { pending_review_additions: restoration.pending_additions, restored_changed_files_from: restoration.restored_from }
+          // EMENDA A2: o evento registra o escopo corroborado AVALIADO (o
+          // conjunto que o fiscal exigiu) ao lado dos acréscimos — é o ponto
+          // de intercepção que o anexo da review consome no ciclo de retry.
+          {
+            pending_review_additions: restoration.pending_additions,
+            restored_changed_files_from: restoration.restored_from,
+            pending_changed_files: fiscalFlow.changed_files,
+            pending_review_fingerprint: fiscalFlow.implementation_fingerprint
+          }
         );
         const meetings = await this.store.listMeetings(fiscalFlow.flow_id);
         const cooperationDiagnostics = requiredCooperationDiagnostics(fiscalFlow, meetings, fiscal.blocking_reasons, input);
@@ -3690,7 +3698,16 @@ export class FlowEngine {
     if (reviewAttestation && flow.goal_binding?.envelope.workspace) {
       // PPIRTV-ENV-SNAPSHOT-001 (emenda barata 2): delegação pura ao SSOT —
       // a redação de sensível não-declarado vale também na atestação estrita.
-      const strictFingerprint = await strictReviewSnapshotFingerprint(flow, { requireReviewableFiles: true });
+      // EMENDA A2 — DEADLOCK-ANEXO-FISCAL: com bloqueio fiscal pendente cujo
+      // evento registrou o escopo corroborado (commit saiu entre goal_start e
+      // goal_verdict), o anexo valida o fp contra a UNIÃO persistido∪pending
+      // — com worktree estável é exatamente o conjunto que o fiscal exigirá.
+      // Sem bloqueio pendente: comportamento atual exato (fp do persistido).
+      const pendingScope = pendingReviewScopeForAttach(flow);
+      const attestationFlow = pendingScope
+        ? { ...flow, changed_files: Array.from(new Set([...flow.changed_files, ...pendingScope.changed_files])) }
+        : flow;
+      const strictFingerprint = await strictReviewSnapshotFingerprint(attestationFlow, { requireReviewableFiles: true });
       if (!input.reviewed_implementation_fingerprint) {
         throw new Error("REVIEW_SNAPSHOT_FINGERPRINT_REQUIRED: obtain implementation_fingerprint after implementation and attest that exact snapshot");
       }
@@ -4173,7 +4190,7 @@ export class FlowEngine {
     fiscal: FiscalPolicyResult,
     source: string,
     input: FiscalVerdictInput = {},
-    restoration?: { pending_review_additions: string[]; restored_changed_files_from: string | null }
+    restoration?: { pending_review_additions: string[]; restored_changed_files_from: string | null; pending_changed_files?: string[]; pending_review_fingerprint?: string }
   ): Promise<void> {
     const now = nowIso();
     const loopId = blockerLoopId(fiscal.blocking_reasons);
