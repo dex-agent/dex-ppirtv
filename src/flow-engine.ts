@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { providedPathFindingsFields, providedPathFindingsFor, providedPathPreviewFields } from "./gate-provided-paths.js";
-import { PHASES, COMPACT_PHASES, GOAL_FLOW_ROLES, type AnyPhase, type Cooperator, type CriterionProofInput, type Evidence, type Flow, type GateRecord, type GoalBinding, type GoalEnvelope, type GoalFlowRole, type HygieneFinding, type Meeting, type MemoryCandidatePromoteScope, type MemoryCandidateResolution, type MemoryCandidateResolutionAction, type MeetingKind, type MeetingType, type MemoryMiningSummary, type MemoryPostWriteValidation, type MemoryReviewStatus, type MemoryWritePolicy, type PipelineFlowResult, type PipelineItem, type PresentationEnvelope, type Phase, type Scope, type SptValidationResult, type Verdict, type VerdictStatus, type WorkProgressEvent, type WorkProgressStatus, type WorkProgressSummary } from "./domain.js";
+import { PHASES, COMPACT_PHASES, GOAL_FLOW_ROLES, isPositiveVerdict, type AnyPhase, type Cooperator, type CriterionProofInput, type Evidence, type Flow, type GateRecord, type GoalBinding, type GoalEnvelope, type GoalFlowRole, type HygieneFinding, type Meeting, type MemoryCandidatePromoteScope, type MemoryCandidateResolution, type MemoryCandidateResolutionAction, type MeetingKind, type MeetingType, type MemoryMiningSummary, type MemoryPostWriteValidation, type MemoryReviewStatus, type MemoryWritePolicy, type PipelineFlowResult, type PipelineItem, type PresentationEnvelope, type Phase, type Scope, type SptValidationResult, type Verdict, type VerdictStatus, type WorkProgressEvent, type WorkProgressStatus, type WorkProgressSummary } from "./domain.js";
 import { canonicalVerdictChangedFiles, hasRequirement, invalidateStaleDownstreamGates, isStructuredReviewEvidence, mergePathFacts, officialGoalNeedsCanonicalVerdict, providedIgnoredKeys, providedRequirementDiagnostic, resolveGateRequirements, reviewCurrencyAppliesToPhase, reviewCurrencyMissing, reviewEvidenceDiagnostics, reviewEvidenceRequested, reviewEvidenceValidity, savedGateReusable, strictPathArray, structuredReviewAttestationRequested, type GateRequirementResolution } from "./gate-resolution.js";
 import { requiredCooperationDiagnostics, meetingClosedIndex, meetingOutcomeSummaries, meetingOutcomeCounts, requiredCooperationNeedsMeetingIdRetry, meetingKindForType, meetingTypeForKind, requiredMeetingKind, requiredMeetingParticipants, meetingClosedLedgerData, applyClosedMeetingToFlow, assertMeetingClosed } from "./meeting-policy.js";
 import { attributionHint, evaluateFiscalPolicyWithDeps, countHistory, countRegressions, explicitMeetingTrigger, fiscalResultWithDeps, fiscalText, MEMORY_MINING_BLOCKED_VERDICT_REASON, reportFiscalSignals, reportRecurringRiskCleared, requiredCooWithDeps, type FiscalPolicyResult } from "./verdict-fiscal-policy.js";
@@ -2559,10 +2559,10 @@ export class FlowEngine {
     if (missingEvidence.length > 0) {
       throw new Error(`Unknown evidence_ids: ${missingEvidence.join(", ")}`);
     }
-    if (requiresGoalEvidence(flow) && (input.status === "pronto" || input.status === "pronto_com_ressalvas") && evidenceIds.length === 0) {
+    if (requiresGoalEvidence(flow) && isPositiveVerdict(input.status) && evidenceIds.length === 0) {
       throw new Error("goal_verdict requires traceable evidence_ids for positive conclusions");
     }
-    const positiveVerdict = input.status === "pronto" || input.status === "pronto_com_ressalvas";
+    const positiveVerdict = isPositiveVerdict(input.status);
     if (positiveVerdict && flow.spt_contract_version === 3) {
       // FE-2026-11-07-ISSUE10-VERDICT-DIAGNOSTICO: gate SPT v3 do verdict
       // (traceability + stale + cobertura com diagnostico por criterio)
@@ -2664,11 +2664,11 @@ export class FlowEngine {
     // pos-verdict, para nao anunciar apenas os provided do advance quando o
     // gate ainda vai bloquear por uma mineracao que a resposta nao indicou.
     const requiresPostVerdictMining =
-      (effectiveStatus === "pronto" || effectiveStatus === "pronto_com_ressalvas") &&
+      isPositiveVerdict(effectiveStatus) &&
       profileFor(flow.mode).nextPhase[flow.phase] === null &&
       hasVerdictAfterLatestMemoryMining(await this.store.loadFlow(input.flow_id));
     const terminalAdvanceAllowed =
-      (effectiveStatus === "pronto" || effectiveStatus === "pronto_com_ressalvas") &&
+      isPositiveVerdict(effectiveStatus) &&
       !requiresPostVerdictMining &&
       statusSnapshot.phase_advance_allowed === true &&
       closureBlockers.length === 0;
@@ -2738,7 +2738,7 @@ export class FlowEngine {
       }
     }
 
-    const completed = flows.filter((flow) => flow.status === "pronto" || flow.status === "pronto_com_ressalvas").length;
+    const completed = flows.filter((flow) => isPositiveVerdict(flow.status)).length;
     const failed = flows.filter((flow) => flow.status === "bloqueado" || flow.status === "nao_pronto").length;
     const pending = flows.filter((flow) => flow.status === "pending").length;
     return {
@@ -3026,7 +3026,7 @@ export class FlowEngine {
       if (fresh.goal_binding) {
         const latestVerdict = fresh.verdicts.at(-1);
         const positiveVerdict =
-          latestVerdict?.status === "pronto" || latestVerdict?.status === "pronto_com_ressalvas";
+          isPositiveVerdict(latestVerdict?.status);
         const meetings = await this.store.listMeetings(fresh.flow_id);
         const closureBlockers = closureBlockersFor(fresh, meetings);
         if (positiveVerdict && closureBlockers.length === 0 && hasVerdictAfterLatestMemoryMining(fresh)) {
@@ -4015,7 +4015,7 @@ export class FlowEngine {
     flow.cooperators = uniqueCooperators([...flow.cooperators, ...verdict.cooperators]);
     flow.active_credits = unique([...flow.active_credits, ...verdict.active_credits]);
     flow.updated_at = now;
-    if (status === "pronto" || status === "pronto_com_ressalvas") {
+    if (isPositiveVerdict(status)) {
       // Um veredito positivo autoriza o guard terminal, mas nao substitui a
       // transicao que executa hooks e grava flow_completed em GOAL oficial.
       flow.status = flow.goal_binding ? "active" : "complete";
@@ -4621,8 +4621,7 @@ function closureBlockersFor(flow: Flow, meetings: Meeting[]): string[] {
     flow.goal_binding &&
     profileFor(flow.mode).nextPhase[flow.phase] === null &&
     latestVerdict &&
-    latestVerdict.status !== "pronto" &&
-    latestVerdict.status !== "pronto_com_ressalvas"
+    !isPositiveVerdict(latestVerdict.status)
       ? ["goal_positive_verdict_required"]
       : [];
   const blockers = reconciledBlockers(flow, [

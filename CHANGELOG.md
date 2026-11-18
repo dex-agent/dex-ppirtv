@@ -8,6 +8,23 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+## Onda do cluster verdict: 8 sítios inline migram para isPositiveVerdict + 2 selos pagos (2026-11-18, flow 5287)
+
+- **EST-D50B-1 RESOLVIDO**: os 8 sítios de par-positivo inline do motor
+  (7 pares l.2562/2565/2667/2671/2741/3029/4018 + 1 negado l.4624-4625)
+  migram para a fonte única `domain.isPositiveVerdict` (SRP p.101/p.121
+  autenticado pelo $oraculo-solid — FTS5 BM25 p.101/p.121 + grafo rico
+  2157n; silêncio-do-dono = recomendada). Fronteira preservada e vigiada:
+  singulares l.2630/l.3981 (semântica só-"pronto" deliberada) e
+  flow.status complete/archived ficam fora. Vigília M1 PEGA ao vivo
+  (mutante compilou, `sobreviveu: false`, restaurado por bytes).
+- **Selos pagos no mesmo corte**: records
+  `FE-2026-11-17-PRUNE-MATERIAL-ACTIVE-CREDITS` e
+  `FE-2026-11-17-VERDICT-ATTRIBUTION-0012` ganham `commit` deste corte
+  (LEDGER_CHANGE_REQUIRES_TARGET_CHANGE satisfeito: motor+ledger na mesma
+  janela). Teste `tests/onda-verdict-d50b1.test.ts` vigia a TABELA de
+  sítios contra o registro vivo (molde D-33) — NUNCA podar.
+
 ## verdict reutiliza attribution aprovada e restaura atomicamente (ISSUE-LOCAL-0012) (2026-11-17, flow 5250)
 
 - **FE-2026-11-17-VERDICT-ATTRIBUTION-0012**: cura das 2 arestas do

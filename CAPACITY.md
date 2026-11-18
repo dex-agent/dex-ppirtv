@@ -8,6 +8,14 @@ SCHEMA/dex.spt.v3.schm.md aponta a porta estável check-schemas/SKILL.md do regi
 dex-agent/dex-ppirtv#20 (TRACKER local 0014, offline pois .agents/ é gitignored
 aqui). Sem mudança de runtime.
 
+## Reavaliação — onda cluster verdict d50b1 + selos (2026-11-18)
+
+Delta: src/flow-engine.ts (swap de 8 sítios p/ `isPositiveVerdict` + import)
++ teste novo 5 its (TABELA viva, molde D-33) + selos nos 2 records do ledger.
+Fonte única intocada; fronteira vigiada (singulares + flow.status fora).
+RED 3/5 → GREEN 5/5; vigília M1 PEGA; detalhe no receipt
+`reavaliacao_onda_verdict_d50b1_261118`.
+
 ## Reavaliação — cura ISSUE-LOCAL-0012: verdict reutiliza attribution + restauro atômico (2026-11-17)
 
 Delta: 4 arquivos src (review-scope-attribution, verdict-fiscal-policy,

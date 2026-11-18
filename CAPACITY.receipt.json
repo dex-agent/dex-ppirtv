@@ -1,4 +1,14 @@
 {
+  "reavaliacao_onda_verdict_d50b1_261118": {
+    "date": "2026-11-18",
+    "scope": [
+      "src/flow-engine.ts",
+      "tests/onda-verdict-d50b1.test.ts",
+      "docs/architecture/flow-engine-evolution.json",
+      "CHANGELOG.md"
+    ],
+    "delta": "Onda cluster verdict (EST-D50B-1 RESOLVIDO; silencio-dono=recomendada oraculo-solid, SRP p.101/p.121 autenticado): 8 sitios de par-positivo inline migram para domain.isPositiveVerdict (7 pares + 1 negado -> !isPositiveVerdict); fronteira vigiada (singulares so-pronto l.2630/l.3981 e flow.status complete/archived fora); fonte unica INTOCADA (so consumo, zero novo contrato). Vigilia M1 PEGA (mutante valido, sobreviveu:false, bytes restaurados). Selos dos 2 records pendentes pagos neste corte (motor+ledger mesma janela). Teste vigia TABELA vs registro vivo (molde D-33), 5 its NUNCA podam."
+  },
   "reavaliacao_recepcao_schemas_261118": {
     "date": "2026-11-18",
     "scope": [

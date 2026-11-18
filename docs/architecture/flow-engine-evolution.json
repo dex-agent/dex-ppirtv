@@ -2052,6 +2052,7 @@
       "mode": "PRUNE",
       "base_blob": "36027ec64dde17d2b5a7cfd56bdb4e22855c3098",
       "head_blob": "8f04e30c601fd3dec03640abe1d59b855d16792e",
+      "commit": "9cfeddf6235b06f02a1b2a66ffc4436fe205f76a",
       "responsibility": "remocao de dead-code com morte comprovada: materialActiveCredits (computador orfao do campo active_credits, nascido no commit inicial d9ddada) sai do monolito pelo 4o modo PRUNE do camping — sem destination por design; ISSUE-LOCAL-0013 fechada com o modo que a motivou (OCP cap9 p99: regime estendido, SHRINK intocado; SRP: politica de morte difere de extracao; veredito oraculo-solid autenticado)",
       "removed_symbols": [
         "materialActiveCredits"
@@ -2077,7 +2078,8 @@
       "evidence_selectors": {
         "tests/flow-engine-boundary.test.ts": "accepts PRUNE when removed symbols carry death proofs and no destination"
       },
-      "rollback": "git revert do commit selador devolve a funcao morta ao monolito e o modo PRUNE permanece (4 its de caracterizacao vigiam o contrato do modo)"
+      "rollback": "git revert do commit selador devolve a funcao morta ao monolito e o modo PRUNE permanece (4 its de caracterizacao vigiam o contrato do modo)",
+      "parent_commit": "33a34b9440caf6b738b8e8742dc0e96f90dde69b"
     },
     {
       "id": "FE-2026-11-17-VERDICT-ATTRIBUTION-0012",
@@ -2085,6 +2087,7 @@
       "mode": "EXCEPTION",
       "base_blob": "8f04e30c601fd3dec03640abe1d59b855d16792e",
       "head_blob": "00bbd6597e28f9cd520af5bbb0f6c56f9b067686",
+      "commit": "94a9b0c8355851c2977b79c59f524651eeb62028",
       "spt_path": ".agents/PLAN-TASKS/2026-11-17-verdict-attribution-0012.md",
       "responsibility": "Verdict reutiliza attribution aprovada com binding valido e restaura snapshot rejeitado atomicamente (fingerprint do mesmo conjunto).",
       "owner": "$refactoring-fowler-rich",
@@ -2105,7 +2108,38 @@
       "red_evidence": "tests/review-scope-attribution-0012.test.ts::cura a1 chamada SEM ids com attribution aprovada válida NÃO re-traz alheios",
       "red_base_blob": "8f04e30c601fd3dec03640abe1d59b855d16792e",
       "red_observed_failure": "Sem a cura, goal_verdict sem scope_attribution_evidence_ids re-executava applyReviewScopeAttributions com lista vazia: corroborated.changed_files voltava ao git inteiro (alheios incluidos) e o fiscal rejeitava review_required sem nomear o campo; verdict rejeitado persistia changed_files restaurado + fingerprint do conjunto corroborado (hibrido FINGERPRINT_MISMATCH).",
-      "red_command": "npx vitest run tests/review-scope-attribution-0012.test.ts -t cura a1 chamada SEM ids com attribution aprovada válida NÃO re-traz alheios"
+      "red_command": "npx vitest run tests/review-scope-attribution-0012.test.ts -t cura a1 chamada SEM ids com attribution aprovada válida NÃO re-traz alheios",
+      "parent_commit": "9cfeddf6235b06f02a1b2a66ffc4436fe205f76a"
+    },
+    {
+      "id": "FE-2026-11-18-VERDICT-CLUSTER-SWAP-D50B1",
+      "date": "2026-11-18",
+      "mode": "EXCEPTION",
+      "base_blob": "00bbd6597e28f9cd520af5bbb0f6c56f9b067686",
+      "head_blob": "34ffabc47cee0920088a73b16fe7916647b96edc",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-18-onda-cluster-verdict-d50b1.md",
+      "responsibility": "Decisao de verdict-positivo consolidada na fonte unica domain.isPositiveVerdict nos 8 sitios restantes do motor (7 pares + 1 negado).",
+      "owner": "$oraculo-refatoracao",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/onda-verdict-d50b1.test.ts",
+        ".agents/AUDITORIAS/2026-11-18-onda-verdict-d50b1/RED-vitest.txt",
+        ".agents/AUDITORIAS/2026-11-18-onda-verdict-d50b1/MUTACOES/m1-fonte.json"
+      ],
+      "evidence_selectors": {
+        "tests/onda-verdict-d50b1.test.ts": "fonte única intocada no swap: POSITIVE_VERDICTS segue fechada em domain.ts"
+      },
+      "changelog_marker": "migram para a fonte única",
+      "architecture_marker": "FE-2026-11-18-VERDICT-CLUSTER-SWAP-D50B1",
+      "exception_reason": "integrity",
+      "rollback": "Reverta o swap reaplicando os 8 pares inline status === pronto OU pronto_com_ressalvas nos sitios l.2562/2565/2667/2671/2741/3029/4018, a dupla negacao l.4624 e removendo o import isPositiveVerdict para restaurar o comportamento anterior.",
+      "expires": "next diff that touches src/flow-engine.ts",
+      "red_evidence": "tests/onda-verdict-d50b1.test.ts::zero pares inline de pronto OU pronto_com_ressalvas no motor",
+      "red_base_blob": "00bbd6597e28f9cd520af5bbb0f6c56f9b067686",
+      "red_observed_failure": "RED 3/5 no baseline 00bbd659: o it zero pares inline esperava 0 e achou 8 pares de pronto OU pronto_com_ressalvas no motor; motor consumia isPositiveVerdict 0 vezes (import inexistente); decisao de verdict-positivo morava em 8 sitios inline com a fonte unica domain.ts ja existindo desde o D-50b (5/13 sitios migrados, 8 estacionados).",
+      "red_command": "npx vitest run tests/onda-verdict-d50b1.test.ts -t \"zero pares inline de pronto OU pronto_com_ressalvas no motor\""
     }
   ]
 }
