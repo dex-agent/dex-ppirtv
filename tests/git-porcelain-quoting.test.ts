@@ -161,14 +161,17 @@ describe("C-2: e2e strict — espaçado não congela entry quotada", () => {
     // escopo corroborado, a review cobre a UNIÃO persistido∪pending (o
     // conjunto que o fiscal exigirá) — o contrato anterior (review contra o
     // snapshot restaurado) era o lado-anexo do deadlock anexo×fiscal.
-    const status = (await engine.goalStatus({ flow_id: flowId, detail: "full" })) as Record<string, unknown>;
-    const fingerprint = String(status.implementation_fingerprint);
-    expect(fingerprint).toBe(await strictReviewSnapshotFingerprint(await engine.store.loadFlow(flowId)));
-    expect(fingerprint).toMatch(/^sha256:[a-f0-9]{64}$/);
+    // EMENDA B′ issue #22 (2026-11-18): o status publica o fp do escopo
+    // VIGENTE (mesma fonte do anexo) — supersede a leitura contra o snapshot
+    // restaurado do flow persistido.
     const pendingFiles = (blockData?.pending_changed_files as string[] | undefined) ?? [];
     const uniao = Array.from(new Set([...persisted.changed_files, ...pendingFiles]));
     const uniaoFlow = { ...(await engine.store.loadFlow(flowId)), changed_files: uniao };
     const fingerprintUniao = await strictReviewSnapshotFingerprint(uniaoFlow);
+    const status = (await engine.goalStatus({ flow_id: flowId, detail: "full" })) as Record<string, unknown>;
+    const fingerprint = String(status.implementation_fingerprint);
+    expect(fingerprint).toBe(fingerprintUniao);
+    expect(fingerprint).toMatch(/^sha256:[a-f0-9]{64}$/);
     await engine.attachEvidence({
       flow_id: flowId, kind: "code_review", title: "Review estrutural fixture",
       scope_classification: "target", scope_reference: "src/review-snapshot.ts",

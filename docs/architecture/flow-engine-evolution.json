@@ -2233,7 +2233,40 @@
       "red_evidence": "tests/emenda-a2-deadlock.test.ts::cura ciclo fingerprint da uniao persistido com pending iguala o corroborado",
       "red_base_blob": "e2de65e8068bc5d0754e1c7fdae56b5fd90eb430",
       "red_observed_failure": "Bloqueio real do flow 5344 apos a emenda A2 veio SEM pending_review_fingerprint no evento: persistFiscalBlock montava restorationData com as 2 chaves antigas e descartava os campos novos da chamada — ciclo A2 morto na pratica (pega ao vivo).",
-      "red_command": "npx vitest run tests/emenda-a2-deadlock.test.ts -t cura ciclo fingerprint da uniao persistido com pending iguala o corroborado"
+      "red_command": "npx vitest run tests/emenda-a2-deadlock.test.ts -t cura ciclo fingerprint da uniao persistido com pending iguala o corroborado",
+      "commit": "c9a3196bd7e252f3df842c0e9eff8154ac29073d",
+      "parent_commit": "047e147a30c13ad392b87cbb1e68d86cbc960ab6"
+    },
+    {
+      "id": "FE-2026-11-18-CORTE-B-PRIME-PENDING-CYCLE",
+      "date": "2026-11-18",
+      "mode": "EXCEPTION",
+      "base_blob": "6855abec1ca270c429d8f319e742254ab6a6de97",
+      "head_blob": "51daf49bcebf80258915f3ec88f7f33757d69d7d",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-18-corte-b-prime-ciclo-pending-completo.md",
+      "responsibility": "Anexo de review e goal_status consultam a MESMA fonte do fiscal no ciclo pending (corroboracao git + attribution vigente via pendingAttachScope); persistencia atomica caminhos+fingerprint; exclusao corroborada com a mesma representacao nos dois lados.",
+      "owner": "$oraculo-refatoracao",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/issue-0022-pending-cycle.test.ts",
+        ".agents/AUDITORIAS/2026-11-18-corte-b-prime/RED-vitest.txt",
+        ".agents/AUDITORIAS/2026-11-18-corte-b-prime/MUTACOES/m1-recompute.json"
+      ],
+      "evidence_selectors": {
+        "tests/issue-0022-pending-cycle.test.ts": "cura recarregado apos o anexo aceito o recalculo pelo proprio flow e identico ao persistido"
+      },
+      "changelog_marker": "ciclo pending completo",
+      "architecture_marker": "FE-2026-11-18-CORTE-B-PRIME-PENDING-CYCLE",
+      "exception_reason": "integrity",
+      "rollback": "Reverta pendingAttachScope em review-scope-attribution, o uso dele e das opcoes do fiscal no anexo de flow-engine, a gravacao atomica de changed_files/deleted_files junto ao fingerprint e o campo pending_review_scope de goal_status para restaurar o comportamento da Emenda A2.",
+      "expires": "next diff that touches src/flow-engine.ts",
+      "red_evidence": "tests/issue-0022-pending-cycle.test.ts::cura review com o hash do evento anexa quando o pending contem arquivo removido por commit",
+      "red_base_blob": "6855abec1ca270c429d8f319e742254ab6a6de97",
+      "red_observed_failure": "REVIEW_SNAPSHOT_FILE_REQUIRED removed.txt ao vivo com o hash do evento e targets exatos do pending (RED 5 de 6; a caracterizacao do FILE_REQUIRED sem exclusao comprovada passa por desenho); no HEAD pos-A2 o anexo validava com requireReviewableFiles enquanto o fiscal gerou o pending sem require.",
+      "red_command": "npx vitest run tests/issue-0022-pending-cycle.test.ts -t \"cura review com o hash do evento anexa quando o pending contem arquivo removido por commit\"",
+      "behavior_preserved_by": "tests/issue-0022-pending-cycle.test.ts 6 its: 4 repros curadas (exclusao, escopo corrente pos-attribution com retry reconhecendo sem segunda rodada, persistencia os-dois-ou-nenhum, status publicando o escopo que o anexo aceita) + 2 caracterizacoes (FILE_REQUIRED sem exclusao comprovada; rejeicao do escopo congelado pos-attribution)."
     }
   ]
 }

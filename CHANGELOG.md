@@ -8,6 +8,20 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **ciclo pending completo (corte B′)**: o anexo de review e o `goal_status`
+  passam a consultar a MESMA fonte que o fiscal no ciclo pending —
+  `pendingAttachScope` (review-scope-attribution.ts) recomputa corroboração
+  Git + attribution VIGENTE (fallback união A2); com pendência o fingerprint
+  do anexo usa as MESMAS opções com que o fiscal gerou o
+  `pending_review_fingerprint` (exclusão confirmada pelo Git deixa de morrer
+  em REVIEW_SNAPSHOT_FILE_REQUIRED); o anexo aceito grava `changed_files` e
+  `deleted_files` JUNTO com `implementation_fingerprint` (os-dois-ou-nenhum,
+  fim das duas verdades); `goal_status` publica `pending_review_scope` com
+  caminhos e fingerprint que o anexo aceita. Issues #22 #23 #24 #25 (RED
+  5/6 → GREEN 6/6 em `tests/issue-0022-pending-cycle.test.ts`; vigília M1
+  PEGA no recompute). Fiscal INTACTO. Paga o selo do record
+  EMENDA-A2-RESTORATIONDATA-FIX (commit c9a3196 + parent 047e147, blobs
+  conferidos).
 - **Emenda da emenda (restorationData)**: o corpo de `persistFiscalBlock`
   montava o `data` do evento com apenas as 2 chaves antigas — descartava
   `pending_changed_files`/`pending_review_fingerprint` (bloqueio do 5344

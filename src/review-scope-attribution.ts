@@ -239,3 +239,24 @@ export async function applyReviewScopeAttributions(
     changed_files: changedFiles
   });
 }
+
+// Corte B' (issues #22-#25, 2026-11-18): com bloqueio fiscal pendente, o
+// anexo de review consulta a MESMA fonte que o fiscal vai exigir no retry —
+// corroboração Git + attribution VIGENTE (adotáveis pelo mesmo crivo), e não
+// o escopo congelado do primeiro bloqueio (#25). Quando o recompute lança
+// (attribution insuficiente, binding vencido), cai na união persistido∪pending
+// — o comportamento da Emenda A2, com o verdict seguindo como autoridade.
+export async function pendingAttachScope(
+  flow: Flow,
+  pendingScope: { changed_files: string[]; fingerprint: string } | null
+): Promise<Flow> {
+  if (!pendingScope) return flow;
+  try {
+    return await applyReviewScopeAttributions(flow, await withGitCorroboratedChangedFiles(flow));
+  } catch {
+    return {
+      ...flow,
+      changed_files: Array.from(new Set([...flow.changed_files, ...pendingScope.changed_files]))
+    };
+  }
+}

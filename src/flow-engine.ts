@@ -60,7 +60,7 @@ import { normalizePipelineItem, pipelineEvidenceText } from "./pipeline-policy.j
 import { assertCompatibleGoalBinding } from "./goal-binding-compat.js";
 import { sptBindingIntegrityFor } from "./provenance-trace.js";
 import { freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, pendingReviewScopeForAttach, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles, withRestoredBlockedVerdictSnapshot } from "./review-snapshot.js";
-import { applyReviewScopeAttributions, attributedVerdictSnapshot, bindReviewScopeAttribution, collectAdoptableAttributionIds, prepareVerdictSnapshot, type GoalVerdictInput } from "./review-scope-attribution.js";
+import { applyReviewScopeAttributions, attributedVerdictSnapshot, bindReviewScopeAttribution, collectAdoptableAttributionIds, pendingAttachScope, prepareVerdictSnapshot, type GoalVerdictInput } from "./review-scope-attribution.js";
 import { normalizeRecallConsumptionInput, sameRecallReferences, validateRecallConsumptionReferences, type RecallConsumptionInput } from "./memory/recall-consumption-contract.js";
 import { assertGovernedTag } from "./memory/governed-tag.js";
 import { blockerSignature, hasVerdictAfterLatestMemoryMining, memoryPostWriteValidationBlocks, memoryRequiredByFlow, noMemoryWasPromoted, numericMemoryField, requireV2PromotionMetadata, type FiscalVerdictInput } from "./memory/mining-policy.js";
@@ -845,6 +845,23 @@ export class FlowEngine {
     const runtimeLayoutStatus = await this.store.runtimeLayoutStatus();
     const workProgress = workProgressSummary(flow);
     const pendingReview = pendingReviewAdditionsFor(flow, "full");
+    // Issue #22: escopo que o cliente deve atestar após o bloqueio — os
+    // caminhos e o fingerprint publicados são os que o anexo aceita. Pela
+    // MESMA fonte do anexo (pendingAttachScope, corte B'): o escopo VIGENTE
+    // recomputado; se o strict não computa, cai no pending do evento.
+    const pendingReviewScopeRaw = pendingReviewScopeForAttach(flow);
+    let pendingReviewScope = pendingReviewScopeRaw;
+    if (pendingReviewScopeRaw) {
+      try {
+        const vigente = await pendingAttachScope(flow, pendingReviewScopeRaw);
+        pendingReviewScope = {
+          changed_files: vigente.changed_files,
+          fingerprint: await strictReviewSnapshotFingerprint(vigente)
+        };
+      } catch {
+        pendingReviewScope = pendingReviewScopeRaw;
+      }
+    }
     return {
       flow_id: flow.flow_id,
       status: effectiveStatus,
@@ -854,13 +871,16 @@ export class FlowEngine {
       runtime_layout_status: runtimeLayoutStatus,
       memory_writer_runtime: memoryWriterRuntimeSummary(this.options.memory_writer, runtimeLayoutStatus.project_root),
       pending_review_additions: pendingReview,
+      pending_review_scope: pendingReviewScope,
       phase_label: checklistStatus.display.phase_label,
       phase_emoji: checklistStatus.display.phase_emoji,
       checklist: checklistStatus,
       tasks: flow.tasks,
       expected_evidence: flow.expected_evidence,
       done_criteria: flow.done_criteria,
-      implementation_fingerprint: flow.implementation_fingerprint ?? null,
+      // Issue #22: com pendência, publica o fingerprint que o anexo aceita
+      // (o do escopo corroborado registrado no bloqueio); sem pendência, o do flow.
+      implementation_fingerprint: pendingReviewScope?.fingerprint ?? flow.implementation_fingerprint ?? null,
       evidence: flow.evidence.map((evidence) => ({
         evidence_id: evidence.evidence_id,
         kind: evidence.kind,
@@ -3700,21 +3720,31 @@ export class FlowEngine {
       // a redação de sensível não-declarado vale também na atestação estrita.
       // EMENDA A2 — DEADLOCK-ANEXO-FISCAL: com bloqueio fiscal pendente cujo
       // evento registrou o escopo corroborado (commit saiu entre goal_start e
-      // goal_verdict), o anexo valida o fp contra a UNIÃO persistido∪pending
-      // — com worktree estável é exatamente o conjunto que o fiscal exigirá.
-      // Sem bloqueio pendente: comportamento atual exato (fp do persistido).
+      // goal_verdict), o anexo valida o fp contra o escopo pendente.
+      // Corte B' (issues #22-#25): o escopo do anexo deixa de ser o congelado
+      // do primeiro bloqueio — pendingAttachScope recomputa corroboração Git +
+      // attribution VIGENTE (mesmo pipeline do fiscal; fallback união A2).
       const pendingScope = pendingReviewScopeForAttach(flow);
-      const attestationFlow = pendingScope
-        ? { ...flow, changed_files: Array.from(new Set([...flow.changed_files, ...pendingScope.changed_files])) }
-        : flow;
-      const strictFingerprint = await strictReviewSnapshotFingerprint(attestationFlow, { requireReviewableFiles: true });
+      const attestationFlow = await pendingAttachScope(flow, pendingScope);
+      // Issue #24: com pendência, o fp usa as MESMAS opções com que o fiscal
+      // gerou o pending_review_fingerprint (exclusão confirmada pelo Git vira
+      // a mesma representação nos dois lados — nunca FILE_REQUIRED no retry).
+      const strictFingerprint = await strictReviewSnapshotFingerprint(
+        attestationFlow,
+        pendingScope ? {} : { requireReviewableFiles: true }
+      );
       if (!input.reviewed_implementation_fingerprint) {
         throw new Error("REVIEW_SNAPSHOT_FINGERPRINT_REQUIRED: obtain implementation_fingerprint after implementation and attest that exact snapshot");
       }
       if (input.reviewed_implementation_fingerprint !== strictFingerprint) {
         throw new Error("REVIEW_SNAPSHOT_FINGERPRINT_MISMATCH: reviewed snapshot differs from the current implementation");
       }
+      // Issue #23 (os-dois-ou-nenhum, pauta ISSUE-LOCAL-0012): caminhos e
+      // fingerprint são gravados JUNTOS, da MESMA fonte — recarregar o flow e
+      // recalcular devolve exatamente o valor persistido.
       flow.implementation_fingerprint = strictFingerprint;
+      flow.changed_files = attestationFlow.changed_files;
+      flow.deleted_files = attestationFlow.deleted_files ?? flow.deleted_files;
     }
     const now = nowIso();
     // Onda 2: admissao de criterion_proof e politica do SSOT spt-traceability.

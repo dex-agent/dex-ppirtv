@@ -1,3 +1,13 @@
+## Reavaliação — corte B′ ciclo pending completo: issues 22 23 24 25 (2026-11-18)
+
+Delta: review-scope-attribution (pendingAttachScope: recompute corroboração +
+attribution vigente, fallback união A2) + motor (anexo usa a fonte e as opções
+do fiscal; grava changed_files/deleted_files JUNTO com o fingerprint;
+goal_status publica pending_review_scope) + teste novo 6 its + ledger (selo
+RESTORATIONDATA-FIX pago c9a3196/047e147 + record EXCEPTION B′). Fiscal sem
+diff. RED 5/6 → GREEN 6/6; M1 PEGA. Detalhe no receipt
+`reavaliacao_corte_b_prime_pending_cycle_261118`.
+
 ## Reavaliação — fix restorationData (emenda da emenda A2, 2026-11-18)
 
 Delta: motor (spread condicional no restorationData) + ledger (selo
