@@ -5,7 +5,7 @@
       "SCHEMA/dex.spt.v3.schm.md",
       "workflow/manutencao-iterativa-com-evidencia/SCHEMA/SCHEMA.md"
     ],
-    "delta": "Recepção pacote Sincronizacao_2026.11.18 (registry f62adb4f): porta do contrato dex.spt.v3 passa a apontar a porta estável check-schemas/SKILL.md como norma de autoria; workflow SCHEMA mesclado 3 vias (base LF normalizada, 0 conflitos). Espelha issue remota dex-agent/dex-ppirtv#20 (TRACKER local 0014 — .agents gitignored neste repo, item offline)."
+    "delta": "Recepção pacote Sincronizacao_2026.11.18 (registry f62adb4f): o SCHEMA/dex.spt.v3.schm.md aponta a porta estável check-schemas/SKILL.md do registry (norma de autoria); workflow SCHEMA mesclado em 3 vias sem conflito. Issue remota dex-agent/dex-ppirtv#20 (TRACKER local 0014, offline pois .agents/ é gitignored neste repo). Sem mudança de runtime. [emenda a72ee58: seção md reescrita sem backticks devorados pelo shell]"
   },
   "reavaliacao_verdict_attribution_0012_261117": {
     "date": "2026-11-17",

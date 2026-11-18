@@ -2,10 +2,11 @@
 
 ## Reavaliação — recepção pacote schemas 261118: porta dex.spt.v3 + workflow SCHEMA (2026-11-18)
 
-Delta documental da recepção do :  aponta a
-porta estável  (norma de autoria); workflow SCHEMA mesclado em 3 vias
-sem conflito. Issue remota  (TRACKER local 0014, offline pois 
-é gitignored aqui). Sem mudança de runtime.
+Delta documental da recepção do Sincronizacao_2026.11.18 (registry f62adb4f): o
+SCHEMA/dex.spt.v3.schm.md aponta a porta estável check-schemas/SKILL.md do registry
+(norma de autoria); workflow SCHEMA mesclado em 3 vias sem conflito. Issue remota
+dex-agent/dex-ppirtv#20 (TRACKER local 0014, offline pois .agents/ é gitignored
+aqui). Sem mudança de runtime.
 
 ## Reavaliação — cura ISSUE-LOCAL-0012: verdict reutiliza attribution + restauro atômico (2026-11-17)
 
