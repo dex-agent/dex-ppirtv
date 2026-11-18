@@ -1,4 +1,12 @@
 {
+  "reavaliacao_recepcao_schemas_261118": {
+    "date": "2026-11-18",
+    "scope": [
+      "SCHEMA/dex.spt.v3.schm.md",
+      "workflow/manutencao-iterativa-com-evidencia/SCHEMA/SCHEMA.md"
+    ],
+    "delta": "Recepção pacote Sincronizacao_2026.11.18 (registry f62adb4f): porta do contrato dex.spt.v3 passa a apontar a porta estável check-schemas/SKILL.md como norma de autoria; workflow SCHEMA mesclado 3 vias (base LF normalizada, 0 conflitos). Espelha issue remota dex-agent/dex-ppirtv#20 (TRACKER local 0014 — .agents gitignored neste repo, item offline)."
+  },
   "reavaliacao_verdict_attribution_0012_261117": {
     "date": "2026-11-17",
     "scope": [

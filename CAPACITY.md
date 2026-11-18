@@ -1,5 +1,12 @@
 
 
+## Reavaliação — recepção pacote schemas 261118: porta dex.spt.v3 + workflow SCHEMA (2026-11-18)
+
+Delta documental da recepção do :  aponta a
+porta estável  (norma de autoria); workflow SCHEMA mesclado em 3 vias
+sem conflito. Issue remota  (TRACKER local 0014, offline pois 
+é gitignored aqui). Sem mudança de runtime.
+
 ## Reavaliação — cura ISSUE-LOCAL-0012: verdict reutiliza attribution + restauro atômico (2026-11-17)
 
 Delta: 4 arquivos src (review-scope-attribution, verdict-fiscal-policy,

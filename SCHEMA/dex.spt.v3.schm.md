@@ -3,11 +3,13 @@ schema: dex.spt.v3
 versao: 1
 status: ativo
 dono: dex-PPIRTV
-fonte-viva: 'contracts/GOAL_SPT_CANONICAL_CONTRACT.md (contrato) + src/spt-contract.ts (zod executavel) + templates/SPEC-PLAN-TASKS.template.md (template) + spt-kit/ (molde, regras, guia, preflight)'
+fonte-viva: 'docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md (contrato) + src/spt-contract.ts (zod executavel) + templates/SPEC-PLAN-TASKS.template.md (template) + spt-kit/ (molde, regras, guia, preflight)'
 registro: 'rev 3 (2026-11-06, corte spt-kit-cobertura-total: header do MOLDE inequivoco — copiar o BLOCO YAML, nunca o arquivo integral, que gera S00; GUIA e contratos alinhados; preflight ganha S00 com diagnostico, tolerancia a BOM e S10 de shape dos 21 campos); rev 2 (2026-10-31, cura uncertainties — molde ensinava remover campo que o schema exige min 1 item; GO do dono, Trilho skills 2026-10-31-mover-porta-padrao); MOLDE.md sha256:a7e2a2be453f0a4d8bfaa3b15e85b67652d3b338659fb042773b106a829666a9'
 ---
 
 # dex.spt.v3 — Trilho/SPT SPEC-PLAN-TASKs versão 3
+
+Para autoria na casa, consulte `check-schemas/SKILL.md` no registry. O [contrato de execução SPT](../docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md) e o [validador Zod](../src/spt-contract.ts) definem esta interface.
 
 ## Identificação
 

@@ -3,7 +3,7 @@
 - Schema especifico local: [dex.workflow.ppirtv.manutencao.config.v1](dex.workflow.ppirtv.manutencao.config.v1.schm.md).
 - Contrato generico herdado: projecao em references/dex.workflow.manutencao-iterativa-com-evidencia.v1.schm.md; fonte dona permanece no template global.
 - Schema base do pacote: `dex.workflow.v1`, cuja fonte viva pertence à skill `dex-criar-workflow-contexto-atual`; não copiar a fonte para este pacote.
-- Schemas adicionais: cada um usa nome do schema com extensao .schm.md; aplicar padrao-schema-casa-v3 da skill check-schemas. Schema transversal mora na skill owner; projecao necessaria ao cold-start fica em references, nunca como segunda fonte em SCHEMA.
+- Para criar ou revisar schemas adicionais, consulte `check-schemas/SKILL.md` no registry de skills da casa. A porta indica o padrão vigente.
 - Contato: consumir dex.contact-resume.v1 da skill dex-criar-workflow-contexto-atual; regras operacionais no references/CONTACT-RESUME.md do pacote.
 
 ## Contrato
