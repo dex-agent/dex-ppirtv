@@ -8,6 +8,13 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **Emenda da emenda (restorationData)**: o corpo de `persistFiscalBlock`
+  montava o `data` do evento com apenas as 2 chaves antigas — descartava
+  `pending_changed_files`/`pending_review_fingerprint` (bloqueio do 5344
+  veio sem pending ao vivo). Corrigido com spread condicional; selo do
+  record EMENDA-A2 pago (047e147 + parent ae11cfa) + record EXCEPTION do
+  delta.
+
 ## Emenda A2: anexo de review aceita o escopo corroborado pendente — fim do deadlock anexo×fiscal (2026-11-18, flow 5384)
 
 - **DEADLOCK-ANEXO-FISCAL curado pelo ponto de intercepção** (veredito

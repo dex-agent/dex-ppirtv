@@ -1,4 +1,12 @@
 {
+  "reavaliacao_emenda_a2_restorationdata_261118": {
+    "date": "2026-11-18",
+    "scope": [
+      "src/flow-engine.ts",
+      "docs/architecture/flow-engine-evolution.json"
+    ],
+    "delta": "Fix restorationData: persistFiscalBlock montava data do evento com 2 chaves antigas e descartava pending_changed_files/pending_review_fingerprint (pegueiro ao vivo no bloqueio do flow 5344). Spread condicional. Selo EMENDA-A2 pago (047e147/ae11cfa blobs conferidos) + record EXCEPTION do delta."
+  },
   "reavaliacao_emenda_a2_261118": {
     "date": "2026-11-18",
     "scope": [

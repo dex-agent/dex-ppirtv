@@ -157,18 +157,26 @@ describe("C-2: e2e strict — espaçado não congela entry quotada", () => {
     expect(pendingAdditions.some((file) => /^".*"$/s.test(file))).toBe(false);
     // A review estrutural strict anexa sobre o fp corrente SEM FILE_REQUIRED
     // (o espaçado real é hasheado; nada de path impossível com aspas).
+    // EMENDA A2 (2026-11-18): com bloqueio fiscal pendente registrando o
+    // escopo corroborado, a review cobre a UNIÃO persistido∪pending (o
+    // conjunto que o fiscal exigirá) — o contrato anterior (review contra o
+    // snapshot restaurado) era o lado-anexo do deadlock anexo×fiscal.
     const status = (await engine.goalStatus({ flow_id: flowId, detail: "full" })) as Record<string, unknown>;
     const fingerprint = String(status.implementation_fingerprint);
     expect(fingerprint).toBe(await strictReviewSnapshotFingerprint(await engine.store.loadFlow(flowId)));
     expect(fingerprint).toMatch(/^sha256:[a-f0-9]{64}$/);
+    const pendingFiles = (blockData?.pending_changed_files as string[] | undefined) ?? [];
+    const uniao = Array.from(new Set([...persisted.changed_files, ...pendingFiles]));
+    const uniaoFlow = { ...(await engine.store.loadFlow(flowId)), changed_files: uniao };
+    const fingerprintUniao = await strictReviewSnapshotFingerprint(uniaoFlow);
     await engine.attachEvidence({
       flow_id: flowId, kind: "code_review", title: "Review estrutural fixture",
       scope_classification: "target", scope_reference: "src/review-snapshot.ts",
-      reviewed_implementation_fingerprint: fingerprint,
+      reviewed_implementation_fingerprint: fingerprintUniao,
       satisfies: ["diff_reviewed", "barata_scan", "regression_risks"],
       observed_result: {
         diff_reviewed: true, barata_scan: true,
-        reviewed_targets: persisted.changed_files,
+        reviewed_targets: uniao,
         searched_patterns: ["porcelain quoting", "diff name-only"], findings: [],
         regression_risks: ["fixture"]
       }

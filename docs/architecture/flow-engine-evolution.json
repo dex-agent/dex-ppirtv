@@ -2181,6 +2181,8 @@
       "mode": "EXCEPTION",
       "base_blob": "7ae5fd51e4022991199378e4429588b43e8c9158",
       "head_blob": "e2de65e8068bc5d0754e1c7fdae56b5fd90eb430",
+      "commit": "047e147a30c13ad392b87cbb1e68d86cbc960ab6",
+      "parent_commit": "ae11cfa6fa39667891ac70201002dc7ae5f9db2d",
       "spt_path": ".agents/PLAN-TASKS/2026-11-18-emenda-a2-deadlock-anexo-fiscal.md",
       "responsibility": "Anexo de review aceita o escopo corroborado registrado como pending no bloqueio fiscal; fiscal intacto.",
       "owner": "$oraculo-refatoracao",
@@ -2204,6 +2206,34 @@
       "red_base_blob": "7ae5fd51e4022991199378e4429588b43e8c9158",
       "red_observed_failure": "RED 2/4 no base 7ae5fd51: o anexo de review validava o fingerprint contra o conjunto persistido-restaurado enquanto o fiscal valida contra o corroborado-recomputado (commit entre goal_start e goal_verdict) — nenhuma review satisfazia ambos; o ciclo de retry do flow 5344 ficou preso em review_required com 4 reviews validas rejeitadas por um dos dois lados.",
       "red_command": "npx vitest run tests/emenda-a2-deadlock.test.ts -t cura ciclo pendingReviewScopeForAttach devolve o escopo do ultimo bloqueio pendente"
+    },
+    {
+      "id": "FE-2026-11-18-EMENDA-A2-RESTORATIONDATA-FIX",
+      "date": "2026-11-18",
+      "mode": "EXCEPTION",
+      "base_blob": "e2de65e8068bc5d0754e1c7fdae56b5fd90eb430",
+      "head_blob": "6855abec1ca270c429d8f319e742254ab6a6de97",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-18-emenda-a2-deadlock-anexo-fiscal.md",
+      "responsibility": "Evento de bloqueio fiscal persiste o escopo corroborado pending integralmente (restorationData com spread condicional).",
+      "owner": "$oraculo-refatoracao",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/emenda-a2-deadlock.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/emenda-a2-deadlock.test.ts": "cura ciclo fingerprint da uniao persistido com pending iguala o corroborado"
+      },
+      "changelog_marker": "restorationData",
+      "architecture_marker": "FE-2026-11-18-EMENDA-A2-RESTORATIONDATA-FIX",
+      "exception_reason": "integrity",
+      "rollback": "Reverta o spread condicional de pending_changed_files e pending_review_fingerprint no restorationData para restaurar o comportamento anterior.",
+      "expires": "next diff that touches src/flow-engine.ts",
+      "red_evidence": "tests/emenda-a2-deadlock.test.ts::cura ciclo fingerprint da uniao persistido com pending iguala o corroborado",
+      "red_base_blob": "e2de65e8068bc5d0754e1c7fdae56b5fd90eb430",
+      "red_observed_failure": "Bloqueio real do flow 5344 apos a emenda A2 veio SEM pending_review_fingerprint no evento: persistFiscalBlock montava restorationData com as 2 chaves antigas e descartava os campos novos da chamada — ciclo A2 morto na pratica (pega ao vivo).",
+      "red_command": "npx vitest run tests/emenda-a2-deadlock.test.ts -t cura ciclo fingerprint da uniao persistido com pending iguala o corroborado"
     }
   ]
 }

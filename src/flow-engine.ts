@@ -4206,7 +4206,9 @@ export class FlowEngine {
     const restorationData = restoration
       ? {
           pending_review_additions: restoration.pending_review_additions,
-          restored_changed_files_from: restoration.restored_changed_files_from
+          restored_changed_files_from: restoration.restored_changed_files_from,
+          ...(Array.isArray(restoration.pending_changed_files) ? { pending_changed_files: restoration.pending_changed_files } : {}),
+          ...(typeof restoration.pending_review_fingerprint === "string" ? { pending_review_fingerprint: restoration.pending_review_fingerprint } : {})
         }
       : {};
     const blockData = {

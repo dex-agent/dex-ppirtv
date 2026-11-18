@@ -1,3 +1,8 @@
+## Reavaliação — fix restorationData (emenda da emenda A2, 2026-11-18)
+
+Delta: motor (spread condicional no restorationData) + ledger (selo
+EMENDA-A2 + record do delta). Receipt `reavaliacao_emenda_a2_restorationdata_261118`.
+
 ## Reavaliação — Emenda A2 deadlock anexo×fiscal (2026-11-18)
 
 Delta: review-snapshot (pendingReviewScopeForAttach pura) + motor (bloqueio
