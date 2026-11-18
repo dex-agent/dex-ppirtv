@@ -1,3 +1,11 @@
+## Reavaliação — Corte A issue #21 attribution (2026-11-18)
+
+Delta: review-scope-attribution (snapshot sempre no positivo + crivo de colisão
+extraído + DECLARED_PATH nomeia paths) + verdict-fiscal-policy (hint 3º
+parâmetro) + motor 1 sítio (hint recebe adotáveis) + teste novo 8 its +
+ledger (selo D50B1 + record EXCEPTION). Detalhe no receipt
+`reavaliacao_issue21_corte_a_261118`.
+
 
 
 ## Reavaliação — recepção pacote schemas 261118: porta dex.spt.v3 + workflow SCHEMA (2026-11-18)

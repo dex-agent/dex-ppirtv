@@ -39,9 +39,12 @@ const bindingSchema = z.object({
   fingerprint: z.string().startsWith("sha256:")
 });
 
+// Issue #21 P1-1 (2026-11-18): TODO veredito positivo carrega o flow avaliado
+// para a gravação — a conferência de versão do prepareVerdictSnapshot não pode
+// existir só na citação explícita (o modo automático avaliava uma revisão e
+// gravava outra). Com arquivos estáveis ambos os modos gravam o mesmo resultado.
 export function attributedVerdictSnapshot(input: GoalVerdictInput, flow: Flow): Flow | undefined {
-  return isPositiveVerdict(input.status)
-    && input.scope_attribution_evidence_ids?.length ? flow : undefined;
+  return isPositiveVerdict(input.status) ? flow : undefined;
 }
 
 export async function prepareVerdictSnapshot(current: Flow, validated?: Flow): Promise<Flow> {
@@ -103,8 +106,13 @@ function protectedReviewPaths(flow: Flow): Set<string> {
 
 function assertExternalPaths(flow: Flow, paths: string[]): void {
   const protectedPaths = protectedReviewPaths(flow);
-  if (paths.some((value) => protectedPaths.has(value))) {
-    throw new Error("REVIEW_SCOPE_DECLARED_PATH: a declared or frozen flow path cannot be excluded");
+  // Issue #21 C-06: o erro nomeia os paths ofensivos (molde 0003/D-34) — erro
+  // acionável em vez de bloqueio mudo. A chave do reason permanece exata.
+  const offending = paths.filter((value) => protectedPaths.has(value));
+  if (offending.length > 0) {
+    throw new Error("REVIEW_SCOPE_DECLARED_PATH: a declared or frozen flow path cannot be excluded"
+      + "; offending_paths: " + offending.slice(0, OFFENDING_PATHS_LIMIT).map(quoteOffendingPath).join(", ")
+      + "; incorporate the path into the reviewed scope or attach a fresh review_scope_attribution excluding only external paths");
   }
 }
 
@@ -161,6 +169,27 @@ async function attributionBindingCurrent(
   return binding.data.fingerprint === await excludedPathsFingerprint(workspace, paths);
 }
 
+// Issue #21 P3-9 (2026-11-18): os ids adotáveis são o resultado do MESMO crivo
+// async da adoção automática — extraídos em função pequena para o hint do
+// fiscal oferecer somente o que a validação aceitaria (nunca um ID vencido).
+// Issue #21 P2-5: exclusão histórica que colide com path AGORA declarado não é
+// adotável — o arquivo foi incorporado ao escopo e a exclusão virou história.
+export async function collectAdoptableAttributionIds(flow: Flow): Promise<string[]> {
+  const workspace = flow.goal_binding!.envelope.workspace;
+  const protectedPaths = protectedReviewPaths(flow);
+  const adotaveis: string[] = [];
+  for (const evidence of flow.evidence) {
+    if (evidence.flow_id !== flow.flow_id || evidence.kind !== "review_scope_attribution" || evidence.scope_classification !== "outside") continue;
+    if (!(await attributionBindingCurrent(evidence, workspace, flow))) continue;
+    const attribution = attributionSchema.safeParse(evidence.observed_result);
+    if (!attribution.success) continue;
+    const colide = attribution.data.excluded_paths
+      .some((entry) => protectedPaths.has(canonicalPath(workspace, entry.path)));
+    if (!colide) adotaveis.push(evidence.evidence_id);
+  }
+  return adotaveis;
+}
+
 export async function applyReviewScopeAttributions(
   flow: Flow,
   corroborated: Flow,
@@ -171,13 +200,16 @@ export async function applyReviewScopeAttributions(
     // ISSUE-LOCAL-0012: verdict sem citação reutiliza attribution aprovada
     // com binding válido (janela paralela não re-traz alheios). As adotadas
     // passam pelo MESMO crivo do loop abaixo — duplicata intencional.
-    const adotadas: string[] = [];
-    for (const evidence of flow.evidence) {
-      if (evidence.flow_id !== flow.flow_id || evidence.kind !== "review_scope_attribution" || evidence.scope_classification !== "outside") continue;
-      if (await attributionBindingCurrent(evidence, workspace, flow)) adotadas.push(evidence.evidence_id);
+    // Issue #21 P2-5: colidentes com path agora declarado não são adotadas —
+    // o arquivo incorporado PERMANECE no escopo (a ampliação vira revisa
+    // pendente, nunca exclusão silenciosa).
+    evidenceIds = await collectAdoptableAttributionIds(flow);
+    if (evidenceIds.length === 0) {
+      // Issue #21 P1-1: o fingerprint devolvido é o do conjunto corroborado
+      // ATUAL (pós-ampliação git) — a asserção da gravação (prepareVerdictSnapshot,
+      // Introduzir Asserção) compara avaliado↔gravado sem falso positivo.
+      return withCurrentImplementationFingerprint(corroborated);
     }
-    if (adotadas.length === 0) return corroborated;
-    evidenceIds = adotadas;
   }
   const exclusions = new Set<string>();
   for (const evidenceId of new Set(evidenceIds)) {

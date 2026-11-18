@@ -53,15 +53,27 @@ export interface FiscalPolicyDeps {
 // review_required ganha na MENSAGEM o nome do campo e os ids reutilizáveis —
 // o reason-string permanece exato (8+ sítios casam "review_required" por
 // igualdade; a cura nunca muda a chave, só ensina o operador).
-export function attributionHint(flow: Flow, scopeAttributionEvidenceIds?: string[]): string | null {
+// Issue #21 P3-9 (2026-11-18): com os ids adotáveis informados (resultado do
+// crivo async collectAdoptableAttributionIds), o hint oferece SÓ o que a
+// validação aceitaria; existindo vencida não citada, orienta a renovação —
+// nunca recomenda um ID que a citação explícita rejeitaria.
+export function attributionHint(flow: Flow, scopeAttributionEvidenceIds?: string[], reusableIds?: string[]): string | null {
   if (!Array.isArray(flow.evidence)) return null;
   const citados = new Set(scopeAttributionEvidenceIds ?? []);
-  const reutilizaveis = flow.evidence
+  const candidates = flow.evidence
     .filter((item) => item.kind === "review_scope_attribution"
       && item.scope_classification === "outside"
       && !citados.has(item.evidence_id))
     .map((item) => item.evidence_id);
-  if (reutilizaveis.length === 0) return null;
+  if (candidates.length === 0) return null;
+  if (Array.isArray(reusableIds)) {
+    const utilizaveis = candidates.filter((id) => reusableIds.includes(id));
+    if (utilizaveis.length > 0) {
+      return `attribution aprovada reutilizavel: cite scope_attribution_evidence_ids (${utilizaveis.join(", ")})`;
+    }
+    return `attribution vencida: renove a evidence review_scope_attribution antes de citar (${candidates.join(", ")}) — o binding atual rejeitaria estes ids`;
+  }
+  const reutilizaveis = candidates;
   return `attribution aprovada reutilizavel: cite scope_attribution_evidence_ids (${reutilizaveis.join(", ")})`;
 }
 

@@ -1,4 +1,15 @@
 {
+  "reavaliacao_issue21_corte_a_261118": {
+    "date": "2026-11-18",
+    "scope": [
+      "src/review-scope-attribution.ts",
+      "src/verdict-fiscal-policy.ts",
+      "src/flow-engine.ts",
+      "tests/issue-0021-attribution.test.ts",
+      "docs/architecture/flow-engine-evolution.json"
+    ],
+    "delta": "Corte A issue #21 (GO do dono no quiz): P1-1 attributedVerdictSnapshot positivo sempre devolve flow + early-return recomputa fp do corroborado (assercao da gravacao nos 2 modos, Introduce Assertion autenticado ptbr-2019-2ed l.1018); P2-5 collectAdoptableAttributionIds extraida com predicado de colisao (arquivo incorporado permanece) + assertExternalPaths nomeia offending_paths; P3-9 hint com 3o parametro opcional reutilizaveis (assimatura sync preservada, teste 0012 verde sem edicao). Motor 1 sitio (hint l.2621). RED 5/7 -> GREEN 13/13; M1 PEGA (crivo colisao, 3 failed); selo D50B1 pago 2336e3a+9c23533 blobs conferidos."
+  },
   "reavaliacao_onda_verdict_d50b1_261118": {
     "date": "2026-11-18",
     "scope": [

@@ -60,7 +60,7 @@ import { normalizePipelineItem, pipelineEvidenceText } from "./pipeline-policy.j
 import { assertCompatibleGoalBinding } from "./goal-binding-compat.js";
 import { sptBindingIntegrityFor } from "./provenance-trace.js";
 import { freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles, withRestoredBlockedVerdictSnapshot } from "./review-snapshot.js";
-import { applyReviewScopeAttributions, attributedVerdictSnapshot, bindReviewScopeAttribution, prepareVerdictSnapshot, type GoalVerdictInput } from "./review-scope-attribution.js";
+import { applyReviewScopeAttributions, attributedVerdictSnapshot, bindReviewScopeAttribution, collectAdoptableAttributionIds, prepareVerdictSnapshot, type GoalVerdictInput } from "./review-scope-attribution.js";
 import { normalizeRecallConsumptionInput, sameRecallReferences, validateRecallConsumptionReferences, type RecallConsumptionInput } from "./memory/recall-consumption-contract.js";
 import { assertGovernedTag } from "./memory/governed-tag.js";
 import { blockerSignature, hasVerdictAfterLatestMemoryMining, memoryPostWriteValidationBlocks, memoryRequiredByFlow, noMemoryWasPromoted, numericMemoryField, requireV2PromotionMetadata, type FiscalVerdictInput } from "./memory/mining-policy.js";
@@ -2618,8 +2618,15 @@ export class FlowEngine {
           : "";
         // ISSUE-LOCAL-0012 (erro-que-ensina): o reason-string permanece exato;
         // a MENSAGEM nomeia o campo quando existe attribution reutilizável.
+        // Issue #21 P3-9: o hint recebe os ids adotáveis do MESMO crivo async
+        // da adoção — só oferece o que a citação explícita aceitaria; vencida
+        // presente vira orientação de renovação, nunca recomendação morta.
         const attributionRetryHint = fiscal.blocking_reasons.includes("review_required")
-          ? attributionHint(fiscalFlow, input.scope_attribution_evidence_ids)
+          ? attributionHint(
+            fiscalFlow,
+            input.scope_attribution_evidence_ids,
+            await collectAdoptableAttributionIds(fiscalFlow)
+          )
           : null;
         const attributionRetrySuffix = attributionRetryHint ? `; ${attributionRetryHint}` : "";
         throw new Error(`PPIRTV_FISCAL_BLOCKED: ${fiscal.blocking_reasons.join(", ")}; ${fiscalStateSegment(countHistory(fiscalFlow, "verdict_recorded"), countRegressions(fiscalFlow), FISCAL_CONFIG.maxRegressions, meetings.length)}; required_cooperation=${fiscal.required_cooperation.map((item) => item.name).join("|")}${meetingRetryHint}${attributionRetrySuffix}`);

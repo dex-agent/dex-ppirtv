@@ -2117,6 +2117,8 @@
       "mode": "EXCEPTION",
       "base_blob": "00bbd6597e28f9cd520af5bbb0f6c56f9b067686",
       "head_blob": "34ffabc47cee0920088a73b16fe7916647b96edc",
+      "commit": "2336e3acdbc9115c99fa2addb2511a9e003c4d9b",
+      "parent_commit": "9c235335f180814b005df1dc2c8d0628ab816adb",
       "spt_path": ".agents/PLAN-TASKS/2026-11-18-onda-cluster-verdict-d50b1.md",
       "responsibility": "Decisao de verdict-positivo consolidada na fonte unica domain.isPositiveVerdict nos 8 sitios restantes do motor (7 pares + 1 negado).",
       "owner": "$oraculo-refatoracao",
@@ -2140,6 +2142,36 @@
       "red_base_blob": "00bbd6597e28f9cd520af5bbb0f6c56f9b067686",
       "red_observed_failure": "RED 3/5 no baseline 00bbd659: o it zero pares inline esperava 0 e achou 8 pares de pronto OU pronto_com_ressalvas no motor; motor consumia isPositiveVerdict 0 vezes (import inexistente); decisao de verdict-positivo morava em 8 sitios inline com a fonte unica domain.ts ja existindo desde o D-50b (5/13 sitios migrados, 8 estacionados).",
       "red_command": "npx vitest run tests/onda-verdict-d50b1.test.ts -t \"zero pares inline de pronto OU pronto_com_ressalvas no motor\""
+    },
+    {
+      "id": "FE-2026-11-18-ISSUE21-ATTRIBUTION-CORTE-A",
+      "date": "2026-11-18",
+      "mode": "EXCEPTION",
+      "base_blob": "34ffabc47cee0920088a73b16fe7916647b96edc",
+      "head_blob": "7ae5fd51e4022991199378e4429588b43e8c9158",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-18-issue21-attribution-corte-a.md",
+      "responsibility": "Snapshot de versao do veredito positivo e assinatura incondicional nos dois modos; adocao automatica nunca promove exclusao colidente; hint oferece so ids utilizaveis.",
+      "owner": "$oraculo-refatoracao",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/issue-0021-attribution.test.ts",
+        ".agents/AUDITORIAS/2026-11-18-issue21-corte-a/RED-vitest.txt",
+        ".agents/AUDITORIAS/2026-11-18-issue21-corte-a/MUTACOES/m1-crivo.json"
+      ],
+      "evidence_selectors": {
+        "tests/issue-0021-attribution.test.ts": "cura P1-1 modo automatico rejeita gravacao quando bytes mudam apos a avaliacao"
+      },
+      "changelog_marker": "as 3 falhas de attribution curadas",
+      "architecture_marker": "FE-2026-11-18-ISSUE21-ATTRIBUTION-CORTE-A",
+      "exception_reason": "integrity",
+      "rollback": "Reverta o retorno incondicional de attributedVerdictSnapshot, o predicado de colisao e a recomputacao de fingerprint em collectAdoptableAttributionIds, o sufixo offending_paths em assertExternalPaths, o 3o parametro do attributionHint e a chamada collectAdoptableAttributionIds no motor para restaurar o comportamento anterior.",
+      "expires": "next diff that touches src/flow-engine.ts",
+      "red_evidence": "tests/issue-0021-attribution.test.ts::cura P1-1 modo automatico rejeita gravacao quando bytes mudam apos a avaliacao",
+      "red_base_blob": "34ffabc47cee0920088a73b16fe7916647b96edc",
+      "red_observed_failure": "RED 5/7 no base 34ffabc4 (repros da issue #21 publicadas): o modo automatico de prepareVerdictSnapshot aceitava gravacao com fingerprint mudado apos a avaliacao (avaliava uma revisao e gravava outra); a exclusao historica colidente com path incorporado travava com REVIEW_SCOPE_DECLARED_PATH sem nomear path nos 3 modos; attributionHint oferecia id e1 que a citacao explicita rejeitava com REVIEW_SCOPE_ATTRIBUTION_STALE.",
+      "red_command": "npx vitest run tests/issue-0021-attribution.test.ts -t cura P1-1 modo automatico rejeita gravacao quando bytes mudam apos a avaliacao"
     }
   ]
 }

@@ -8,6 +8,29 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+## Corte A da issue #21: as 3 falhas de attribution curadas + selo D50B1 pago (2026-11-18, flow 5344)
+
+- **P1-1** — veredito positivo carrega o flow avaliado para a gravação
+  SEMPRE (`attributedVerdictSnapshot`), e a adoção automática devolve o
+  fingerprint recomputado do conjunto corroborado: `prepareVerdictSnapshot`
+  confere avaliado↔gravado nos DOIS modos (Introduzir Asserção, Fowler 2ª ed
+  PT-BR p.267 zona range_0241_0300 l.1018 — autenticado pelo $oraculo-refatoracao
+  com grafo rico 605n exit 0 + FTS5/RG no fulltext). Fim do "avalia uma
+  revisão, grava outra".
+- **P2-5** — exclusão histórica colidente com path agora declarado não é
+  adotada (`collectAdoptableAttributionIds` extraída com predicado de
+  colisão): o arquivo incorporado PERMANECE no escopo (ampliação vira revisa
+  pendente); `assertExternalPaths` nomeia `offending_paths` e orienta a ação
+  (molde 0003/D-34 — chave do reason exata).
+- **P3-9** — `attributionHint` recebe os ids adotáveis do MESMO crivo async
+  (3º parâmetro opcional, assinatura sync preservada): só oferece o que a
+  citação aceitaria; vencida presente vira orientação de renovação.
+- **Selo pago**: record `FE-2026-11-18-VERDICT-CLUSTER-SWAP-D50B1` ganha
+  `commit` 2336e3a + `parent` 9c23533 (blobs conferidos) — vencimento era
+  exatamente "próximo commit que tocar o motor". RED 5/7 → GREEN 13/13
+  (caracterizações 0012 preservadas); vigília M1 PEGA (crivo de colisão).
+  Cortes B (camping), C (hooks merge), D (principles+TOOLSBOOK) na fila.
+
 ## Onda do cluster verdict: 8 sítios inline migram para isPositiveVerdict + 2 selos pagos (2026-11-18, flow 5287)
 
 - **EST-D50B-1 RESOLVIDO**: os 8 sítios de par-positivo inline do motor
