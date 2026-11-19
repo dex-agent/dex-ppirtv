@@ -15,7 +15,9 @@ const ARCHITECTURE_PATH = "docs/architecture/FLOW_ENGINE_EVOLUTION.md";
 // stays valid so the immutable ledger history and its replay keep passing.
 const EXPECTED_OWNER = "$oraculo-refatoracao";
 const CAMPING_OWNERS = new Set(["$refactoring-fowler-rich", "$oraculo-refatoracao"]);
-const ALLOWED_MODES = new Set(["SHRINK", "CONTAIN", "EXCEPTION", "PRUNE"]);
+// Issue #21 P2-7: vocabulário VIVO exportado — o vigia de tests/ prova que o
+// espelho d.mts cobre todos os modos (o 5º modo esquecido pega RED sozinho).
+export const ALLOWED_MODES = new Set(["SHRINK", "CONTAIN", "EXCEPTION", "PRUNE"]);
 const EXCEPTION_REASONS = new Set(["integrity", "security", "public_compatibility", "urgent_hotfix"]);
 
 export function analyzeFlowEngineSource(source) {
@@ -414,6 +416,13 @@ export function evaluateFlowEngineChange({ baseSource, headSource, declaration, 
     }
     if (removedSymbols.some((name) => !nonEmptyStrings(deathProofs[name]))) {
       reasons.push("PRUNE_REQUIRES_DEATH_PROOF");
+    }
+    // Issue #21 P1-3: remoção REAL do diff fora da declaração reprova com o
+    // símbolo pendente nomeado — o recibo não assina morte sem prova.
+    for (const name of metrics.symbols.removed) {
+      if (!removedSymbols.includes(name)) {
+        reasons.push(`PRUNE_SYMBOL_UNDECLARED:${name}`);
+      }
     }
     if (nonEmptyString(declaration?.destination_module)) reasons.push("PRUNE_FORBIDS_DESTINATION_MODULE");
     if (metrics.decision_points.delta > 0) reasons.push("PRUNE_ADDED_DECISION_POINT");

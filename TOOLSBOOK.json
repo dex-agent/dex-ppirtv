@@ -363,7 +363,8 @@
         "camping-fiscal-semantico",
         "selo-de-record",
         "red-evidence-por-seletor-de-it",
-        "evidence-nao-versionada (.agents/) reprovada mesmo existindo no disco (gate EVIDENCE_NOT_VERSIONED, CI run 44505736533)"
+        "evidence-nao-versionada (.agents/) reprovada mesmo existindo no disco (gate EVIDENCE_NOT_VERSIONED, CI run 44505736533)",
+        "prune exige prova por simbolo (PRUNE_SYMBOL_UNDECLARED:<nome> — remocao real fora da declaracao reprova)"
       ],
       "not_for": [
         "visitas que nao tocam o arquivo (NOT_APPLICABLE)"
@@ -377,7 +378,7 @@
         "fonte l.433-446/l.1158-1229"
       ],
       "sources": {
-        "scripts/validate-flow-engine-boundary.mjs": "369b94ea3b5f63eb22cb751272ad87ebe56756021468d9dbedb7e03949a0e146"
+        "scripts/validate-flow-engine-boundary.mjs": "e40f1d918e5f46cd08f43eca5166a5d369ee154dfba66a3089559687b0bb2af1"
       }
     },
     {

@@ -1,4 +1,13 @@
 {
+  "reavaliacao_corte_b_issue21_261119": {
+    "date": "2026-11-19",
+    "scope": [
+      "scripts/validate-flow-engine-boundary.mjs",
+      "scripts/validate-flow-engine-boundary.d.mts",
+      "tests/issue-0021-corte-b.test.ts"
+    ],
+    "delta": "Corte B issue 21 (GO-PADRAO): P1-3 o modo PRUNE do fiscal do camping aprovava remocao de codigo morto sem prova — remover N metodos e declarar 1 dava PASS com os N no recibo (bloco l.406-422 validava so o DECLARADO; remocoes reais metrics.symbols.removed nunca confrontadas; repro da issue reproduzida ao vivo no HEAD). Cura: cada remocao real fora da declaracao vira reason PRUNE_SYMBOL_UNDECLARED:<simbolo> e reprova (positivo declaracao-cobre-tudo preservado; vizinhanca conferida: record PRUNE real 9cfeddf declara materialActiveCredits = remocao real, sem regression). P2-7 espelho d.mts sem PRUNE nos unions de mode/requested_mode (4o modo admitido 261117, espelho nunca emendado; probe TS da issue TS2367x2) — cura: PRUNE nos 2 unions + export ALLOWED_MODES do .mjs + vigia de vocabulario provando d.mts-superset-vivo (vacina de classe do conselheiro oraculo-clean-code: 5o modo esquecido pega RED sozinho). RED 3/4 -> GREEN 4/4; suíte 1031/1035; typecheck ok. Camping: fiscal puro, motor intocado (selo CORTE-B-PRIME nao vence aqui)."
+  },
   "reavaliacao_corte_d_prime_261119": {
     "date": "2026-11-19",
     "scope": [

@@ -8,6 +8,20 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **PRUNE com prova por símbolo + espelho d.mts com PRUNE (corte B, issue
+  #21 P1-3+P2-7)**: o fiscal do camping reprova remoção não declarada — cada
+  símbolo em `metrics.symbols.removed` fora de `removed_symbols`/`death_proofs`
+  vira reason `PRUNE_SYMBOL_UNDECLARED:<símbolo>` (fim do PASS com remoção
+  oculta: a repro da issue — remove `dead`+`run`, declara `dead`, PASS —
+  agora FAIL nomeando `run`; caso positivo preservado). O espelho
+  `scripts/validate-flow-engine-boundary.d.mts` ganha `"PRUNE"` nos unions de
+  `mode`/`requested_mode` (fim do TS2367×2 no consumidor tipado; o 4º modo
+  tinha nascido sem emenda do espelho) e o vocabulário vivo `ALLOWED_MODES`
+  passa a ser exportado, com vigia provando d.mts ⊇ vocabulário — o 5º modo
+  esquecido pega RED sozinho. RED 3/4 → GREEN 4/4
+  (`tests/issue-0021-corte-b.test.ts`, repros publicadas; NUNCA podar);
+  suíte 1031/1035.
+
 - **sentinela do cluster verdict com ponto de intercepção completo (corte
   D′, issue #26)**: as regex `PAR_INLINE`/`PAR_INLINE_INVERSO` de
   `tests/onda-verdict-d50b1.test.ts` só engoliam `?.\w+` como forma de

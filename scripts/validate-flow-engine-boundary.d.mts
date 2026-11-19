@@ -16,8 +16,8 @@ export interface BoundaryReceipt {
   // perde o enforcing grátis se o d.mts abrir string onde o runtime valida
   // enum (probe: tsc aceitava mode "SHRINKGG" que o validador reprova).
   status?: "PASS" | "FAIL";
-  mode?: "SHRINK" | "CONTAIN" | "EXCEPTION" | "FAIL" | "NOT_APPLICABLE";
-  requested_mode?: "SHRINK" | "CONTAIN" | "EXCEPTION";
+  mode?: "SHRINK" | "CONTAIN" | "EXCEPTION" | "PRUNE" | "FAIL" | "NOT_APPLICABLE";
+  requested_mode?: "SHRINK" | "CONTAIN" | "EXCEPTION" | "PRUNE";
   reasons?: string[];
   metrics?: {
     nonblank_lines: { delta: number; [key: string]: unknown };
@@ -27,6 +27,10 @@ export interface BoundaryReceipt {
   };
   [key: string]: unknown;
 }
+
+// Issue #21 P2-7: vocabulário vivo — mantido em par com o .mjs (o vigia de
+// tests/issue-0021-corte-b.test.ts prova superset contra este declare).
+export declare const ALLOWED_MODES: ReadonlySet<string>;
 
 export declare function analyzeFlowEngineSource(
   source: string

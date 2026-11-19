@@ -1,3 +1,12 @@
+## Reavaliação — corte B issue 21: PRUNE prova por símbolo + espelho d.mts PRUNE (2026-11-19)
+
+P1-3: validador confronta metrics.symbols.removed × declaração
+(PRUNE_SYMBOL_UNDECLARED:<símbolo> — fim do PASS com remoção oculta; positivo
+preservado). P2-7: d.mts ganha PRUNE nos 2 unions + ALLOWED_MODES exportado +
+vigia espelho-superset-vivo (vacina conselheiro clean-code). RED 3/4 → GREEN
+4/4 (tests/issue-0021-corte-b.test.ts); suíte 1031/1035. Receipt
+`reavaliacao_corte_b_issue21_261119`.
+
 ## Reavaliação — corte D′ sentinela #26: ponto de intercepção completo (2026-11-19)
 
 Issue 26: PAR_INLINE/PAR_INLINE_INVERSO só engoliam ?.\w+ — o par inline com
