@@ -5,7 +5,10 @@ parcial) + âncora no MOLDE + S11 no preflight (vacina provada por mutação) +
 sha rev 4 no schm. 0014: matrix windows+ubuntu + 3 portes (gêmeo LEMBRANCA,
 ramo PLAYBOOK, de-skip com probe de isomorfismo — "divergência" era afirmaza).
 RED 3 → GREEN (vigias 3/3; zero itWindowsOnly). Receipt
-`reavaliacao_corte_e_molde_linux_261119`.
+`reavaliacao_corte_e_molde_linux_261119`. Emenda pós-1º-run (44617044985,
+ubuntu): guard INDEX.md no living-architecture; pre-upgrade volta a skipIf
+declarado com a divergência REAL medida (review_required no verdict legado) —
+porte vira sub-item do TRACKER-0014.
 
 ## Reavaliação — janela de fechamento #21: P2-6+P2-8+P3 + CI + portabilidade (2026-11-19)
 

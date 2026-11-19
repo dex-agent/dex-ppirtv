@@ -19,17 +19,19 @@ escopo, evidencias e lacunas quando existirem.
   registro do `SCHEMA/dex.spt.v3.schm.md` NO MESMO COMMIT (preflight
   --checksum 0 achados; banner --schema atualizado para S00..S11 — barata
   vizinha pega pela vacina issue #8 da suíte). 0014 — matrix `windows-latest
-  + ubuntu-latest` no `ci.yml` (runs-on matrix.os) e os 3 ex-Windows-bound
-  viram `it` normais: case-equivalent L1 ganhou gêmeo físico `LEMBRANCA.md`
-  no setup (idempotente no Windows, materializa o par no Linux — a leitura
-  forjada chega ao WRITE_SET_MISMATCH nos 2 FS), living-architecture lê
-  AGENTS.md na frota ou PLAYBOOK.md versionado no clone (6 superfícies
-  versionadas sempre checadas), pre-upgrade fail-closed de-skipado com PROBE
-  de isomorfismo platform=linux PASSANDO — a "divergência Linux" declarada
-  no ci.yml era AFIRMAZA (nunca medida; motor normaliza separador em toda
-  plataforma). RED 3 falhas → GREEN; vigias `tests/spt-kit-rules.test.ts`
-  (2/2) e `tests/issue-0014-matrix.test.ts` (1/1) NUNCA podar; zero
-  itWindowsOnly. Suíte 1047/1051, check exit 0. Camping NOT_APPLICABLE
+  + ubuntu-latest` no `ci.yml` (runs-on matrix.os); portados de vez:
+  case-equivalent L1 ganhou gêmeo físico `LEMBRANCA.md` no setup (idempotente
+  no Windows, materializa o par no Linux — a leitura forjada chega ao
+  WRITE_SET_MISMATCH nos 2 FS) e living-architecture lê AGENTS.md na frota ou
+  PLAYBOOK.md versionado no clone (INDEX.md raiz com guard opcional:
+  gitignored, inexistente no clone — ENOENT medido no run 44617044985);
+  pre-upgrade fail-closed SEGUE Windows-bound com a divergência REAL medida
+  no run 44617044985 (job ubuntu: `PPIRTV_FISCAL_BLOCKED review_required` no
+  verdict com review legada pré-snapshot — a probe de software era
+  insuficiente, o envolvido é FS real; decifração cross-platform = sub-item
+  do TRACKER-0014, corte próprio). RED 3 falhas → GREEN; vigias
+  `tests/spt-kit-rules.test.ts` (2/2) e `tests/issue-0014-matrix.test.ts`
+  (1/1) NUNCA podar. Suíte 1047/1051, check exit 0. Camping NOT_APPLICABLE
   (nenhum item toca o motor — selo CORTE-B-PRIME segue pendente).
 
 - **janela de fechamento #21: P2-6+P2-8+P3 + CI + portabilidade (issue

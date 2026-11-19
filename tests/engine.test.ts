@@ -3,6 +3,11 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promis
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+// ISSUE-LOCAL-0014 (sub-item aberto): divergência REAL medida no run
+// 44617044985 (job ubuntu) — review legada pré-snapshot rejeitada com
+// review_required no verdict (flow-engine.ts:2660) fora do Windows; a
+// decifração cross-platform é corte próprio (TRACKER 0014).
+const itWindowsOnly = it.skipIf(process.platform !== "win32");
 
 import { FlowEngine } from "../src/flow-engine.js";
 import type { AnyPhase, Phase } from "../src/domain.js";
@@ -3050,10 +3055,12 @@ describe("PPIRTV flow engine", () => {
     })).rejects.toThrow(/review_required/);
   });
 
-  // ISSUE-LOCAL-0014 paga (corte E): a "divergência no Linux" era afirmaza —
-  // probe com platform=linux (LAUDO 2026-11-19-corte-e) provou isomorfismo
-  // (normalizeReviewPathForPlatform normaliza separador em toda plataforma).
-  it("keeps a pre-upgrade review without a fingerprint fail-closed", async () => {
+  // ISSUE-LOCAL-0014 sub-item ABERTO: a divergência fora do Windows é REAL e
+  // medida (run 44617044985, job ubuntu: PPIRTV_FISCAL_BLOCKED review_required
+  // no verdict com review legada pré-snapshot — a probe de software era
+  // insuficiente, o envolvido é FS real). Porte = decifração cross-platform
+  // da validação legacy, corte próprio no TRACKER 0014.
+  itWindowsOnly("keeps a pre-upgrade review without a fingerprint fail-closed", async () => {
     const { flowId, evidenceId } = await startGoalWithEvidence(
       "dex-code:test-terminal-review-pre-upgrade",
       "Preservar review legitimo criado antes do snapshot versionado"

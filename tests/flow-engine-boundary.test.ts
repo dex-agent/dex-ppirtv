@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { existsSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -1396,22 +1397,24 @@ describe("flow-engine responsibility balance", () => {
   });
 
   // ISSUE-LOCAL-0014 paga (corte E): superfície de entrada universal — AGENTS.md
-  // na frota (local por design) ou PLAYBOOK.md versionado no clone/CI; o link
-  // da arquitetura viva é garantia das superfícies versionadas (README/INDEX),
-  // checadas em qualquer clone.
+  // na frota (local por design) ou PLAYBOOK.md versionado no clone/CI; INDEX.md
+  // raiz também é frota-only (gitignored por design); README e docs/INDEX são
+  // as âncoras versionadas do link da arquitetura viva, checadas em qualquer
+  // clone. Guard INDEX.md: ENOENT medido no run 44617044985 (job ubuntu).
   it("keeps the living architecture public and discoverable", async () => {
-    const agentsExists = await import("node:fs").then((fs) => fs.existsSync("AGENTS.md"));
+    const agentsExists = existsSync("AGENTS.md");
+    const rootIndexExists = existsSync("INDEX.md");
     const [readme, entrySurface, rootIndex, docsIndex, gitignore, architecture, ledger] = await Promise.all([
       readFile("README.md", "utf8"),
       agentsExists ? readFile("AGENTS.md", "utf8") : readFile("PLAYBOOK.md", "utf8"),
-      readFile("INDEX.md", "utf8"),
+      rootIndexExists ? readFile("INDEX.md", "utf8") : Promise.resolve(null),
       readFile("docs/INDEX.md", "utf8"),
       readFile(".gitignore", "utf8"),
       readFile("docs/architecture/FLOW_ENGINE_EVOLUTION.md", "utf8"),
       readFile("docs/architecture/flow-engine-evolution.json", "utf8")
     ]);
 
-    for (const surface of [readme, rootIndex]) {
+    for (const surface of rootIndex ? [readme, rootIndex] : [readme]) {
       expect(surface).toContain("docs/architecture/FLOW_ENGINE_EVOLUTION.md");
     }
     if (agentsExists) expect(entrySurface).toContain("docs/architecture/FLOW_ENGINE_EVOLUTION.md");
