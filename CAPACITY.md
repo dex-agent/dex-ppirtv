@@ -1,3 +1,11 @@
+## Reavaliação — bloco P1 blindagem + C′ replay (2026-11-19)
+
+Delta: validador (marcaSealedAncestors extraída + selagem no CHAIN_REPLAY por
+HEAD da janela + blob ausente nomeia record) + workflow ci.yml NOVO + teste 4
+its + EVOLUTION com a decisão de semântica. Protection/toggles via gh api
+(força do commit). RED 2/4 → GREEN 4/4; suíte 1022/1026. Detalhe no receipt
+`reavaliacao_p1_c_prime_261119`.
+
 ## Reavaliação — corte B′ ciclo pending completo: issues 22 23 24 25 (2026-11-18)
 
 Delta: review-scope-attribution (pendingAttachScope: recompute corroboração +

@@ -1,0 +1,40 @@
+name: CI
+
+# P1 da auditoria GitHub (2026-11-19, GO do dono ao veredito do $oraculo-solid
+# — Viscosidade do ambiente, whitepaper PT l.11476): os 6 gates da casa eram
+# todos locais; este workflow os torna barreira server-side para push/PR.
+#
+# LACUNA DECLARADA (primeira instalação): o CI roda o SUBCONJUNTO
+# determinista (build + types + suíte completa). Ficam de fora, por
+# dependerem de estado da máquina local: audit:canonical (lê contratos
+# globais em ~/.agents/contracts — não viajam no clone) e check:capacity /
+# check:flow-engine em modo worktree. A lapidação de cobertura total é item
+# de fila próprio; a barreira mínima (1018+ testes, typecheck, build) já
+# elimina o push/PR sem NENHUM check.
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Testes E2E e corroboração git leem história — checkout completo.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm run check:types
+      - run: npm test

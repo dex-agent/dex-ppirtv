@@ -879,18 +879,30 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
   // Classe selagem retroativa (issue #11 convergencia, 2026-11-07): record com
   // commit selado ancestral do base do diff atual e HISTORIA (selou corte
   // passado), nao corte novo — nao conta para CONSECUTIVE_EXCEPTION.
-  if (history.length > 0 && comparison?.base && typeof git === "function") {
-    for (let index = 0; index < history.length; index += 1) {
-      const entry = history[index];
+  // Corte C' (issue #27, 2026-11-19): extraida para marcaSealedAncestors e
+  // REUTILIZADA pelo CHAIN_REPLAY com referencia no HEAD da janela — selo
+  // pago DENTRO da janela (pratica da casa: selo = commit seguinte) conta
+  // como historia selada tambem no replay.
+  const marcaSealedAncestors = (targetHistory, refCommit) => {
+    if (!refCommit || typeof git !== "function") return targetHistory;
+    for (let index = 0; index < targetHistory.length; index += 1) {
+      const entry = targetHistory[index];
       if (!entry?.commit || entry.sealed_retroactive === true) continue;
       try {
-        git(["merge-base", "--is-ancestor", String(entry.commit), String(comparison.base)]);
-        history[index] = { ...entry, sealed_retroactive: true };
+        git(["merge-base", "--is-ancestor", String(entry.commit), String(refCommit)]);
+        targetHistory[index] = { ...entry, sealed_retroactive: true };
       } catch {
         // nao ancestral: corte novo, segue material
       }
     }
-  }
+    return targetHistory;
+  };
+  // Ref da selagem = estado FINAL avaliado: no replay de janela o head e o
+  // fim da janela (selo pago dentro dela e historia selada); no modo
+  // worktree o head e o worktree (nao e ref git) e o ultimo commit (base)
+  // continua sendo a referencia correta.
+  const sealRef = comparison?.head && comparison.head !== "WORKTREE" ? comparison.head : comparison?.base;
+  marcaSealedAncestors(history, sealRef);
   const flowEngineChanged = comparison.source === "ledger-worktree" ? false : baseBlob !== headBlob;
   // Na cadeia coberta, cada janela carrega suas proprias metricas: o evaluate
   // principal aplica a declaracao do ULTIMO record sobre a janela DELE (blobs do
@@ -912,11 +924,18 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
     chainHeadSource = chainBlobAt(chainRecords.at(-1).head_blob);
     chainBaseSource = chainBlobAt(chainRecords.at(-1).base_blob);
     if (chainHeadSource === null || chainBaseSource === null) {
+      // Issue #21 P2-4 (2026-11-19): reason NOMEIA o blob ilegivel (molde
+      // 0003 diagnostico-que-ensina) — blob solto sem commit de fronteira
+      // (ex. 7901ecac da PIPELINE-SHRINK) e grandfathering permanente do
+      // ledger, mas nunca mais um motivo anonimo que esconde o culpado.
+      const unreadable = [];
+      if (chainHeadSource === null) unreadable.push(`LEDGER_CHAIN_BLOB_UNREADABLE:${chainRecords.at(-1).head_blob}`);
+      if (chainBaseSource === null) unreadable.push(`LEDGER_CHAIN_BLOB_UNREADABLE:${chainRecords.at(-1).base_blob}`);
       const receipt = {
         schema: "dex.flow-engine.boundary.v1",
         status: "FAIL",
         flow_engine_changed: true,
-        reasons: ["LEDGER_CHAIN_BLOB_UNREADABLE"],
+        reasons: unreadable,
         decision: "FAIL"
       };
       return { exitCode: 1, output: JSON.stringify(receipt, null, 2), json: true };
@@ -1129,11 +1148,31 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
 
     if (chainRecords && chainRecords.length > 1) {
       for (const record of chainRecords) {
+        // Corte C' (issue #27): o history do replay recebe a MESMA selagem
+        // virtual do caminho principal, com referencia no HEAD da janela —
+        // selo pago dentro da janela (commit seguinte ao corte, pratica da
+        // casa) e ancestral do head: historia selada, nao material.
+        const replayHistory = marcaSealedAncestors(
+          records.slice(0, records.indexOf(record)),
+          comparison?.head
+        );
+        // Issue #21 P2-4: blob ausente (solto, sem commit de fronteira) no
+        // elo do replay vira reason dedicado nomeando o record — nunca
+        // crash sem receipt (mesma classe REGRESSAO-ERROR-PATH-TRY-CATCH).
+        let replayBase = null;
+        let replayHead = null;
+        try {
+          replayBase = git(["cat-file", "-p", record.base_blob], cwd);
+          replayHead = git(["cat-file", "-p", record.head_blob], cwd);
+        } catch {
+          receipt.reasons.push(`CHAIN_REPLAY_BLOB_UNAVAILABLE:${record.id}`);
+          continue;
+        }
         const replay = evaluateFlowEngineChange({
-          baseSource: git(["cat-file", "-p", record.base_blob], cwd),
-          headSource: git(["cat-file", "-p", record.head_blob], cwd),
+          baseSource: replayBase,
+          headSource: replayHead,
           declaration: record,
-          history: records.slice(0, records.indexOf(record)),
+          history: replayHistory,
           flowEngineChanged: true
         });
         for (const reason of replay.reasons) receipt.reasons.push(`CHAIN_REPLAY:${record.id}:${reason}`);

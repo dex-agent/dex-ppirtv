@@ -1,4 +1,15 @@
 {
+  "reavaliacao_p1_c_prime_261119": {
+    "date": "2026-11-19",
+    "scope": [
+      "scripts/validate-flow-engine-boundary.mjs",
+      ".github/workflows/ci.yml",
+      "tests/issue-0027-replay-chain.test.ts",
+      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+      "CHANGELOG.md"
+    ],
+    "delta": "Bloco P1+C-prime (GO do dono ao quiz do oraculo-solid — Viscosidade do ambiente l.11476, SDP l.6026): CI server-side nasce (workflow check: build+types+suite; lacuna declarada de audit:canonical/capacity por dependencia de maquina) + selagem retroativa estendida ao CHAIN_REPLAY com referencia no HEAD da janela (marcaSealedAncestors extraida e reutilizada nos 2 caminhos; selo pago DENTRO da janela = historia selada — fim do CONSECUTIVE falso da janela historica, issue 27) + blob ausente nomeia record/sem crash (CHAIN_REPLAY_BLOB_UNAVAILABLE / LEDGER_CHAIN_BLOB_UNREADABLE:blob — P2-4 da 21, grandfathering 7901ecac documentado). RED 2/4 -> GREEN 4/4; suite 1022/1026. Branch protection + dependabot + secret scanning via gh api (fora do commit)."
+  },
   "reavaliacao_corte_b_prime_pending_cycle_261118": {
     "date": "2026-11-18",
     "scope": [

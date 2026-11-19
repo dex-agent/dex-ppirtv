@@ -8,6 +8,22 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **blindagem do repositório + replay do camping (P1 + corte C′)**: CI
+  server-side nasce no GitHub (workflow `check` com build + types + suíte
+  completa — lacuna declarada: `audit:canonical`/capacity dependem de estado
+  da máquina e ficam para lapidação própria); branch protection da `main`
+  exige o status check para PRs com force-push bloqueado (administradores
+  seguem no fluxo trunk-based da casa com os 6 gates locais — decisão
+  declarada); dependabot alerts e secret scanning habilitados. Corte C′
+  (issues #27 + P2-4 da #21): a selagem retroativa passa a valer também no
+  CHAIN_REPLAY com referência no HEAD da janela — selo pago DENTRO da
+  janela (prática da casa: selo = commit seguinte) conta como história
+  selada, fim do CONSECUTIVE_EXCEPTION falso na janela histórica; blob
+  ausente do elo vira reason dedicado nomeando o record
+  (`CHAIN_REPLAY_BLOB_UNAVAILABLE:<id>` / `LEDGER_CHAIN_BLOB_UNREADABLE:<blob>`)
+  — o blob solto 7901ecac (PIPELINE-SHRINK) segue como grandfathering
+  permanente documentado. RED 2/4 → GREEN 4/4 em
+  `tests/issue-0027-replay-chain.test.ts`; suíte 1022/1026.
 - **ciclo pending completo (corte B′)**: o anexo de review e o `goal_status`
   passam a consultar a MESMA fonte que o fiscal no ciclo pending —
   `pendingAttachScope` (review-scope-attribution.ts) recomputa corroboração
