@@ -1,3 +1,13 @@
+## Reavaliação — gate EVIDENCE_NOT_VERSIONED: cura do CI run 4 (2026-11-19)
+
+Causa-raiz decodificada pelo log do run 44505736533 (REPLAY_RECEIPT):
+declaration citava `.agents/` (gitignored por design) como evidence —
+existsSync passa na máquina local (falso verde do pre-commit), morre no clone.
+Delta: validador (gate EVIDENCE_NOT_VERSIONED nos 2 sítios) + declaration
+B′ higienizado + it novo (fixture com path existindo no disco reprova) +
+CHANGELOG/EVOLUTION/TOOLSBOOK. RED→GREEN 5/5; suíte 1023/1027. Receipt
+`reavaliacao_evidence_not_versioned_261119`.
+
 ## Reavaliação — log de diagnóstico no replay (2026-11-19)
 
 it loga receipt no FAIL (run 44504361626 veio mudo). 4/4 local. Receipt

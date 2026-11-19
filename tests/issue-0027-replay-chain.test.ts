@@ -85,6 +85,54 @@ describe("caracterizacoes do CONSECUTIVE_EXCEPTION — nunca podar", () => {
   });
 });
 
+describe("evidence nao-versionada (.agents/) — gate EVIDENCE_NOT_VERSIONED (classe do run 44505736533)", () => {
+  it("declaration citando .agents/ reprova EVIDENCE_NOT_VERSIONED mesmo com o arquivo existindo no disco", async () => {
+    // Causa-raiz medida no CI run 4 (44505736533): o record citava
+    // .agents/AUDITORIAS/... como evidence — .agents/ e gitignored por design
+    // (viaja via PLAYBOOK), existsSync passa na maquina local (falso verde do
+    // pre-commit) e morre no clone limpo do runner. O gate impossibilita a
+    // classe: evidencia de declaration tem que ser reabrivel no clone.
+    const git = (args: string[]) => execFileSync("git", ["-C", tempRoot, ...args], { stdio: ["ignore", "pipe", "pipe"] }).toString();
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-ev-"));
+    await mkdir(path.join(tempRoot, "src"), { recursive: true });
+    await mkdir(path.join(tempRoot, "docs", "architecture"), { recursive: true });
+    await mkdir(path.join(tempRoot, ".agents", "AUDITORIAS"), { recursive: true });
+    git(["init", "-q"]); git(["config", "user.email", "t@t"]); git(["config", "user.name", "t"]); git(["config", "commit.gpgsign", "false"]);
+    await writeFile(path.join(tempRoot, "package.json"), JSON.stringify({ name: "fixture", version: "0.0.0" }), "utf8");
+    await writeFile(path.join(tempRoot, "CHANGELOG.md"), "# Changelog\n\n## [Unreleased]\n\n- marker-ev\n", "utf8");
+    await writeFile(path.join(tempRoot, "docs", "architecture", "FLOW_ENGINE_EVOLUTION.md"), "# FlowEngine evolutionary architecture\n", "utf8");
+    await writeFile(path.join(tempRoot, "src", "flow-engine.ts"), "export const a = 1;\n", "utf8");
+    git(["add", "."]); git(["commit", "-qm", "v1"]);
+    const blobA = execFileSync("git", ["-C", tempRoot, "hash-object", "src/flow-engine.ts"]).toString().trim();
+    await writeFile(path.join(tempRoot, "src", "flow-engine.ts"), "export const a = 2;\n", "utf8");
+    git(["add", "."]); git(["commit", "-qm", "v2"]);
+    const blobB = execFileSync("git", ["-C", tempRoot, "hash-object", "src/flow-engine.ts"]).toString().trim();
+    // O path .agents/ EXISTE no disco da fixture (untracked) — provando que
+    // existsSync sozinho nao salva: o gate reprova pela nao-versionabilidade.
+    await writeFile(path.join(tempRoot, ".agents", "AUDITORIAS", "cure-proof.json"), "{}", "utf8");
+    const ledger = {
+      records: [
+        exceptionRecord("FE-EV-NAO-VERSIONADA", {
+          base_blob: blobA,
+          head_blob: blobB,
+          evidence: [".agents/AUDITORIAS/cure-proof.json"],
+          red_evidence: ""
+        })
+      ]
+    };
+    await writeFile(
+      path.join(tempRoot, "docs", "architecture", "flow-engine-evolution.json"),
+      JSON.stringify(ledger), "utf8"
+    );
+    git(["add", "."]); git(["commit", "-qm", "ledger"]);
+    const result = await runBoundaryCli({ cwd: tempRoot, argv: ["--base", "HEAD~2", "--head", "HEAD~1"] }) as { exitCode: number; output: string };
+    const receipt = JSON.parse(result.output) as { status: string; reasons?: string[] };
+    expect(receipt.reasons ?? []).toContain("EVIDENCE_NOT_VERSIONED:.agents/AUDITORIAS/cure-proof.json");
+    expect(receipt.reasons ?? []).not.toContain("EVIDENCE_NOT_FOUND:.agents/AUDITORIAS/cure-proof.json");
+    expect(receipt.status).toBe("FAIL");
+  });
+});
+
 describe("issue 21 P2-4 — blob ausente no replay vira reason dedicado sem crash", () => {
   it("cura record cujo blob nao existe no Git produz CHAIN_REPLAY_BLOB_UNAVAILABLE", async () => {
     const git = (args: string[]) => execFileSync("git", ["-C", tempRoot, ...args], { stdio: ["ignore", "pipe", "pipe"] }).toString();

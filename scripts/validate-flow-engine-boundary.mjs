@@ -705,7 +705,15 @@ function validateBootstrapRecords({ cwd, records, manifest, headBlob }) {
 
     const evidence = (record.evidence ?? []).map(evidencePath).filter(Boolean);
     for (const evidenceFile of evidence) {
-      if (!existsSync(path.join(cwd, evidenceFile))) add(record, `EVIDENCE_NOT_FOUND:${evidenceFile}`);
+      // CI run 4 (44505736533): .agents/ é gitignored por design (viaja via
+      // PLAYBOOK) — existsSync passa na máquina local e morre no clone limpo.
+      // Evidência de record tem que ser reabrível no clone (classe #19,
+      // claim-sem-receipt); cerimônia local mora no flow PPIRTV.
+      if (evidenceFile.startsWith(".agents/")) {
+        add(record, `EVIDENCE_NOT_VERSIONED:${evidenceFile}`);
+      } else if (!existsSync(path.join(cwd, evidenceFile))) {
+        add(record, `EVIDENCE_NOT_FOUND:${evidenceFile}`);
+      }
     }
     const selectors = record.evidence_selectors && typeof record.evidence_selectors === "object" ? record.evidence_selectors : {};
     const selectorValid = Object.entries(selectors).some(([evidenceFile, selector]) => {
@@ -1220,6 +1228,12 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
     const evidencePaths = evidenceEntries.map(evidencePath).filter(Boolean);
     if (!evidencePaths.some((entry) => entry.startsWith("tests/"))) receipt.reasons.push("CAUSAL_TEST_EVIDENCE_REQUIRED");
     for (const evidence of evidencePaths) {
+      if (evidence.startsWith(".agents/")) {
+        // CI run 4 (44505736533): path gitignored não é evidência reabrível no
+        // clone — gate gêmeo do record-check (EVIDENCE_NOT_VERSIONED).
+        receipt.reasons.push(`EVIDENCE_NOT_VERSIONED:${evidence}`);
+        continue;
+      }
       if (!safeProjectPath(evidence, evidence.startsWith("tests/") ? "tests" : evidence.split("/", 1)[0]) || !existsSync(path.join(cwd, evidence))) {
         receipt.reasons.push(`EVIDENCE_NOT_FOUND:${evidence}`);
       }

@@ -8,6 +8,21 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **evidence não-versionada reprovada pelo camping (cura do CI run 4)**: o
+  validador ganha o gate `EVIDENCE_NOT_VERSIONED` — record/declaration que
+  cite `.agents/` (gitignored por design, viaja via PLAYBOOK) como evidência
+  reprova mesmo com o arquivo existindo no disco local, porque evidência de
+  camping tem que ser reabrível no clone limpo (mesma classe da issue #19,
+  claim-sem-receipt; medida no CI run 44505736533, reason
+  `EVIDENCE_NOT_FOUND:.agents/AUDITORIAS/.../m1-recompute.json` —
+  existsSync passava mudo na máquina local e morria no runner). O declaration
+  vivo `CORTE-B-PRIME-PENDING-CYCLE` foi higienizado para citar só o teste
+  versionado; a cerimônia (RED 5/6 + vigília M1) continua documentada nos
+  campos `red_observed_failure`/`behavior_preserved_by` do record e no flow
+  PPIRTV. RED→GREEN: it novo em `tests/issue-0027-replay-chain.test.ts`
+  (fixture com o path `.agents/` EXISTINDO no disco ainda assim reprova);
+  6 records antigos com o mesmo padrão seguem como dívida declarada — nunca
+  são declarations de janela viva, então o gate não os retro-afeta.
 - **blindagem do repositório + replay do camping (P1 + corte C′)**: CI
   server-side nasce no GitHub (workflow `check` com build + types + suíte
   completa — lacuna declarada: `audit:canonical`/capacity dependem de estado

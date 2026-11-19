@@ -1,4 +1,16 @@
 {
+  "reavaliacao_evidence_not_versioned_261119": {
+    "date": "2026-11-19",
+    "scope": [
+      "scripts/validate-flow-engine-boundary.mjs",
+      "tests/issue-0027-replay-chain.test.ts",
+      "docs/architecture/flow-engine-evolution.json",
+      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+      "CHANGELOG.md",
+      "TOOLSBOOK.json"
+    ],
+    "delta": "Cura do CI run 4 (44505736533) pela causa-raiz decodificada no REPLAY_RECEIPT do log de diagnostico: declaration CORTE-B-PRIME citava .agents/ (gitignored por design, viaja via PLAYBOOK) como evidence — existsSync passa na maquina local (falso verde do pre-commit) e morre no clone limpo do runner (EVIDENCE_NOT_FOUND). Gate EVIDENCE_NOT_VERSIONED nos 2 sitios do validador (reprova prefixo .agents/ MESMO com arquivo existindo no disco — evidence de record tem que ser reabrivel no clone, classe #19 claim-sem-receipt); declaration higienizado para so o teste versionado (cerimonia RED/M1 mora nos campos textuais + flow PPIRTV); RED->GREEN it novo fixture 5/5; suite 1023/1027. Divida declarada: 6 records antigos com o mesmo padrao (nunca sao declarations de janela viva — gate nao retro-afeta)."
+  },
   "reavaliacao_replay_diag_log_261119": {
     "date": "2026-11-19",
     "scope": [

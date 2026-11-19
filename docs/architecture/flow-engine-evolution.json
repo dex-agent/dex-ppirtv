@@ -2250,9 +2250,7 @@
         "src/server.ts"
       ],
       "evidence": [
-        "tests/issue-0022-pending-cycle.test.ts",
-        ".agents/AUDITORIAS/2026-11-18-corte-b-prime/RED-vitest.txt",
-        ".agents/AUDITORIAS/2026-11-18-corte-b-prime/MUTACOES/m1-recompute.json"
+        "tests/issue-0022-pending-cycle.test.ts"
       ],
       "evidence_selectors": {
         "tests/issue-0022-pending-cycle.test.ts": "cura recarregado apos o anexo aceito o recalculo pelo proprio flow e identico ao persistido"
