@@ -73,8 +73,11 @@ export function attributionHint(flow: Flow, scopeAttributionEvidenceIds?: string
     }
     return `attribution vencida: renove a evidence review_scope_attribution antes de citar (${candidates.join(", ")}) — o binding atual rejeitaria estes ids`;
   }
-  const reutilizaveis = candidates;
-  return `attribution aprovada reutilizavel: cite scope_attribution_evidence_ids (${reutilizaveis.join(", ")})`;
+  // Issue #21 P3 (fallback SEM lista elegível): sem o crivo de frescor o hint
+  // NÃO atesta reutilizabilidade — orientar conferir/renovar em vez de
+  // recomendar um ID que a citação explícita rejeitaria (a repro da issue:
+  // bytes mudados -> hint oferecia e1 -> REVIEW_SCOPE_ATTRIBUTION_STALE).
+  return `attribution aprovada existente: confira o frescor antes de citar scope_attribution_evidence_ids (${candidates.join(", ")}) — sem a lista de ids elegíveis o hint não atesta reutilizável; renove a evidence review_scope_attribution se vencida`;
 }
 
 export function evaluateFiscalPolicyWithDeps(

@@ -45,3 +45,9 @@ jobs:
       - run: npm run build
       - run: npm run check:types
       - run: npm test
+      # Janela de fechamento #21 (CI lapidado): a barra também confere a
+      # ESTRUTURA dos contratos canônicos locais (--local-only — o runner não
+      # tem ~/.agents; sincronia plena continua no audit:canonical da frota)
+      # e a forma/aritmética do par CAPACITY versionado no checkout.
+      - run: node scripts/audit-canonical-sync.mjs --local-only
+      - run: node scripts/check-capacity.mjs

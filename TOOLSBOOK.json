@@ -300,7 +300,7 @@
     "D-39: audit pegou sync ao vivo (2f901fe)"
    ],
    "sources": {
-    "scripts/audit-canonical-sync.mjs": "b5c577aad75b69d41f5d3a05ebfd2d75e525d4452fb5ec9166359b7461ccce7b"
+    "scripts/audit-canonical-sync.mjs": "24d2a5d7b3f321768fbea91bcf47cde466db22e28b6253d929c9bd9dfa932a14"
    }
   },
   {
@@ -527,7 +527,7 @@
     "contrato docs/contracts (envelope de erro)"
    ],
    "sources": {
-    "scripts/audit-error-envelope.mjs": "6bb3f8ca8f3a5a2bad050903a24f9156277dbefff2b854b668556cdec39173ae"
+    "scripts/audit-error-envelope.mjs": "5f721080da2616f3d0e8e600daf12d890b143c7b5a3405198cb6f0ec5dc6cd1e"
    }
   },
   {
@@ -552,7 +552,7 @@
     "nota citavel 2026-08-18"
    ],
    "sources": {
-    "scripts/remove-safe-path.ps1": "590ed2b524f94972b963f75da3e69baba37aaa333fd672d11ed59d87efef9c65"
+    "scripts/remove-safe-path.ps1": "c46a46e761384d8dfd42617ff1936685c55d8ec0e624be6969b9c2bde023a41d"
    }
   },
   {

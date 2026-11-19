@@ -1795,5 +1795,24 @@
       "tools/test-symbol-coverage.py"
     ],
     "delta": "Corte C issue 21 P1-2: gate de merge cobre o fluxo AUTOMATICO (MERGE_HEAD ausente no hook = merge em andamento — suite no worktree; vermelha bloqueia; sem suite = no-op P10) e a RESOLUCAO MANUAL (pre-commit delega ao merge-resolve-gate.sh quando MERGE_HEAD presente; A3f do pre-merge-commit delega ao MESMO script — veredito unico nos caminhos git commit e git merge --continue; escape MERGE_CHECK_SKIP=1 preservado); hooks publicados em modo 100755 (update-index --chmod=+x). RED 5/8 -> GREEN 8/8 (tests/issue-0021-corte-c.test.ts: 3 its automatico via git real + 3 its resolve-gate no estado MERGE_HEAD + sentinela da delegacao + modo executavel). Camping NOT_APPLICABLE (ferramenta de dev, motor intocado). EMENDA DE EXECUCAO: blocker real do gate toolsbook (motor do registry corte 3.531.0 as 13:42, janela paralela — aa68a99 saiu 10:13 com motor pre-triade): paga a triade documental (--help/--schema/--usage, intercept TRIADE-DOC-261119 pre-argparse) nos 16 scripts das fichas + re-sha das 16 fontes + lapidacao do motor (errors=replace no subprocess da triade — UnicodeDecodeError cp1252 flaky no Windows). toolsbook --check exit 0; check completo exit 0 1039/1043. EMENDA CI (run 44592021021): teste EPERM flaky no runner lento — o unlink por setTimeout(20ms) do vencedor colidia com o retry wx (~10ms) do perdedor produzindo EPERM REAL + lstat ENOENT = fail-fast cru; aquisicao agora COORDENADA em 2o mock (unlink awaited + flag w dentro do mock, zero concorrencia real de disco) e referencia real capturada pre-Once (getMockImplementation pos-fila = recursao). 2/2 local."
+  },
+  "reavaliacao_corte_d_fechamento21_261119": {
+    "date": "2026-11-19",
+    "scope": [
+      "src/principles.ts",
+      "src/verdict-fiscal-policy.ts",
+      ".gitattributes",
+      "TOOLSBOOK.json",
+      "scripts/audit-canonical-sync.mjs",
+      ".github/workflows/ci.yml",
+      "tests/issue-0021-corte-d.test.ts",
+      "tests/flow-engine-boundary.test.ts",
+      "tests/engine.test.ts",
+      "tests/dex-memoria-v2-adapter.test.ts",
+      ".agents/TRACKER/issues/0014-runner-linux-ci-matrix.md",
+      "CAPACITY.md",
+      "CHANGELOG.md"
+    ],
+    "delta": "Janela de fechamento #21: P2-6 stringsOnly nas 4 listas de contrato (null/number/objeto nao fabricam strings nas APIs publicas); P2-8 .gitattributes -text nas fontes TOOLSBOOK+hooks com re-sha blob-canonico + vigia EOL (ficha == sha256 do blob do HEAD); P3 attributionHint fallback sem lista nao afirma reutilizavel; CI audit-canonical --local-only + check:capacity steps; portabilidade decidida (3 skipIf + TRACKER-0014 aguardando dono); garimpo estacionamentos (2 abertos com owner, 0 orfaos). RED 3/5 -> GREEN 5/5 (tests/issue-0021-corte-d.test.ts, NUNCA podar); suite 1041/1045. Camping NOT_APPLICABLE (principles/verdict-fiscal-policy nao sao o motor — selo CORTE-B-PRIME segue pendente)."
   }
 }

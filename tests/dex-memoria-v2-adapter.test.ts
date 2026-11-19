@@ -3,6 +3,9 @@ import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
+// Portabilidade decidida (TRACKER ISSUE-LOCAL-0014): pula declarado fora do Windows.
+const itWindowsOnly = it.skipIf(process.platform !== "win32");
+
 import {
   buildDexMemoriaV2OperationRequest,
   classifyDexMemoriaV2Intent,
@@ -342,7 +345,11 @@ describe("Dex Memoria V2 adapter", () => {
     }
   });
 
-  it("rejects a validator receipt that declares two case-equivalent L1 entries", async () => {
+  // Janela de fechamento #21 (portabilidade decidida): frota Windows-first
+  // (ci.yml windows-first por decisao da casa); este it depende de
+  // FS case-insensitive do Windows — fora do Windows ele PULA declarado ate o runner Linux
+  // existir (TRACKER ISSUE-LOCAL-0014, aguardando dono).
+  itWindowsOnly("rejects a validator receipt that declares two case-equivalent L1 entries", async () => {
     const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-two-l1-"));
     try {
       const classification = classifyDexMemoriaV2Intent({ item: "Regra com L1 duplicado.", density: "light", tags: TEST_TAGS, requested_destinations: [{ scope: "project" }] });

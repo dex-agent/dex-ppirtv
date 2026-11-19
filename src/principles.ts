@@ -7,6 +7,15 @@ import type { HygieneFinding } from "./domain.js";
 import { declaresV2Unit, inspectCanonicalV2Routes, parseV2UnitMetadata, selectExactPortableName, selectPhysicalCaseEquivalent } from "./memory/memory-v2-layout.js";
 import { stringArray } from "./lang-utils.js";
 
+// Issue #21 P2-6: o contrato pode chegar com valores inválidos (null, números,
+// objetos) — o leitor FILTRA por tipo antes de stringificar (restaura o
+// comportamento do helper pré-a12c49a: null nunca vira "null", objeto nunca
+// vira "[object Object]" nas orientações públicas readyDefinition/promptGuidance).
+function stringsOnly(value: unknown): string[] {
+  // Fora de array (objeto/escalar/null) não fabrica string: leitura vazia.
+  return Array.isArray(value) ? stringArray(value.filter((item): item is string => typeof item === "string")) : [];
+}
+
 export type PrincipleSeverity = "info" | "warning" | "error";
 export type ContractVersion = number | string;
 export type OperationalSeverityLevel = "INFO" | "WARN" | "BLOCK";
@@ -686,12 +695,12 @@ function normalizeContract(value: unknown): OperationalContract {
     rule: optionalString(input.rule),
     sync_rule: optionalString(input.sync_rule),
     principles: Array.isArray(input.principles) ? input.principles.filter(isPrinciple).map(normalizePrinciple) : [],
-    ready_definition: stringArray(input.ready_definition),
-    gate_final_output: stringArray(input.gate_final_output),
+    ready_definition: stringsOnly(input.ready_definition),
+    gate_final_output: stringsOnly(input.gate_final_output),
     memory_layers: Array.isArray(input.memory_layers) ? input.memory_layers.filter(isMemoryLayer) : [],
     ...(workflow ? { default_workflow: workflow } : {}),
-    prompt_guidance: stringArray(input.prompt_guidance),
-    hygiene_checks: stringArray(input.hygiene_checks),
+    prompt_guidance: stringsOnly(input.prompt_guidance),
+    hygiene_checks: stringsOnly(input.hygiene_checks),
     ai_application: normalizeAiApplication(input.ai_application),
     traceable_destination_definition: normalizeTraceableDestinationDefinition(input.traceable_destination_definition),
     operational_severity: normalizeOperationalSeverity(input.operational_severity),

@@ -15,7 +15,7 @@
 // Reuso: canonical-pairs.mjs (os 4 pares global<->local)
 // Perigo: read-only (audita por hash; canonicaliza CRLF antes do SHA)
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { canonicalPairs } from "./canonical-pairs.mjs";
 
@@ -25,7 +25,13 @@ const userProfile = process.env.USERPROFILE ?? process.env.HOME;
 const failures = [];
 
 function main() {
-  if (!userProfile) {
+  // Janela de fechamento #21 (CI lapidado): --local-only valida a ESTRUTURA
+  // local (pares declarados, copias existentes e nao-vazias) sem depender das
+  // fontes globais — o runner do CI nao tem ~/.agents. Sincronia plena
+  // global x local continua no npm run audit:canonical da frota.
+  const localOnly = process.argv.includes("--local-only");
+
+  if (!userProfile && !localOnly) {
     fail("USERPROFILE/HOME ausente; nao foi possivel localizar fontes globais.");
     finish();
     return;
@@ -37,11 +43,28 @@ function main() {
     return;
   }
 
+  if (localOnly) {
+    assertLocalCopiesPresent(canonicalPairs(repoRoot, userProfile ?? ""));
+    assertLocalAuthorityPointers();
+    assertNoLocalContractCopyClaimedAsCanonical();
+    finish();
+    return;
+  }
+
   assertFilePairsInSync(canonicalPairs(repoRoot, userProfile));
 
   assertLocalAuthorityPointers();
   assertNoLocalContractCopyClaimedAsCanonical();
   finish();
+}
+
+function assertLocalCopiesPresent(pairs) {
+  for (const pair of pairs) {
+    assertFileExists(pair.local, `${pair.label} local (--local-only)`);
+    if (!existsSync(pair.local)) continue;
+    const size = readFileSync(pair.local, "utf8").trim().length;
+    if (size === 0) fail(`${pair.label} local vazio: ${pair.local}`);
+  }
 }
 
 function assertFilePairsInSync(pairs) {

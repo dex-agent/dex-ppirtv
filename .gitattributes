@@ -1,3 +1,32 @@
+# Issue #21 P2-8: fontes do TOOLSBOOK e hooks de git com finais de linha
+# CANONICOS (-text: o checkout materializa o blob exato; o sha da ficha e
+# o sha256 do BLOB — frescor EOL-agnostico por construcao).
+AGENTS.md -text
+scripts/audit-canonical-sync.mjs -text
+scripts/audit-error-envelope.mjs -text
+scripts/call-mcp-tool.mjs -text
+scripts/canonical-pairs.mjs -text
+scripts/check-capacity.mjs -text
+scripts/export-diagnostic-bundle.mjs -text
+scripts/record-goal-progress.mjs -text
+scripts/remove-safe-path.ps1 -text
+scripts/render-ppirtv-phase.mjs -text
+scripts/smoke-mcp-tools.mjs -text
+scripts/validate-flow-engine-boundary.mjs -text
+scripts/validate-spt.mjs -text
+tools/check-duplicacao-delta.py -text
+tools/duplicacao-allowlist.json -text
+tools/mutacao-amostra.py -text
+tools/playbook/generate-playbook.py -text
+tools/playbook/hooks/merge-check.conf -text
+tools/playbook/hooks/merge-resolve-gate.sh -text
+tools/playbook/hooks/post-merge -text
+tools/playbook/hooks/post-merge.impl.mjs -text
+tools/playbook/hooks/pre-commit -text
+tools/playbook/hooks/pre-merge-commit -text
+tools/playbook/judge-playbook.py -text
+tools/test-symbol-coverage.py -text
+
 spt-kit/** text eol=lf
 SCHEMA/** text eol=lf
 docs/PLAYBOOK-RULES.md text eol=lf
