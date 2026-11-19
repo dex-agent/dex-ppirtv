@@ -8,6 +8,20 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **withFlowLock tolera EPERM transitório de sharing violation no Windows
+  (cura do CI run 5)**: o loop do lock em `src/store.ts` só tolerava EEXIST
+  na criação `wx` do `.meeting.lock` — no Windows a sharing violation de
+  criação/deleção concorrente do MESMO path chega como EPERM (errno -4048,
+  Node), então a disputa legítima de lock (5 `goal_start` concorrentes no
+  mesmo flow) explodava como erro no runner (run 44509417046,
+  `tests/engine.test.ts > claims the idempotency key...`). Lacuna de
+  produção na frota Windows-first: dois agentes no mesmo flow batem a mesma
+  corrida. Cura: EPERM com o lock presente no disco entra no MESMO fluxo de
+  disputa do EEXIST (retry); EPERM real de permissão (path inexistente —
+  lstat ENOENT) continua fail-fast. RED→GREEN:
+  `tests/store-lock-eperm.test.ts` 2 its (disputa determinística com o
+  vencedor criando/soltando o lock ao redor do EPERM simulado + fail-fast
+  de permissão real preservado); suíte 1025/1029.
 - **evidence não-versionada reprovada pelo camping (cura do CI run 4)**: o
   validador ganha o gate `EVIDENCE_NOT_VERSIONED` — record/declaration que
   cite `.agents/` (gitignored por design, viaja via PLAYBOOK) como evidência

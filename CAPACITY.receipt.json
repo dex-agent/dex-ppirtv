@@ -1,4 +1,13 @@
 {
+  "reavaliacao_lock_eperm_261119": {
+    "date": "2026-11-19",
+    "scope": [
+      "src/store.ts",
+      "tests/store-lock-eperm.test.ts",
+      "CHANGELOG.md"
+    ],
+    "delta": "Cura do CI run 5 (44509417046): no Windows a sharing violation de criacao/delecao concorrente do MESMO path chega como EPERM (errno -4048), nao EEXIST — o loop do withFlowLock (src/store.ts) re-lancava a disputa legitima de lock (5 goal_start concorrentes, tests/engine.test.ts claims the idempotency key). Lacuna de PRODUCAO na frota Windows-first (2 agentes no mesmo flow batem a corrida). Cura: EPERM com o lock presente no disco entra no MESMO fluxo de disputa do EEXIST (retry); EPERM real de permissao (path inexistente, lstat ENOENT) continua fail-fast. RED->GREEN 2 its (tests/store-lock-eperm.test.ts: disputa deterministica com vencedor criando/soltando o lock ao redor do EPERM simulado + fail-fast preservado); suíte 1025/1029."
+  },
   "reavaliacao_evidence_not_versioned_261119": {
     "date": "2026-11-19",
     "scope": [

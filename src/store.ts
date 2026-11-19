@@ -204,8 +204,23 @@ export class PpirtvStore {
         acquiredIdentity = fileIdentity(await lstat(lockPath, { bigint: true }), lockPath);
         break;
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+        const writeErrorCode = (error as NodeJS.ErrnoException).code;
+        if (writeErrorCode !== "EEXIST" && writeErrorCode !== "EPERM") {
           throw error;
+        }
+        if (writeErrorCode === "EPERM") {
+          // CI run 44509417046: no Windows a sharing violation de
+          // criação/deleção concorrente do MESMO path chega como EPERM
+          // (errno -4048), não EEXIST — a disputa legítima de lock explodia
+          // como erro. Com o arquivo presente é a mesma corrida do EEXIST:
+          // disputa. EPERM REAL de permissão (path nem existe) continua
+          // fail-fast pelo lstat ENOENT abaixo.
+          try {
+            await lstat(lockPath);
+          } catch (permError) {
+            if ((permError as NodeJS.ErrnoException).code === "ENOENT") throw error;
+            throw permError;
+          }
         }
         let existing: Awaited<ReturnType<typeof readStableFlowLock>>;
         try {

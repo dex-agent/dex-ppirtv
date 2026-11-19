@@ -1,3 +1,11 @@
+## Reavaliação — withFlowLock EPERM transitório: cura do CI run 5 (2026-11-19)
+
+Run 44509417046: sharing violation de corrida no .meeting.lock chega como
+EPERM (não EEXIST) no Windows; loop só tolerava EEXIST → disputa legítima
+explodia. Cura: EPERM+lock presente = disputa (retry); EPERM real (lstat
+ENOENT) = fail-fast. RED→GREEN 2 its (tests/store-lock-eperm.test.ts);
+suíte 1025/1029. Receipt `reavaliacao_lock_eperm_261119`.
+
 ## Reavaliação — gate EVIDENCE_NOT_VERSIONED: cura do CI run 4 (2026-11-19)
 
 Causa-raiz decodificada pelo log do run 44505736533 (REPLAY_RECEIPT):
