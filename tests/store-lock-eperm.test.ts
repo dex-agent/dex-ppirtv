@@ -25,6 +25,9 @@ vi.mock("node:fs/promises", async (importOriginal) => {
 // O namespace importado AQUI é o mockado; o real mora no default do vi.fn.
 import { writeFile } from "node:fs/promises";
 const writeFileMock = vi.mocked(writeFile);
+// Referência REAL capturada ANTES de qualquer Once (getMockImplementation()
+// após a fila esvaziar devolve a última Once — reentrar ali é recursão).
+const realWriteFile = writeFileMock.getMockImplementation()!;
 
 describe("withFlowLock — EPERM transitório de sharing violation (Windows, CI run 44509417046)", () => {
   const roots = createTempRootRegistry();
@@ -38,16 +41,31 @@ describe("withFlowLock — EPERM transitório de sharing violation (Windows, CI 
     writeFileMock.mockImplementationOnce(async (target: unknown, data: unknown, options: unknown) => {
       const flag = (options as { flag?: string } | undefined)?.flag;
       if (String(target) !== lockPath || flag !== "wx") {
-        return writeFileMock.getMockImplementation()!(target as never, data as never, options as never);
+        return realWriteFile(target as never, data as never, options as never);
       }
       // O vencedor da corrida cria o lock NESTE instante (o perdedor não
       // viu EEXIST porque a criação dele perdeu por sharing violation)...
-      await writeFileMock.getMockImplementation()!(target as never, `${JSON.stringify({ owner_token: "winner", pid: process.pid, created_at: new Date().toISOString() })}\n`, { flag: "w" });
-      // ...e o solta pouco depois (operação concluída), como no runner.
-      setTimeout(() => { void unlink(String(target)).catch(() => {}); }, 20);
+      await realWriteFile(target as never, `${JSON.stringify({ owner_token: "winner", pid: process.pid, created_at: new Date().toISOString() })}\n`, { flag: "w" });
+      // ...e o solta quando sua operação conclui — SEM timer: a 1ª versão
+      // (unlink por setTimeout 20ms) colidia com o retry de ~10ms do
+      // perdedor no disco lento do runner e produzia EPERM REAL + lstat
+      // ENOENT = fail-fast crú (CI run 44592021021). A saída agora é
+      // coordenada: o vencedor sai ANTES do retry do perdedor adquirir.
       const race = new Error("EPERM: operation not permitted (simulated sharing violation)") as NodeJS.ErrnoException;
       race.code = "EPERM";
       throw race;
+    });
+    // Retry do perdedor: aquisição coordenada — o lock do vencedor sai e o do
+    // perdedor entra DENTRO do mock (flag "w" após unlink awaited), sem
+    // writeFile wx real concorrendo com unlink real (a classe exata da
+    // sharing violation que o teste introduzia por acidente).
+    writeFileMock.mockImplementationOnce(async (target: unknown, data: unknown, options: unknown) => {
+      const flag = (options as { flag?: string } | undefined)?.flag;
+      if (String(target) !== lockPath || flag !== "wx") {
+        return realWriteFile(target as never, data as never, options as never);
+      }
+      await unlink(String(target)).catch(() => {});
+      await realWriteFile(target as never, data as never, { flag: "w" });
     });
 
     const result = await store.withFlowLock(flowId, async () => "ok");
@@ -65,7 +83,7 @@ describe("withFlowLock — EPERM transitório de sharing violation (Windows, CI 
     writeFileMock.mockImplementationOnce(async (target: unknown, data: unknown, options: unknown) => {
       const flag = (options as { flag?: string } | undefined)?.flag;
       if (!String(target).endsWith(".meeting.lock") || flag !== "wx") {
-        return writeFileMock.getMockImplementation()!(target as never, data as never, options as never);
+        return realWriteFile(target as never, data as never, options as never);
       }
       const denied = new Error("EPERM: operation not permitted (real permission denial)") as NodeJS.ErrnoException;
       denied.code = "EPERM";

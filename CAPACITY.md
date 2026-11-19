@@ -8,7 +8,7 @@ GREEN 8/8 (tests/issue-0021-corte-c.test.ts). EMENDA DE EXECUÇÃO: paga a tría
 documental (--help/--schema/--usage, intercept TRIADE-DOC-261119) nos 16
 scripts das fichas do TOOLSBOOK — blocker real do gate (motor registry 3.531.0,
 janela paralela); re-sha das 16 fontes + lapidação do motor (errors=replace,
-UnicodeDecodeError cp1252 flaky). Check completo exit 0 1039/1043. Receipt
+UnicodeDecodeError cp1252 flaky). Check completo exit 0 1039/1043. EMENDA CI (run 44592021021): teste EPERM flaky no runner — aquisição agora COORDENADA no 2º mock (zero disputa real); real writeFile capturado pré-Once. Receipt
 `reavaliacao_corte_c_issue21_261119`.
 
 ## Reavaliação — corte B issue 21: PRUNE prova por símbolo + espelho d.mts PRUNE (2026-11-19)
