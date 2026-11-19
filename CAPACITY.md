@@ -1,3 +1,12 @@
+## Reavaliação — corte D′ sentinela #26: ponto de intercepção completo (2026-11-19)
+
+Issue 26: PAR_INLINE/PAR_INLINE_INVERSO só engoliam ?.\w+ — o par inline com
+flow.status direto escapava da varredura E da contagem. Cura: grupo
+intermediário \w+(?:\?\.\w+|\.\w+)* (nu/.y/?.y/encadeado). Delta:
+tests/onda-verdict-d50b1.test.ts (+2 its: 4 formas × 2 ordens + fronteira sem
+falso positivo). RED 6/7 → GREEN 7/7; suíte no check. Receipt
+`reavaliacao_corte_d_prime_261119`.
+
 ## Reavaliação — withFlowLock EPERM transitório: cura do CI run 5 (2026-11-19)
 
 Run 44509417046: sharing violation de corrida no .meeting.lock chega como

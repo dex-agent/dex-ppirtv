@@ -12,8 +12,11 @@ import { describe, expect, it } from "vitest";
 // vigiados como fronteira.
 const MOTOR = readFileSync(path.resolve(import.meta.dirname, "../src/flow-engine.ts"), "utf8");
 
-const PAR_INLINE = /===\s*"pronto"\s*\|\|\s*\w+(?:\?\.\w+)?\s*===\s*"pronto_com_ressalvas"/g;
-const PAR_INLINE_INVERSO = /===\s*"pronto_com_ressalvas"\s*\|\|\s*\w+(?:\?\.\w+)?\s*===\s*"pronto"/g;
+// Issue #26: o grupo intermediário engole QUALQUER forma de acesso ao campo
+// (variável nua, .y, ?.y, encadeado) — o "?."-only deixava flow.status
+// direto escapar da varredura E da contagem.
+const PAR_INLINE = /===\s*"pronto"\s*\|\|\s*\w+(?:\?\.\w+|\.\w+)*\s*===\s*"pronto_com_ressalvas"/g;
+const PAR_INLINE_INVERSO = /===\s*"pronto_com_ressalvas"\s*\|\|\s*\w+(?:\?\.\w+|\.\w+)*\s*===\s*"pronto"/g;
 
 describe("onda cluster verdict d50b1 — 8 sítios usam a fonte única isPositiveVerdict", () => {
   it("motor consome isPositiveVerdict em ao menos 8 sitios e 1 import", () => {
@@ -44,5 +47,36 @@ describe("onda cluster verdict d50b1 — 8 sítios usam a fonte única isPositiv
     expect(mod.isPositiveVerdict("pronto")).toBe(true);
     expect(mod.isPositiveVerdict("pronto_com_ressalvas")).toBe(true);
     expect(mod.isPositiveVerdict("nao_pronto")).toBe(false);
+  });
+});
+
+// Issue #26 (corte D-prime 2026-11-19): o ponto de intercepção da sentinela
+// era incompleto — o grupo intermediário só engolia ?.\w+, deixando o MESMO
+// par inline com acesso direto flow.status escapar da varredura E da
+// contagem. Os its abaixo atestam o COMPORTAMENTO da sentinela contra as
+// formas de acesso (molde its-sem-meta-regex) — NUNCA podar.
+describe("issue 26 — sentinela pega o par inline em TODAS as formas de acesso ao campo", () => {
+  const FORMAS = ["status", "flow.status", "flow?.status", "ctx.flow?.verdict.status"];
+
+  it("as duas regex casam o par inline nas 4 formas de acesso, nas duas ordens", () => {
+    for (const operando of FORMAS) {
+      const direto = `${operando} === "pronto" || ${operando} === "pronto_com_ressalvas"`;
+      const inverso = `${operando} === "pronto_com_ressalvas" || ${operando} === "pronto"`;
+      expect((direto.match(PAR_INLINE) ?? []).length).toBeGreaterThanOrEqual(1);
+      expect((inverso.match(PAR_INLINE_INVERSO) ?? []).length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("fronteira sem falso positivo: singulares deliberados e complete/archived continuam fora das regex", () => {
+    const fronteira = [
+      'if (flow.status === "pronto")',
+      "status === \"pronto\" &&",
+      'flow.status === "complete"',
+      'flow?.status === "archived"'
+    ];
+    for (const trecho of fronteira) {
+      expect((trecho.match(PAR_INLINE) ?? []).length).toBe(0);
+      expect((trecho.match(PAR_INLINE_INVERSO) ?? []).length).toBe(0);
+    }
   });
 });

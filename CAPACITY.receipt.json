@@ -1,4 +1,11 @@
 {
+  "reavaliacao_corte_d_prime_261119": {
+    "date": "2026-11-19",
+    "scope": [
+      "tests/onda-verdict-d50b1.test.ts"
+    ],
+    "delta": "Corte D-prime issue 26: sentinela do cluster verdict com ponto de intercepcao incompleto — grupo intermediario das 2 regex so engolia ?.\\w+, deixando o par inline pronto||pronto_com_ressalvas com flow.status DIRETO escapar da varredura e da contagem (copia nova invisivel). Cura: \\w+(?:\\?\\.\\w+|\\.\\w+)* casa variavel nua, .y, ?.y e encadeado. RED-first (+2 its: 4 formas x 2 ordens; fronteira singulares/complete-archived sem falso positivo — NUNCA podar). Barata-scan: classe do optional-chaining parcial mora so nesta sentinela. RED 6/7 -> GREEN 7/7. Camping NOT_APPLICABLE (teste puro, motor intocado)."
+  },
   "reavaliacao_lock_eperm_261119": {
     "date": "2026-11-19",
     "scope": [

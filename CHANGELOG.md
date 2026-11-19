@@ -8,6 +8,18 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **sentinela do cluster verdict com ponto de intercepção completo (corte
+  D′, issue #26)**: as regex `PAR_INLINE`/`PAR_INLINE_INVERSO` de
+  `tests/onda-verdict-d50b1.test.ts` só engoliam `?.\w+` como forma de
+  acesso ao campo — o MESMO par inline `pronto || pronto_com_ressalvas`
+  com `flow.status` direto escapava da varredura E da contagem (cópia nova
+  invisível). Cura: grupo intermediário `\w+(?:\?\.\w+|\.\w+)*` (variável
+  nua, `.y`, `?.y`, encadeado). RED-first: 2 its novos atestam as duas
+  regex nas 4 formas × 2 ordens + fronteira sem falso positivo
+  (singulares deliberados e `complete`/`archived` continuam fora); 7/7.
+  Varredura de classe: o optional-chaining parcial morava só nesta
+  sentinela.
+
 - **withFlowLock tolera EPERM transitório de sharing violation no Windows
   (cura do CI run 5)**: o loop do lock em `src/store.ts` só tolerava EEXIST
   na criação `wx` do `.meeting.lock` — no Windows a sharing violation de
