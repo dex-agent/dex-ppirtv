@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# TRIADE-DOC-261119 (--schema/--usage; casa GATE-DOC-ADMISSAO-HELP-SCHEMA-USAGE,
+# cobranca do toolsbook --check registry 3.531.0) — intercept PRE-argparse.
+_av = __import__("sys").argv[1:2]
+if _av and _av[0] in ("--schema", "--usage"):
+    _doc = {"tool": "judge-playbook", "purpose": "juiz da projecao playbook (fontes x projecao publicada)", "contract": "dex.triade.v1", "inputs": ["--repo <dir>"], "outputs": ["stdout veredito"]}
+    if _av[0] == "--schema":
+        print(__import__("json").dumps(_doc, ensure_ascii=False, indent=2))
+    else:
+        print('usage: judge-playbook.py --repo . — julga a projecao PLAYBOOK contra as fontes.')
+    raise SystemExit(0)
 """judge-playbook.py — juiz mecanico da prova cega V5 (design arena-zcode campeao).
 
 Criterios (intersecao de conjuntos; eco do AGENTS.md nao casa):

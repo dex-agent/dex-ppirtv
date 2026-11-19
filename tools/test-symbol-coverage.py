@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# TRIADE-DOC-261119 (--schema/--usage; casa GATE-DOC-ADMISSAO-HELP-SCHEMA-USAGE,
+# cobranca do toolsbook --check registry 3.531.0) — intercept PRE-argparse.
+_av = __import__("sys").argv[1:2]
+if _av and _av[0] in ("--schema", "--usage"):
+    _doc = {"tool": "test-symbol-coverage", "purpose": "regua de rede simbolo x suite: code_refs x mention_refs x sem ref por modulo", "contract": "dex.triade.v1", "inputs": ["--repo <dir>", "--json"], "outputs": ["stdout tabela (ou JSON) por modulo"]}
+    if _av[0] == "--schema":
+        print(__import__("json").dumps(_doc, ensure_ascii=False, indent=2))
+    else:
+        print('usage: test-symbol-coverage.py --repo . [--json] — mede cobertura de simbolos src x suíte (code/mention/sem-ref).')
+    raise SystemExit(0)
 # -*- coding: utf-8 -*-
 """Régua perene da rede símbolo×suíte (D-41, 2026-11-12; emendada pela adversarial).
 

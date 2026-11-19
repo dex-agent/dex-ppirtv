@@ -8,6 +8,24 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **gate de merge cobre os DOIS fluxos + hooks 100755 (corte C, issue
+  #21 P1-2)**: suíte vermelha não atravessa mais o merge — (a) no merge
+  AUTOMÁTICO o hook `pre-merge-commit` rodava ANTES de `MERGE_HEAD` existir
+  (o git escreve o arquivo só depois do hook) e a guarda `A3a` confundia
+  "merge automático em andamento" com "não é merge" (exit 0 silencioso);
+  agora MERGE_HEAD ausente = fluxo automático: a suíte declarada roda no
+  worktree (estado pós-merge já materializado), vermelha bloqueia, sem
+  suíte é no-op (P10); (b) na RESOLUÇÃO MANUAL o git chama apenas
+  `pre-commit` — agora ele detecta `MERGE_HEAD` presente e delega ao novo
+  `tools/playbook/hooks/merge-resolve-gate.sh`, a MESMA fonte usada pelo
+  caminho A3f do `pre-merge-commit` (`git merge --continue`): um único
+  veredito de resolução, escape `MERGE_CHECK_SKIP=1` preservado; (c) os
+  hooks publicados mudam para modo 100755 (`update-index --chmod=+x` —
+  POSIX). RED 5/8 → GREEN 8/8 (`tests/issue-0021-corte-c.test.ts`:
+  automático via git real, resolve-gate no estado MERGE_HEAD, sentinela da
+  delegação e modo do índice; NUNCA podar). Camping NOT_APPLICABLE
+  (ferramenta de dev; motor intocado — selo CORTE-B-PRIME segue pendente).
+
 - **PRUNE com prova por símbolo + espelho d.mts com PRUNE (corte B, issue
   #21 P1-3+P2-7)**: o fiscal do camping reprova remoção não declarada — cada
   símbolo em `metrics.symbols.removed` fora de `removed_symbols`/`death_proofs`

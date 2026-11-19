@@ -1,4 +1,17 @@
 #!/usr/bin/env node
+// TRIADE-DOC-261119 (--schema/usage; casa GATE-DOC-ADMISSAO-HELP-SCHEMA-USAGE,
+// cobranca do toolsbook --check registry 3.531.0) — intercept de documentacao
+// ANTES da logica util (flag sem valor; com valor segue o fluxo normal).
+{
+  const _av = process.argv.slice(2);
+  const _docFlag = (f) => _av.includes(f) && (_av.indexOf(f) === _av.length - 1 || String(_av[_av.indexOf(f) + 1]).startsWith("--"));
+  if (_docFlag("--schema") || _docFlag("--usage")) {
+    const _doc = {"tool": "call-mcp-tool", "purpose": "harness generico de chamada a tools MCP do dex-PPIRTV via stdio", "contract": "dex.triade.v1", "inputs": ["--workspace <dir>", "--list", "--probe", "--tool <nome>", "--args <json>", "--args-file <path>", "--describe <tool>", "--schema <tool>", "--usage <tool>"], "outputs": ["stdout JSON da tool/estruturado"]};
+    if (_docFlag("--schema")) console.log(JSON.stringify(_doc, null, 2));
+    else console.log('usage: node scripts/call-mcp-tool.mjs --workspace <dir> [--list|--probe|--tool <t> --args-file <f>|--describe|--schema|--usage <t>] — harness generico de chamada MCP stdio. Com --schema/--usage SEM <tool> devolve este doc.');
+    process.exit(0);
+  }
+}
 // Chamar tool MCP do dex-PPIRTV via stdio (e listar tools) com args JSON de
 // arquivo — harness genérico do servidor (launcher ou index).
 // Reuso: @modelcontextprotocol/sdk (client stdio); dist/launcher.js|index.js do repo

@@ -1,3 +1,16 @@
+## Reavaliação — corte C issue 21: hooks de merge gated nos DOIS fluxos + 100755 (2026-11-19)
+
+P1-2: merge AUTOMÁTICO gated (MERGE_HEAD ausente no hook = merge em andamento —
+suíte no worktree; vermelha bloqueia; sem suíte = no-op P10) e RESOLUÇÃO MANUAL
+pela mesma fonte (pre-commit delega ao merge-resolve-gate.sh quando MERGE_HEAD
+presente; A3f delega ao mesmo script — veredito único). Hooks 100755. RED 5/8 →
+GREEN 8/8 (tests/issue-0021-corte-c.test.ts). EMENDA DE EXECUÇÃO: paga a tríade
+documental (--help/--schema/--usage, intercept TRIADE-DOC-261119) nos 16
+scripts das fichas do TOOLSBOOK — blocker real do gate (motor registry 3.531.0,
+janela paralela); re-sha das 16 fontes + lapidação do motor (errors=replace,
+UnicodeDecodeError cp1252 flaky). Check completo exit 0 1039/1043. Receipt
+`reavaliacao_corte_c_issue21_261119`.
+
 ## Reavaliação — corte B issue 21: PRUNE prova por símbolo + espelho d.mts PRUNE (2026-11-19)
 
 P1-3: validador confronta metrics.symbols.removed × declaração

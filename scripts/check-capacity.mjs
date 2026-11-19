@@ -1,4 +1,17 @@
 #!/usr/bin/env node
+// TRIADE-DOC-261119 (--help/schema/usage; casa GATE-DOC-ADMISSAO-HELP-SCHEMA-USAGE,
+// cobranca do toolsbook --check registry 3.531.0) — intercept de documentacao
+// ANTES da logica util (flag sem valor; com valor segue o fluxo normal).
+{
+  const _av = process.argv.slice(2);
+  const _docFlag = (f) => _av.includes(f) && (_av.indexOf(f) === _av.length - 1 || String(_av[_av.indexOf(f) + 1]).startsWith("--"));
+  if (_docFlag("--help") || _docFlag("--schema") || _docFlag("--usage")) {
+    const _doc = {"tool": "check-capacity", "purpose": "gate de capacidade: valida/aritmetica do par CAPACITY contra o diff do commit", "contract": "dex.triade.v1", "inputs": ["--staged", "--json", "--refresh-hint"], "outputs": ["stdout JSON (com --json) ou veredito textual; exit != 0 quando exige reavaliacao"]};
+    if (_docFlag("--schema")) console.log(JSON.stringify(_doc, null, 2));
+    else console.log('usage: node scripts/check-capacity.mjs [--staged] [--json] — gate CAPACITY (par CAPACITY.md + CAPACITY.receipt.json).');
+    process.exit(0);
+  }
+}
 // PPIRTV-CAPACITY-COMMIT-GATE
 // Reuso: node:child_process/node:fs; CAPACITY.receipt.json (contrato canônico)
 // Perigo: BLOQUEIA commit sem par CAPACITY staged (gate read-only; emite

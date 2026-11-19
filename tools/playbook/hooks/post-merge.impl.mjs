@@ -1,3 +1,16 @@
+// TRIADE-DOC-261119 (--help/schema/usage; casa GATE-DOC-ADMISSAO-HELP-SCHEMA-USAGE,
+// cobranca do toolsbook --check registry 3.531.0) — intercept de documentacao
+// ANTES da logica util (flag sem valor; com valor segue o fluxo normal).
+{
+  const _av = process.argv.slice(2);
+  const _docFlag = (f) => _av.includes(f) && (_av.indexOf(f) === _av.length - 1 || String(_av[_av.indexOf(f) + 1]).startsWith("--"));
+  if (_docFlag("--help") || _docFlag("--schema") || _docFlag("--usage")) {
+    const _doc = {"tool": "post-merge-paridade", "purpose": "paridade dos pares canonicos globais apos merge (hook post-merge)", "contract": "dex.triade.v1", "inputs": ["(sem args; cwd = repo)"], "outputs": ["stdout status INALTERADO/ATUALIZADO/DRIFT"]};
+    if (_docFlag("--schema")) console.log(JSON.stringify(_doc, null, 2));
+    else console.log('usage: node tools/playbook/hooks/post-merge.impl.mjs — paridade pos-merge dos 4 pares globais (executado pelo hook post-merge).');
+    process.exit(0);
+  }
+}
 // Reuso: node:fs/node:child_process; pares canônicos de canonical-pairs
 // Perigo: COPIA repo->global dos 4 pares após pull/merge; RECUSA sobrescrever
 //   global divergente (grita instrução em vez de agir)

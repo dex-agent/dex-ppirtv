@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# TRIADE-DOC-261119 (--schema/--usage; casa GATE-DOC-ADMISSAO-HELP-SCHEMA-USAGE,
+# cobranca do toolsbook --check registry 3.531.0) — intercept PRE-argparse.
+_av = __import__("sys").argv[1:2]
+if _av and _av[0] in ("--schema", "--usage"):
+    _doc = {"tool": "generate-playbook", "purpose": "projecao deterministica PLAYBOOK.md/index das regras de decisao do repo", "contract": "dex.triade.v1", "inputs": ["--repo <dir>", "--write", "--check"], "outputs": ["PLAYBOOK.md + PLAYBOOK.index.json (write) ou exit 2 em drift (check)"]}
+    if _av[0] == "--schema":
+        print(__import__("json").dumps(_doc, ensure_ascii=False, indent=2))
+    else:
+        print('usage: generate-playbook.py --repo . [--write|--check] — gera/confere a projecao PLAYBOOK das fontes declaradas.')
+    raise SystemExit(0)
 """Gerar PLAYBOOK.md do repo (projeção externa das regras) e verificar frescor.
 
 (generate-playbook.py — versao generica da dex-playbook-entrada)

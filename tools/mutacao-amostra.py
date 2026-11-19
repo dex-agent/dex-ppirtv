@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# TRIADE-DOC-261119 (--schema/--usage; casa GATE-DOC-ADMISSAO-HELP-SCHEMA-USAGE,
+# cobranca do toolsbook --check registry 3.531.0) — intercept PRE-argparse.
+_av = __import__("sys").argv[1:2]
+if _av and _av[0] in ("--schema", "--usage"):
+    _doc = {"tool": "mutacao-amostra", "purpose": "harness canonico de mutacao de amostra com restauracao byte-exata e veredito valido/pega invalido", "contract": "dex.triade.v1", "inputs": ["--src <arquivo>", "--simbolo <nome>", "--literal <trecho>", "--mutacao <trecho>", "--teste <seletor>", "--saida <dir>"], "outputs": ["stdout JSON {valido, pega, observacoes...} + copia de saida"]}
+    if _av[0] == "--schema":
+        print(__import__("json").dumps(_doc, ensure_ascii=False, indent=2))
+    else:
+        print('usage: mutacao-amostra.py --src SRC --simbolo SIMBOLO --literal LITERAL --mutacao MUTACAO --teste TESTE [--saida SAIDA] — muta o literal no simbolo, roda o seletor de teste e devolve veredito RED/PEGA/INVALIDO (JSON).')
+    raise SystemExit(0)
 # -*- coding: utf-8 -*-
 """Harness canônico de MUTAÇÃO DE AMOSTRA (promovido a tools/ no D-46; nasceu como
 harness-v2.py no corte D-45 — 2º consumidor real paga a promoção, régua R17/MECANISMO-PAGA-O-CUSTO).

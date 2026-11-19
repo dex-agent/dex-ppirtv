@@ -4,10 +4,7 @@
 # do dono: "sem gate, merge que quebra nasce". NAO use code-review-graph install
 # aqui (isso registra MCP/skills de plataforma; o gate e este hook).
 
-# A3a: nao e merge -> exit 0 silencioso
-[ -f "$GIT_DIR/MERGE_HEAD" ] || exit 0
-
-# A3b: escapes registrados (1 linha no stdout)
+# A3b: escapes registrados (1 linha no stdout) — vale para TODOS os fluxos.
 if [ "$MERGE_CHECK_SKIP" = "1" ]; then
   echo "merge-check gate: SKIP por MERGE_CHECK_SKIP=1"
   exit 0
@@ -20,25 +17,36 @@ SUITE=""
 RUN_SUITE="$SUITE"
 [ -n "$RUN_SUITE" ] || echo "merge-check gate: sem suíte declarada em $CONF — proponha a suíte mínima como pendência (não bloqueia por falta de suíte)"
 
+# A3a (issue 21 P1-2): MERGE_HEAD ausente = merge AUTOMÁTICO em andamento — o
+# git roda este hook ANTES de escrever MERGE_HEAD (fato medido na repro da
+# issue). pre-merge-commit só roda em merge, então NÃO existe caso "não é
+# merge" aqui; a antiga guarda exit-0 deixava suíte vermelha atravessar o
+# automático. O worktree já está no estado pós-merge: suíte comportamental
+# DIRETO nele (sem theirs confiável, a camada textual 3-vias fica para o fluxo
+# com MERGE_HEAD).
+if [ ! -f "$GIT_DIR/MERGE_HEAD" ]; then
+  if [ -z "$SUITE" ]; then
+    exit 0
+  fi
+  echo "merge-check gate: merge automático, suíte no worktree ($SUITE)"
+  if ! $SUITE; then
+    echo "merge-check gate: FALHOU — suíte vermelha no merge automático"
+    echo "  inspecione fora do hook: $SUITE"
+    exit 1
+  fi
+  exit 0
+fi
+
 OURS=$(git rev-parse HEAD)
 THEIRS=$(git rev-parse "$GIT_DIR/MERGE_HEAD")
 BASE=$(git merge-base HEAD MERGE_HEAD)
 
 if grep -q "# Conflicts" "$GIT_DIR/MERGE_MSG" 2>/dev/null; then
-  # A3f: resolução manual — a camada textual do merge-check daria falso-positivo
-  # (refaz o merge sem a resolução humana); roda a camada comportamental DIRETO
-  # no estado resolvido.
-  if [ -z "$SUITE" ]; then
-    echo "merge-check gate: resolved-merge sem suíte declarada — nada a rodar, exit 0"
-    exit 0
-  fi
-  echo "merge-check gate: resolved-merge, suíte no worktree ($SUITE)"
-  if ! $SUITE; then
-    echo "merge-check gate: FALHOU — suíte vermelha no worktree resolvido"
-    echo "  inspecione fora do hook: $SUITE"
-    exit 1
-  fi
-  exit 0
+  # A3f (issue 21 P1-2): resolução manual via git merge --continue — a camada
+  # textual do merge-check daria falso-positivo (refaz o merge sem a resolução
+  # humana). Delega ao merge-resolve-gate.sh, a MESMA fonte usada pela delegação
+  # do pre-commit (fluxo git commit): um único veredito de resolução.
+  exec "$(dirname "$0")/merge-resolve-gate.sh"
 fi
 
 # A3e: gate completo (três vias + suíte). Sem suíte: no-op 'true' mantém o gate

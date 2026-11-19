@@ -1,3 +1,16 @@
+// TRIADE-DOC-261119 (--help/schema/usage; casa GATE-DOC-ADMISSAO-HELP-SCHEMA-USAGE,
+// cobranca do toolsbook --check registry 3.531.0) — intercept de documentacao
+// ANTES da logica util (flag sem valor; com valor segue o fluxo normal).
+{
+  const _av = process.argv.slice(2);
+  const _docFlag = (f) => _av.includes(f) && (_av.indexOf(f) === _av.length - 1 || String(_av[_av.indexOf(f) + 1]).startsWith("--"));
+  if (_docFlag("--help") || _docFlag("--schema") || _docFlag("--usage")) {
+    const _doc = {"tool": "validate-flow-engine-boundary", "purpose": "fiscal camping: valida visitas/records do ledger do flow-engine por modo", "contract": "dex.triade.v1", "inputs": ["--cwd <repo>", "argumentos de record/replay"], "outputs": ["stdout receipt JSON; exit != 0 em FAIL"]};
+    if (_docFlag("--schema")) console.log(JSON.stringify(_doc, null, 2));
+    else console.log('usage: node scripts/validate-flow-engine-boundary.mjs [--cwd <repo>] — fiscal do camping de src/flow-engine.ts (SHRINK/CONTAIN/EXCEPTION/PRUNE).');
+    process.exit(0);
+  }
+}
 // Reuso: dist/gate-resolution (validadores de fronteira do monólito)
 // Perigo: read-only (valida fronteira flow-engine)
 

@@ -16,12 +16,36 @@
 
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
+    # TRIADE-DOC-261119 (--help/--schema/--usage; casa
+    # GATE-DOC-ADMISSAO-HELP-SCHEMA-USAGE, cobranca do toolsbook --check
+    # registry 3.531.0): switches documentais em coexistencia com -Path.
     [string]$Path,
     [string]$Root = '.',
     [switch]$Recurse,
-    [switch]$DryRun
+    [switch]$DryRun,
+    [switch]$Help,
+    [switch]$Schema,
+    [switch]$Usage
 )
+
+# TRIADE-DOC-261119 — doc antes da validacao (Path obrigatoria so no uso real).
+if ($Help -or $Usage) {
+    Write-Output 'usage: remove-safe-path.ps1 -Path <alvo> -Root <raiz permitida (default cwd)> [-Recurse] [-DryRun] — remove com validacao rigorosa de raiz e reparse points, emitindo receipt JSON (detalhes: -Schema)'
+    exit 0
+}
+if ($Schema) {
+    [pscustomobject]@{
+        tool     = 'remove-safe-path'
+        purpose  = 'remocao segura de arquivo/diretorio com validacao de raiz e reparse points + receipt JSON'
+        contract = 'dex.triade.v1'
+        inputs   = @('-Path <alvo>', '-Root <raiz permitida (default cwd)>', '-Recurse', '-DryRun')
+        outputs  = @('JSON { contract, dry_run, path, root, existed, removed, mode, error }')
+    } | ConvertTo-Json
+    exit 0
+}
+if (-not $Path) {
+    throw 'Path e obrigatorio no uso real (documentacao: -Help/-Schema/-Usage)'
+}
 
 $ErrorActionPreference = 'Stop'
 

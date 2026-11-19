@@ -1,4 +1,17 @@
 #!/usr/bin/env node
+// TRIADE-DOC-261119 (--help/schema/usage; casa GATE-DOC-ADMISSAO-HELP-SCHEMA-USAGE,
+// cobranca do toolsbook --check registry 3.531.0) — intercept de documentacao
+// ANTES da logica util (flag sem valor; com valor segue o fluxo normal).
+{
+  const _av = process.argv.slice(2);
+  const _docFlag = (f) => _av.includes(f) && (_av.indexOf(f) === _av.length - 1 || String(_av[_av.indexOf(f) + 1]).startsWith("--"));
+  if (_docFlag("--help") || _docFlag("--schema") || _docFlag("--usage")) {
+    const _doc = {"tool": "render-ppirtv-phase", "purpose": "render da linha visual PPIRTV (fases do workflow base)", "contract": "dex.triade.v1", "inputs": ["--phase <nome>", "--detail <level>"], "outputs": ["stdout linha visual"]};
+    if (_docFlag("--schema")) console.log(JSON.stringify(_doc, null, 2));
+    else console.log('usage: node scripts/render-ppirtv-phase.mjs --phase <nome> [--detail full] — render da linha visual PPIRTV.');
+    process.exit(0);
+  }
+}
 // render-ppirtv-phase.mjs
 // Reuso: nenhum externo (render puro)
 // Perigo: read-only (render de fase para checklist visual)
