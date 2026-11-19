@@ -3,7 +3,7 @@
 P2-6 stringsOnly (fim de null→"null"/objeto→"[object Object]"); P2-8 .gitattributes
 -text + re-sha blob + vigia EOL; P3 hint honesto sem lista; CI audit --local-only +
 capacity; portabilidade decidida (skipIf + TRACKER-0014); garimpo (0 órfãos). RED 3/5 →
-GREEN 5/5; suíte 1041/1045. Receipt `reavaliacao_corte_d_fechamento21_261119`.
+GREEN 5/5; suíte 1041/1045. Receipt `reavaliacao_corte_d_fechamento21_261119` (emenda: entrada CHANGELOG + regen PLAYBOOK no mesmo pacote documental).
 
 ## Reavaliação — corte C issue 21: hooks de merge gated nos DOIS fluxos + 100755 (2026-11-19)
 

@@ -8,6 +8,22 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **janela de fechamento #21: P2-6+P2-8+P3 + CI + portabilidade (issue
+  CLOSED 9/9)**: P2-6 `stringsOnly` nas 4 listas de contrato (null/número/objeto
+  param de fabricar strings nas APIs públicas `readyDefinition`/`promptGuidance`;
+  fora de array lê `[]`); P2-8 `.gitattributes -text` nas fontes do TOOLSBOOK e
+  hooks + fichas re-shadas com **sha256 do blob canônico** + vigia EOL-agnóstico
+  (mesmo commit satisfaz checkout LF e CRLF; mudança de conteúdo segue
+  detectada; disco renormalizado); P3 `attributionHint` sem lista elegível nunca
+  afirma "reutilizável" (orienta frescor/renovação; caminho com lista do corte A
+  intacto). CI lapidado: `audit-canonical-sync --local-only` + `check:capacity`
+  como steps. Portabilidade decidida: 3 its Windows-bound com `itWindowsOnly` =
+  `it.skipIf` (pula declarado fora do Windows) + TRACKER-LOCAL-0014
+  (runner-Linux aguardando dono). Garimpo de estacionamentos: 0 órfãos. RED 3/5 →
+  GREEN 5/5 (`tests/issue-0021-corte-d.test.ts`, NUNCA podar); suíte 1041/1045;
+  issue #21 CLOSED. Camping NOT_APPLICABLE (selo CORTE-B-PRIME pendente —
+  nenhum item tocou o motor).
+
 - **gate de merge cobre os DOIS fluxos + hooks 100755 (corte C, issue
   #21 P1-2)**: suíte vermelha não atravessa mais o merge — (a) no merge
   AUTOMÁTICO o hook `pre-merge-commit` rodava ANTES de `MERGE_HEAD` existir
