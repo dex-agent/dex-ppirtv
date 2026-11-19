@@ -1,4 +1,12 @@
 {
+  "reavaliacao_ci_portabilidade_261119": {
+    "date": "2026-11-19",
+    "scope": [
+      "tests/flow-engine-boundary.test.ts",
+      "tests/issue-0027-replay-chain.test.ts"
+    ],
+    "delta": "Portabilidade CI medida no run 44502835971 (windows runner): it da arquitetura viva skipa quando AGENTS.md ausente (superficie local gitignored por design, viaja via PLAYBOOK); it do replay usa repo root relativo ao __dirname (cwd hardcodado de maquina matava o spawnSync com ENOENT no runner). 44/44 local."
+  },
   "reavaliacao_ci_runner_windows_261119": {
     "date": "2026-11-19",
     "scope": [

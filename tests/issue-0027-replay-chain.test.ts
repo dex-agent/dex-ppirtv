@@ -14,7 +14,9 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { evaluateFlowEngineChange, runBoundaryCli } from "../scripts/validate-flow-engine-boundary.mjs";
 
-const WS = "C:/CodexProjetos/dex-PPIRTV";
+// Repo root relativo ao arquivo do teste — portavel para clone limpo de CI
+// (cwd hardcodado de maquina mata o spawnSync do validador com ENOENT).
+const WS = path.resolve(__dirname, "..");
 const HEX40 = (char: string) => char.repeat(40);
 
 let tempRoot = "";

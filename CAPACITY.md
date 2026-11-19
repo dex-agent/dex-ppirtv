@@ -1,3 +1,9 @@
+## Reavaliação — portabilidade CI (2026-11-19)
+
+Run 44502835971: it da arquitetura skipa sem AGENTS.md (local por design); it
+do replay com root relativo ao teste. 44/44 local. Receipt
+`reavaliacao_ci_portabilidade_261119`.
+
 ## Reavaliação — CI runner windows-latest (2026-11-19)
 
 3 testes Windows-bound medidos no 1º run (AGENTS.md gitignored; FS case;
