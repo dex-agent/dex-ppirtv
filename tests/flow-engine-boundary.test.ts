@@ -3,8 +3,6 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-// Portabilidade decidida (TRACKER ISSUE-LOCAL-0014): pula declarado fora do Windows.
-const itWindowsOnly = it.skipIf(process.platform !== "win32");
 
 import {
   analyzeFlowEngineSource,
@@ -1397,18 +1395,15 @@ describe("flow-engine responsibility balance", () => {
     expect(receipt.reasons.some((reason: string) => reason.includes("COMMIT_SEAL_PARENT_MISSING:seal6-r1"))).toBe(false);
   });
 
-  // Janela de fechamento #21 (portabilidade decidida): frota Windows-first
-  // (ci.yml windows-first por decisao da casa); este it depende de
-  // AGENTS.md local (gitignored por design, viaja via PLAYBOOK) — fora do Windows ele PULA declarado ate o runner Linux
-  // existir (TRACKER ISSUE-LOCAL-0014, aguardando dono).
-  itWindowsOnly("keeps the living architecture public and discoverable", async () => {
-    // AGENTS.md e superficie LOCAL por design (gitignored; viaja via PLAYBOOK)
-    // — em clone limpo (CI) o it skipa em vez de falsa falha.
+  // ISSUE-LOCAL-0014 paga (corte E): superfície de entrada universal — AGENTS.md
+  // na frota (local por design) ou PLAYBOOK.md versionado no clone/CI; o link
+  // da arquitetura viva é garantia das superfícies versionadas (README/INDEX),
+  // checadas em qualquer clone.
+  it("keeps the living architecture public and discoverable", async () => {
     const agentsExists = await import("node:fs").then((fs) => fs.existsSync("AGENTS.md"));
-    if (!agentsExists) return;
-    const [readme, agents, rootIndex, docsIndex, gitignore, architecture, ledger] = await Promise.all([
+    const [readme, entrySurface, rootIndex, docsIndex, gitignore, architecture, ledger] = await Promise.all([
       readFile("README.md", "utf8"),
-      readFile("AGENTS.md", "utf8"),
+      agentsExists ? readFile("AGENTS.md", "utf8") : readFile("PLAYBOOK.md", "utf8"),
       readFile("INDEX.md", "utf8"),
       readFile("docs/INDEX.md", "utf8"),
       readFile(".gitignore", "utf8"),
@@ -1416,9 +1411,11 @@ describe("flow-engine responsibility balance", () => {
       readFile("docs/architecture/flow-engine-evolution.json", "utf8")
     ]);
 
-    for (const surface of [readme, agents, rootIndex]) {
+    for (const surface of [readme, rootIndex]) {
       expect(surface).toContain("docs/architecture/FLOW_ENGINE_EVOLUTION.md");
     }
+    if (agentsExists) expect(entrySurface).toContain("docs/architecture/FLOW_ENGINE_EVOLUTION.md");
+    else expect(entrySurface).toContain("PPIRTV");
     expect(docsIndex).toContain("architecture/FLOW_ENGINE_EVOLUTION.md");
     expect(gitignore).toContain("!docs/architecture/**");
     expect(architecture).toContain("PPIRTV-FLOW-ENGINE-RESPONSIBILITY-BALANCE");

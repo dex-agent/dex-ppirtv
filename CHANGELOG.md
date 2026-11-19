@@ -8,6 +8,30 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **corte E: R9 prova de tipos no spt-kit + matrix windows/ubuntu no CI
+  (ISSUE-LOCAL-0009 + ISSUE-LOCAL-0014 pagas, GO do dono via quiz)**: 0009 —
+  regra R9 no `spt-kit/RULES.md` (ER que prova tipos cita `npm run
+  check:types` ou `npm run check` INTEIRO, nunca `tsc -p` parcial src-only:
+  verde parcial NÃO é verde de tipos — classe do falso verde D-47), âncora no
+  `procedure` do `spt-kit/MOLDE.md`, sentinela S11 no `spt-kit/preflight.mjs`
+  (ER command com `tsc` direto sem `npm run check` reprova na fonte; VACINA
+  PROVADA por mutação com SPT fake — S11 exit 1), sha256 rev 4 do MOLDE no
+  registro do `SCHEMA/dex.spt.v3.schm.md` NO MESMO COMMIT (preflight
+  --checksum 0 achados; banner --schema atualizado para S00..S11 — barata
+  vizinha pega pela vacina issue #8 da suíte). 0014 — matrix `windows-latest
+  + ubuntu-latest` no `ci.yml` (runs-on matrix.os) e os 3 ex-Windows-bound
+  viram `it` normais: case-equivalent L1 ganhou gêmeo físico `LEMBRANCA.md`
+  no setup (idempotente no Windows, materializa o par no Linux — a leitura
+  forjada chega ao WRITE_SET_MISMATCH nos 2 FS), living-architecture lê
+  AGENTS.md na frota ou PLAYBOOK.md versionado no clone (6 superfícies
+  versionadas sempre checadas), pre-upgrade fail-closed de-skipado com PROBE
+  de isomorfismo platform=linux PASSANDO — a "divergência Linux" declarada
+  no ci.yml era AFIRMAZA (nunca medida; motor normaliza separador em toda
+  plataforma). RED 3 falhas → GREEN; vigias `tests/spt-kit-rules.test.ts`
+  (2/2) e `tests/issue-0014-matrix.test.ts` (1/1) NUNCA podar; zero
+  itWindowsOnly. Suíte 1047/1051, check exit 0. Camping NOT_APPLICABLE
+  (nenhum item toca o motor — selo CORTE-B-PRIME segue pendente).
+
 - **janela de fechamento #21: P2-6+P2-8+P3 + CI + portabilidade (issue
   CLOSED 9/9)**: P2-6 `stringsOnly` nas 4 listas de contrato (null/número/objeto
   param de fabricar strings nas APIs públicas `readyDefinition`/`promptGuidance`;

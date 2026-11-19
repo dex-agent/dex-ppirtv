@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// preflight SPT v3 — regras R1-R08 (S01..S08) + anti-drift S09 + shape S10.
+// preflight SPT v3 — checks S00..S11: regras R1-R09 (S01..S08, S11), anti-drift S09, shape S10 — forma local; spt_validate MCP permanece a autoridade.
 // Uso: node preflight.mjs <spt.md> | node preflight.mjs --checksum <molde.md>
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -17,7 +17,7 @@ const PRE_FLIGHT_DOC = {
   ],
   schema: {
     contract: "dex.spt.preflight.doc.v1",
-    checks: "S00..S10 (forma local; spt_validate MCP permanece a autoridade)",
+    checks: "S00..S11 (forma local; spt_validate MCP permanece a autoridade)",
     exit: "0 = achados=0; 1 = achados>0"
   },
   examples: [
@@ -107,6 +107,11 @@ function checkGraph(d) {
         add("S04", `${e.id}: boolean_assertion exige expected boolean (R4)`);
       else if (k === "command_exit" && !Number.isInteger(e.expectation.expected_exit_code))
         add("S04", `${e.id}: command_exit exige expected_exit_code inteiro (R4)`);
+      // R9 (S11): prova de tipos integral — tsc direto sem o script do projeto
+      // (ISSUE-LOCAL-0009: verde parcial de tsc src-only tomado por verde total)
+      const proc = String(e.procedure || "");
+      if (/(npx\s+tsc|\btsc\s+(-p|--noEmit|--project))/.test(proc) && !/npm run check/.test(proc))
+        add("S11", `${e.id}: prova de tipos com tsc direto (R9) — cite npm run check:types ou npm run check INTEIRO`);
     }
   }
   if (badIds.length) add("S08", `ID fora do padrao estavel ou duplicado (R8): ${[...new Set(badIds)].join(", ")}`);

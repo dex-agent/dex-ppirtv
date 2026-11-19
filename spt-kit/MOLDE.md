@@ -1,6 +1,6 @@
 # MOLDE SPT v3 — preencher, nunca interpretar
 
-Regras: `RULES.md` (R1-R08). Ordem e gate: `GUIA.md`. Copie o BLOCO YAML abaixo
+Regras: `RULES.md` (R1-R09). Ordem e gate: `GUIA.md`. Copie o BLOCO YAML abaixo
 (da primeira linha `---` ate a ultima linha `---`) para
 `<workspace>\.agents\PLAN-TASKS\YYYY-MM-DD-<slug>.md` — este header de prosa
 NAO faz parte do trilho (copiar o arquivo integral gera S00). Preencha cada
@@ -44,7 +44,7 @@ tasks:
       - id: ER-01
         proves: [C-01]
         method: command
-        procedure: 'TODO-PREENCHER comando literal com resultado esperado'
+        procedure: 'TODO-PREENCHER comando literal com resultado esperado (prova de tipos: npm run check:types ou npm run check INTEIRO — nunca tsc -p parcial, R9)'
         expectation:
           kind: command_exit
           expected_exit_code: 0

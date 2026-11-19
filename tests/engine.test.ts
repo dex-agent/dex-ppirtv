@@ -3,8 +3,6 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promis
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-// Portabilidade decidida (TRACKER ISSUE-LOCAL-0014): pula declarado fora do Windows.
-const itWindowsOnly = it.skipIf(process.platform !== "win32");
 
 import { FlowEngine } from "../src/flow-engine.js";
 import type { AnyPhase, Phase } from "../src/domain.js";
@@ -3052,11 +3050,10 @@ describe("PPIRTV flow engine", () => {
     })).rejects.toThrow(/review_required/);
   });
 
-  // Janela de fechamento #21 (portabilidade decidida): frota Windows-first
-  // (ci.yml windows-first por decisao da casa); este it depende de
-  // comportamento que diverge no Linux — fora do Windows ele PULA declarado ate o runner Linux
-  // existir (TRACKER ISSUE-LOCAL-0014, aguardando dono).
-  itWindowsOnly("keeps a pre-upgrade review without a fingerprint fail-closed", async () => {
+  // ISSUE-LOCAL-0014 paga (corte E): a "divergência no Linux" era afirmaza —
+  // probe com platform=linux (LAUDO 2026-11-19-corte-e) provou isomorfismo
+  // (normalizeReviewPathForPlatform normaliza separador em toda plataforma).
+  it("keeps a pre-upgrade review without a fingerprint fail-closed", async () => {
     const { flowId, evidenceId } = await startGoalWithEvidence(
       "dex-code:test-terminal-review-pre-upgrade",
       "Preservar review legitimo criado antes do snapshot versionado"

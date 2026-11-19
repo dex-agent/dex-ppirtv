@@ -1,3 +1,12 @@
+## Reavaliação — corte E: R9 tipos no spt-kit + matrix Linux no CI (2026-11-19)
+
+0009: R9 (ER de tipos = `npm run check:types`/`check` INTEIRO, nunca `tsc -p`
+parcial) + âncora no MOLDE + S11 no preflight (vacina provada por mutação) +
+sha rev 4 no schm. 0014: matrix windows+ubuntu + 3 portes (gêmeo LEMBRANCA,
+ramo PLAYBOOK, de-skip com probe de isomorfismo — "divergência" era afirmaza).
+RED 3 → GREEN (vigias 3/3; zero itWindowsOnly). Receipt
+`reavaliacao_corte_e_molde_linux_261119`.
+
 ## Reavaliação — janela de fechamento #21: P2-6+P2-8+P3 + CI + portabilidade (2026-11-19)
 
 P2-6 stringsOnly (fim de null→"null"/objeto→"[object Object]"); P2-8 .gitattributes

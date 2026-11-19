@@ -4,7 +4,7 @@ versao: 1
 status: ativo
 dono: dex-PPIRTV
 fonte-viva: 'docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md (contrato) + src/spt-contract.ts (zod executavel) + templates/SPEC-PLAN-TASKS.template.md (template) + spt-kit/ (molde, regras, guia, preflight)'
-registro: 'rev 3 (2026-11-06, corte spt-kit-cobertura-total: header do MOLDE inequivoco — copiar o BLOCO YAML, nunca o arquivo integral, que gera S00; GUIA e contratos alinhados; preflight ganha S00 com diagnostico, tolerancia a BOM e S10 de shape dos 21 campos); rev 2 (2026-10-31, cura uncertainties — molde ensinava remover campo que o schema exige min 1 item; GO do dono, Trilho skills 2026-10-31-mover-porta-padrao); MOLDE.md sha256:a7e2a2be453f0a4d8bfaa3b15e85b67652d3b338659fb042773b106a829666a9'
+registro: 'rev 4 (2026-11-19, corte E ISSUE-LOCAL-0009: R9 prova de tipos integral — MOLDE ancora npm run check:types/check INTEIRO no procedure e preflight ganha S11 sentinela de tsc direto; caso: D-47 declarou check exit 0 com tsc src-only enquanto tests/ carregava 3 erros); rev 3 (2026-11-06, corte spt-kit-cobertura-total: header do MOLDE inequivoco — copiar o BLOCO YAML, nunca o arquivo integral, que gera S00; GUIA e contratos alinhados; preflight ganha S00 com diagnostico, tolerancia a BOM e S10 de shape dos 21 campos); rev 2 (2026-10-31, cura uncertainties — molde ensinava remover campo que o schema exige min 1 item; GO do dono, Trilho skills 2026-10-31-mover-porta-padrao); MOLDE.md sha256:8960f0e6f4b8a4b446f493d5dfd2078e7a40d123d5027d32c58241cf6e87ba64'
 ---
 
 # dex.spt.v3 — Trilho/SPT SPEC-PLAN-TASKs versão 3

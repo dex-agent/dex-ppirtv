@@ -3,8 +3,6 @@ import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-// Portabilidade decidida (TRACKER ISSUE-LOCAL-0014): pula declarado fora do Windows.
-const itWindowsOnly = it.skipIf(process.platform !== "win32");
 
 import {
   buildDexMemoriaV2OperationRequest,
@@ -345,11 +343,11 @@ describe("Dex Memoria V2 adapter", () => {
     }
   });
 
-  // Janela de fechamento #21 (portabilidade decidida): frota Windows-first
-  // (ci.yml windows-first por decisao da casa); este it depende de
-  // FS case-insensitive do Windows — fora do Windows ele PULA declarado ate o runner Linux
-  // existir (TRACKER ISSUE-LOCAL-0014, aguardando dono).
-  itWindowsOnly("rejects a validator receipt that declares two case-equivalent L1 entries", async () => {
+  // ISSUE-LOCAL-0014 paga (corte E): no FS case-sensitive (Linux) o path
+  // forjado LEMBRANCA.md precisa existir fisicamente para a leitura chegar ao
+  // WRITE_SET_MISMATCH — o setup escreve o gêmeo (bytes do L1 real, idempotente
+  // no Windows case-insensitive).
+  it("rejects a validator receipt that declares two case-equivalent L1 entries", async () => {
     const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-two-l1-"));
     try {
       const classification = classifyDexMemoriaV2Intent({ item: "Regra com L1 duplicado.", density: "light", tags: TEST_TAGS, requested_destinations: [{ scope: "project" }] });
@@ -363,6 +361,14 @@ describe("Dex Memoria V2 adapter", () => {
       routeReceipt.validation_receipt_hash = sha256(validationBytes);
       await writeFile(routeReceipt.validation_receipt_path!, validationBytes);
       await writeFile(routeReceipt.receipt_path!, `${JSON.stringify({ contract: "dex.memory.route.receipt.v2", ...routeReceipt }, null, 2)}\n`, "utf8");
+
+      // Gêmeo físico (ISSUE-LOCAL-0014): no Linux case-sensitive a entrada
+      // forjada LEMBRANCA.md precisa ser legível no disco para o validador
+      // chegar ao WRITE_SET_MISMATCH (no Windows escreve o mesmo arquivo).
+      const l1Relative = String(validation.evidence.files[0].path);
+      const twinRelative = path.posix.join(path.posix.dirname(l1Relative) === "." ? "" : path.posix.dirname(l1Relative), "LEMBRANCA.md");
+      const l1Bytes = await readFile(path.join(routeReceipt.resolved_root, ...l1Relative.split("/")));
+      await writeFile(path.join(routeReceipt.resolved_root, ...twinRelative.split("/")), l1Bytes);
 
       const result = await executeDexMemoriaV2Adapter({ operation_id: request.operation_id, slug: "regra-l1-duplicado", workspace_root: request.workspace_root, memory_home: request.memory_home, classification, executor: { execute: vi.fn().mockResolvedValue(receipt) } });
       expect(result).toMatchObject({ status: "partial_pending", failure: { message: "DEX_MEMORIA_V2_VALIDATION_WRITE_SET_MISMATCH" } });

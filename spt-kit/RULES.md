@@ -1,4 +1,4 @@
-# RULES SPT v3 — regras de geração R1-R08 (uma verificação cada)
+# RULES SPT v3 — regras de geração R1-R09 (uma verificação cada)
 
 Cada regra é citável por ID em receipts e verificada pelo `preflight.mjs` (código Snn).
 
@@ -45,6 +45,16 @@ Verificação: preflight varre bytes em busca de `\r\n` e acusa **S07**.
 ## R8: IDs estáveis
 IDs seguem `REQ-n`, `C-n`, `A-n`, `ER-n`, sem duplicatas, em todo o grafo.
 Verificação: preflight confere o padrão e a unicidade e acusa **S08**.
+
+## R9: prova de tipos integral
+ER que prova tipos cita o script do projeto que cobre a suíte de tipos INTEIRA
+(`npm run check:types` ou `npm run check`) — nunca `tsc -p` parcial (src-only):
+o verde parcial NÃO é verde de tipos (ISSUE-LOCAL-0009: o D-47 declarou
+"check exit 0" com tsc src-only enquanto tests/ carregava 3 erros vivos).
+Verificação: preflight acusa **S11** quando a `procedure` de um ER command
+invoca `tsc` direto (npx tsc / tsc -p / tsc --noEmit) sem `npm run check`.
+Cobertura declarada: sentinela de padrões CONHECIDOS de tsc direto — script
+wrapper com outro nome que pule tests/ permanece julgamento de agente.
 
 ## S09: anti-drift do molde (fora da numeração R)
 O sha256 de `MOLDE.md` é registrado em `SCHEMA/dex.spt.v3.schm.md`.

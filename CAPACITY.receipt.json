@@ -1816,5 +1816,27 @@
       "tests/issue-0021-corte-d.test.ts"
     ],
     "delta": "Janela de fechamento #21: P2-6 stringsOnly nas 4 listas de contrato (null/number/objeto nao fabricam strings nas APIs publicas); P2-8 .gitattributes -text nas fontes TOOLSBOOK+hooks com re-sha blob-canonico + vigia EOL (ficha == sha256 do blob do HEAD); P3 attributionHint fallback sem lista nao afirma reutilizavel; CI audit-canonical --local-only + check:capacity steps; portabilidade decidida (3 skipIf + TRACKER-0014 aguardando dono); garimpo estacionamentos (2 abertos com owner, 0 orfaos). RED 3/5 -> GREEN 5/5 (tests/issue-0021-corte-d.test.ts, NUNCA podar); suite 1041/1045. Camping NOT_APPLICABLE (principles/verdict-fiscal-policy nao sao o motor — selo CORTE-B-PRIME segue pendente). EMENDA: entrada CHANGELOG da janela + regen PLAYBOOK (superficies pos-cerimonia) no mesmo pacote documental."
+  },
+  "reavaliacao_corte_e_molde_linux_261119": {
+    "date": "2026-11-19",
+    "scope": [
+      ".agents/TRACKER/issues/0009-d47-falso-verde-check-types.md",
+      ".agents/TRACKER/issues/0014-runner-linux-ci-matrix.md",
+      ".github/workflows/ci.yml",
+      "CAPACITY.md",
+      "CHANGELOG.md",
+      "PLAYBOOK.index.json",
+      "PLAYBOOK.md",
+      "SCHEMA/dex.spt.v3.schm.md",
+      "spt-kit/MOLDE.md",
+      "spt-kit/RULES.md",
+      "spt-kit/preflight.mjs",
+      "tests/dex-memoria-v2-adapter.test.ts",
+      "tests/engine.test.ts",
+      "tests/flow-engine-boundary.test.ts",
+      "tests/issue-0014-matrix.test.ts",
+      "tests/spt-kit-rules.test.ts"
+    ],
+    "delta": "Corte E (GO do dono via quiz): paga ISSUE-LOCAL-0009 (R9 prova de tipos integral no RULES + ancora check:types no procedure do MOLDE + sentinela S11 no preflight que pega tsc direto — VACINA PROVADA por mutacao com SPT fake exit 1; sha256 do MOLDE rev 4 no registro do schm NO MESMO COMMIT + preflight --checksum 0 achados) e ISSUE-LOCAL-0014 (matrix windows-latest+ubuntu-latest no ci.yml com runs-on matrix.os; os 3 ex-Windows-bound viram it normais: case-equivalent L1 ganhou gemeo fisico LEMBRANCA.md no setup — idempotente no Windows, materializa o par no Linux; living-architecture le AGENTS.md na frota ou PLAYBOOK.md versionado no clone com as 6 superficies versionadas sempre checadas; pre-upgrade fail-closed de-skipado com PROBE de isomorfismo platform=linux PASSANDO — a divergencia declarada no ci.yml era afirmaza). RED 3 falhas -> GREEN: vigias spt-kit-rules 2/2 + issue-0014-matrix 1/1; zero itWindowsOnly; portados 63 passed. Camping NOT_APPLICABLE (nenhum item toca src/flow-engine.ts — selo CORTE-B-PRIME segue pendente)."
   }
 }
