@@ -1,3 +1,9 @@
+## Reavaliação — CI runner windows-latest (2026-11-19)
+
+3 testes Windows-bound medidos no 1º run (AGENTS.md gitignored; FS case;
+fail-closed). Frota Windows-first — suíte integral como barreira; portabilidade
+Linux na fila. Receipt `reavaliacao_ci_runner_windows_261119`.
+
 ## Reavaliação — bloco P1 blindagem + C′ replay (2026-11-19)
 
 Delta: validador (marcaSealedAncestors extraída + selagem no CHAIN_REPLAY por

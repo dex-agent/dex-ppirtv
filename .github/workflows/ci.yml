@@ -22,7 +22,14 @@ concurrency:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # LACUNA DECLARADA (2ª, medida no 1º run 44502062854): 3 testes são
+    # Windows-bound — "keeps the living architecture public and discoverable"
+    # lê AGENTS.md (gitignored por design, viaja via PLAYBOOK), o it de
+    # case-equivalent L1 depende de FS case-insensitive, e o fail-closed
+    # pre-upgrade review diverge no Linux. A frota da casa é Windows-first:
+    # runner Windows mantém a suíte INTEGRAL como barreira; portabilidade
+    # Linux dos 3 é item de lapidação própria (não esconder: fila).
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
         with:

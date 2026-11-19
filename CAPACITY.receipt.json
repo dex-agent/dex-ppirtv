@@ -1,4 +1,11 @@
 {
+  "reavaliacao_ci_runner_windows_261119": {
+    "date": "2026-11-19",
+    "scope": [
+      ".github/workflows/ci.yml"
+    ],
+    "delta": "Ajuste do runner para windows-latest apos o 1º run 44502062854 medir 3 testes Windows-bound (AGENTS.md gitignored ausente no clone; FS case-sensitive; fail-closed pre-upgrade divergente no Linux). Frota Windows-first: suíte integral como barreira; portabilidade Linux na fila."
+  },
   "reavaliacao_p1_c_prime_261119": {
     "date": "2026-11-19",
     "scope": [
