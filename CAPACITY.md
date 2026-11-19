@@ -1,3 +1,8 @@
+## Reavaliação — corte E docs: regen PLAYBOOK pós-terminal (2026-11-19)
+
+Projecao regenerada apos as superficies vivas (flow 5758_0001 complete).
+Receipt `reavaliacao_corte_e_docs_261119`.
+
 ## Reavaliação — corte E: R9 tipos no spt-kit + matrix Linux no CI (2026-11-19)
 
 0009: R9 (ER de tipos = `npm run check:types`/`check` INTEIRO, nunca `tsc -p`
