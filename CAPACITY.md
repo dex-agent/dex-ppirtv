@@ -1,3 +1,8 @@
+## Reavaliação — log de diagnóstico no replay (2026-11-19)
+
+it loga receipt no FAIL (run 44504361626 veio mudo). 4/4 local. Receipt
+`reavaliacao_replay_diag_log_261119`.
+
 ## Reavaliação — portabilidade CI (2026-11-19)
 
 Run 44502835971: it da arquitetura skipa sem AGENTS.md (local por design); it

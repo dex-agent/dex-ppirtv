@@ -46,7 +46,12 @@ describe("issue 27 — replay da janela reconhece selo pago DENTRO da janela", (
     // DENTRO da janela ficam historia selada; o B-prime (sem selo, vencido
     // no proximo commit do motor) e o declaration material legitimo.
     const result = await runBoundaryCli({ cwd: WS, argv: ["--base", "94a9b0c", "--head", "ae8b86f"] }) as { exitCode: number; output: string };
-    const receipt = JSON.parse(result.output) as { status: string; reasons?: string[] };
+    const receipt = JSON.parse(result.output) as { status: string; reasons?: string[]; comparison?: unknown };
+    // Diagnostico-que-ensina: no CI (clone limpo) qualquer reason extra fica
+    // visivel no log do run — nunca um FAIL mudo de ambiente.
+    if (receipt.status !== "PASS") {
+      console.log("REPLAY_RECEIPT", JSON.stringify({ status: receipt.status, reasons: receipt.reasons, comparison: receipt.comparison }));
+    }
     expect(receipt.reasons?.filter((reason) => reason.includes("CONSECUTIVE_EXCEPTION")) ?? []).toEqual([]);
     expect(receipt.status).toBe("PASS");
   });

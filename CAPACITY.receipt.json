@@ -1,4 +1,11 @@
 {
+  "reavaliacao_replay_diag_log_261119": {
+    "date": "2026-11-19",
+    "scope": [
+      "tests/issue-0027-replay-chain.test.ts"
+    ],
+    "delta": "it do replay loga o receipt (status/reasons/comparison) quando NAO passa — diagnostico-que-ensina para FAIL de ambiente no CI (run 44504361626 fail mudo). 4/4 local."
+  },
   "reavaliacao_ci_portabilidade_261119": {
     "date": "2026-11-19",
     "scope": [
