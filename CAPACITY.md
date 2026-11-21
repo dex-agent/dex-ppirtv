@@ -1,3 +1,16 @@
+## Reavaliação — cura 0015: it pre-upgrade fail-closed cross-platform (2026-11-21)
+
+Causa-raiz decifrada com probe no FS Linux real (runs 44617044985 RED +
+44939060784 diagnóstico): entrada Windows-flavored `src\flow-engine.ts` não
+resolvia no Linux (backslash não é separador → ressalva
+`provided_missing_paths` → union vazia → scope autorizado caía no fallback
+`scope.in` → `scope_reference_not_authorized` → `review_required`). Motor
+honesto (fail-closed D-31 por desenho); causa na **fixture**: path portável,
+it volta a `it` normal, helper `itWindowsOnly` órfão removido; probe e
+workflow descartáveis removidos no mesmo commit. Suíte **1047+4 (1051), 93
+arq** (medida no `npm run check` da sessão). Receipt
+`reavaliacao_cura_0015_261121`.
+
 ## Reavaliação — probe de diagnóstico 0015 (Trilho cross-platform, 2026-11-21)
 
 Instrumento da task A-01 do Trilho `2026-11-21-issue0015-pre-upgrade-cross-platform`

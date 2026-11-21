@@ -8,6 +8,20 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **issue0015: cura cross-platform do it pre-upgrade fail-closed
+  (ISSUE-LOCAL-0015, Trilho 2026-11-21)**: causa-raiz decifrada com probe
+  versionado executado no FS Linux real (runs 44617044985 RED histórico +
+  44939060784 diagnóstico, commit 8b0f2d3): a entrada Windows-flavored
+  `src\flow-engine.ts` não resolvia no FS Linux (backslash não é separador —
+  `gate-provided-paths.ts` `isExistingFile` virava ressalva
+  `provided_missing_paths`, a union ficava VAZIA, o scope autorizado caía no
+  fallback `scope.in` e `scopeIsAuthorized` reprovava
+  `scope_reference_not_authorized` → `review_required` no primeiro verdict).
+  Motor HONESTO nas duas plataformas (fail-closed D-31 por desenho) — a
+  causa era a FIXTURE: path portável `src/flow-engine.ts`, it volta a `it`
+  normal na matrix, helper `itWindowsOnly` órfão removido; probe
+  (`tools/diagnose-0015.mjs`) e workflow (`diag-0015.yml`) descartáveis
+  removidos no mesmo commit da cura.
 - **corte E: R9 prova de tipos no spt-kit + matrix windows/ubuntu no CI
   (ISSUE-LOCAL-0009 + ISSUE-LOCAL-0014 pagas, GO do dono via quiz)**: 0009 —
   regra R9 no `spt-kit/RULES.md` (ER que prova tipos cita `npm run

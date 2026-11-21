@@ -3,11 +3,6 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promis
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-// ISSUE-LOCAL-0014 (sub-item aberto): divergência REAL medida no run
-// 44617044985 (job ubuntu) — review legada pré-snapshot rejeitada com
-// review_required no verdict (flow-engine.ts:2660) fora do Windows; a
-// decifração cross-platform é corte próprio (TRACKER 0014).
-const itWindowsOnly = it.skipIf(process.platform !== "win32");
 
 import { FlowEngine } from "../src/flow-engine.js";
 import type { AnyPhase, Phase } from "../src/domain.js";
@@ -3055,12 +3050,15 @@ describe("PPIRTV flow engine", () => {
     })).rejects.toThrow(/review_required/);
   });
 
-  // ISSUE-LOCAL-0014 sub-item ABERTO: a divergência fora do Windows é REAL e
-  // medida (run 44617044985, job ubuntu: PPIRTV_FISCAL_BLOCKED review_required
-  // no verdict com review legada pré-snapshot — a probe de software era
-  // insuficiente, o envolvido é FS real). Porte = decifração cross-platform
-  // da validação legacy, corte próprio no TRACKER 0014.
-  itWindowsOnly("keeps a pre-upgrade review without a fingerprint fail-closed", async () => {
+  // ISSUE-LOCAL-0015 CURADA (Trilho 2026-11-21, decifrada com probe no FS
+  // Linux real — runs 44617044985/44939060784): a entrada Windows-flavored
+  // `src\flow-engine.ts` não resolvia no FS Linux (backslash não é separador
+  // — gate-provided-paths.ts isExistingFile virava ressalva
+  // provided_missing_paths, a union ficava VAZIA e o scope autorizado caía no
+  // fallback scope.in → scope_reference_not_authorized → review_required no
+  // primeiro verdict). O motor é honesto nas duas plataformas (fail-closed
+  // D-31 por desenho); a causa era a FIXTURE. Path portável, it normal.
+  it("keeps a pre-upgrade review without a fingerprint fail-closed", async () => {
     const { flowId, evidenceId } = await startGoalWithEvidence(
       "dex-code:test-terminal-review-pre-upgrade",
       "Preservar review legitimo criado antes do snapshot versionado"
@@ -3069,7 +3067,7 @@ describe("PPIRTV flow engine", () => {
     await engine.goalAdvance({ flow_id: flowId });
     await engine.goalAdvance({
       flow_id: flowId,
-      provided: { implementation_done: true, changed_files: ["src\\flow-engine.ts"] }
+      provided: { implementation_done: true, changed_files: ["src/flow-engine.ts"] }
     });
     const review = await engine.addGoalEvidence({
       flow_id: flowId,
