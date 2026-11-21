@@ -1,3 +1,15 @@
+## Reavaliação — probe de diagnóstico 0015 (Trilho cross-platform, 2026-11-21)
+
+Instrumento da task A-01 do Trilho `2026-11-21-issue0015-pre-upgrade-cross-platform`
+(TICKET-LOCAL-0015): `tools/diagnose-0015.mjs` reproduz o cenário do it
+pre-upgrade fail-closed contra `dist/` com dumps (fp review × fp flow ×
+corroborado; reviewEvidenceDiagnostics; resultado do verdict) — baseline win32
+VERDE com fps idênticos; workflow `diag-0015.yml` (dispatch ubuntu, node 24)
+executa no FS Linux real (RED histórico run 44617044985). Probe e workflow
+DESCARTÁVEIS (remoção na task A-03). PLAYBOOK regen (fontes 19-21/11).
+Re-foto da suíte: **1047+4 (1051), 93 arquivos** (nenhum teste alterado).
+Receipt `reavaliacao_probe_diag_0015_261121`.
+
 ## Reavaliação — corte E docs: regen PLAYBOOK pós-terminal (2026-11-19)
 
 Projecao regenerada apos as superficies vivas (flow 5758_0001 complete).

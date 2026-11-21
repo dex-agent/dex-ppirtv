@@ -1,4 +1,14 @@
 {
+  "reavaliacao_probe_diag_0015_261121": {
+    "date": "2026-11-21",
+    "scope": [
+      "tools/diagnose-0015.mjs",
+      ".github/workflows/diag-0015.yml",
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json"
+    ],
+    "delta": "Probe de diagnostico cross-platform do ISSUE-LOCAL-0015 (Trilho 2026-11-21, task A-01; RED historico run 44617044985 do commit 0696e6b: o PRIMEIRO goalVerdict do it pre-upgrade lanca review_required no ubuntu com a review valida citada). tools/diagnose-0015.mjs reproduz o cenario do it contra o dist/ e dumpa fp da review x fp do flow (persistido/helper/strict/reancorado) + reviewEvidenceDiagnostics (persistido e corroborado) + changed_files persistido x corroborado + realpath do workspace + resultado do verdict; workflow diag-0015.yml (dispatch ubuntu-latest, node 24) executa o probe no FS Linux real (WSL local sem distro; tropeco PROBE-SOFTWARE-NAO-PROVA-FS: a prova final e o runner). Baseline local win32 VERDE: todos os fps identicos (sha256:915d9a41...), diagnostics valid reasons [], verdict_thrown false. Ferramenta e workflow DESCARTAVEIS: removidos no corte da cura (task A-03). PLAYBOOK regen (fontes locais das sessoes 19-21/11 acumuladas). Suporte NAO alterado neste commit; suite re-medida para a re-foto: 1047|4 (1051), 93 arquivos."
+  },
   "reavaliacao_corte_b_issue21_261119": {
     "date": "2026-11-19",
     "scope": [
@@ -559,9 +569,9 @@
   },
   "objeto": "dex-PPIRTV - servidor MCP executor PPIRTV + launcher + dex-agent local",
   "fotografia_id": "2026-11-05-merge-pr7",
-  "head": "6d6627892d29bd8c8b1a0033b0fd1e9b8495fe50",
-  "tree_hash": "682061ce2089c2cfbb23f85eb5c281847d26e1ab",
-  "generated_at": "2026-11-15T22:35:33Z",
+  "head": "702ac2300a386a189cc98643d04a90faf72123cd",
+  "tree_hash": "c91ff01b845e33b14df020ef74030a5d12846ae4",
+  "generated_at": "2026-11-21T18:05:00Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -580,12 +590,12 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 961,
+    "passed": 1047,
     "failed": 0,
     "skipped": 4,
-    "total": 965,
-    "files": 77,
-    "command": "npx vitest run (sessao D-51 2026-11-15: 961 passed | 4 skipped (965), 77 arq, medida 2x; +5 its rede-d51; tsc src+tests exit 0)"
+    "total": 1051,
+    "files": 93,
+    "command": "npx vitest run (sessao probe-0015 2026-11-21: 1047 passed | 4 skipped (1051), 93 arq, 176s; re-foto pos corte E — nenhum teste alterado neste commit)"
   },
   "tools_count": 32,
   "capabilities": [
@@ -1838,11 +1848,14 @@
       "tests/spt-kit-rules.test.ts"
     ],
     "delta": "Corte E (GO do dono via quiz): paga ISSUE-LOCAL-0009 (R9 prova de tipos integral no RULES + ancora check:types no procedure do MOLDE + sentinela S11 no preflight que pega tsc direto — VACINA PROVADA por mutacao com SPT fake exit 1; sha256 do MOLDE rev 4 no registro do schm NO MESMO COMMIT + preflight --checksum 0 achados) e ISSUE-LOCAL-0014 (matrix windows-latest+ubuntu-latest no ci.yml com runs-on matrix.os; portados de vez: case-equivalent L1 com gemeo fisico LEMBRANCA.md no setup — idempotente no Windows, materializa o par no Linux; living-architecture le AGENTS.md na frota ou PLAYBOOK.md versionado no clone, INDEX.md raiz com guard opcional pois e gitignored no clone — ENOENT medido no run 44617044985). EMENDA POS-1o-RUN (44617044985, job ubuntu): o it pre-upgrade fail-closed REPROVA fora do Windows (PPIRTV_FISCAL_BLOCKED review_required no verdict com review legada pre-snapshot, flow-engine.ts:2660) — a divergencia declarada pela janela D era REAL; a probe de software do corte E era insuficiente (FS real envolvido); o it segue Windows-bound DECLARADO com evidencia do run e o porte virou sub-item do TRACKER-0014 (decifracao cross-platform da validacao legacy, corte proprio). RED 3 falhas -> GREEN: vigias spt-kit-rules 2/2 + issue-0014-matrix 1/1; portados 63 passed. Camping NOT_APPLICABLE (nenhum item toca src/flow-engine.ts — selo CORTE-B-PRIME segue pendente)."
-  }
-,
+  },
   "reavaliacao_corte_e_docs_261119": {
     "date": "2026-11-19",
-    "scope": ["PLAYBOOK.md", "PLAYBOOK.index.json", "CAPACITY.md"],
+    "scope": [
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json",
+      "CAPACITY.md"
+    ],
     "delta": "Pacote documental pos-terminal do corte E: regen do PLAYBOOK apos as superficies vivas (ACTIVE/HANDOFF/PLAN-TASKS/napkin — flow 5758_0001 complete; 0009+0014 resolvidas; TRACKER-0015/0016 lavrados). Sem mudanca de capacidade."
   }
 }
