@@ -2103,3 +2103,14 @@ decididos (13) + (c) types com consumers vivos — sem lacuna pendente.
 **Limites:** retorno do writer segue reportando touched (desenho A, menor
 raio — fiscal destrava pelo `passed` do post-write); atualização de conteúdo
 do mesmo anchor pertence à consciencia-memorias (ReviewStatus pending).
+
+## Reavaliação 2026-11-21 — regen PLAYBOOK pós-corte barata-mestra
+
+> Delta do worktree sobre o HEAD `e7066e1` (regen de projeção + fechamento).
+> Sem mudança de código/teste. Flow 5874_0001 COMPLETE, CI 44956080459.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| PLAYBOOK | regen --write (9 regras, 0 runbook) após fontes .agents mudarem | tools/playbook/generate-playbook.py |
+| Fontes | napkin (emenda causa real + 4 tropeços) · PLAN-TASKS/ACTIVE (Trilho concluído) · ACTIVE/HANDOFF/GATILHOS-VIVOS | .agents/ |
+| Suíte | inalterada 1049|4 (1053) | npx vitest run (sessão) |

@@ -1887,5 +1887,13 @@
       "CHANGELOG.md"
     ],
     "delta": "Idempotencia por identidade no writeMemoryCandidate (Trilho 2026-11-21, flow 5874_0001): guard por block-id ^anchor em fim de linha no appendUniqueBlock mata o loop de duplicata do mm_memory_mining (bloco governado carrega Candidate: mc_N volatil que derrotava o dedupe por conteudo exato; 3 giras no flow 5583, medido 2x). RED->GREEN provado (expected 2 to be 1 -> 3/3), vigilia por mutacao PEGA (guard removido -> RED renasce), caminho legacy com dedupe exato caracterizado. src/flow-engine.ts INTOCADO (camping NOT_APPLICABLE; selo CORTE-B-PRIME-PENDING-CYCLE segue pendente). Emenda de contrato no mesmo corte: sincronia global->local dos contratos GOAL (renome owner sprinter->paula-planeja-spt feito no global 19:03 sem copia local; audit:canonical vermelho no 1o run) + vigia do spt-contract-v3 atualizada para o nome vigente. Suite 1047|4(1051) -> 1049|4(1053), 93 arq, exit 0 medido na sessao."
+  },
+  "reavaliacao_playbook_pos_barata_261121": {
+    "date": "2026-11-21",
+    "scope": [
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json"
+    ],
+    "delta": "Regen da projecao apos o fechamento do bloco barata-mestra (fontes .agents atualizadas: napkin emendado com a causa real + tropeços da sessao; PLAN-TASKS/ACTIVE com o Trilho barata-mestra concluido; ACTIVE/HANDOFF/GATILHOS-VIVOS reconciliados). Sem mudanca de codigo/teste; suite inalterada 1049|4 (1053); flow 5874_0001 COMPLETE, CI 44956080459 success."
   }
 }
