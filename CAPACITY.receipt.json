@@ -1,4 +1,12 @@
 {
+  "reavaliacao_playbook_pos_0015_261121": {
+    "date": "2026-11-21",
+    "scope": [
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json"
+    ],
+    "delta": "Regen da projecao apos o fechamento do bloco 0015 (fontes .agents atualizadas pela memoria-viva: napkin tropeços da sessao + PLAN-TASKS/ACTIVE com o Trilho 0015 concluido). Sem mudanca de codigo/teste; suite inalterada 1047|4 (1051)."
+  },
   "reavaliacao_cura_0015_261121": {
     "date": "2026-11-21",
     "scope": [

@@ -1,3 +1,9 @@
+## Reavaliação — regen PLAYBOOK pós-bloco 0015 (2026-11-21)
+
+Projeção regenerada após o fechamento (flow 5842_0001 complete; fontes
+`.agents` atualizadas pela memoria-viva). Sem mudança de código/teste.
+Receipt `reavaliacao_playbook_pos_0015_261121`.
+
 ## Reavaliação — cura 0015: it pre-upgrade fail-closed cross-platform (2026-11-21)
 
 Causa-raiz decifrada com probe no FS Linux real (runs 44617044985 RED +
