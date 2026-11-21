@@ -2084,3 +2084,22 @@ arquivos** (`npx vitest run`, 130s).
 
 **Limites:** 18 sem-ref restantes do módulo são os (a)-por-mutação já
 decididos (13) + (c) types com consumers vivos — sem lacuna pendente.
+
+## Reavaliação 2026-11-21 — barata-mestra: idempotência por anchor no writeMemoryCandidate
+
+> Delta do worktree sobre o HEAD `df1c374`. TOCA `src/memory/` (guard no
+> `appendUniqueBlock`), `tests/` (+2 its, +1 vigia atualizada) e
+> `docs/contracts/` (sincronia global→local). `src/flow-engine.ts` INTOCADO.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| Writer | Guard por block-id `^anchor` fim-de-linha no `appendUniqueBlock`; retorno e call site intactos | src/memory/memory-writer.ts |
+| Loop de duplicata | Re-mineração com candidate id distinto NÃO re-escreve (L1 e L2 = 1 block-id); RED `2≠1` provado antes | tests/memory-writer.test.ts |
+| Vigília | Mutação (guard removido) → RED renasce `1 failed`; restaurado → 3/3 | sessão 2026-11-21 |
+| Legacy | Dedupe por conteúdo exato preservado p/ bloco sem anchor (caracterização) | tests/memory-writer.test.ts |
+| Contratos | Sincronia global→local (renome owner `sprinter`→`paula-planeja-spt`); audit:canonical vermelho→verde; vigia spt-contract-v3 atualizada | scripts/audit-canonical-sync.mjs |
+| Suíte | 1047|4 (1051) → 1049|4 (1053), 93 arq, exit 0 | npx vitest run |
+
+**Limites:** retorno do writer segue reportando touched (desenho A, menor
+raio — fiscal destrava pelo `passed` do post-write); atualização de conteúdo
+do mesmo anchor pertence à consciencia-memorias (ReviewStatus pending).

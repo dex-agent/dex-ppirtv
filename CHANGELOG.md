@@ -8,6 +8,29 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **barata-mestra: idempotência por anchor no writeMemoryCandidate (Trilho
+  2026-11-21, flow 5874_0001)**: o `l2_bloco` governado carrega
+  `Candidate: `mc_N`` volátil que mudava a cada re-mineração e derrotava o
+  dedupe por conteúdo exato do `appendUniqueBlock` → bloco duplicado → 2
+  block-ids `^anchor` → post-write `l2-duplicate` → verdict bloqueado →
+  finding virava candidate novo → loop infinito (3 giras no flow 5583,
+  medido 2×; L1 estável nunca duplicava — coerente com a causa na chave
+  volátil do L2). Cura por IDENTIDADE: guard `blockIdAlreadyPresent`
+  (block-id `^anchor` em fim de linha, regex-safe por construção —
+  `memoryAnchor` só produz `[a-z0-9-]`) no `appendUniqueBlock` do
+  `src/memory/memory-writer.ts`; retorno do writer e call site do motor
+  INTACTOS (o fiscal destrava pelo `passed` do post-write com 1 block-id no
+  disco); caminho legacy (bloco sem anchor) mantém o dedupe exato —
+  caracterizado em teste. RED→GREEN provado (`expected 2 to be 1` → 3/3),
+  vigília por mutação PEGA (guard removido → RED renasce). Atualização de
+  conteúdo do mesmo anchor pertence à consciencia-memorias (ReviewStatus
+  pending), não ao writer. Emenda no mesmo corte: sincronia global→local dos
+  contratos GOAL (renome owner `sprinter`→`paula-planeja-spt` editado no
+  global hoje às 19:03 sem a cópia local — `audit:canonical` vermelho no
+  1º run, verde após sync) + vigia do `spt-contract-v3.test.ts` atualizada
+  para o nome vigente. Suíte 1047|4 (1051) → 1049|4 (1053), exit 0;
+  `src/flow-engine.ts` intocado (camping NOT_APPLICABLE, selo
+  CORTE-B-PRIME-PENDING-CYCLE segue pendente).
 - **issue0015: cura cross-platform do it pre-upgrade fail-closed
   (ISSUE-LOCAL-0015, Trilho 2026-11-21)**: causa-raiz decifrada com probe
   versionado executado no FS Linux real (runs 44617044985 RED histórico +

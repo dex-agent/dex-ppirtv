@@ -49,7 +49,7 @@ describe("SPT v3 traceability contract", () => {
     expect(canonicalContract).toContain("Matriz de comportamento reproduzivel");
     expect(canonicalContract).toContain("GOAL_BINDING_SPT_PATH_MISSING");
     expect(executionBridge).toContain("`version: 3`");
-    expect(executionBridge).toContain("`sprinter` | criar/corrigir o SPT v3");
+    expect(executionBridge).toContain("`paula-planeja-spt` | criar/corrigir o SPT v3");
     expect(executionBridge).not.toContain("`version: 2`");
     expect(reportContract).toContain("type: cross-repo-reproducible-handoff");
     expect(reportContract).toContain("## Confirmed facts");

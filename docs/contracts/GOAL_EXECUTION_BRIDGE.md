@@ -25,7 +25,7 @@ continuam em `templates/`.
 
 | Parte | Responsabilidade |
 | --- | --- |
-| `sprinter` | criar/corrigir o SPT v3 em `.agents/PLAN-TASKS`; nao executa a chamada MCP |
+| `paula-planeja-spt` | criar/corrigir o SPT v3 em `.agents/PLAN-TASKS`; nao executa a chamada MCP |
 | `dex-code` / executor | montar `GoalEnvelope`, fornecer o mesmo `spt_path` a `spt_validate` e `goal_start`, obedecer o receipt e repetir a chamada corrigida |
 | `dex-ppirtv` | validar sem editar o SPT, persistir binding oficial atomicamente, devolver owner/acao e corrigir defeitos internos de persistencia |
 | `ppirtv_trace` | diagnosticar e localizar historia read-only; nunca criar binding nem reescrever flows/ledger |

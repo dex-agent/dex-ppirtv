@@ -122,7 +122,7 @@ Exemplo minimo:
 dex_contract: spt
 version: 3
 status: RASCUNHO
-owner: sprinter
+owner: paula-planeja-spt
 date: '2026-07-30'
 workspace: 'C:\CodexProjetos\dex-PPIRTV'
 origin: 'reuniao PPIRTV'
@@ -333,7 +333,7 @@ Exemplo minimo executavel:
 dex_contract: spt
 version: 2
 status: RASCUNHO
-owner: sprinter
+owner: paula-planeja-spt
 date: '2026-07-09'
 workspace: 'C:\CodexProjetos\dex-PPIRTV'
 origin: 'reuniao PPIRTV'
@@ -573,9 +573,9 @@ o `workspace`/`project_root`, nunca contra o diretorio acidental do processo.
 
 | Etapa | Campo | Produtor | Validator | Owner da correcao | Erro acionavel | Proxima acao |
 | --- | --- | --- | --- | --- | --- | --- |
-| Criacao do Trilho | arquivo em `.agents/PLAN-TASKS` | `sprinter` | contrato SPT v3 | `sprinter` | `SPT_CONTRACT_INVALID` ou `SPT_PATH_OUTSIDE_PLAN_TASKS` | corrigir/criar o documento canonico |
-| Chamada `spt_validate` | `workspace`, `spt_path` | executor/orquestrador | `FlowEngine.validateSpt` | executor para chamada/path; `sprinter` para documento | `diagnostic` com `code`, `owner`, `field`, `reason`, `next_required_action`, `recoverable` | corrigir pelo owner e repetir `spt_validate` |
-| Chamada `goal_start` | o mesmo caminho canonico retornado pelo validator | executor/orquestrador | runtime + nova validacao do SPT | executor para runtime/chamada; `sprinter` para documento | erro MCP estruturado com os mesmos seis campos | executar a tool indicada e reapresentar a chamada |
+| Criacao do Trilho | arquivo em `.agents/PLAN-TASKS` | `paula-planeja-spt` | contrato SPT v3 | `paula-planeja-spt` | `SPT_CONTRACT_INVALID` ou `SPT_PATH_OUTSIDE_PLAN_TASKS` | corrigir/criar o documento canonico |
+| Chamada `spt_validate` | `workspace`, `spt_path` | executor/orquestrador | `FlowEngine.validateSpt` | executor para chamada/path; `paula-planeja-spt` para documento | `diagnostic` com `code`, `owner`, `field`, `reason`, `next_required_action`, `recoverable` | corrigir pelo owner e repetir `spt_validate` |
+| Chamada `goal_start` | o mesmo caminho canonico retornado pelo validator | executor/orquestrador | runtime + nova validacao do SPT | executor para runtime/chamada; `paula-planeja-spt` para documento | erro MCP estruturado com os mesmos seis campos | executar a tool indicada e reapresentar a chamada |
 | Binding oficial | `goal_binding.envelope.spt_path` | `dex-ppirtv` a partir do envelope validado | persistencia atomica do primeiro estado oficial | `dex_ppirtv` se o campo se perder | `GOAL_BINDING_SPT_PATH_MISSING` | preservar o flow, investigar store/ledger; nao fabricar historia |
 | Consulta historica | seletor `spt_path` | consumidor | `ppirtv_trace` read-only | conforme `diagnostics[].owner` | warning + diagnostico acionavel | corrigir a origem e repetir; nunca reescrever flows historicos |
 
@@ -588,9 +588,9 @@ Matriz de comportamento reproduzivel:
 | Caso | Chamada e resultado | Codigo/warning | Estado persistido | Owner e proxima acao |
 | --- | --- | --- | --- | --- |
 | A. SPT valido sem `goal_start` | `spt_validate` valido; trace vazio diagnosticado | `spt_valid_without_goal_binding` | nenhum flow novo | executor chama `goal_start` |
-| B. path inexistente | validacao e start bloqueiam | `SPT_PATH_NOT_FOUND` | nenhum flow novo | executor confirma path do `sprinter` e repete |
-| C. fora de `PLAN-TASKS` | validacao e trace bloqueiam/diagnosticam | `SPT_PATH_OUTSIDE_PLAN_TASKS` | nenhum flow novo | `sprinter` reposiciona/corrige; executor repete |
-| D. workspace divergente | validacao bloqueia | `SPT_CONTRACT_WORKSPACE_MISMATCH` | nenhum flow novo | `sprinter` corrige contrato |
+| B. path inexistente | validacao e start bloqueiam | `SPT_PATH_NOT_FOUND` | nenhum flow novo | executor confirma path do `paula-planeja-spt` e repete |
+| C. fora de `PLAN-TASKS` | validacao e trace bloqueiam/diagnosticam | `SPT_PATH_OUTSIDE_PLAN_TASKS` | nenhum flow novo | `paula-planeja-spt` reposiciona/corrige; executor repete |
+| D. workspace divergente | validacao bloqueia | `SPT_CONTRACT_WORKSPACE_MISMATCH` | nenhum flow novo | `paula-planeja-spt` corrige contrato |
 | E. validate + start corretos | ambos passam | sem erro | binding preserva exatamente o path canonico | executor segue pelo receipt |
 | F. `flow_create` sem binding | permitido somente como legacy/advisory | `goal_binding_absent` | flow nao oficial | executor usa `spt_validate` + `goal_start` se desejar GOAL oficial |
 | G. binding sem path | trace por `flow_id` fica unresolved | `goal_binding_spt_path_missing` + `GOAL_BINDING_SPT_PATH_MISSING` | historico permanece intacto | `dex_ppirtv` investiga defeito interno |
@@ -1027,7 +1027,7 @@ Em GOAL material, COO nao e opcional. A mesa minima obrigatoria deve aparecer em
 - `dex-memoria`: classifica/promove memoria exigida pelo contrato L1/L2/L3;
 - `estacionamento`: segura itens vivos que ainda nao devem virar pronto;
 - `reuniao`: conduz divergencia, convergencia e transversalidade;
-- `sprinter`: transforma decisao em Trilho executavel;
+- `paula-planeja-spt`: transforma decisao em Trilho executavel;
 - `duda-dev`: implementa codigo real quando a fatia estiver recortada;
 - `mapeador-implementacao`: preserva escopo, invariantes e ordem tecnica;
 - `revisor-codigo`: valida diff, riscos e review material;
