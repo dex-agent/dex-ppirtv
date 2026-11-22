@@ -1,3 +1,9 @@
+## Reavaliação — regen PLAYBOOK pós-TRACKER 0030 (2026-11-22)
+
+Projeção regenerada no fechamento do 0030 (fontes `.agents` atualizadas:
+PLAN-TASKS/ACTIVE com Trilho 0030 CONCLUÍDO + checklist do Trilho marcado).
+Sem mudança de código/teste. Receipt `reavaliacao_playbook_pos_0030_261122`.
+
 ## Reavaliação — TRACKER 0030 modo consumidor do PLAYBOOK no clone (2026-11-22)
 
 Delta: tools/playbook/generate-playbook.py (resolve_sources devolve

@@ -1,4 +1,12 @@
 {
+  "reavaliacao_playbook_pos_0030_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json"
+    ],
+    "delta": "Regen da projecao apos o fechamento do TRACKER 0030 (fontes .agents: ACTIVE com Trilho 0030 CONCLUIDO + checklist marcado; flow 6296_0001 COMPLETE, verdict pronto_com_ressalvas). Sem mudanca de codigo/teste."
+  },
   "reavaliacao_0030_playbook_modo_consumidor_261122": {
     "date": "2026-11-22",
     "scope": [
