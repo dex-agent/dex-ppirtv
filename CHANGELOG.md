@@ -8,6 +8,21 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **frente A: MERGE_HEAD pela API do Git nos hooks de merge (GitHub #28 P1 +
+  #40, TRACKER 0017/0018, Trilho 2026-11-22-frenteA)**: o Git REAL chama hooks
+  com GIT_DIR UNSET — `[ -f "$GIT_DIR/MERGE_HEAD" ]` avaliava `"/MERGE_HEAD"`
+  e o gate de resolução NUNCA rodava no fluxo real (auditoria externa da
+  revisão 377f94a; só o teste manual que injeta GIT_DIR exercitava o caminho).
+  Cura: pre-commit e pre-merge-commit resolvem MERGE_HEAD/MERGE_MSG por
+  `git rev-parse --git-path` (cobre setado, unset, worktree e submodule) —
+  mesma classe curada nos 2 hooks (3 sítios). Fixture de testes executa gates
+  pelo bash do Git (`gitBash()` via exec-path; Windows nunca mais pega o
+  System32 do PATH — #40). Teste de integração REAL novo: commit de resolução
+  em fixture de conflito com hooks instalados — suíte vermelha BLOQUEIA
+  (MERGE_HEAD mantido, stderr `merge-check gate`) e verde CRIA o commit.
+  RED→GREEN provado (commit atravessava na base) + vigília por mutação PEGA
+  (padrão GIT_DIR de volta → 1 failed). Suíte 1053|4 (1057) → 1055|4 (1059),
+  exit 0; `src/flow-engine.ts` intocado (camping NOT_APPLICABLE).
 - **redirect: evidence legada do ledger de boundary re-abrivel no clone
   (Trilho 2026-11-21-redirect-evidence-legada-ledger, flow 5916_0001)**:
   os 6 records selados (44-50: MARATONA-PIPELINE/BINDING, PRUNE-MATERIAL,

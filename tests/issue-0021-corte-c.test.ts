@@ -94,7 +94,7 @@ function runResolveGate(root: string, extraEnv: Record<string, string> = {}) {
   // Layout de instalação real: o script mora JUNTO do merge-check.conf em
   // <root>/hooks (o conf é resolvido por dirname $0 — invocar o script do
   // repo leria o SUITE="npm test" do repo, não o do cenário).
-  return spawnSync("bash", [path.join(root, "hooks", "merge-resolve-gate.sh")], {
+  return spawnSync(gitBash(), [path.join(root, "hooks", "merge-resolve-gate.sh")], {
     cwd: root,
     encoding: "utf8",
     env: { ...process.env, GIT_DIR: path.join(root, ".git"), ...extraEnv }
@@ -158,5 +158,47 @@ describe("issue 21 P1-2 — ligação e publicação", () => {
     for (const script of ["pre-merge-commit", "pre-commit", "post-merge", "merge-resolve-gate.sh"]) {
       expect(modes.get(script), `modo de ${script}`).toBe("100755");
     }
+  });
+});
+
+// Frente A (GitHub #28+#40, auditoria 377f94a): o Git REAL chama o pre-commit
+// com GIT_DIR UNSET — [ -f "$GIT_DIR/MERGE_HEAD" ] vira "/MERGE_HEAD" e o gate
+// de resolução NUNCA roda no fluxo real. A fixture também não pode chamar
+// "bash" pelo nome (Windows pode entregar o System32). Cura: MERGE_HEAD pela
+// API do Git (rev-parse --git-path) no hook + spawns pelo bash do Git.
+function gitBash(): string {
+  const execPath = spawnSync("git", ["--exec-path"], { encoding: "utf8" }).stdout.trim();
+  const exe = process.platform === "win32" ? "bash.exe" : "bash";
+  const candidate = path.join(path.dirname(execPath), "..", "..", "bin", exe);
+  return existsSync(candidate) ? candidate : "bash";
+}
+
+describe("frente A (#28+#40) — commit de resolução REAL exerce o gate mesmo com GIT_DIR unset", () => {
+  it("git commit real (hook chamado pelo Git) com suíte vermelha BLOQUEIA e mantém MERGE_HEAD; verde cria o commit", async () => {
+    const redRoot = await scenarioResolved("exit 1"); // suíte declarada falha
+    const blocked = git(redRoot, ["commit", "-qm", "resolvido"], true);
+    expect(blocked.status).not.toBe(0);
+    expect(existsSync(path.join(redRoot, ".git", "MERGE_HEAD"))).toBe(true);
+    expect(String(blocked.stderr)).toContain("merge-check gate");
+
+    const greenRoot = await scenarioResolved("exit 0");
+    // O pre-commit REAL continua para os gates de repo (playbook/capacity) —
+    // a fixture recebe os stubs mínimos desses gates (cada um tem teste
+    // próprio; o ALVO aqui é o ramo MERGE_HEAD + delegação ao resolve-gate).
+    await mkdir(path.join(greenRoot, "tools", "playbook"), { recursive: true });
+    await writeFile(path.join(greenRoot, "tools", "playbook", "generate-playbook.py"), "pass\n");
+    await mkdir(path.join(greenRoot, "scripts"), { recursive: true });
+    await writeFile(path.join(greenRoot, "scripts", "check-capacity.mjs"), "process.exit(0);\n");
+    const created = git(greenRoot, ["commit", "-qm", "resolvido"], true);
+    expect(created.status).toBe(0);
+    expect(existsSync(path.join(greenRoot, ".git", "MERGE_HEAD"))).toBe(false);
+  });
+
+  it("fixture executa gates pelo bash do Git (nunca o System32 do PATH)", () => {
+    const bash = gitBash();
+    expect(bash.toLowerCase()).not.toContain("system32");
+    const probe = spawnSync(bash, ["-c", "echo ok"], { encoding: "utf8" });
+    expect(probe.status).toBe(0);
+    expect(probe.stdout.trim()).toBe("ok");
   });
 });

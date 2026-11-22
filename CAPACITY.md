@@ -2142,3 +2142,16 @@ continuam fechados); bootstrap real é janela rara — a vigília é o teste.
 | PLAYBOOK | regen --write após fontes .agents mudarem | tools/playbook/generate-playbook.py |
 | Fontes | napkin (5 tropeços do redirect) · PLAN-TASKS/ACTIVE · ACTIVE | .agents/ |
 | Suíte | inalterada 1053\|4 (1057) | npx vitest run (sessão) |
+
+## Reavaliação 2026-11-22 — Frente A: MERGE_HEAD pela API do Git (#28+#40)
+
+> Delta sobre `20538f9`. TOCA `tools/playbook/hooks/` (2 hooks) e `tests/`
+> (+2 its, helper gitBash). `src/` INTOCADO (camping NOT_APPLICABLE).
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| Hooks | MERGE_HEAD/MERGE_MSG por `git rev-parse --git-path` (GIT_DIR setado E unset) | tools/playbook/hooks/pre-commit + pre-merge-commit |
+| Integração real | commit de resolução com hooks instalados: vermelho BLOQUEIA / verde CRIA | tests/issue-0021-corte-c.test.ts |
+| Fixture | spawns pelo bash do Git (exec-path; nunca System32) | helper gitBash() |
+| Vigília | RED (commit atravessava) → GREEN 10/10; mutação (padrão GIT_DIR) → 1 failed | sessão |
+| Suíte | 1053\|4 (1057) → 1055\|4 (1059), exit 0 | npx vitest run |

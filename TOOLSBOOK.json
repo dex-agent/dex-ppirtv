@@ -226,7 +226,7 @@
         "cura TRACKER-0011 (2026-11-16, D-52 A-00): comentario do gate de duplicacao cita a dona real do motor medir-duplicacao.py (dex-complexidade-ciclomatica) — 1 linha, zero mudanca de comportamento"
       ],
       "sources": {
-        "tools/playbook/hooks/pre-commit": "463b58f3bc1b9a6cf98721d3a84e7b76937c58b173d54c3b553fa19fca397219"
+        "tools/playbook/hooks/pre-commit": "166f25ab958dfb20aa9e74481fab739b1fba4f7a60c21b995504b02c961d9b61"
       }
     },
     {
@@ -608,7 +608,7 @@
         "memoria ppirtv-desmontagem-flow-engine-aberta-3464 (WinError 183 = rm receipt failed)"
       ],
       "sources": {
-        "tools/playbook/hooks/pre-commit": "463b58f3bc1b9a6cf98721d3a84e7b76937c58b173d54c3b553fa19fca397219"
+        "tools/playbook/hooks/pre-commit": "166f25ab958dfb20aa9e74481fab739b1fba4f7a60c21b995504b02c961d9b61"
       },
       "external_sources": [
         "owner: skill code-review-graph (registry) | locator: code-review-graph no PATH | revision: nao pinada (lacuna declarada) | evidence: hook pre-commit l.24-31 chama e confere exit; banco .agents/CODE-REVIEW-GRAPH"
@@ -640,7 +640,7 @@
         "--usage do motor"
       ],
       "sources": {
-        "tools/playbook/hooks/pre-commit": "463b58f3bc1b9a6cf98721d3a84e7b76937c58b173d54c3b553fa19fca397219"
+        "tools/playbook/hooks/pre-commit": "166f25ab958dfb20aa9e74481fab739b1fba4f7a60c21b995504b02c961d9b61"
       },
       "external_sources": [
         "owner: skill dex-toolsbook (registry ~/.agents/skills) | locator: ~/.agents/skills/dex-toolsbook/scripts/toolsbook.py | revision: contrato v2 working_tree do registry (sem pin — ISSUE-LOCAL-0010) | evidence: este TOOLSBOOK.json passa no --check"

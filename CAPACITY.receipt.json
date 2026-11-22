@@ -1914,5 +1914,15 @@
       "PLAYBOOK.index.json"
     ],
     "delta": "Regen da projecao apos o fechamento do bloco redirect (fontes .agents: napkin com tropeços da sessão do redirect + PLAN-TASKS/ACTIVE com o Trilho redirect concluido + ACTIVE atualizado). Sem mudanca de codigo/teste; suite inalterada 1053|4 (1057); flow 5916_0001 COMPLETE, CI 44969338943 success (re-run; 1o run flaky timeout windows)."
+  },
+  "reavaliacao_frente_a_mergehead_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "tools/playbook/hooks/pre-commit",
+      "tools/playbook/hooks/pre-merge-commit",
+      "tests/issue-0021-corte-c.test.ts",
+      "CHANGELOG.md"
+    ],
+    "delta": "Frente A (GitHub #28 P1 + #40, TRACKER 0017/0018): pre-commit e pre-merge-commit resolvem MERGE_HEAD/MERGE_MSG pela API do Git (rev-parse --git-path) — o Git REAL chama hooks com GIT_DIR unset e [ -f $GIT_DIR/MERGE_HEAD ] virava /MERGE_HEAD (gate de resolução NUNCA rodava no fluxo real; só o teste manual que injeta GIT_DIR exercitava). Fixture executa gates pelo bash do Git (gitBash() via exec-path; nunca System32 do PATH). Teste de INTEGRAÇÃO real: commit de resolução em fixture de conflito com hooks instalados — suíte vermelha BLOQUEIA (mantém MERGE_HEAD, stderr merge-check gate) e verde CRIA o commit (MERGE_HEAD consumido). RED->GREEN (commit atravessava na base) + mutação PEGA (padrão GIT_DIR de volta -> 1 failed). Suite 1053|4 (1057) -> 1055|4 (1059), exit 0."
   }
 }

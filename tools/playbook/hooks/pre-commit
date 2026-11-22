@@ -7,7 +7,11 @@
 # chama SÓ este hook (pre-merge-commit não roda); MERGE_HEAD presente no disco
 # até o commit concluir é o detector. Delega ao merge-resolve-gate.sh, a MESMA
 # fonte usada pelo pre-merge-commit A3f (git merge --continue): veredito único.
-if [ -f "$GIT_DIR/MERGE_HEAD" ]; then
+# Frente A (GitHub #28): o Git REAL chama hooks com GIT_DIR UNSET —
+# "$GIT_DIR/MERGE_HEAD" virava "/MERGE_HEAD" e o gate nunca rodava no fluxo
+# real. Resolver pela API do Git (cobre setado, unset, worktree e submodule).
+MERGE_HEAD_PATH="$(git rev-parse --git-path MERGE_HEAD 2>/dev/null)"
+if [ -n "$MERGE_HEAD_PATH" ] && [ -f "$MERGE_HEAD_PATH" ]; then
   "$(dirname "$0")/merge-resolve-gate.sh" || exit 1
 fi
 

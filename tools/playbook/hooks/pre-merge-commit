@@ -24,7 +24,12 @@ RUN_SUITE="$SUITE"
 # automático. O worktree já está no estado pós-merge: suíte comportamental
 # DIRETO nele (sem theirs confiável, a camada textual 3-vias fica para o fluxo
 # com MERGE_HEAD).
-if [ ! -f "$GIT_DIR/MERGE_HEAD" ]; then
+# Frente A (GitHub #28, mesma classe): o Git REAL chama hooks com GIT_DIR
+# UNSET — resolver MERGE_HEAD/MERGE_MSG pela API do Git (rev-parse --git-path
+# cobre setado, unset, worktree e submodule).
+MERGE_HEAD_PATH="$(git rev-parse --git-path MERGE_HEAD 2>/dev/null)"
+MERGE_MSG_PATH="$(git rev-parse --git-path MERGE_MSG 2>/dev/null)"
+if [ -z "$MERGE_HEAD_PATH" ] || [ ! -f "$MERGE_HEAD_PATH" ]; then
   if [ -z "$SUITE" ]; then
     exit 0
   fi
@@ -38,10 +43,10 @@ if [ ! -f "$GIT_DIR/MERGE_HEAD" ]; then
 fi
 
 OURS=$(git rev-parse HEAD)
-THEIRS=$(git rev-parse "$GIT_DIR/MERGE_HEAD")
+THEIRS=$(git rev-parse "$MERGE_HEAD_PATH")
 BASE=$(git merge-base HEAD MERGE_HEAD)
 
-if grep -q "# Conflicts" "$GIT_DIR/MERGE_MSG" 2>/dev/null; then
+if [ -n "$MERGE_MSG_PATH" ] && grep -q "# Conflicts" "$MERGE_MSG_PATH" 2>/dev/null; then
   # A3f (issue 21 P1-2): resolução manual via git merge --continue — a camada
   # textual do merge-check daria falso-positivo (refaz o merge sem a resolução
   # humana). Delega ao merge-resolve-gate.sh, a MESMA fonte usada pela delegação
