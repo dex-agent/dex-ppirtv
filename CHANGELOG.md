@@ -8,6 +8,20 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **frente H: S11 decide por nomes COMPLETOS — check:capacity mantém o
+  diagnóstico (GitHub #39, Trilho 2026-11-22-frenteh, flow 6228_0001)**: o
+  fiscal S11 do spt-kit/preflight.mjs testava `!/npm run check/.test(proc)`
+  — casamento por SUBSTRING: `npm run check:capacity` CONTÉM o prefixo
+  `npm run check`, então prova PARCIAL de tipos (tsc -p src-only)
+  acompanhada do script de CAPACIDADE (sem typecheck; package.json l.19)
+  silenciava o S11 (evidência da auditoria 377f94a: a adição de
+  check:capacity ELIMINAVA o diagnóstico por coincidência). Cura: 1 linha —
+  `!/npm run check(:types)?(\s|$)/` (nomes completos com boundary de fim de
+  token; check:flow-engine da mesma classe também coberto). RED 2F|3P →
+  GREEN 5/5; mutação (boundary removido) PEGA; ficha NOVA spt-preflight no
+  TOOLSBOOK (R18). **ÚLTIMA issue da auditoria 377f94a — grupo 11/11**;
+  camping NOT_APPLICABLE (spt-kit/).
+
 - **frente G: tríade honesta de CLIs — JSON ilegível reprova no local-only
   (#36), schema próprio por entrypoint (#37), helps alinhados ao parser
   (#38) (Trilho 2026-11-22-frenteg, flow 6193_0001)**: três mentiras

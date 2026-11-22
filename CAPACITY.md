@@ -1,3 +1,19 @@
+## Reavaliação — regen PLAYBOOK pré-commit Frente H (2026-11-22)
+
+Projeção regenerada ANTES do commit da Frente H (fonte editada na abertura:
+Trilho frenteh + napkin UAT-1 + GATILHOS vivos). Sem mudança de código/teste.
+Receipt `reavaliacao_playbook_pre_commit_frente_h_261122`.
+
+## Reavaliação — Frente H #39: S11 por nomes completos (2026-11-22)
+
+Delta: spt-kit/preflight.mjs (regex do S11 com boundary de fim de token —
+`check:capacity`/`check:flow-engine` MANTÊM o diagnóstico; `check:types` e
+`check` inteiro limpam) + tests/issue-0039 nova (5 casos: RED 2F|3P → GREEN
+5/5; mutação PEGA) + ficha NOVA spt-preflight no TOOLSBOOK (R18). Motor
+intocado (camping NOT_APPLICABLE — spt-kit/). Vizinho ppirtv-checkin.ts:236
+avaliado e não mudado (heurística de visibilidade, contrato distinto).
+Receipt `reavaliacao_frente_h_prefixo_capacity_261122`.
+
 ## Reavaliação — regen PLAYBOOK pós-Frente G (2026-11-22)
 
 Projeção regenerada após o fechamento (fontes `.agents` atualizadas: napkin

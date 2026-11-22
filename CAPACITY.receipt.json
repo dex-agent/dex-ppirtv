@@ -2093,5 +2093,23 @@
       "PLAYBOOK.index.json"
     ],
     "delta": "Regen pos-fechamento da Frente G (fontes .agents: napkin tropeços frente G + decisao UAT por grupo grande + PLAN-TASKS/ACTIVE com Trilho G concluido e fila H=#39). Sem mudanca de codigo/teste. Liberacao final 10/10 issues pelas lentes oraculo-teste-de-integracao + oraculo-teste-de-sistema-e2e com selos documentais."
+  },
+  "reavaliacao_frente_h_prefixo_capacity_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "spt-kit/preflight.mjs",
+      "tests/issue-0039-prefixo-capacity.test.ts",
+      "TOOLSBOOK.json",
+      "CHANGELOG.md"
+    ],
+    "delta": "Frente H (GitHub 39, ULTIMA da auditoria 377f94a): S11 do preflight decide por nomes COMPLETOS com boundary de fim de token — npm run check:capacity/check:flow-engine (vizinhos de prefixo SEM typecheck) passavam a silenciar o fiscal por coincidencia de substring; package.json l.19/l.27 define capacidade e tipagem como operacoes distintas e RULES.md:51-55 documenta o contrato. Cura: 1 linha (regex !/npm run check(:types)?(\\s|$)/). RED 2F|3P -> GREEN 5/5; mutacao boundary removido PEGA (2F|3P). Ficha NOVA spt-preflight no TOOLSBOOK (R18: usou -> ficha). Vizinho ppirtv-checkin.ts:236 avaliado NAO mudado (heuristica de visibilidade, contrato distinto). Camping NOT_APPLICABLE (spt-kit/)."
+  },
+  "reavaliacao_playbook_pre_commit_frente_h_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json"
+    ],
+    "delta": "Regen ANTES do commit da Frente H (fonte editada na abertura: Trilho frenteh + napkin UAT-1 + GATILHOS). Sem mudanca de codigo/teste."
   }
 }

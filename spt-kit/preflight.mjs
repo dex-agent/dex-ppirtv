@@ -109,8 +109,12 @@ function checkGraph(d) {
         add("S04", `${e.id}: command_exit exige expected_exit_code inteiro (R4)`);
       // R9 (S11): prova de tipos integral — tsc direto sem o script do projeto
       // (ISSUE-LOCAL-0009: verde parcial de tsc src-only tomado por verde total)
+      // Frente H (GitHub #39): nomes COMPLETOS com boundary de fim de token —
+      // "npm run check:capacity"/"check:flow-engine" contêm o prefixo
+      // "npm run check" mas NÃO são prova de tipagem (package.json define
+      // operações distintas); substring silenciava o fiscal.
       const proc = String(e.procedure || "");
-      if (/(npx\s+tsc|\btsc\s+(-p|--noEmit|--project))/.test(proc) && !/npm run check/.test(proc))
+      if (/(npx\s+tsc|\btsc\s+(-p|--noEmit|--project))/.test(proc) && !/npm run check(:types)?(\s|$)/.test(proc))
         add("S11", `${e.id}: prova de tipos com tsc direto (R9) — cite npm run check:types ou npm run check INTEIRO`);
     }
   }
