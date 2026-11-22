@@ -2111,5 +2111,13 @@
       "PLAYBOOK.index.json"
     ],
     "delta": "Regen ANTES do commit da Frente H (fonte editada na abertura: Trilho frenteh + napkin UAT-1 + GATILHOS). Sem mudanca de codigo/teste."
+  },
+  "reavaliacao_playbook_pos_grupo_auditoria_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json"
+    ],
+    "delta": "Regen pos-fechamento do GRUPO auditoria 377f94a 11/11 (fontes: napkin tropecos frente H + lembranca H + PLAN-TASKS/ACTIVE com Trilho H concluido + TRACKER 0029). Sem mudanca de codigo/teste. UAT-1 de fabrica: A1 (check verde 1080|4 + tools/list 32 reais) e A2 (GOAL_NAO_ATIVO com next_required_action) medidos na sessao com recibos; A3 (ciclo so pelo manual, agente fresco) = janela propria de UAT."
   }
 }

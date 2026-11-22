@@ -1,3 +1,9 @@
+## Reavaliação — regen PLAYBOOK pós-GRUPO auditoria 11/11 (2026-11-22)
+
+Projeção regenerada no fechamento do grupo (fontes: frente H concluída).
+UAT-1: A1+A2 medidos (check 1080|4; tools/list 32; diagnóstico que ensina);
+A3 = janela própria. Receipt `reavaliacao_playbook_pos_grupo_auditoria_261122`.
+
 ## Reavaliação — regen PLAYBOOK pré-commit Frente H (2026-11-22)
 
 Projeção regenerada ANTES do commit da Frente H (fonte editada na abertura:
