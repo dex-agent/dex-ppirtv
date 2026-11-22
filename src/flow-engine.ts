@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { currentCriterionEvidence } from "./domain.js";
+import { prepareCriterionProofReplacement, type CriterionProofReplacement } from "./spt-traceability.js";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { providedPathFindingsFields, providedPathFindingsFor, providedPathPreviewFields } from "./gate-provided-paths.js";
@@ -2482,6 +2484,7 @@ export class FlowEngine {
     satisfies?: string[];
     observed_result?: Record<string, unknown>;
     criterion_proof?: CriterionProofInput;
+    replaces_criterion_proof?: CriterionProofReplacement;
     scope_classification?: "target" | "declared_dependency" | "outside";
     scope_reference?: string;
     reviewed_implementation_fingerprint?: string;
@@ -2495,6 +2498,7 @@ export class FlowEngine {
     assertNoSecretLikeText(input.scope_reference, "scope_reference");
     assertNoSecretLikePayload(input.observed_result, "observed_result");
     assertNoSecretLikePayload(input.criterion_proof, "criterion_proof");
+    assertNoSecretLikePayload(input.replaces_criterion_proof, "replaces_criterion_proof");
     const flow = await this.store.loadFlow(input.flow_id);
     const beforeSnapshot = this.resolveGateSnapshot(
       flow,
@@ -2511,6 +2515,7 @@ export class FlowEngine {
       satisfies: input.satisfies,
       observed_result: input.observed_result,
       criterion_proof: input.criterion_proof,
+      replaces_criterion_proof: input.replaces_criterion_proof,
       scope_classification: input.scope_classification,
       scope_reference: input.scope_reference,
       reviewed_implementation_fingerprint: input.reviewed_implementation_fingerprint,
@@ -2561,6 +2566,14 @@ export class FlowEngine {
     let flow = await this.store.loadFlow(input.flow_id);
     assertGoalBinding(flow);
     assertFlowAcceptsMutation(flow);
+    const evidenceIds = unique([...(input.evidence_ids ?? []), ...(input.scope_attribution_evidence_ids ?? [])]);
+    const currentEvidence = currentCriterionEvidence(flow);
+    const currentIds = new Set(currentEvidence.map((evidence) => evidence.evidence_id));
+    const superseded = flow.evidence.filter((evidence) =>
+      !currentIds.has(evidence.evidence_id) && evidenceIds.includes(evidence.evidence_id));
+    if (superseded.length > 0) {
+      throw new Error(`SPT_V3_EVIDENCE_SUPERSEDED: select current criterion proofs; evidence_ids=${superseded.map((item) => item.evidence_id).join(",")}`);
+    }
     // false so grava com o veredito consumado: veredito rejeitado nao pode
     // apagar um relato pending true (revisao em dupla 2026-11-02).
     const earlySignalsInput = input.recurring_risk === false ? { ...input, recurring_risk: undefined } : input;
@@ -2573,7 +2586,6 @@ export class FlowEngine {
       }
       assertMeetingClosed(meeting);
     }
-    const evidenceIds = unique([...(input.evidence_ids ?? []), ...(input.scope_attribution_evidence_ids ?? [])]);
     const existingEvidenceIds = new Set(flow.evidence.map((evidence) => evidence.evidence_id));
     const missingEvidence = evidenceIds.filter((evidenceId) => !existingEvidenceIds.has(evidenceId));
     if (missingEvidence.length > 0) {
@@ -2590,7 +2602,7 @@ export class FlowEngine {
       // goal_binding e o estreitamento do invariant garantido pelo
       // assertGoalBinding acima — a politica exportada exige binding presente.
       await assertSptV3PositiveVerdictCoverage(
-        { spt_traceability: flow.spt_traceability, evidence: flow.evidence, goal_binding: flow.goal_binding! },
+        { spt_traceability: flow.spt_traceability, evidence: currentEvidence, goal_binding: flow.goal_binding! },
         evidenceIds
       );
     }
@@ -3677,6 +3689,7 @@ export class FlowEngine {
     satisfies?: string[];
     observed_result?: Record<string, unknown>;
     criterion_proof?: CriterionProofInput;
+    replaces_criterion_proof?: CriterionProofReplacement;
     scope_classification?: "target" | "declared_dependency" | "outside";
     scope_reference?: string;
     reviewed_implementation_fingerprint?: string;
@@ -3698,6 +3711,7 @@ export class FlowEngine {
     satisfies?: string[];
     observed_result?: Record<string, unknown>;
     criterion_proof?: CriterionProofInput;
+    replaces_criterion_proof?: CriterionProofReplacement;
     scope_classification?: "target" | "declared_dependency" | "outside";
     scope_reference?: string;
     reviewed_implementation_fingerprint?: string;
@@ -3749,6 +3763,12 @@ export class FlowEngine {
     const now = nowIso();
     // Onda 2: admissao de criterion_proof e politica do SSOT spt-traceability.
     const criterionProof = assertCriterionProofAdmission(flow, input);
+    const replacement = input.replaces_criterion_proof;
+    const requestHash = replacement ? createHash("sha256").update(JSON.stringify(input)).digest("hex") : "";
+    if (replacement) {
+      const existing = prepareCriterionProofReplacement(flow, replacement, criterionProof, requestHash);
+      if (existing) return presentArtifact(existing as Evidence & Record<string, unknown>, flow);
+    }
     if (criterionProof) {
       await assertCriterionProofRevisionCurrent(criterionProof, flow.goal_binding!.envelope.workspace);
     }
@@ -3767,6 +3787,7 @@ export class FlowEngine {
         observed_result: input.observed_result
       }),
       criterion_proof: criterionProof,
+      criterion_proof_spt_fingerprint: criterionProof ? flow.goal_binding?.spt_contract_fingerprint : undefined,
       scope_classification: input.scope_classification,
       scope_reference: input.scope_reference,
       reviewed_implementation_fingerprint:
@@ -3798,8 +3819,19 @@ export class FlowEngine {
         review_valid: reviewEvidenceValidity(flow, evidence as Evidence)
       }
     });
-    await this.store.saveEvidence(evidence);
-    await this.store.saveFlow(flow);
+    if (replacement) {
+      flow.history.push({
+        at: now,
+        type: "criterion_proof_superseded",
+        data: { ...replacement, replacement_evidence_id: evidence.evidence_id, request_sha256: requestHash }
+      });
+    }
+    if (replacement) {
+      await this.store.saveReplacementEvidence(flow, evidence);
+    } else {
+      await this.store.saveEvidence(evidence);
+      await this.store.saveFlow(flow);
+    }
     await this.ledger(flow.flow_id, "evidence_attached", { evidence_id: evidence.evidence_id, kind: evidence.kind, title: evidence.title, uri: evidence.uri });
     const presented = presentArtifact(evidence as Evidence & Record<string, unknown>, flow);
     const blockers = latestFiscalBlock(flow).blocking_reasons;

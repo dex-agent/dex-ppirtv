@@ -1,4 +1,10 @@
 {
+  "reavaliacao_er06_261121": {
+    "date": "2026-11-21",
+    "scope": ["src/domain.ts", "src/flow-engine.ts", "src/gate-resolution.ts", "src/review-snapshot.ts", "src/server.ts", "src/spt-traceability.ts", "src/store.ts", "tests/review-scope-offending-paths.test.ts"],
+    "delta": "O MCP recebe substituições de provas de critério. O fluxo conserva o histórico e seleciona a prova vigente para revisão, gates e veredito.",
+    "validation": "7 testes focados passaram. Permanecem falhas em check:types e check:flow-engine."
+  },
   "reavaliacao_playbook_pos_0015_261121": {
     "date": "2026-11-21",
     "scope": [

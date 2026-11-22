@@ -292,6 +292,16 @@ export class PpirtvStore {
     await writeJsonAtomic(this.evidencePath(evidence.evidence_id), evidence);
   }
 
+  async saveReplacementEvidence(flow: Flow, evidence: Evidence): Promise<void> {
+    await this.saveEvidence(evidence);
+    try {
+      await this.saveFlow(flow);
+    } catch (error) {
+      await unlink(this.evidencePath(evidence.evidence_id));
+      throw error;
+    }
+  }
+
   async appendLedger(event: LedgerEvent): Promise<void> {
     await this.init();
     await appendFile(this.ledgerPath, `${JSON.stringify(scrubSecretLike(event))}\n`, "utf8");

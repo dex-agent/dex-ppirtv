@@ -1,3 +1,11 @@
+## Reavaliação — substituição de prova de critério (2026-11-21)
+
+`evidence_add` aceita `replaces_criterion_proof` para substituir uma prova
+no mesmo fluxo e critério. O histórico conserva a prova anterior. O escopo de
+revisão, os gates e o veredito passam a considerar a prova vigente.
+A suíte focada passou nos sete testes. A checagem de tipos das fixtures e o
+gate arquitetural de `flow-engine.ts` seguem pendentes nesta proposta.
+
 ## Reavaliação — regen PLAYBOOK pós-bloco 0015 (2026-11-21)
 
 Projeção regenerada após o fechamento (flow 5842_0001 complete; fontes

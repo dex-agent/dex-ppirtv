@@ -535,6 +535,7 @@ export type Evidence = {
   satisfies?: string[];
   observed_result?: Record<string, unknown>;
   criterion_proof?: CriterionProof;
+  criterion_proof_spt_fingerprint?: string;
   scope_classification?: "target" | "declared_dependency" | "outside";
   scope_reference?: string;
   reviewed_implementation_fingerprint?: string;
@@ -663,6 +664,20 @@ export type Flow = {
   updated_at: string;
   archived_at?: string;
 };
+
+export function currentCriterionEvidence(flow: Pick<Flow, "evidence" | "history">): Evidence[] {
+  const evidence = flow.evidence ?? [];
+  const approvedIds = new Set(evidence.filter((item) => item.criterion_proof?.passed === true)
+    .map((item) => item.evidence_id));
+  const superseded = new Set((flow.history ?? [])
+    .filter(({ type, data }) => type === "criterion_proof_superseded"
+      && typeof data.replacement_evidence_id === "string"
+      && data.replacement_evidence_id !== data.evidence_id
+      && approvedIds.has(data.replacement_evidence_id))
+    .map((event) => event.data.evidence_id));
+  return evidence.filter((item) =>
+    !item.criterion_proof || !superseded.has(item.evidence_id));
+}
 
 export type LedgerEvent = {
   event_id: string;

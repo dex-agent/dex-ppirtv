@@ -1,4 +1,4 @@
-import type { AnyPhase, Evidence, Flow, GateRecord, Verdict } from "./domain.js";
+import { currentCriterionEvidence, type AnyPhase, type Evidence, type Flow, type GateRecord, type Verdict } from "./domain.js";
 import { REQUIREMENT_KINDS_BY_KEY, type GateRequirement, type GateRequirementKind } from "./phase-profile.js";
 import { normalizeReviewPath } from "./review-snapshot.js";
 import { stringArray as toStringArray, unique } from "./lang-utils.js";
@@ -82,8 +82,9 @@ export function strictPathArray(value: unknown, field = "changed_files"): string
 
 export function resolveGateRequirements(input: GateResolutionInput): GateRequirementResolution[] {
   const provided = input.provided ?? {};
+  const currentEvidence = currentCriterionEvidence(input.flow);
   return input.requirements.map((requirement) => {
-    const evidenceIds = input.flow.evidence
+    const evidenceIds = currentEvidence
       .filter((evidence) => evidenceSatisfiesRequirement(input.flow, evidence, requirement.key))
       .map((evidence) => evidence.evidence_id);
     const acceptedSources: GateRequirementResolution["accepted_sources"] = EXPLICIT_EVIDENCE_REQUIREMENTS.has(requirement.key)
@@ -167,7 +168,7 @@ export function isStructuredReviewEvidence(flow: Flow, evidence: Evidence): bool
 // SPT gate-integrity-hardening-3 (R3): review estruturada que ainda cobre o
 // implementation_fingerprint atual. Claims-only/test receipt nao contam.
 function hasCurrentStructuredReview(flow: Flow): boolean {
-  return flow.evidence.some((evidence) => isStructuredReviewEvidence(flow, evidence));
+  return currentCriterionEvidence(flow).some((evidence) => isStructuredReviewEvidence(flow, evidence));
 }
 
 // SPT review-gate-loop-proof (T-3): validade de evidencia de review para o
@@ -341,7 +342,7 @@ function nonNegativeInteger(value: unknown): value is number {
 
 // Laudo F6: evidencia relevante para o requisito generico source=evidence.
 function genericEvidenceSatisfied(flow: Flow): boolean {
-  return flow.evidence.some((evidence) =>
+  return currentCriterionEvidence(flow).some((evidence) =>
     (evidence.satisfies ?? []).some((item) => flow.expected_evidence.includes(item))
     || isTestReceipt(evidence)
     // SPT gate-integrity-hardening-2 (R5, laudo de revalidacao): a rota

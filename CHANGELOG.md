@@ -8,6 +8,10 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- `evidence_add` aceita `replaces_criterion_proof` para renovar uma prova do
+  mesmo critério. A revisão e o veredito usam a prova vigente e preservam o
+  histórico da substituição.
+
 - **barata-mestra: idempotência por anchor no writeMemoryCandidate (Trilho
   2026-11-21, flow 5874_0001)**: o `l2_bloco` governado carrega
   `Candidate: `mc_N`` volátil que mudava a cada re-mineração e derrotava o

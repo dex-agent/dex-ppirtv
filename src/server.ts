@@ -842,6 +842,11 @@ function registerTools(
         satisfies: z.array(z.string()).optional(),
         observed_result: z.record(z.unknown()).optional(),
         criterion_proof: criterionProofSchema.optional(),
+        replaces_criterion_proof: z.object({
+          evidence_id: z.string().trim().min(1),
+          reason: z.string().trim().min(1),
+          actor: z.string().trim().min(1)
+        }).strict().optional().describe("Replace a prior criterion proof with an approved and fresh explicit criterion_proof."),
         declarative_proof: declarativeProofSchema.optional(),
         scope_classification: z.enum(["target", "declared_dependency", "outside"]).optional(),
         scope_reference: z.string().optional(),
@@ -859,6 +864,9 @@ function registerTools(
       const reviewIssues = reviewObservedResultIssues(args as unknown as Record<string, unknown>);
       const declarative = args.declarative_proof;
       if (declarative) {
+        if (args.replaces_criterion_proof) {
+          throw new Error("SPT_V3_PROOF_REPLACEMENT_INVALID: send an explicit criterion_proof");
+        }
         if (args.criterion_proof) {
           throw new Error("SPT_V3_DECLARATIVE_INVALID: mutual_exclusion: send either criterion_proof or declarative_proof, not both");
         }

@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { lstat, readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
-import type { Flow, GateRecord } from "./domain.js";
+import { currentCriterionEvidence, type Flow, type GateRecord } from "./domain.js";
 import { isClientValueWrapper } from "./input-unwrap.js";
 
 const execFileAsync = promisify(execFile);
@@ -326,7 +326,7 @@ export function declaredReviewPaths(flow: Flow): Set<string> {
       }
     }
   }
-  for (const evidence of flow.evidence ?? []) {
+  for (const evidence of currentCriterionEvidence(flow)) {
     const revisionSet = (evidence as unknown as { criterion_proof?: { revision_set?: Array<{ paths?: Array<{ path: unknown }> }> } }).criterion_proof?.revision_set;
     for (const revision of revisionSet ?? []) {
       for (const entry of revision.paths ?? []) {

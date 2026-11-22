@@ -497,6 +497,36 @@ function proofError(code: string, detail?: string): Error {
  *  pura do SSOT — v2 rejeita (SPT_V3_EVIDENCE_INVALID), v3 sem mapa rejeita
  *  (SPT_V3_TRACEABILITY_MISSING), v3 com mapa qualifica via qualifyCriterionProof.
  *  Mensagens sao contrato publico: preservadas byte a byte. */
+export type CriterionProofReplacement = { evidence_id: string; reason: string; actor: string };
+
+export function prepareCriterionProofReplacement(
+  flow: Flow,
+  replacement: CriterionProofReplacement,
+  proof: CriterionProof | undefined,
+  requestHash: string
+): Evidence | undefined {
+  const previous = flow.evidence.find((item) => item.evidence_id === replacement.evidence_id);
+  const priorProof = previous?.criterion_proof;
+  const sameChain = proof && priorProof
+    && proof.task_id === priorProof.task_id
+    && proof.requirement_id === priorProof.requirement_id
+    && proof.criterion_id === priorProof.criterion_id
+    && proof.evidence_requirement_id === priorProof.evidence_requirement_id;
+  if (!proof?.passed || !sameChain || previous.flow_id !== flow.flow_id
+    || (previous.criterion_proof_spt_fingerprint !== undefined
+      && previous.criterion_proof_spt_fingerprint !== flow.goal_binding?.spt_contract_fingerprint)
+    || !replacement.reason.trim() || !replacement.actor.trim()) {
+    throw new Error("SPT_V3_PROOF_REPLACEMENT_INVALID: expected an approved replacement for a proof in the same flow and SPT chain");
+  }
+  const superseded = flow.history.find((event) =>
+    event.type === "criterion_proof_superseded" && event.data.evidence_id === replacement.evidence_id);
+  if (!superseded) return undefined;
+  const existing = flow.evidence.find((item) =>
+    item.evidence_id === superseded.data.replacement_evidence_id && item.flow_id === flow.flow_id);
+  if (existing && superseded.data.request_sha256 === requestHash) return existing;
+  throw new Error("SPT_V3_PROOF_REPLACEMENT_CONFLICT: the referenced proof already has a replacement");
+}
+
 export function assertCriterionProofAdmission(
   flowLike: { spt_contract_version?: number | null; spt_traceability?: unknown },
   input: { criterion_proof?: CriterionProofInput }
