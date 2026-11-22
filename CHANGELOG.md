@@ -8,6 +8,27 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **frente B-2: atribuição parcial completável — pendente não-declarado não
+  congela externos (GitHub #31, TRACKER 0020, Trilho 2026-11-22-frenteb2)**:
+  o fallback do `pendingAttachScope` devolve a UNIÃO para validar o fp
+  (Emenda A2) e o anexo a persistia em `changed_files` — na atribuição
+  seguinte, `protectedReviewPaths` protegia até os EXTERNOS do pendente
+  (`REVIEW_SCOPE_DECLARED_PATH` congelava o restante para sempre; auditoria
+  377f94a). Fora do pending a atribuição remove externos ANTES da
+  persistência — externos só viravam `changed_files` pelo fallback (bug
+  exclusivo do ciclo pendente). Cura: `protectedReviewPaths` filtra os
+  caminhos do escopo pendente VIGENTE (`pendingReviewScopeForAttach`) que
+  NÃO foram declarados pelo flow (`declaredReviewPaths`:
+  `provided.changed_files` de gates + paths de criterion_proofs) — o
+  declarado segue protegido (trabalho do flow inatribuível como externo,
+  controle vigia), o pendente não-declarado é candidato à atribuição, e com
+  o pending resolvido a fonte viva some e a proteção integral volta. O fp
+  pendente (#24), o guard reviewable (frente B/#29) e o os-dois-ou-nenhum
+  (#23) ficam intactos. RED 9/10 → GREEN 10/10 (receita da issue: parcial →
+  anexo fallback → restante aceito; controle legítimo declarado segue
+  reprovando) + mutação do filtro PEGA; suíte integral 1062|4 (1066) exit
+  0; motor intocado (camping NOT_APPLICABLE — cura em
+  review-scope-attribution.ts).
 - **frente C: anchors distintos para títulos com prefixo comum >64 chars
   (GitHub #30, TRACKER 0021, Trilho 2026-11-22-frentec)**: `memoryAnchor`
   truncava em 64 — dois títulos distintos com prefixo comum recebiam o MESMO

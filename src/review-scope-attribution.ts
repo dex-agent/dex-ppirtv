@@ -3,7 +3,7 @@ import { lstat } from "node:fs/promises";
 import { z } from "zod";
 import type { Evidence, Flow, VerdictStatus } from "./domain.js";
 import { isPositiveVerdict } from "./domain.js";
-import { declaredReviewPaths, fingerprintReviewedImplementation, normalizeReviewPath, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
+import { declaredReviewPaths, fingerprintReviewedImplementation, normalizeReviewPath, pendingReviewScopeForAttach, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles } from "./review-snapshot.js";
 
 export type GoalVerdictInput = {
   flow_id: string;
@@ -100,8 +100,29 @@ function offendingPathsSuffix(offending: string[]): string {
 
 function protectedReviewPaths(flow: Flow): Set<string> {
   const workspace = flow.goal_binding!.envelope.workspace;
-  return new Set([...flow.changed_files, ...declaredReviewPaths(flow)]
-    .map((value) => canonicalPath(workspace, value)));
+  // Frente B-2 (GitHub #31, auditoria 377f94a): o fallback do pendingAttachScope
+  // devolve a UNIÃO para validar o fp (Emenda A2) e o anexo a persiste em
+  // changed_files — sem o filtro, os caminhos externos do pendente ficavam
+  // CONGELADOS para a atribuição seguinte (REVIEW_SCOPE_DECLARED_PATH) e o
+  // revisor nunca completava a atribuição parcial. Protegido é o DECLARADO
+  // pelo flow (provided.changed_files de gates + paths de criterion_proofs,
+  // via declaredReviewPaths); o pendente NÃO-declarado é candidato à
+  // atribuição. Com o pending resolvido (verdict gravado após o bloqueio), a
+  // fonte viva some e a proteção integral volta.
+  const declared = new Set([...declaredReviewPaths(flow)].map((value) => canonicalPath(workspace, value)));
+  const pending = pendingReviewScopeForAttach(flow);
+  const pendingUndeclared = new Set(
+    (pending?.changed_files ?? [])
+      .map((value) => canonicalPath(workspace, value))
+      .filter((value) => !declared.has(value))
+  );
+  if (pendingUndeclared.size === 0) {
+    return new Set([...flow.changed_files, ...declared]
+      .map((value) => canonicalPath(workspace, value)));
+  }
+  return new Set([...flow.changed_files, ...declared]
+    .map((value) => canonicalPath(workspace, value))
+    .filter((value) => !pendingUndeclared.has(value)));
 }
 
 function assertExternalPaths(flow: Flow, paths: string[]): void {

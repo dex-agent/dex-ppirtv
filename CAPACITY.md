@@ -1,3 +1,11 @@
+## Reavaliação — Frente B-2 #31: atribuição parcial completável (2026-11-22)
+
+Delta: review-scope-attribution (protectedReviewPaths filtra pendente
+não-declarado via pendingReviewScopeForAttach + declaredReviewPaths; import)
++ tests/issue-0022 +2 its (receita da issue + controle legítimo). Motor
+intocado (camping NOT_APPLICABLE). RED 9/10→GREEN 10/10 + mutação PEGA;
+suíte 1062|4 (1066). Receipt `reavaliacao_frente_b2_atribuicao_parcial_261122`.
+
 ## Reavaliação — regen PLAYBOOK pós-Frente C (2026-11-22)
 
 Projeção regenerada após o fechamento (flow 6028_0001 complete; fontes

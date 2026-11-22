@@ -1,4 +1,13 @@
 {
+  "reavaliacao_frente_b2_atribuicao_parcial_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "src/review-scope-attribution.ts",
+      "tests/issue-0022-pending-cycle.test.ts",
+      "CHANGELOG.md"
+    ],
+    "delta": "Frente B-2 (GitHub #31, TRACKER 0020, Trilho 2026-11-22-frenteb2, flow 6064_0001): protectedReviewPaths filtra os caminhos do pendente VIGENTE nao-declarados pelo flow (declarado segue protegido; pendente resolvido devolve protecao integral). RED 9/10 -> GREEN 10/10 + mutacao do filtro PEGA; suite integral 1062|4 (1066) 93 arq exit 0; motor intocado."
+  },
   "reavaliacao_playbook_pos_frente_c_261122": {
     "date": "2026-11-22",
     "scope": [
@@ -654,12 +663,12 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 1060,
+    "passed": 1062,
     "failed": 0,
     "skipped": 4,
-    "total": 1064,
+    "total": 1066,
     "files": 93,
-    "command": "npx vitest run (sessao frente-C 2026-11-22: base frente B 1057|4 (1061) + 3 its novos = 1060|4 (1064), 93 arq, exit 0)"
+    "command": "npx vitest run (sessao frente-B2 2026-11-22: base frente C 1060|4 (1064) + 2 its novos = 1062|4 (1066), 93 arq, exit 0)"
   },
   "tools_count": 32,
   "capabilities": [

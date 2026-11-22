@@ -361,3 +361,91 @@ describe("frente B (#29) — anexo pendente recusa diretorio e ausencia sem corr
     ).rejects.toThrow("REVIEW_SNAPSHOT_FILE_REQUIRED");
   });
 });
+
+// Frente B-2 (GitHub #31, auditoria 377f94a): o catch do pendingAttachScope
+// devolve a UNIÃO para validar o fp (Emenda A2) e o anexo PERSISTE essa união
+// em changed_files — protectedReviewPaths então protege até os EXTERNOS do
+// pendente e a atribuição do restante congela em REVIEW_SCOPE_DECLARED_PATH.
+// Receita da issue: parcial → anexo (fallback persiste união) → restante.
+describe("frente B-2 (#31) — atribuição parcial completável após o anexo do fallback", () => {
+  it("atribuição do externo RESTANTE é aceita depois do anexo que persistiu a união", async () => {
+    vi.stubEnv("PPIRTV_GRAPHIFY_RECALL", "1");
+    const { workspace, sptPath } = await makeWorkspace();
+    const { engine, flowId, proofId } = await startFixtureGoal(workspace, sptPath);
+    const { pending } = await bloquearComPending(engine, flowId, proofId, workspace, async (ws) => {
+      await writeFile(path.join(ws, "src", "a.ts"), "export const a = 2;\n", "utf8");
+      await writeFile(path.join(ws, "dep1.ts"), "export const dep1 = 1;\n", "utf8");
+      await writeFile(path.join(ws, "dep2.ts"), "export const dep2 = 2;\n", "utf8");
+      git(ws, ["add", "."]);
+      git(ws, ["commit", "-qm", "legitimo + 2 externos"]);
+    });
+    expect(pending.changed_files).toContain("dep1.ts");
+    expect(pending.changed_files).toContain("dep2.ts");
+    // 1) Atribuição PARCIAL: só dep1.ts é trabalho de outro escopo.
+    const flowPre = await engine.store.loadFlow(flowId);
+    const binding1 = {
+      git_head_base: flowPre.git_head_base ?? null,
+      fingerprint: await bindingFingerprint(workspace, ["dep1.ts"])
+    };
+    await engine.attachEvidence({
+      flow_id: flowId, kind: "review_scope_attribution", title: "dep1 é de outro trabalho (parcial)",
+      scope_classification: "outside", scope_reference: "dep1.ts",
+      observed_result: {
+        reviewer: "revisor-fixture",
+        excluded_paths: [{ path: "dep1.ts", reason: "commit de terceiro", source: "git diff" }],
+        attribution_binding: { version: 1, ...binding1 }
+      }
+    });
+    // 2) Anexo de review com o fp do evento: dep2 segue não-atribuído →
+    // fallback persiste a UNIÃO (inclui dep1+dep2) em changed_files.
+    await expect(
+      engine.attachEvidence(reviewBody(flowId, pending.fingerprint, pending.changed_files))
+    ).resolves.toBeTruthy();
+    const flowPos = await engine.store.loadFlow(flowId);
+    expect(flowPos.changed_files).toContain("dep2.ts");
+    // 3) A atribuição do RESTANTE precisa ser ACEITA (hoje: congelada).
+    const binding2 = {
+      git_head_base: flowPos.git_head_base ?? flowPre.git_head_base ?? null,
+      fingerprint: await bindingFingerprint(workspace, ["dep2.ts"])
+    };
+    await expect(
+      engine.attachEvidence({
+        flow_id: flowId, kind: "review_scope_attribution", title: "dep2 também é de outro trabalho",
+        scope_classification: "outside", scope_reference: "dep2.ts",
+        observed_result: {
+          reviewer: "revisor-fixture",
+          excluded_paths: [{ path: "dep2.ts", reason: "commit de terceiro", source: "git diff" }],
+          attribution_binding: { version: 1, ...binding2 }
+        }
+      })
+    ).resolves.toBeTruthy();
+  });
+
+  it("controle: o caminho LEGÍTIMO declarado (src/a.ts) segue inatribuível como externo", async () => {
+    vi.stubEnv("PPIRTV_GRAPHIFY_RECALL", "1");
+    const { workspace, sptPath } = await makeWorkspace();
+    const { engine, flowId, proofId } = await startFixtureGoal(workspace, sptPath);
+    await bloquearComPending(engine, flowId, proofId, workspace, async (ws) => {
+      await writeFile(path.join(ws, "src", "a.ts"), "export const a = 2;\n", "utf8");
+      await writeFile(path.join(ws, "dep1.ts"), "export const dep1 = 1;\n", "utf8");
+      git(ws, ["add", "."]);
+      git(ws, ["commit", "-qm", "legitimo + 1 externo"]);
+    });
+    const flowPre = await engine.store.loadFlow(flowId);
+    const binding = {
+      git_head_base: flowPre.git_head_base ?? null,
+      fingerprint: await bindingFingerprint(workspace, ["src/a.ts"])
+    };
+    await expect(
+      engine.attachEvidence({
+        flow_id: flowId, kind: "review_scope_attribution", title: "tentativa de excluir o próprio trabalho",
+        scope_classification: "outside", scope_reference: "src/a.ts",
+        observed_result: {
+          reviewer: "revisor-malicioso",
+          excluded_paths: [{ path: "src/a.ts", reason: "não é do fluxo (mentira)", source: "git diff" }],
+          attribution_binding: { version: 1, ...binding }
+        }
+      })
+    ).rejects.toThrow(/REVIEW_SCOPE_DECLARED_PATH/);
+  });
+});
