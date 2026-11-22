@@ -1,3 +1,11 @@
+## Reavaliação — ficha TOOLSBOOK do validador re-ancorada no blob HEAD (2026-11-22)
+
+Adds do commit 0957c80 abortaram silenciosamente (TOOLSBOOK.index.json
+inexistente com stderr engolido) — o commit saiu sem os TOOLSBOOK e o CI
+ubuntu pegou o frescor P2-8 (ficha velha vs blob novo). Re-ancorada
+c4cd94d6. Sem mudança de código/teste.
+Receipt `reavaliacao_toolsbook_ficha_boundary_261122`.
+
 ## Reavaliação — regen PLAYBOOK pré-commit Frente D (2026-11-22)
 
 Projeção regenerada ANTES do commit da Frente D (fonte editada na abertura:
