@@ -1,3 +1,20 @@
+- **TRACKER 0030: modo consumidor do PLAYBOOK no clone do destinatário —
+  --check destrava, --write recusa degradar (Trilho
+  2026-11-22-issue0030-playbook-clone-consumidor, GO do dono no quiz da
+  fila pós-R19)**: causa raiz — `resolve_sources` filtrava fontes
+  declaradas ausentes silenciosamente; o clone regenerava só com
+  docs/PLAYBOOK-RULES.md e acusava DRIFT falso do PLAYBOOK completo
+  recebido (exit 2 travava TODO commit do destinatário via hook), e
+  --write degradava 9→2 regras (UAT-1 A3). Cura em 3 toques:
+  resolve_sources devolve `(solved, ausentes)`; collect propaga
+  `fontes_ausentes`; main ramifica **MODO CONSUMIDOR** — `--check` exit 0
+  com aviso nomeando as ausentes (commit de terceiro destravado SEM tocar
+  o hook), `--write` RECUSA exit 2 preservando a projeção byte-a-byte,
+  `--check-sent` segue a rota de conferência do destinatário. Projeto
+  fonte idêntico (drift real continua exit 2; FRESCO 9 regras conferido).
+  RED 2F|2P → GREEN 4/4; mutação PEGA. Trilho born-with bloco `abertura`
+  — 1ª prova viva do S12 do R19.
+
 # Changelog
 
 Todas as mudancas relevantes deste projeto devem ser registradas aqui.

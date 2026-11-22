@@ -222,7 +222,7 @@ no primeiro falso positivo real
 **Estado autorado:** reviewed
 
 **purpose:**
-Projecao deterministica PLAYBOOK.md + PLAYBOOK.index.json das regras de decisao do repo (fontes em tools/playbook/playbook-sources.txt).
+Projecao deterministica PLAYBOOK.md + PLAYBOOK.index.json das regras de decisao do repo (fontes em tools/playbook/playbook-sources.txt) COM MODO CONSUMIDOR: clone do destinatario sem as fontes declaradas nao gera drift fuso nem degrada a projecao (TRACKER 0030).
 
 **when:**
 Editar fonte (README/AGENTS/INDEX/napkin) regenerar na MESMA sessao; --check no pre-commit (gate 1); preparar envio a terceiros.
@@ -248,6 +248,7 @@ ao adicionar/remover fonte de decisao
 **capabilities:**
 - projecao-externa
 - gate-frescor
+- modo consumidor (fonte declarada ausente): --check exit 0 c/ aviso nomeando as ausentes (hook do clone destrava); --write RECUSA exit 2 preservando a projecao recebida
 
 **not_for:**
 - edicao manual da projecao (nunca)
@@ -255,9 +256,10 @@ ao adicionar/remover fonte de decisao
 **evidence:**
 - hook pre-commit l.5
 - plaquinha global PLAYBOOK-ENTRADA-EXTERNA-261005
+- tests/issue-0030-playbook-clone-consumidor.test.ts (4 its: clone check=aviso/write=recusa preservando bytes/check-sent/fonte drift real segue exit 2)
 
 **Fontes examinadas:**
-- `tools/playbook/generate-playbook.py` — SHA256 `645dac923baf27ec1d999e7e715e3056dc21137ed3965af851dd62967ebc9a96`
+- `tools/playbook/generate-playbook.py` — SHA256 `8d4c141f5ec24dbfc8cd6158c2d98be88be8c9ad48bc4692277c586b2a885f51`
 
 ## judge-playbook
 

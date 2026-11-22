@@ -151,14 +151,15 @@
     },
     {
       "id": "generate-playbook",
-      "purpose": "Projecao deterministica PLAYBOOK.md + PLAYBOOK.index.json das regras de decisao do repo (fontes em tools/playbook/playbook-sources.txt).",
+      "purpose": "Projecao deterministica PLAYBOOK.md + PLAYBOOK.index.json das regras de decisao do repo (fontes em tools/playbook/playbook-sources.txt) COM MODO CONSUMIDOR: clone do destinatario sem as fontes declaradas nao gera drift fuso nem degrada a projecao (TRACKER 0030).",
       "when": "Editar fonte (README/AGENTS/INDEX/napkin) regenerar na MESMA sessao; --check no pre-commit (gate 1); preparar envio a terceiros.",
       "how": "python -B tools/playbook/generate-playbook.py --repo . --write (regen) | --check (frescor; exit 2 = drift)",
       "inputs": "fontes declaradas em playbook-sources.txt",
       "outputs": "PLAYBOOK.md + PLAYBOOK.index.json na raiz (authority: derived_projection)",
       "capabilities": [
         "projecao-externa",
-        "gate-frescor"
+        "gate-frescor",
+        "modo consumidor (fonte declarada ausente): --check exit 0 c/ aviso nomeando as ausentes (hook do clone destrava); --write RECUSA exit 2 preservando a projecao recebida"
       ],
       "not_for": [
         "edicao manual da projecao (nunca)"
@@ -169,10 +170,11 @@
       "status": "reviewed",
       "evidence": [
         "hook pre-commit l.5",
-        "plaquinha global PLAYBOOK-ENTRADA-EXTERNA-261005"
+        "plaquinha global PLAYBOOK-ENTRADA-EXTERNA-261005",
+        "tests/issue-0030-playbook-clone-consumidor.test.ts (4 its: clone check=aviso/write=recusa preservando bytes/check-sent/fonte drift real segue exit 2)"
       ],
       "sources": {
-        "tools/playbook/generate-playbook.py": "645dac923baf27ec1d999e7e715e3056dc21137ed3965af851dd62967ebc9a96"
+        "tools/playbook/generate-playbook.py": "8d4c141f5ec24dbfc8cd6158c2d98be88be8c9ad48bc4692277c586b2a885f51"
       }
     },
     {

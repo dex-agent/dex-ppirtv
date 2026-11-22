@@ -1,4 +1,16 @@
 {
+  "reavaliacao_0030_playbook_modo_consumidor_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "tools/playbook/generate-playbook.py",
+      "tests/issue-0030-playbook-clone-consumidor.test.ts",
+      "TOOLSBOOK.json",
+      "TOOLSBOOK.md",
+      "TOOLSBOOK.index.md",
+      "CHANGELOG.md"
+    ],
+    "delta": "TRACKER 0030 (P1 UAT-A3, GO do dono no quiz da fila pos-R19): modo consumidor do PLAYBOOK no clone do destinatario — fonte declarada ausente nunca e drift nem degradacao. resolve_sources devolve (solved, ausentes); main: --check exit 0 c/ aviso MODO CONSUMIDOR nomeando ausentes (hook do clone destrava); --write RECUSA exit 2 preservando a projecao byte-a-byte (degradava 9->2); --check-sent inalterado (rota de conferencia do destinatario); projeto fonte idempotente (drift real segue exit 2; FRESCO 9 regras conferido). RED 2F|2P -> GREEN 4/4; mutacao PEGA restaurada por bytes."
+  },
   "reavaliacao_emenda_ci_r19_sha_canonico_261122": {
     "date": "2026-11-22",
     "scope": [

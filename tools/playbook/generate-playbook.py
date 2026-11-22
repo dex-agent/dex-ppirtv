@@ -222,11 +222,10 @@ def resolve_sources(repo, override):
             rels = [ln.strip().replace("\\", "/") for ln in read_lines(cfg) if ln.strip() and not ln.startswith("#")]
         else:
             rels = list(DEFAULT_CANDIDATES)
-    solved = []
+    solved, ausentes = [], []
     for rel in rels:
-        if (repo / Path(rel)).exists():
-            solved.append(rel)
-    return solved
+        (solved if (repo / Path(rel)).exists() else ausentes).append(rel)
+    return solved, ausentes
 
 
 def git_ls_files(repo):
@@ -258,7 +257,7 @@ def revision_of(rows, only_sent=False):
 
 
 def collect(repo, override):
-    rels = resolve_sources(repo, override)
+    rels, ausentes = resolve_sources(repo, override)
     if not rels:
         print("SEM FONTES: nenhum arquivo de regras existe neste repo (exit 3)")
         print("  aponte com --sources ou crie um AGENTS.md antes (exit 3)")
@@ -275,6 +274,7 @@ def collect(repo, override):
         rules.extend(r)
         undecoded.extend(u)
     return {
+        "fontes_ausentes": ausentes,
         "repo_name": repo.resolve().name,
         "rules": rules,
         "undecoded": undecoded,
@@ -437,6 +437,25 @@ def main():
     md_text = render(repo, data)
     idx_text = json.dumps(build_index(data), ensure_ascii=False, indent=2) + "\n"
     md_path, idx_path = repo / "PLAYBOOK.md", repo / "PLAYBOOK.index.json"
+
+    # TRACKER 0030 (P1, UAT-1 A3): fonte declarada AUSENTE = clone do
+    # destinatario (modo consumidor) — a projecao e artigo RECEBIDO, nao
+    # derivavel ali. Drift falso destrava (exit 0 c/ aviso nomeando as
+    # ausentes — o hook do clone chama --check e para de travar commit de
+    # terceiro); --write RECUSA preservando a projecao (degradar 9->2 era o
+    # dano real). --check-sent segue a rota de conferencia do destinatario.
+    ausentes = data.get("fontes_ausentes") or []
+    if ausentes and (args.write or args.check):
+        print("MODO CONSUMIDOR: %d fonte(s) declarada(s) ausente(s) neste clone: %s"
+              % (len(ausentes), ", ".join(ausentes)))
+        print("  clone de destinatario recebe a projecao pronta; o frescor e conferivel no projeto fonte.")
+        if args.write:
+            print("RECUSA: --write degradaria a projecao recebida (fontes ausentes) — clone consumidor nao regenera (exit 2).")
+            print("  Para conferir as fontes ENVIADAS neste clone: --check-sent")
+            return 2
+        print("  PLAYBOOK recebido preservado; commit segue destravado (sem fontes nao ha drift).")
+        print("  Para conferir as fontes ENVIADAS neste clone: --check-sent")
+        return 0
 
     if args.write:
         write_bytes(md_path, md_text)

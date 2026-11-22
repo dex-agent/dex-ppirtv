@@ -1,3 +1,16 @@
+## Reavaliação — TRACKER 0030 modo consumidor do PLAYBOOK no clone (2026-11-22)
+
+Delta: tools/playbook/generate-playbook.py (resolve_sources devolve
+declaradas+ausentes; collect propaga; main ramifica MODO CONSUMIDOR) +
+tests/issue-0030-playbook-clone-consumidor.test.ts NOVA (4 its; fixture
+clone limpo real). No clone do destinatário: --check exit 0 c/ aviso
+nomeando fontes ausentes (hook destrava commit de terceiro), --write RECUSA
+exit 2 preservando byte-a-byte a projeção (degradava 9→2), --check-sent
+coerente; projeto fonte idêntico (drift real segue exit 2; repo FRESCO
+9 regras). RED 2F|2P → GREEN 4/4; mutação (guarda desligada) PEGA 2
+vermelhos, restaurada por bytes. Trilho born-with bloco abertura (1ª prova
+viva do S12). Receipt `reavaliacao_0030_playbook_modo_consumidor_261122`.
+
 ## Reavaliação — emenda CI R19: sha canônico da ficha spt-preflight (2026-11-22)
 
 Delta da emenda: spt-kit/preflight.mjs normalizado para LF no disco (disco ==
