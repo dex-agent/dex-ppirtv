@@ -8,6 +8,27 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **FE-2026-11-22-FRENTE-B-REVIEW-PENDING-PATHS: anexo de review com pendência
+  recusa diretório e ausência sem exclusão corroborada (GitHub #29 P1,
+  TRACKER 0019, Trilho 2026-11-22-frenteb)**: o fingerprint pendente com
+  opções `{}` (desenho #24 — igualdade fiscal×anexo) representava diretório
+  como `non_file` e ausência comum como `missing`, ambos ENTRAVAM sem erro:
+  revisão aprovada sem conteúdo revisável (falso verde do fiscal; auditoria
+  externa 377f94a). Cura: `assertPendingReviewScopeReviewable` em
+  review-snapshot (recusa explícita da ROTA, ANTES do fp — o fp pendente
+  mantém a representação `{}` do #24) com corroboração pelo STATUS do Git:
+  remoção COMMITADA sai do status (controle positivo it 24 segue aceito); `rm`
+  do disco sem `git rm` fica pendente como ` D` (reprova); diretório no disco
+  reprova. Descoberta da sessão: `withGitCorroboratedChangedFiles` não
+  classifica `deleted_files` — a exclusão commitada mora só em
+  `changed_files`; `deleted_files` declarado em gate segue valendo como fonte
+  adicional. Camping: CONTAIN glue-only (chamada incondicional de 1 linha, sem
+  `if` no monólito; dívida FE-DEBT-007 aberta para a próxima onda densa);
+  selo CORTE-B-PRIME-PENDING-CYCLE VENCE neste diff (comportamento do
+  EXCEPTION agora vigiado por caracterização + fronteira). RED→GREEN
+  6/8→8/8 + mutação da chamada PEGA (2 REDs renascem); suíte completa verde
+  pós-commit (o it de replay exige worktree limpo — falso vermelho conhecido
+  do tree sujo).
 - **frente A: MERGE_HEAD pela API do Git nos hooks de merge (GitHub #28 P1 +
   #40, TRACKER 0017/0018, Trilho 2026-11-22-frenteA)**: o Git REAL chama hooks
   com GIT_DIR UNSET — `[ -f "$GIT_DIR/MERGE_HEAD" ]` avaliava `"/MERGE_HEAD"`

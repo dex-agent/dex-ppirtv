@@ -1,3 +1,17 @@
+## Reavaliação — Frente B #29: anexo pendente recusa diretório/ausência (2026-11-22)
+
+Delta: review-snapshot (`assertPendingReviewScopeReviewable` nova —
+corroboração por status do Git + deleted_files de gate) + motor 1 sítio
+(chamada incondicional de cola; camping CONTAIN glue-only, dívida FE-DEBT-007;
+selo CORTE-B-PRIME vence neste diff) + teste +2 its na fixture pending (RED
+6/8 → GREEN 8/8; mutação da chamada PEGA; it 24 controle positivo intacto) +
+ledger/CHANGELOG/EVOLUTION markers. Descoberta:
+`withGitCorroboratedChangedFiles` não classifica deleted_files — exclusão
+commitada mora só em changed_files. Emenda: janela viva do replay agora usa
+`--head HEAD` (dinâmico; hash de commit auto-referencia não existiria no
+próprio commit — com HEAD resolve o blob do motor no checkout vigente).
+Receipt `reavaliacao_frente_b_review_pending_261122`.
+
 ## Reavaliação — regen PLAYBOOK pós-bloco 0015 (2026-11-21)
 
 Projeção regenerada após o fechamento (flow 5842_0001 complete; fontes

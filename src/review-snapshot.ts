@@ -640,3 +640,41 @@ export function pendingReviewScopeForAttach(
   }
   return { changed_files: changedFiles, fingerprint };
 }
+
+// Frente B (GitHub #29, auditoria 377f94a): o anexo de revisão com pendência
+// não pode atestar caminho que no disco é diretório ou está ausente sem
+// exclusão corroborada pelo Git. O fingerprint pendente mantém a
+// representação {} do desenho #24 (igualdade fiscal × anexo no retry); a
+// RECUSA é explícita desta função, chamada pela rota do anexo ANTES do
+// cálculo — diretório/ausência comum nunca viram atestado.
+//
+// Descoberta ao vivo (GREEN quebrou o it 24): withGitCorroboratedChangedFiles
+// não classifica deleted_files — a exclusão commitada entra só em
+// changed_files. A fonte de corroboração é o status do Git: remoção COMMITADA
+// não aparece no status; "rm" do disco sem git rm fica pendente como " D".
+// deleted_files declarado em gate continua valendo como fonte adicional.
+export async function assertPendingReviewScopeReviewable(flow: Flow): Promise<void> {
+  const workspace = flow.goal_binding?.envelope.workspace;
+  if (!workspace) return;
+  const identity = (item: string) => normalizeReviewPathForPlatform(item, process.platform);
+  const declared = new Set((flow.deleted_files ?? []).map(identity));
+  const pendingOnDisk = new Set(((await gitChangedFiles(workspace)) ?? []).map(identity));
+  for (const relativePath of flow.changed_files ?? []) {
+    const relative = identity(relativePath);
+    let fileStat;
+    try {
+      fileStat = await lstat(path.resolve(workspace, relative));
+    } catch {
+      // Ausente do disco: atestável apenas como exclusão corroborada —
+      // declarada no gate OU commitada no Git (ausente até do status). Sem
+      // status disponível (null), mantém a representação missing do #24.
+      if (!declared.has(relative) && pendingOnDisk.has(relative)) {
+        throw new Error(`REVIEW_SNAPSHOT_FILE_REQUIRED: ${relative}`);
+      }
+      continue;
+    }
+    if (!fileStat.isFile() && !fileStat.isSymbolicLink()) {
+      throw new Error(`REVIEW_SNAPSHOT_FILE_REQUIRED: ${relative}`);
+    }
+  }
+}

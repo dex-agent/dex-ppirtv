@@ -1,4 +1,17 @@
 {
+  "reavaliacao_frente_b_review_pending_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "src/review-snapshot.ts",
+      "src/flow-engine.ts",
+      "tests/issue-0022-pending-cycle.test.ts",
+      "docs/architecture/flow-engine-evolution.json",
+      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+      "CHANGELOG.md",
+      "tests/issue-0027-replay-chain.test.ts"
+    ],
+    "delta": "Frente B (GitHub #29 P1, TRACKER 0019, Trilho 2026-11-22-frenteb): anexo de review com pendencia recusa diretorio e ausencia sem exclusao corroborada (assertPendingReviewScopeReviewable em review-snapshot; fp pendente mantem representacao {} do desenho #24). Corroboracao pelo status do Git: remocao COMMITADA sai do status; rm do disco fica ' D'. Camping CONTAIN glue-only (chamada incondicional, sem if no monolito; divida FE-DEBT-007); selo CORTE-B-PRIME-PENDING-CYCLE vence neste diff. RED 6/8 -> GREEN 8/8; mutacao da chamada PEGA; suite local 1056|4 (1061) 93 arq (it de replay exige worktree limpo — falso vermelho conhecido do tree sujo, CI confere pos-commit). EMENDA: janela viva do replay agora usa --head HEAD (dinamico; hash de commit auto-referencia nao existiria no propio commit — com HEAD resolve o blob do motor no checkout vigente)."
+  },
   "reavaliacao_playbook_pos_0015_261121": {
     "date": "2026-11-21",
     "scope": [
@@ -589,7 +602,7 @@
   "fotografia_id": "2026-11-05-merge-pr7",
   "head": "8b0f2d3",
   "tree_hash": "c91ff01b845e33b14df020ef74030a5d12846ae4",
-  "generated_at": "2026-11-21T19:20:00Z",
+  "generated_at": "2026-11-22T03:30:00Z",
   "ambiente": "Windows Server; Node 24.16; workspace C:/CodexProjetos/dex-PPIRTV; MCP stdio local",
   "escopo": [
     "Capacidades acionaveis por consumidores: agente MCP, dono, casa"
@@ -608,12 +621,12 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 1047,
+    "passed": 1057,
     "failed": 0,
     "skipped": 4,
-    "total": 1051,
+    "total": 1061,
     "files": 93,
-    "command": "npm run check (sessao cura-0015 2026-11-21: suite completa dentro do check; 1047 passed | 4 skipped (1051), 93 arq; it pre-upgrade de-skipado — contagem total inalterada)"
+    "command": "npx vitest run (sessao frente-B 2026-11-22: base frente A 1055|4 (1059) + 2 its novos = 1057|4 (1061), 93 arq; o unico failed local foi o it de replay EXPLICIT_COMPARISON_IGNORES_DIRTY_TARGET — falso vermelho do worktree sujo durante o corte, conferido pela CI pos-commit)"
   },
   "tools_count": 32,
   "capabilities": [

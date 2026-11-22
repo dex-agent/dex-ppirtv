@@ -59,7 +59,7 @@ import { unique, stringArray, uniqueCooperators } from "./lang-utils.js";
 import { normalizePipelineItem, pipelineEvidenceText } from "./pipeline-policy.js";
 import { assertCompatibleGoalBinding } from "./goal-binding-compat.js";
 import { sptBindingIntegrityFor } from "./provenance-trace.js";
-import { freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, pendingReviewScopeForAttach, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles, withRestoredBlockedVerdictSnapshot } from "./review-snapshot.js";
+import { assertPendingReviewScopeReviewable, freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, pendingReviewScopeForAttach, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles, withRestoredBlockedVerdictSnapshot } from "./review-snapshot.js";
 import { applyReviewScopeAttributions, attributedVerdictSnapshot, bindReviewScopeAttribution, collectAdoptableAttributionIds, pendingAttachScope, prepareVerdictSnapshot, type GoalVerdictInput } from "./review-scope-attribution.js";
 import { normalizeRecallConsumptionInput, sameRecallReferences, validateRecallConsumptionReferences, type RecallConsumptionInput } from "./memory/recall-consumption-contract.js";
 import { assertGovernedTag } from "./memory/governed-tag.js";
@@ -3726,6 +3726,12 @@ export class FlowEngine {
       // attribution VIGENTE (mesmo pipeline do fiscal; fallback união A2).
       const pendingScope = pendingReviewScopeForAttach(flow);
       const attestationFlow = await pendingAttachScope(flow, pendingScope);
+      // Frente B (GitHub #29): recusa explícita ANTES do fingerprint — o
+      // helper em review-snapshot decide (diretório/ausência sem exclusão
+      // corroborada pelo status do Git); sem pendência replica o require que
+      // o fp abaixo já aplica. O fp pendente mantém a representação {} do
+      // desenho #24 — a recusa é da rota, não do fp.
+      await assertPendingReviewScopeReviewable(attestationFlow);
       // Issue #24: com pendência, o fp usa as MESMAS opções com que o fiscal
       // gerou o pending_review_fingerprint (exclusão confirmada pelo Git vira
       // a mesma representação nos dois lados — nunca FILE_REQUIRED no retry).

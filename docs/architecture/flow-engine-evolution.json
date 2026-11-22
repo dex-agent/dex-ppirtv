@@ -2265,6 +2265,43 @@
       "red_observed_failure": "REVIEW_SNAPSHOT_FILE_REQUIRED removed.txt ao vivo com o hash do evento e targets exatos do pending (RED 5 de 6; a caracterizacao do FILE_REQUIRED sem exclusao comprovada passa por desenho); no HEAD pos-A2 o anexo validava com requireReviewableFiles enquanto o fiscal gerou o pending sem require.",
       "red_command": "npx vitest run tests/issue-0022-pending-cycle.test.ts -t \"cura review com o hash do evento anexa quando o pending contem arquivo removido por commit\"",
       "behavior_preserved_by": "tests/issue-0022-pending-cycle.test.ts 6 its: 4 repros curadas (exclusao, escopo corrente pos-attribution com retry reconhecendo sem segunda rodada, persistencia os-dois-ou-nenhum, status publicando o escopo que o anexo aceita) + 2 caracterizacoes (FILE_REQUIRED sem exclusao comprovada; rejeicao do escopo congelado pos-attribution)."
+    },
+    {
+      "id": "FE-2026-11-22-FRENTE-B-REVIEW-PENDING-PATHS",
+      "date": "2026-11-22",
+      "mode": "CONTAIN",
+      "base_blob": "51daf49bcebf80258915f3ec88f7f33757d69d7d",
+      "head_blob": "90a6f48610e1ad8292a6dbe90c098caf4f0625fe",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-22-frenteb-review-pending-paths.md",
+      "responsibility": "Anexo de review recusa diretorio e ausencia sem exclusao corroborada pelo Git (assertPendingReviewScopeReviewable em review-snapshot, chamado pela rota do anexo ANTES do fingerprint; o fp pendente mantem a representacao {} do desenho #24 — a recusa e da rota, nao do fp). Corroboracao por status do Git: remocao COMMITADA sai do status; rm do disco sem git rm fica pendente como ' D'.",
+      "owner": "$oraculo-refatoracao",
+      "glue_only": true,
+      "destination_module": "src/review-snapshot.ts",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/issue-0022-pending-cycle.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/issue-0022-pending-cycle.test.ts": "arquivo do pending substituido por DIRETORIO no disco -> anexo reprova REVIEW_SNAPSHOT_FILE_REQUIRED"
+      },
+      "changelog_marker": "FE-2026-11-22-FRENTE-B-REVIEW-PENDING-PATHS",
+      "architecture_marker": "FE-2026-11-22-FRENTE-B-REVIEW-PENDING-PATHS",
+      "guard_adaptation": "nenhuma guard nova: chamada incondicional de 1 linha ao helper externo (assertPendingReviewScopeReviewable) — sem if no monolito; a decisao mora no destino",
+      "debt": {
+        "id": "FE-DEBT-007",
+        "status": "open",
+        "owner": "$oraculo-refatoracao",
+        "when": "proxima onda densa da maratona de decomposicao do motor (a rota de validacao de review do anexo — guard + fp + gravacao atomica — sai do monolito como fatia coesa)",
+        "responsibility": "Anexo de review recusa diretorio e ausencia sem exclusao corroborada pelo Git (assertPendingReviewScopeReviewable em review-snapshot, chamado pela rota do anexo ANTES do fingerprint; o fp pendente mantem a representacao {} do desenho #24 — a recusa e da rota, nao do fp). Corroboracao por status do Git: remocao COMMITADA sai do status; rm do disco sem git rm fica pendente como ' D'.",
+        "payment_scope": "any_verified_shrink"
+      },
+      "red_evidence": "tests/issue-0022-pending-cycle.test.ts::arquivo do pending removido do DISCO sem exclusao corroborada -> anexo reprova REVIEW_SNAPSHOT_FILE_REQUIRED",
+      "red_base_blob": "51daf49bcebf80258915f3ec88f7f33757d69d7d",
+      "red_observed_failure": "RED 6 de 8 na base: os 2 its novos (diretorio no disco; rm do disco sem git rm) resolviam o anexo — o fingerprint pendente com opcoes {} representava diretorio como non_file e ausencia como missing, ambos ENTRAVAM sem erro (falso verde do fiscal, issue #29 da auditoria 377f94a).",
+      "red_command": "npx vitest run tests/issue-0022-pending-cycle.test.ts -t \"arquivo do pending removido do DISCO sem exclusao corroborada\"",
+      "behavior_preserved_by": "tests/issue-0022-pending-cycle.test.ts 8 its: 2 repros novos curados (diretorio; ausencia sem corroboracao) + controle positivo it 24 (exclusao commitada pelo Git continua aceita) + 5 caracterizacoes do corte B' intactas; sem pendencia o resultado observavel e identico (o fp com requireReviewableFiles reprova com a MESMA mensagem REVIEW_SNAPSHOT_FILE_REQUIRED); mutacao da chamada (remove assertPendingReviewScopeReviewable) renasce os 2 REDs."
     }
   ],
   "evidence_redirects": {

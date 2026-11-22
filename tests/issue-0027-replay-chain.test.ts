@@ -40,12 +40,17 @@ function exceptionRecord(id: string, extra: Record<string, unknown> = {}) {
 }
 
 describe("issue 27 — replay da janela reconhece selo pago DENTRO da janela", () => {
-  it("cura replay 94a9b0c..ae8b86f (janela viva, 5 elos ate o corte B-prime) passa com historia selada", async () => {
+  it("cura replay 94a9b0c..HEAD (janela viva, elos ate o record mais recente) passa com historia selada", async () => {
     // A janela viva termina no record mais recente do ledger (chainRecords
-    // exige at(-1).head_blob == headBlob) — os 4 records com selo pago
-    // DENTRO da janela ficam historia selada; o B-prime (sem selo, vencido
-    // no proximo commit do motor) e o declaration material legitimo.
-    const result = await runBoundaryCli({ cwd: WS, argv: ["--base", "94a9b0c", "--head", "ae8b86f"] }) as { exitCode: number; output: string };
+    // exige at(-1).head_blob == headBlob). O head e HEAD (dinamico): hash de
+    // commit auto-referencia e nao existiria no propio commit — com HEAD o
+    // teste resolve o blob do motor no checkout vigente (CI/clone sempre
+    // casam; dev com corte do motor em andamento ve o falso vermelho conhecido
+    // do ledger a frente do HEAD — mesma classe do tree sujo). Os 4 records
+    // com selo pago DENTRO da janela ficam historia selada; o B-prime
+    // (excecao vencida pela frente B) e o declaration material legitimo e o
+    // CONTAIN mais recente.
+    const result = await runBoundaryCli({ cwd: WS, argv: ["--base", "94a9b0c", "--head", "HEAD"] }) as { exitCode: number; output: string };
     const receipt = JSON.parse(result.output) as { status: string; reasons?: string[]; comparison?: unknown };
     // Diagnostico-que-ensina: no CI (clone limpo) qualquer reason extra fica
     // visivel no log do run — nunca um FAIL mudo de ambiente.

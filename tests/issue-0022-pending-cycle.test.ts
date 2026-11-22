@@ -314,3 +314,50 @@ describe("issue 22 — status expoe o escopo que o cliente deve atestar", () => 
     ).resolves.toBeTruthy();
   });
 });
+
+// Frente B (GitHub #29, auditoria 377f94a): o anexo de revisão com pendência
+// calculava o fingerprint com opções {} — diretório virava state non_file e
+// ausência sem allowedMissing virava state missing, ambos ENTRAVAM no
+// fingerprint sem erro: revisão aprovada sem conteúdo revisável (falso
+// verde do fiscal). A cura recusa no anexo (REVIEW_SNAPSHOT_FILE_REQUIRED)
+// mantendo a representação igual do desenho #24 (it acima segue verde).
+describe("frente B (#29) — anexo pendente recusa diretorio e ausencia sem corroboracao", () => {
+  it("arquivo do pending substituido por DIRETORIO no disco -> anexo reprova REVIEW_SNAPSHOT_FILE_REQUIRED", async () => {
+    vi.stubEnv("PPIRTV_GRAPHIFY_RECALL", "1");
+    const { workspace, sptPath } = await makeWorkspace();
+    const { engine, flowId, proofId } = await startFixtureGoal(workspace, sptPath);
+    const { pending } = await bloquearComPending(engine, flowId, proofId, workspace, async (ws) => {
+      await writeFile(path.join(ws, "src", "a.ts"), "export const a = 2;\n", "utf8");
+      await mkdir(path.join(ws, "docs"), { recursive: true });
+      await writeFile(path.join(ws, "docs", "diag.json"), "{}\n", "utf8");
+      git(ws, ["add", "."]);
+      git(ws, ["commit", "-qm", "cria laudo"]);
+      // no disco, o laudo vira DIRETÓRIO (o commit registra o arquivo; o
+      // fingerprint da pendência lê o disco: state non_file entra hoje)
+      await rm(path.join(ws, "docs", "diag.json"));
+      await mkdir(path.join(ws, "docs", "diag.json"));
+    });
+    await expect(
+      engine.attachEvidence(reviewBody(flowId, pending.fingerprint, pending.changed_files))
+    ).rejects.toThrow("REVIEW_SNAPSHOT_FILE_REQUIRED");
+  });
+
+  it("arquivo do pending removido do DISCO sem exclusao corroborada -> anexo reprova REVIEW_SNAPSHOT_FILE_REQUIRED", async () => {
+    vi.stubEnv("PPIRTV_GRAPHIFY_RECALL", "1");
+    const { workspace, sptPath } = await makeWorkspace();
+    const { engine, flowId, proofId } = await startFixtureGoal(workspace, sptPath);
+    const { pending } = await bloquearComPending(engine, flowId, proofId, workspace, async (ws) => {
+      await writeFile(path.join(ws, "src", "a.ts"), "export const a = 2;\n", "utf8");
+      await mkdir(path.join(ws, "docs"), { recursive: true });
+      await writeFile(path.join(ws, "docs", "diag.json"), "{}\n", "utf8");
+      git(ws, ["add", "."]);
+      git(ws, ["commit", "-qm", "cria laudo"]);
+      // ausência COMUM: arquivo commitado, removido só do disco (sem git rm
+      // — não é exclusão corroborada; hoje entra como state missing)
+      await rm(path.join(ws, "docs", "diag.json"));
+    });
+    await expect(
+      engine.attachEvidence(reviewBody(flowId, pending.fingerprint, pending.changed_files))
+    ).rejects.toThrow("REVIEW_SNAPSHOT_FILE_REQUIRED");
+  });
+});
