@@ -1,4 +1,13 @@
 {
+  "reavaliacao_frente_c_anchor_colisao_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "src/memory/mining-policy.ts",
+      "tests/memory-writer.test.ts",
+      "CHANGELOG.md"
+    ],
+    "delta": "Frente C (GitHub #30, TRACKER 0021, Trilho 2026-11-22-frentec, flow 6028_0001): memoryAnchor distingue titulos com prefixo comum >64 (slice 56 + sha256 7 hex do slug completo; alfabeto do guard preservado; slug <=64 inalterado). RED 5/6 -> GREEN 6/6 + mutacao do sufixo PEGA; suite integral 1060|4 (1064) 93 arq exit 0; motor intocado. Ressalva de transicao: re-mineracao de titulo longo gravado na era do bug pode duplicar 1x (residuo para consciencia-memorias)."
+  },
   "reavaliacao_emenda_timeout_janela_261122": {
     "date": "2026-11-22",
     "scope": [
@@ -637,12 +646,12 @@
     "CAPACITY.md"
   ],
   "suite": {
-    "passed": 1057,
+    "passed": 1060,
     "failed": 0,
     "skipped": 4,
-    "total": 1061,
+    "total": 1064,
     "files": 93,
-    "command": "npx vitest run (sessao frente-B 2026-11-22: base frente A 1055|4 (1059) + 2 its novos = 1057|4 (1061), 93 arq; o unico failed local foi o it de replay EXPLICIT_COMPARISON_IGNORES_DIRTY_TARGET — falso vermelho do worktree sujo durante o corte, conferido pela CI pos-commit)"
+    "command": "npx vitest run (sessao frente-C 2026-11-22: base frente B 1057|4 (1061) + 3 its novos = 1060|4 (1064), 93 arq, exit 0)"
   },
   "tools_count": 32,
   "capabilities": [

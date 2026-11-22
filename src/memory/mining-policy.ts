@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { resolveDexMemoriaHome as resolveConfiguredDexMemoriaHome } from "../config.js";
 import type { Flow, Meeting, MemoryCandidate, MemoryMiningSummary, MemoryPostWriteValidation, VerdictStatus } from "../domain.js";
@@ -559,14 +560,23 @@ function memorySlug(title: string): string {
 }
 
 export function memoryAnchor(title: string): string {
-  const anchor = title
+  const slug = title
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^A-Za-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
-    .toLowerCase()
-    .slice(0, 64);
-  return anchor || "memory-candidate";
+    .toLowerCase();
+  // Frente C (GitHub #30, auditoria 377f94a): truncar em 64 fazia dois
+  // titulos distintos com prefixo comum colidirem — o guard ^anchor$ do
+  // writer engolia o 2o achado. Slug > 64 ganha sufixo DETERMINISTICO do
+  // slug completo (sha256 7 hex; alfabeto [0-9a-f] dentro do [a-z0-9-] do
+  // guard): mesmo titulo sempre gera o mesmo anchor (idempotencia preservada),
+  // titulos distintos ganham hashes distintos. Slug <= 64 segue o formato
+  // atual — memorias existentes curtas nao mudam de identidade.
+  if (slug.length <= 64) {
+    return slug || "memory-candidate";
+  }
+  return `${slug.slice(0, 56)}-${createHash("sha256").update(slug).digest("hex").slice(0, 7)}`;
 }
 
 function uniqueStrings(values: string[]): string[] {

@@ -8,6 +8,25 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **frente C: anchors distintos para títulos com prefixo comum >64 chars
+  (GitHub #30, TRACKER 0021, Trilho 2026-11-22-frentec)**: `memoryAnchor`
+  truncava em 64 — dois títulos distintos com prefixo comum recebiam o MESMO
+  anchor e o guard `^anchor$` do writer (cura da barata-mestra) engolia o 2º
+  achado DISTINTO: a escrita retornava 4 caminhos mas o L2 continha só o
+  primeiro título (auditoria externa 377f94a, R03). Cura no GERADOR (um sítio
+  — todos os consumidores derivam da mesma função: blocos governados, nome do
+  L3, links, post-write-validation): slug >64 vira `slice(0,56) + "-" +
+  sha256(slug).slice(0,7)` — determinístico (mesmo título → mesmo anchor,
+  idempotência preservada), títulos distintos → hashes distintos, alfabeto
+  `[0-9a-f]` dentro do `[a-z0-9-]` do guard; slug ≤64 segue o formato atual
+  (memórias existentes curtas não mudam de identidade). Writer intacto.
+  RED 5/6 → GREEN 6/6 (2 títulos da receita da issue no L2; controle de
+  idempotência do mesmo título; controle de título curto) + mutação do sufixo
+  PEGA (truncagem pura → colisão renasce); suíte integral 1060|4 (1064) exit
+  0; motor intocado (camping NOT_APPLICABLE). Ressalva de transição
+  declarada: re-mineração de título longo gravado na era do bug pode escrever
+  o bloco novo ao lado do resquício velho (duplicata para a
+  consciencia-memorias editar) — o achado nunca mais é perdido.
 - **FE-2026-11-22-FRENTE-B-REVIEW-PENDING-PATHS: anexo de review com pendência
   recusa diretório e ausência sem exclusão corroborada (GitHub #29 P1,
   TRACKER 0019, Trilho 2026-11-22-frenteb)**: o fingerprint pendente com

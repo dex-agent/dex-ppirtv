@@ -113,3 +113,55 @@ function buildCandidate(targetFiles: string[]): MemoryCandidate {
     blocked_reason: null
   };
 }
+
+// Frente C (GitHub #30, auditoria 377f94a): memoryAnchor trunca em 64 chars —
+// dois titulos distintos com prefixo comum recebem o MESMO anchor e o guard
+// ^anchor$ (cura da barata-mestra) engole o 2o achado DISTINTO: a escrita
+// retorna 4 caminhos, mas o L2 so contem o primeiro titulo. Receita da issue:
+// "Coleta ... em Linux" vs "Coleta ... em Windows" (prefixo comum >64).
+describe("frente C (#30) — anchors distintos para titulos com prefixo comum", () => {
+  const TITLE_LINUX = "Coleta do resultado da validacao integral dos contratos locais da bancada em Linux";
+  const TITLE_WINDOWS = "Coleta do resultado da validacao integral dos contratos locais da bancada em Windows";
+
+  it("dois titulos com prefixo comum >64 chars -> L2 contem os DOIS achados", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "memory-writer-frentec-"));
+    const l1Path = path.join(tempRoot, "LEMBRANCA.md");
+    const l2Path = path.join(tempRoot, "MEMORIA.md");
+
+    await writeMemoryCandidate(governCandidate("mc_linux", TITLE_LINUX, l1Path, l2Path));
+    await writeMemoryCandidate(governCandidate("mc_windows", TITLE_WINDOWS, l1Path, l2Path));
+
+    const l2 = await readFile(l2Path, "utf8");
+    expect(l2).toContain(`## ${TITLE_LINUX}`);
+    expect(l2).toContain(`## ${TITLE_WINDOWS}`);
+    // anchors distintos no disco: 1 block-id por titulo.
+    expect(memoryAnchor(TITLE_LINUX)).not.toBe(memoryAnchor(TITLE_WINDOWS));
+    expect(countBlockId(l2, memoryAnchor(TITLE_LINUX))).toBe(1);
+    expect(countBlockId(l2, memoryAnchor(TITLE_WINDOWS))).toBe(1);
+  });
+
+  it("controle idempotencia: regravar o MESMO titulo longo nao cria segunda copia", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "memory-writer-frentec-idem-"));
+    const l1Path = path.join(tempRoot, "LEMBRANCA.md");
+    const l2Path = path.join(tempRoot, "MEMORIA.md");
+
+    await writeMemoryCandidate(governCandidate("mc_primeira", TITLE_LINUX, l1Path, l2Path));
+    await writeMemoryCandidate(governCandidate("mc_remineracao", TITLE_LINUX, l1Path, l2Path));
+
+    const l1 = await readFile(l1Path, "utf8");
+    const l2 = await readFile(l2Path, "utf8");
+    const anchor = memoryAnchor(TITLE_LINUX);
+    expect(countBlockId(l1, anchor)).toBe(1);
+    expect(countBlockId(l2, anchor)).toBe(1);
+  });
+
+  it("controle compatibilidade: titulo com slug <=64 gera anchor sem sufixo (formato atual)", () => {
+    // Titulo curto: anchor e o slug puro, igual ao formato da era atual —
+    // memorias existentes curtas nao podem mudar de identidade.
+    expect(memoryAnchor("Barata-mestra do mining")).toBe("barata-mestra-do-mining");
+    expect(memoryAnchor("Barata-mestra do mining")).toHaveLength("barata-mestra-do-mining".length);
+    const anchor = memoryAnchor(TITLE_LINUX);
+    expect(anchor.length).toBeLessThanOrEqual(64);
+    expect(anchor).toMatch(/^[a-z0-9-]+$/);
+  });
+});

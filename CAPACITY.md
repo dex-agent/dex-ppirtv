@@ -1,3 +1,12 @@
+## Reavaliação — Frente C #30: anchors distintos p/ prefixo comum >64 (2026-11-22)
+
+Delta: memory/mining-policy (memoryAnchor slug>64 → 56+sha7 determinístico;
+import node:crypto) + tests/memory-writer +3 its (colisão RED→GREEN,
+idempotência, título curto). Writer/motor intocados (camping
+NOT_APPLICABLE). RED 5/6→GREEN 6/6 + mutação PEGA; suíte 1060|4 (1064).
+Ressalva: transição de títulos longos da era do bug (duplicata 1x p/
+consciencia-memorias). Receipt `reavaliacao_frente_c_anchor_colisao_261122`.
+
 ## Reavaliação — emenda timeout it janela viva replay (2026-11-22)
 
 CI windows do a1ef0c8 (run 44975462717) mediu 16.8s > 15s default no it de
