@@ -2052,5 +2052,15 @@
    "PLAYBOOK.index.json"
   ],
   "delta": "Regen pos-fechamento da Frente D (fontes .agents: napkin trope\u00e7os frente D + PLAN-TASKS/ACTIVE com Trilho D concluido e fila F). Sem mudanca de codigo/teste."
+ },
+ "reavaliacao_frente_f_replay_determinismo_261122": {
+  "date": "2026-11-22",
+  "scope": [
+   "scripts/validate-flow-engine-boundary.mjs",
+   "tests/issue-0033-0034-replay-determinismo.test.ts",
+   "CHANGELOG.md",
+   "TOOLSBOOK.json"
+  ],
+  "delta": "Frente F (GitHub 33+34): cwd no spawn de ancestralidade da selagem (l.989 \u2014 spawn sem cwd rodava no diretorio do processo chamador; CONSECUTIVE_EXCEPTION falso de fora do repo). #34 conferida JA-PAGA no codigo atual (append posterior preserva o recibo \u2014 fixture de conferencia). RED -> GREEN + mutacao PEGA; suite 1066|4 (1070). Camping NOT_APPLICABLE (scripts/)."
  }
 }

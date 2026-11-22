@@ -986,7 +986,11 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
       const entry = targetHistory[index];
       if (!entry?.commit || entry.sealed_retroactive === true) continue;
       try {
-        git(["merge-base", "--is-ancestor", String(entry.commit), String(refCommit)]);
+        // Frente F (GitHub #33): o spawn SEM cwd rodava no diretório do
+        // PROCESSO chamador — de fora do repo os commits não existem, o
+        // is-ancestor lançava e a exceção selada virava "corte novo"
+        // (CONSECUTIVE_EXCEPTION falso). Cwd do repositório-alvo, sempre.
+        git(["merge-base", "--is-ancestor", String(entry.commit), String(refCommit)], cwd);
         targetHistory[index] = { ...entry, sealed_retroactive: true };
       } catch {
         // nao ancestral: corte novo, segue material

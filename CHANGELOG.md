@@ -8,6 +8,19 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **frente F: replay determinístico — cwd na ancestralidade (#33) e #34
+  já-paga conferida (Trilho 2026-11-22-frentef, flow 6167_0001)**: a
+  selagem retroativa (`marcaSealedAncestors`) chamava `git
+  merge-base --is-ancestor` SEM `cwd` — o spawn rodava no diretório do
+  PROCESSO chamador; chamada de fora do repositório-alvo não achava os
+  commits (catch → "corte novo") e exceções legítimas com selo pago
+  explodiam como CONSECUTIVE_EXCEPTION (evidência da auditoria 377f94a:
+  0/PASS no repo vs 1/FAIL com 5 motivos de fora). Cura: 1 token —
+  `cwd` explícito no spawn. **#34 conferida já-paga no código atual**:
+  fixture prova que append de record contíguo posterior no manifest do
+  disco NÃO muda o recibo da janela histórica fixa (o comportamento da
+  revisão 377f94a não reproduz no HEAD — conferência 4/4). RED→GREEN +
+  mutação PEGA; suíte 1066|4 (1070); camping NOT_APPLICABLE.
 - **frente D: versionabilidade REAL por índice do Git no fiscal de
   evidências (GitHub #35, Trilho 2026-11-22-frented, flow 6132_0001)**: o
   ramo `.agents/` do record-check já exigia redirect versionado, mas o

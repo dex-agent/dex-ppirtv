@@ -1,3 +1,12 @@
+## Reavaliação — Frente F #33+#34: replay determinístico (2026-11-22)
+
+Delta: validate-flow-engine-boundary (cwd no spawn --is-ancestor da selagem
+l.989 — 1 token) + tests/issue-0033-0034 nova (RED #33: selo ancestral vira
+CONSECUTIVE_EXCEPTION com processo fora do repo; #34 conferida JA-PAGA:
+append posterior preserva recibo). Motor intocado (camping
+NOT_APPLICABLE). RED→GREEN + mutação PEGA; suíte 1066|4 (1070).
+Receipt `reavaliacao_frente_f_replay_determinismo_261122`.
+
 ## Reavaliação — regen PLAYBOOK pós-Frente D (2026-11-22)
 
 Projeção regenerada após o fechamento (flow 6132_0001 complete; fontes
