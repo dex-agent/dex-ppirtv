@@ -1,3 +1,11 @@
+## Reavaliação — regen PLAYBOOK pós-Frente G (2026-11-22)
+
+Projeção regenerada após o fechamento (fontes `.agents` atualizadas: napkin
+5 tropeços frente G + decisão UAT por grupo grande + Trilho G CONCLUÍDO com
+fila H=#39). Sem mudança de código/teste. Liberação final 10/10 issues da
+auditoria pelas lentes teste-de-integração + sistema-e2e (selos documentais).
+Receipt `reavaliacao_playbook_pos_frente_g_261122`.
+
 ## Reavaliação — Frente G #36+#37+#38: tríade honesta de CLIs (2026-11-22)
 
 Delta: 6 scripts (.mjs) + tests/issue-0036-0037-0038 nova + TOOLSBOOK
