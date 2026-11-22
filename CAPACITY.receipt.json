@@ -1924,5 +1924,13 @@
       "CHANGELOG.md"
     ],
     "delta": "Frente A (GitHub #28 P1 + #40, TRACKER 0017/0018): pre-commit e pre-merge-commit resolvem MERGE_HEAD/MERGE_MSG pela API do Git (rev-parse --git-path) — o Git REAL chama hooks com GIT_DIR unset e [ -f $GIT_DIR/MERGE_HEAD ] virava /MERGE_HEAD (gate de resolução NUNCA rodava no fluxo real; só o teste manual que injeta GIT_DIR exercitava). Fixture executa gates pelo bash do Git (gitBash() via exec-path; nunca System32 do PATH). Teste de INTEGRAÇÃO real: commit de resolução em fixture de conflito com hooks instalados — suíte vermelha BLOQUEIA (mantém MERGE_HEAD, stderr merge-check gate) e verde CRIA o commit (MERGE_HEAD consumido). RED->GREEN (commit atravessava na base) + mutação PEGA (padrão GIT_DIR de volta -> 1 failed). Suite 1053|4 (1057) -> 1055|4 (1059), exit 0."
+  },
+  "reavaliacao_playbook_pos_frente_a_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json"
+    ],
+    "delta": "Regen apos Frente A (fontes .agents: napkin tropeços + PLAN-TASKS/ACTIVE com frente A concluida e fila da auditoria). Suite inalterada 1053|4->1055|4 (1059) medida no corte; flow 5955_0001 COMPLETE."
   }
 }

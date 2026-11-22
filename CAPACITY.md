@@ -2155,3 +2155,13 @@ continuam fechados); bootstrap real é janela rara — a vigília é o teste.
 | Fixture | spawns pelo bash do Git (exec-path; nunca System32) | helper gitBash() |
 | Vigília | RED (commit atravessava) → GREEN 10/10; mutação (padrão GIT_DIR) → 1 failed | sessão |
 | Suíte | 1053\|4 (1057) → 1055\|4 (1059), exit 0 | npx vitest run |
+
+## Reavaliação 2026-11-22 — regen PLAYBOOK pós-Frente A (#28+#40)
+
+> Delta sobre `8f88088` (regen de projeção + fechamento). Sem mudança de
+> código/teste. Flow 5955_0001 COMPLETE; issues #28/#40 CLOSED.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| PLAYBOOK | regen --write após fontes .agents mudarem | tools/playbook/generate-playbook.py |
+| Fontes | napkin (3 tropeços Frente A) · PLAN-TASKS/ACTIVE · ACTIVE (fila auditoria) | .agents/ |
