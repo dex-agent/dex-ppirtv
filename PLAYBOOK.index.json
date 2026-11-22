@@ -3,7 +3,7 @@
   "generated_by": "tools/playbook/generate-playbook.py",
   "authority": "derived_projection",
   "repo_name": "dex-PPIRTV",
-  "sources_revision": "sha256:e9082224d8fd134761dea7439878eed2b6339dec07498bc9a8e73732500d1d84",
+  "sources_revision": "sha256:3dc7fc0b21f46165888f2e8c4ca0c07de2642fcb25d59b12155a7b37702ffff6",
   "sent_revision": "sha256:c3fe3900353785713ca9fdb1d0ff4a840d2eade60eadca73b9a4ac228bd6dc0f",
   "rules": [
     {
@@ -148,12 +148,12 @@
     },
     {
       "caminho": ".agents/napkin.md",
-      "sha256": "29073aa89e5c0fb18e3aaeb7b4367df5958261f2a40abcc9716f2a40ad80cd56",
+      "sha256": "c53a9ee3358648323685903d41b39b7be8c93fe8e9e94996a925bc6befec9724",
       "enviado": false
     },
     {
       "caminho": ".agents/PLAN-TASKS/ACTIVE.md",
-      "sha256": "618f4967bec77ea1f4fc6c57af97ea812c50ea36dbcf9932a1a4bbe81fb012a5",
+      "sha256": "af729c28832e0dacaf37caa67b8ae684eaf4b9c0f60e4c079cc336dc9314333f",
       "enviado": false
     }
   ]

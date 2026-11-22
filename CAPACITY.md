@@ -1,3 +1,10 @@
+## Reavaliação — regen PLAYBOOK pós-Frente B-2 (2026-11-22)
+
+Projeção regenerada após o fechamento (flow 6064_0001 complete; fontes
+`.agents` atualizadas: napkin tropeços frente B-2 + PLAN-TASKS/ACTIVE com
+#32 PROMOVIDA). Sem mudança de código/teste.
+Receipt `reavaliacao_playbook_pos_frente_b2_261122`.
+
 ## Reavaliação — Frente B-2 #31: atribuição parcial completável (2026-11-22)
 
 Delta: review-scope-attribution (protectedReviewPaths filtra pendente

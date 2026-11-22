@@ -1,4 +1,12 @@
 {
+  "reavaliacao_playbook_pos_frente_b2_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json"
+    ],
+    "delta": "Regen da projecao apos o fechamento da Frente B-2 (fontes .agents: napkin tropeços da sessao + PLAN-TASKS/ACTIVE com Trilho concluido e #32 promovida por EPERM ao vivo na CI). Sem mudanca de codigo/teste; suite inalterada 1062|4 (1066)."
+  },
   "reavaliacao_frente_b2_atribuicao_parcial_261122": {
     "date": "2026-11-22",
     "scope": [
