@@ -1,3 +1,10 @@
+## Reavaliação — emenda timeout it janela viva replay (2026-11-22)
+
+CI windows do a1ef0c8 (run 44975462717) mediu 16.8s > 15s default no it de
+janela viva (6 elos; merge-base por record selado). Emenda: teto declarado
+60s no it — determinístico, não flaky-tolerado. Apenas tests/.
+Receipt `reavaliacao_emenda_timeout_janela_261122`.
+
 ## Reavaliação — regen PLAYBOOK pós-Frente B + selagem ledger (2026-11-22)
 
 Projeção regenerada após o fechamento (flow 5987_0001 complete; fontes

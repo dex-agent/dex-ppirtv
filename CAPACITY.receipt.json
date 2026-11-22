@@ -1,4 +1,11 @@
 {
+  "reavaliacao_emenda_timeout_janela_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "tests/issue-0027-replay-chain.test.ts"
+    ],
+    "delta": "Emenda pos-verdict do flow 5987: it de janela viva do replay ganha teto de timeout 60s (3o arg do it) — CI windows run 44975462717 mediu 16.8s > 15s default com a janela de 6 elos (base fixa 94a9b0c, replay faz merge-base por record selado). Sem mudanca de logica; suíte inalterada 1057|4 (1061)."
+  },
   "reavaliacao_playbook_pos_frente_b_261122": {
     "date": "2026-11-22",
     "scope": [

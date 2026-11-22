@@ -50,6 +50,10 @@ describe("issue 27 — replay da janela reconhece selo pago DENTRO da janela", (
     // com selo pago DENTRO da janela ficam historia selada; o B-prime
     // (excecao vencida pela frente B) e o declaration material legitimo e o
     // CONTAIN mais recente.
+    // Timeout 60s (emenda frente B, 261122): a janela cresce a cada corte do
+    // motor (6 elos; base fixa 94a9b0c) e o windows do CI mediu 16.8s > 15s
+    // default no run 44975462717 — o replay faz merge-base por record selado.
+    // Teto declarado, nao flaky-tolerado: o it continua deterministico.
     const result = await runBoundaryCli({ cwd: WS, argv: ["--base", "94a9b0c", "--head", "HEAD"] }) as { exitCode: number; output: string };
     const receipt = JSON.parse(result.output) as { status: string; reasons?: string[]; comparison?: unknown };
     // Diagnostico-que-ensina: no CI (clone limpo) qualquer reason extra fica
@@ -59,7 +63,7 @@ describe("issue 27 — replay da janela reconhece selo pago DENTRO da janela", (
     }
     expect(receipt.reasons?.filter((reason) => reason.includes("CONSECUTIVE_EXCEPTION")) ?? []).toEqual([]);
     expect(receipt.status).toBe("PASS");
-  });
+  }, 60_000);
 });
 
 describe("caracterizacoes do CONSECUTIVE_EXCEPTION — nunca podar", () => {
