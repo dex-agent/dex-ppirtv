@@ -517,6 +517,21 @@ function git(args, cwd) {
   return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 }
 
+// Frente D (GitHub #35, auditoria 377f94a): existir no disco NÃO é ser
+// versionado — laudo em artifacts/ (gitignored) ou teste ainda não
+// adicionado passava no existsSync da máquina produtora e morria no clone
+// de quem revisa (falso verde local). Versionabilidade REAL pelo índice do
+// Git: ls-files --error-unmatch (staged passa — via no commit; untracked/
+// ignored reprova; fora de repo git = não-versionado, sem quebrar o
+// validador).
+function isGitTracked(cwd, filePath) {
+  try {
+    return git(["ls-files", "--error-unmatch", "--", filePath], cwd).length > 0;
+  } catch {
+    return false;
+  }
+}
+
 function readOptionalAt(cwd, ref, filePath) {
   try {
     return ref === "WORKTREE"
@@ -783,6 +798,10 @@ function validateBootstrapRecords({ cwd, records, manifest, headBlob }) {
         }
       } else if (!existsSync(path.join(cwd, evidenceFile))) {
         add(record, `EVIDENCE_NOT_FOUND:${evidenceFile}`);
+      } else if (!isGitTracked(cwd, evidenceFile)) {
+        // #35: presente no disco mas fora do índice do Git (ignored ou
+        // untracked) — o clone limpo não abre esta prova.
+        add(record, `EVIDENCE_NOT_VERSIONED:${evidenceFile}`);
       }
     }
     const selectors = record.evidence_selectors && typeof record.evidence_selectors === "object" ? record.evidence_selectors : {};
@@ -1306,6 +1325,11 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
       }
       if (!safeProjectPath(evidence, evidence.startsWith("tests/") ? "tests" : evidence.split("/", 1)[0]) || !existsSync(path.join(cwd, evidence))) {
         receipt.reasons.push(`EVIDENCE_NOT_FOUND:${evidence}`);
+      } else if (!isGitTracked(cwd, evidence)) {
+        // #35 (gate gêmeo): no índice do Git ou não é evidência reabrível no
+        // clone — arquivo ignorado (artifacts/) e teste ainda não adicionado
+        // reprovam aqui também.
+        receipt.reasons.push(`EVIDENCE_NOT_VERSIONED:${evidence}`);
       }
     }
     const evidenceSelectors = declaration.evidence_selectors && typeof declaration.evidence_selectors === "object"

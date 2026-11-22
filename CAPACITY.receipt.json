@@ -2020,5 +2020,22 @@
    "PLAYBOOK.index.json"
   ],
   "delta": "Regen da projecao apos o fechamento da Frente E (fontes .agents: napkin trope\u00e7os frente E + PLAN-TASKS/ACTIVE com Trilho E concluido e fila D=35). Sem mudanca de codigo/teste; suite inalterada 1063|4 (1067)."
+ },
+ "reavaliacao_frente_d_versionabilidade_261122": {
+  "date": "2026-11-22",
+  "scope": [
+   "scripts/validate-flow-engine-boundary.mjs",
+   "tests/issue-0035-versionabilidade-real.test.ts",
+   "CHANGELOG.md"
+  ],
+  "delta": "Frente D (GitHub 35): fiscal de evidencias confere versionabilidade REAL por indice do Git (ls-files --error-unmatch) nos 2 sitios da classe (record-check + declaration gate g\u00eameo) \u2014 artifacts/ gitignored e untracked reprovam EVIDENCE_NOT_VERSIONED; staged passa. Fixture 3 janelas do motor (record casa 1 por par de blobs). RED -> GREEN + mutacao helper PEGA; suite 1064|4 (1068). Camping NOT_APPLICABLE (scripts/)."
+ },
+ "reavaliacao_playbook_pre_frente_d_261122": {
+  "date": "2026-11-22",
+  "scope": [
+   "PLAYBOOK.md",
+   "PLAYBOOK.index.json"
+  ],
+  "delta": "Regen pre-commit da Frente D: fonte PLAN-TASKS/ACTIVE editada na abertura (secao Em andamento do Trilho D) + Trilho D criado. Sem mudanca de codigo/teste."
  }
 }

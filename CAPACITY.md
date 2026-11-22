@@ -1,3 +1,19 @@
+## Reavaliação — regen PLAYBOOK pré-commit Frente D (2026-11-22)
+
+Projeção regenerada ANTES do commit da Frente D (fonte editada na abertura:
+PLAN-TASKS/ACTIVE com seção Em andamento do Trilho D). Sem mudança de
+código/teste. Receipt `reavaliacao_playbook_pre_frente_d_261122`.
+
+## Reavaliação — Frente D #35: versionabilidade REAL por índice do Git (2026-11-22)
+
+Delta: validate-flow-engine-boundary (helper isGitTracked via ls-files
+--error-unmatch reusando git() l.516; ramo EVIDENCE_NOT_VERSIONED novo no
+record-check e no declaration gate gêmeo — presente no disco mas fora do
+índice reprova) + tests/issue-0035 nova (3 janelas do motor: ignorado,
+untracked, versionado). Motor intocado (camping NOT_APPLICABLE — scripts/).
+RED -> GREEN + mutação helper return-true PEGA; suíte 1064|4 (1068).
+Receipt `reavaliacao_frente_d_versionabilidade_261122`.
+
 ## Reavaliação — regen PLAYBOOK pós-Frente E (2026-11-22)
 
 Projeção regenerada após o fechamento (flow 6100_0001 complete; fontes

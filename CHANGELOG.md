@@ -8,6 +8,21 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **frente D: versionabilidade REAL por índice do Git no fiscal de
+  evidências (GitHub #35, Trilho 2026-11-22-frented, flow 6132_0001)**: o
+  ramo `.agents/` do record-check já exigia redirect versionado, mas o
+  `else` só fazia `existsSync` — laudo em `artifacts/` (gitignored,
+  confirmado por `git check-ignore` na auditoria 377f94a) ou teste ainda
+  não adicionado passava na máquina produtora e morria no clone limpo de
+  quem revisa (falso verde local). Cura: helper `isGitTracked` (`git
+  ls-files --error-unmatch`, reuso do `git()` existente) + ramo
+  `EVIDENCE_NOT_VERSIONED` novo nos DOIS sítios da classe (record-check +
+  declaration gate gêmeo) — presente no disco mas fora do índice reprova;
+  staged passa (vai no commit); fora de repo git trata-se como
+  não-versionado sem quebrar o validador. Fixture com 3 janelas do motor
+  (o record-check casa UM record por par de blobs — ignorado, untracked,
+  versionado). RED → GREEN + mutação helper `return true` PEGA; suíte
+  1064|4 (1068); camping NOT_APPLICABLE (scripts/, não o motor).
 - **frente E: ENOENT entre EPERM e lstat vira retry limitado, não EPERM crú
   (GitHub #32, TRACKER 0023, Trilho 2026-11-22-frentee, flow 6100_0001)**:
   no ramo EPERM do writeFile wx do `withFlowLock`, o lstat distinguia disputa
