@@ -1,3 +1,11 @@
+## Reavaliação — regen PLAYBOOK pós-Frente B + selagem ledger (2026-11-22)
+
+Projeção regenerada após o fechamento (flow 5987_0001 complete; fontes
+`.agents` atualizadas: napkin tropeços frente B + PLAN-TASKS/ACTIVE fila C).
+Selo do record CONTAIN FE-2026-11-22-FRENTE-B gravado no ledger (commit
+a1ef0c8 + parent f90638d). Sem mudança de código/teste.
+Receipt `reavaliacao_playbook_pos_frente_b_261122`.
+
 ## Reavaliação — Frente B #29: anexo pendente recusa diretório/ausência (2026-11-22)
 
 Delta: review-snapshot (`assertPendingReviewScopeReviewable` nova —

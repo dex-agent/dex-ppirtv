@@ -1,4 +1,13 @@
 {
+  "reavaliacao_playbook_pos_frente_b_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json",
+      "docs/architecture/flow-engine-evolution.json"
+    ],
+    "delta": "Regen da projecao apos o fechamento da Frente B (fontes .agents: napkin tropeços da sessao + PLAN-TASKS/ACTIVE com Trilho concluido e fila C=#30) + selagem do record CONTAIN (commit a1ef0c8, parent f90638d, blobs conferidos). Sem mudanca de codigo/teste; suite inalterada 1057|4 (1061)."
+  },
   "reavaliacao_frente_b_review_pending_261122": {
     "date": "2026-11-22",
     "scope": [
