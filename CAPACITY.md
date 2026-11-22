@@ -1,3 +1,22 @@
+## Reavaliação — Frente E #32: ENOENT entre EPERM e lstat vira retry limitado (2026-11-22)
+
+Delta: store (withFlowLock — contador epermEnoentRounds consecutivo com
+EPERM_ENOENT_LIMIT=3, continue no ENOENT do lstat do ramo EPERM, reset na
+rodada com arquivo presente, message do EPERM original enriquecida com
+MEETING_LOCK_EPERM_PERSISTENT preservando code) + tests/store-lock-eperm
++1 it (liberação ANTES da consulta) e controle persistente reescrito
+(mockImplementation com restore em finally). Motor intocado (camping
+NOT_APPLICABLE — check:flow-engine no-change-signal). RED 2/3→GREEN 3/3 +
+mutação if(true) PEGA; suíte 1063|4 (1067). Receipt
+`reavaliacao_frente_e_eperm_lstat_261122`.
+
+## Reavaliação — regen PLAYBOOK pré-commit Frente E (2026-11-22)
+
+Projeção regenerada ANTES do commit da Frente E (fonte editada na abertura
+do bloco: napkin régua de abertura finders+CRG+o-arquiteto; ACTIVE com
+Trilho E). Sem mudança de código/teste.
+Receipt `reavaliacao_playbook_pre_frente_e_261122`.
+
 ## Reavaliação — regen PLAYBOOK pós-Frente B-2 (2026-11-22)
 
 Projeção regenerada após o fechamento (flow 6064_0001 complete; fontes

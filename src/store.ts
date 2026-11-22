@@ -195,6 +195,16 @@ export class PpirtvStore {
     const lockRecord = { owner_token: ownerToken, pid: process.pid, created_at: new Date().toISOString() };
     const deadline = Date.now() + 35_000;
     let acquiredIdentity = "";
+    // Frente E (GitHub #32, auditoria 377f94a): o ENOENT do lstat no ramo
+    // EPERM é AMÍGUO — pode ser o vencedor liberando o lock ENTRE a falha de
+    // criação e a consulta (ordem observada no CI). Disputa que se resolveu
+    // sozinha: retry adquire. EPERM+ENOENT CONSECUTIVOS acima do limite =
+    // permissão persistentemente negada: erro rápido e observável (nunca
+    // esperar o deadline). Limite 3 (veredito $o-arquiteto: 2 executaria
+    // EPERM falso em CI carregado); rodada com arquivo presente é a disputa
+    // clássica e NÃO conta.
+    let epermEnoentRounds = 0;
+    const EPERM_ENOENT_LIMIT = 3;
     while (true) {
       if (Date.now() >= deadline) {
         throw new Error(`MEETING_LOCK_TIMEOUT: ${flowId}`);
@@ -213,12 +223,24 @@ export class PpirtvStore {
           // criação/deleção concorrente do MESMO path chega como EPERM
           // (errno -4048), não EEXIST — a disputa legítima de lock explodia
           // como erro. Com o arquivo presente é a mesma corrida do EEXIST:
-          // disputa. EPERM REAL de permissão (path nem existe) continua
-          // fail-fast pelo lstat ENOENT abaixo.
+          // disputa. O ENOENT do lstat abaixo é AMÍGUO (#32): o vencedor
+          // pode ter liberado o lock ENTRE o EPERM e a consulta — retry
+          // limitado; só acima do limite é permissão real (fail-fast).
           try {
             await lstat(lockPath);
+            // Arquivo presente: disputa clássica — zera a consecutividade
+            // das rodadas EPERM+ENOENT.
+            epermEnoentRounds = 0;
           } catch (permError) {
-            if ((permError as NodeJS.ErrnoException).code === "ENOENT") throw error;
+            if ((permError as NodeJS.ErrnoException).code === "ENOENT") {
+              epermEnoentRounds += 1;
+              if (epermEnoentRounds >= EPERM_ENOENT_LIMIT) {
+                (error as NodeJS.ErrnoException).message +=
+                  ` (MEETING_LOCK_EPERM_PERSISTENT: ${EPERM_ENOENT_LIMIT} rodadas EPERM+ENOENT consecutivas — permissão negada, não disputa; flow=${flowId})`;
+                throw error;
+              }
+              continue;
+            }
             throw permError;
           }
         }

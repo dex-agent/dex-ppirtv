@@ -76,20 +76,67 @@ describe("withFlowLock — EPERM transitório de sharing violation (Windows, CI 
     await expect(lstat(lockPath)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
-  it("EPERM REAL de permissão (path inexistente) continua fail-fast", async () => {
+  it("EPERM REAL de permissão (lock nunca existe) rejeita rápido com contexto após o limite", async () => {
     const dir = await roots.create("ppirtv-lock-eperm-real-");
     const store = new PpirtvStore(dir, { fixtureOnlyNoncanonicalRoot: true });
     await store.init();
-    writeFileMock.mockImplementationOnce(async (target: unknown, data: unknown, options: unknown) => {
+    // Mock PERSISTENTE (não Once): a cura dá retry limitado ao ENOENT — com
+    // Once, a 2ª tentativa real (wx) ADQUIRIRIA o lock e o fail-fast viria
+    // sucesso falso. Persistente = permissão negada em TODA rodada.
+    writeFileMock.mockImplementation(async (target: unknown, _data: unknown, options: unknown) => {
       const flag = (options as { flag?: string } | undefined)?.flag;
       if (!String(target).endsWith(".meeting.lock") || flag !== "wx") {
-        return realWriteFile(target as never, data as never, options as never);
+        return realWriteFile(target as never, _data as never, options as never);
       }
       const denied = new Error("EPERM: operation not permitted (real permission denial)") as NodeJS.ErrnoException;
       denied.code = "EPERM";
       throw denied;
     });
+    const startedAt = Date.now();
+    try {
+      await expect(store.withFlowLock("flow-eperm-denied", async () => "ok")).rejects.toMatchObject({
+        code: "EPERM",
+        message: expect.stringContaining("MEETING_LOCK_EPERM_PERSISTENT")
+      });
+      // Rápido: 3 rodadas de mock custam milissegundos — provar que NÃO
+      // esperou o deadline de 35s do lock.
+      expect(Date.now() - startedAt).toBeLessThan(10_000);
+    } finally {
+      writeFileMock.mockImplementation(realWriteFile);
+    }
+  });
+});
 
-    await expect(store.withFlowLock("flow-eperm-denied", async () => "ok")).rejects.toMatchObject({ code: "EPERM" });
+// Frente E (GitHub #32, auditoria 377f94a): o ENOENT do lstat no ramo EPERM é
+// AMÍGUO — pode ser o vencedor liberando o lock ENTRE a falha de criação e a
+// consulta (ordem observada no CI; derrubou o run 44977965436 ao vivo). Hoje
+// relança o EPERM crú: disputa que se resolveu sozinha vira erro fatal de
+// permissão. Cura: continue limitado (3 rodadas EPERM+ENOENT consecutivas).
+describe("frente E (#32) — liberação do lock ANTES da consulta (lstat ENOENT)", () => {
+  const roots = createTempRootRegistry();
+
+  it("vencedor libera o lock entre o EPERM e o lstat -> retry adquire e a operação conclui", async () => {
+    const dir = await roots.create("ppirtv-lock-frentee-");
+    const store = new PpirtvStore(dir, { fixtureOnlyNoncanonicalRoot: true });
+    await store.init();
+    const flowId = "flow-frentee-liberado";
+    const lockPath = path.join(dir, "flows", `${flowId}.json.meeting.lock`);
+    // O writeFile wx do perdedor perde a corrida (EPERM de sharing violation)
+    // e o vencedor JÁ LIBEROU o lock quando o lstat consultar: nada no disco.
+    writeFileMock.mockImplementationOnce(async (target: unknown, _data: unknown, options: unknown) => {
+      const flag = (options as { flag?: string } | undefined)?.flag;
+      if (String(target) !== lockPath || flag !== "wx") {
+        return realWriteFile(target as never, _data as never, options as never);
+      }
+      const race = new Error("EPERM: operation not permitted (winner released before lstat)") as NodeJS.ErrnoException;
+      race.code = "EPERM";
+      throw race;
+    });
+
+    const result = await store.withFlowLock(flowId, async () => "ok");
+
+    expect(result).toBe("ok");
+    const { lstat } = await import("node:fs/promises");
+    await expect(lstat(lockPath)).rejects.toMatchObject({ code: "ENOENT" });
   });
 });

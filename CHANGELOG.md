@@ -8,6 +8,23 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **frente E: ENOENT entre EPERM e lstat vira retry limitado, não EPERM crú
+  (GitHub #32, TRACKER 0023, Trilho 2026-11-22-frentee, flow 6100_0001)**:
+  no ramo EPERM do writeFile wx do `withFlowLock`, o lstat distinguia disputa
+  (arquivo presente) de EPERM real — mas o ENOENT era lido como "path nem
+  existe = permissão" e relançava o EPERM crú. O ENOENT é AMÍGUO (#32): o
+  vencedor pode liberar o lock ENTRE a falha de criação e a consulta (ordem
+  observada ao vivo na CI 44977965436, windows; derrubou o run da frente C).
+  Disputa que se resolveu sozinha virava erro fatal de permissão. Cura:
+  contador `epermEnoentRounds` CONSECUTIVO com `EPERM_ENOENT_LIMIT=3`
+  (veredito $o-arquiteto: 2 executaria EPERM falso em CI carregado) —
+  continue no ENOENT, reset na rodada com arquivo presente (disputa
+  clássica), e no limite a message do EPERM original ganha
+  `MEETING_LOCK_EPERM_PERSISTENT` com contexto (rodadas, flow) preservando
+  `code: "EPERM"` — erro rápido (~ms, nunca o deadline de 35s) e
+  observável (cap. 7 "Provide Context with Exceptions", selo documental do
+  conselheiro clean-code). RED 2/3 → GREEN 3/3 + mutação `if(true)` PEGA;
+  suíte 1063|4 (1067); camping NOT_APPLICABLE (store.ts, não o motor).
 - **frente B-2: atribuição parcial completável — pendente não-declarado não
   congela externos (GitHub #31, TRACKER 0020, Trilho 2026-11-22-frenteb2)**:
   o fallback do `pendingAttachScope` devolve a UNIÃO para validar o fp
