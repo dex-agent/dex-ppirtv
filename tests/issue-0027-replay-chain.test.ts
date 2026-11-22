@@ -176,3 +176,112 @@ describe("issue 21 P2-4 — blob ausente no replay vira reason dedicado sem cras
     expect(receipt.status).toBe("FAIL");
   });
 });
+
+// Trilho 2026-11-21-redirect-evidence-legada-ledger — records legados selados
+// citam evidence .agents/ (gitignored; classe #19 claim-sem-receipt) e sao
+// IMUTAVEIS por selo (LEDGER_HISTORY_MUTATED). A cura e o redirect versionado
+// no manifest (evidence_redirects): records byte-identicos, destino versionado
+// + sha256 conferidos. A porta vale SO no record-check (bootstrap) — o
+// declaration gate (anexos novos) permanece fechado (it acima intocado).
+describe("evidence_redirects — record-check bootstrap resolve evidence legada .agents/ via destino versionado", () => {
+  type RedirectMap = Record<string, { target: string; sha256?: string }>;
+
+  async function bootstrapFixture(redirects: RedirectMap) {
+    const git = (args: string[]) => execFileSync("git", ["-C", tempRoot, ...args], { stdio: ["ignore", "pipe", "pipe"] }).toString();
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-redirect-"));
+    await mkdir(path.join(tempRoot, "src"), { recursive: true });
+    await mkdir(path.join(tempRoot, "docs", "architecture", "ledger-evidence"), { recursive: true });
+    await mkdir(path.join(tempRoot, ".agents", "PLAN-TASKS"), { recursive: true });
+    await mkdir(path.join(tempRoot, ".agents", "AUDITORIAS"), { recursive: true });
+    git(["init", "-q"]); git(["config", "user.email", "t@t"]); git(["config", "user.name", "t"]); git(["config", "commit.gpgsign", "false"]);
+    await writeFile(path.join(tempRoot, "package.json"), JSON.stringify({ name: "fixture", version: "0.0.0" }), "utf8");
+    await writeFile(path.join(tempRoot, "src", "flow-engine.ts"), "export const a = 1;\n", "utf8");
+    git(["add", "."]); git(["commit", "-qm", "c0"]);
+    const c0 = git(["rev-parse", "HEAD"]).trim();
+    await writeFile(path.join(tempRoot, "src", "flow-engine.ts"), "export const a = 2;\n", "utf8");
+    await writeFile(path.join(tempRoot, "CHANGELOG.md"), "# Changelog\n\n## [Unreleased]\n\n- marker-redirect\n", "utf8");
+    await writeFile(path.join(tempRoot, "docs", "architecture", "FLOW_ENGINE_EVOLUTION.md"), "# FlowEngine evolutionary architecture\n\nmarker-arch-redirect\n", "utf8");
+    await writeFile(path.join(tempRoot, "src", "server.ts"), "import { a } from \"./flow-engine.js\";\nexport const useA = a;\n", "utf8");
+    await mkdir(path.join(tempRoot, "tests"), { recursive: true });
+    await writeFile(path.join(tempRoot, "tests", "FE-FIXTURE-REDIRECT.test.ts"), "import { it } from \"vitest\";\nit(\"titulo do it sem metacaracteres\", () => {});\n", "utf8");
+    await writeFile(path.join(tempRoot, ".agents", "PLAN-TASKS", "trilho-fixture-redirect.md"), "# trilho fixture\n", "utf8");
+    await writeFile(path.join(tempRoot, ".agents", "AUDITORIAS", "cure-proof.json"), JSON.stringify({ red: true, mutacoes: 1 }), "utf8");
+    git(["add", "."]); git(["commit", "-qm", "c1"]);
+    const c1 = git(["rev-parse", "HEAD"]).trim();
+    const blobA = git(["rev-parse", `${c0}:src/flow-engine.ts`]).trim();
+    const blobB = git(["rev-parse", `${c1}:src/flow-engine.ts`]).trim();
+    // copia versionada byte-a-byte do artefato .agents (a prova re-abrivel)
+    await writeFile(path.join(tempRoot, "docs", "architecture", "ledger-evidence", "cure-proof.json"), JSON.stringify({ red: true, mutacoes: 1 }), "utf8");
+    const { createHash } = await import("node:crypto");
+    const sha = createHash("sha256").update(JSON.stringify({ red: true, mutacoes: 1 })).digest("hex");
+    const ledger = {
+      contract: "dex.flow-engine.evolution-ledger.v1",
+      target: "src/flow-engine.ts",
+      owner: "$oraculo-refatoracao",
+      records: [
+        exceptionRecord("FE-FIXTURE-REDIRECT", {
+          date: "2026-11-21",
+          base_blob: blobA,
+          head_blob: blobB,
+          commit: c1,
+          parent_commit: c0,
+          spt_path: ".agents/PLAN-TASKS/trilho-fixture-redirect.md",
+          responsibility: "fixture redirect",
+          owner: "$oraculo-refatoracao",
+          changelog_marker: "marker-redirect",
+          architecture_marker: "marker-arch-redirect",
+          consumers: ["src/server.ts"],
+          evidence: [".agents/AUDITORIAS/cure-proof.json", "tests/FE-FIXTURE-REDIRECT.test.ts"],
+          red_evidence: "tests/FE-FIXTURE-REDIRECT.test.ts::titulo do it sem metacaracteres",
+          evidence_selectors: { "tests/FE-FIXTURE-REDIRECT.test.ts": "titulo do it sem metacaracteres" }
+        })
+      ],
+      evidence_redirects: redirects
+    };
+    await writeFile(
+      path.join(tempRoot, "docs", "architecture", "flow-engine-evolution.json"),
+      JSON.stringify(ledger), "utf8"
+    );
+    git(["add", "."]); git(["commit", "-qm", "c2-ledger"]);
+    const c2 = git(["rev-parse", "HEAD"]).trim();
+    // janela bootstrap: motor igual entre c1 e c2, ledger so existe em c2
+    const result = await runBoundaryCli({ cwd: tempRoot, argv: ["--base", c1, "--head", c2] }) as { exitCode: number; output: string };
+    return { receipt: JSON.parse(result.output) as { status: string; reasons?: string[]; ledger_bootstrap?: { status: string } }, sha };
+  }
+
+  it("record legado com redirect sancionado (destino versionado + sha confere) NAO reprova EVIDENCE_NOT_VERSIONED no bootstrap", async () => {
+    const { createHash } = await import("node:crypto");
+    const sha = createHash("sha256").update(JSON.stringify({ red: true, mutacoes: 1 })).digest("hex");
+    const { receipt } = await bootstrapFixture({
+      ".agents/AUDITORIAS/cure-proof.json": { target: "docs/architecture/ledger-evidence/cure-proof.json", sha256: sha }
+    });
+    expect(receipt.ledger_bootstrap?.status).toBe("PASS");
+    expect(receipt.reasons ?? []).not.toContain("EVIDENCE_NOT_VERSIONED:.agents/AUDITORIAS/cure-proof.json");
+    // janela bootstrap nao toca o motor: o status global da visita e
+    // NOT_APPLICABLE (o verde aqui e o ledger_bootstrap PASS sem reasons).
+    expect(receipt.status).toBe("NOT_APPLICABLE");
+  });
+
+  it("redirect apontando destino .agents/ reprova EVIDENCE_REDIRECT_INVALID (porta nao vira afrouxamento)", async () => {
+    const { receipt } = await bootstrapFixture({
+      ".agents/AUDITORIAS/cure-proof.json": { target: ".agents/AUDITORIAS/cure-proof.json" }
+    });
+    expect(receipt.ledger_bootstrap?.status).toBe("FAIL");
+    // reasons do record-check chegam prefixados (BOOTSTRAP_RECORD_INVALID:<id>:...)
+    expect(JSON.stringify(receipt.reasons ?? [])).toContain("EVIDENCE_REDIRECT_INVALID:.agents/AUDITORIAS/cure-proof.json");
+  });
+
+  it("redirect com destino versionado inexistente reprova EVIDENCE_REDIRECT_INVALID", async () => {
+    const { receipt } = await bootstrapFixture({
+      ".agents/AUDITORIAS/cure-proof.json": { target: "docs/architecture/ledger-evidence/sumiu.json" }
+    });
+    expect(JSON.stringify(receipt.reasons ?? [])).toContain("EVIDENCE_REDIRECT_INVALID:.agents/AUDITORIAS/cure-proof.json");
+  });
+
+  it("redirect com sha256 divergente do destino reprova EVIDENCE_REDIRECT_SHA_MISMATCH", async () => {
+    const { receipt } = await bootstrapFixture({
+      ".agents/AUDITORIAS/cure-proof.json": { target: "docs/architecture/ledger-evidence/cure-proof.json", sha256: "deadbeef".repeat(8) }
+    });
+    expect(JSON.stringify(receipt.reasons ?? [])).toContain("EVIDENCE_REDIRECT_SHA_MISMATCH:.agents/AUDITORIAS/cure-proof.json");
+  });
+});

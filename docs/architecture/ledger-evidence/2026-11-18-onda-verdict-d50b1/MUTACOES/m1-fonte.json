@@ -1,0 +1,15 @@
+{
+  "src": "src/domain.ts",
+  "simbolo": "isPositiveVerdict",
+  "literal": "includes(status ?? \"\")",
+  "mutacao": "includes(status ? \"x\" : \"\")",
+  "teste": "tests/onda-verdict-d50b1.test.ts",
+  "valido": true,
+  "restaurado": true,
+  "linha": 43,
+  "viva_no_disco": true,
+  "vitest_saida": "\n RUN  v3.2.6 C:/CodexProjetos/dex-PPIRTV\n\n ❯ tests/onda-verdict-d50b1.test.ts (5 tests | 1 failed) 16ms\n   ✓ onda cluster verdict d50b1 — 8 sítios usam a fonte única isPositiveVerdict > motor consome isPositiveVerdict em ao menos 8 sítios + 1 import (antes: 0) 1ms\n   ✓ onda cluster verdict d50b1 — 8 sítios usam a fonte única isPositiveVerdict > zero pares inline de pronto OU pronto_com_ressalvas no motor (antes: 8) 0ms\n   ✓ onda cluster verdict d50b1 — 8 sítios usam a fonte única isPositiveVerdict > sítio negado vira !isPositiveVerdict (antes: dupla negação inline) 0ms\n   ✓ onda cluster verdict d50b1 — 8 sítios usam a fonte única isPositiveVerdict > fronteira preservada: singulares só-pronto deliberados permanecem (l.2630 e l.3981) 0ms\n   × onda cluster verdict d50b1 — 8 sítios usam a fonte única isPositiveVerdict > fonte única intocada no swap: POSITIVE_VERDICTS segue fechada em domain.ts 13ms\n     → expected false to be true // Object.is equality\n\n Test Files  1 failed (1)\n      Tests  1 failed | 4 passed (5)\n   Start at  11:24:33\n   Duration  210ms (transform 29ms, setup 0ms, collect 23ms, tests 16ms, environment 0ms, prepare 63ms)\n\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  tests/onda-verdict-d50b1.test.ts > onda cluster verdict d50b1 — 8 sítios usam a fonte única isPositiveVerdict > fonte única intocada no swap: POSITIVE_VERDICTS segue fechada em domain.ts\nAssertionError: expected false to be true // Object.is equality\n\n- Expected\n+ Received\n\n- true\n+ false\n\n ❯ tests/onda-verdict-d50b1.test.ts:44:45\n     42|     expect(domain).toMatch(/export const POSITIVE_VERDICTS = \\[\"pronto…\n     43|     const mod = await import(\"../src/domain.js\");\n     44|     expect(mod.isPositiveVerdict(\"pronto\")).toBe(true);\n       |                                             ^\n     45|     expect(mod.isPositiveVerdict(\"pronto_com_ressalvas\")).toBe(true);\n     46|     expect(mod.isPositiveVerdict(\"nao_pronto\")).toBe(false);\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n",
+  "failed": 1,
+  "passed": 4,
+  "sobreviveu": false
+}

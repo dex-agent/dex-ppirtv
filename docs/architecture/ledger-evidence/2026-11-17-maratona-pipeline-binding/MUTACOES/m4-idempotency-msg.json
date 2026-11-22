@@ -1,0 +1,15 @@
+{
+  "src": "src/goal-binding-compat.ts",
+  "simbolo": "assertCompatibleGoalBinding",
+  "literal": "flow_id is already bound to a different idempotency_key",
+  "mutacao": "MUTACAO-VIGILIA idempotency msg",
+  "teste": "tests/goal-binding-compat.test.ts",
+  "valido": true,
+  "restaurado": true,
+  "linha": 75,
+  "viva_no_disco": true,
+  "vitest_saida": "\n RUN  v3.2.6 C:/CodexProjetos/dex-PPIRTV\n\n ❯ tests/goal-binding-compat.test.ts (9 tests | 1 failed) 12ms\n   ✓ goal binding compat (caracterizacao maratona 2026-11-17) > nao lanca quando binding ausente ou envelopes compativeis 2ms\n   × goal binding compat (caracterizacao maratona 2026-11-17) > rejeita primeiro idempotency_key divergente com mensagem historica 7ms\n     → expected [Function] to throw error including 'flow_id is already bound to a differe…' but got 'MUTACAO-VIGILIA idempotency msg'\n   ✓ goal binding compat (caracterizacao maratona 2026-11-17) > rejeita workspace ou spt_path divergentes com mensagem historica 0ms\n   ✓ goal binding compat (caracterizacao maratona 2026-11-17) > reporta cada campo divergente pelo nome na ordem historica 0ms\n   ✓ goal binding compat (caracterizacao maratona 2026-11-17) > compara objective de forma tolerante (case e espacos) 0ms\n   ✓ goal binding compat (caracterizacao maratona 2026-11-17) > compara required_evidence como conjunto (ordem e duplicatas ignoradas) 0ms\n   ✓ goal binding compat (caracterizacao maratona 2026-11-17) > ignora risk_level do envelope quando ausente e reporta quando divergente 0ms\n   ✓ goal binding compat (caracterizacao maratona 2026-11-17) > reporta flow_role divergente apenas quando o envelope declara 0ms\n   ✓ goal binding compat (caracterizacao maratona 2026-11-17) > diferencia fingerprint ausente de fingerprint divergente 0ms\n\n Test Files  1 failed (1)\n      Tests  1 failed | 8 passed (9)\n   Start at  13:52:15\n   Duration  238ms (transform 41ms, setup 0ms, collect 45ms, tests 12ms, environment 0ms, prepare 65ms)\n\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  tests/goal-binding-compat.test.ts > goal binding compat (caracterizacao maratona 2026-11-17) > rejeita primeiro idempotency_key divergente com mensagem historica\nAssertionError: expected [Function] to throw error including 'flow_id is already bound to a differe…' but got 'MUTACAO-VIGILIA idempotency msg'\n\nExpected: \"flow_id is already bound to a different idempotency_key\"\nReceived: \"MUTACAO-VIGILIA idempotency msg\"\n\n ❯ tests/goal-binding-compat.test.ts:43:7\n     41|     expect(() =>\n     42|       assertCompatibleGoalBinding(binding({ envelope: { idempotency_ke…\n     43|     ).toThrow(\"flow_id is already bound to a different idempotency_key…\n       |       ^\n     44|   });\n     45| \n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n",
+  "failed": 1,
+  "passed": 8,
+  "sobreviveu": false
+}

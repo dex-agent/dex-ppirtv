@@ -1,0 +1,141 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.6 [39m[90mC:/CodexProjetos/dex-PPIRTV[39m
+
+ [31m❯[39m tests/issue-0021-attribution.test.ts [2m([22m[2m7 tests[22m[2m | [22m[31m5 failed[39m[2m)[22m[32m 38[2mms[22m[39m
+[31m   [31m×[31m issue 21 corte A — attribution nas tres falhas publicadas[2m > [22mcura P1-1 modo automatico rejeita gravacao quando bytes mudam apos a avaliacao[39m[32m 18[2mms[22m[39m
+[31m     → promise resolved "{ flow_id: 'f1', …(8) }" instead of rejecting[39m
+   [32m✓[39m issue 21 corte A — attribution nas tres falhas publicadas[2m > [22mcaracterizacao P1-1 modo explicito ja rejeita a mesma mudanca[32m 4[2mms[22m[39m
+   [32m✓[39m issue 21 corte A — attribution nas tres falhas publicadas[2m > [22mcaracterizacao C-08 arquivos estaveis gravam o mesmo resultado nos dois modos[32m 3[2mms[22m[39m
+[31m   [31m×[31m issue 21 corte A — attribution nas tres falhas publicadas[2m > [22mcura P2-5 rota automatica conserva arquivo incorporado quando exclusao historica colide[39m[32m 2[2mms[22m[39m
+[31m     → REVIEW_SCOPE_DECLARED_PATH: a declared or frozen flow path cannot be excluded[39m
+[31m   [31m×[31m issue 21 corte A — attribution nas tres falhas publicadas[2m > [22mcura C-06 citar o ID antigo produz erro acionavel nomeando o path ofensivo[39m[32m 3[2mms[22m[39m
+[31m     → expected [Function] to throw error matching /REVIEW_SCOPE_DECLARED_PATH[\s\S]*othe…/ but got 'REVIEW_SCOPE_DECLARED_PATH: a declare…'[39m
+[31m   [31m×[31m issue 21 corte A — attribution nas tres falhas publicadas[2m > [22mcura P3-9 hint so oferece ids adotaveis e orienta renovacao quando existe vencida[39m[32m 4[2mms[22m[39m
+[31m     → expected 'undefined' to be 'function' // Object.is equality[39m
+[31m   [31m×[31m issue 21 corte A — attribution nas tres falhas publicadas[2m > [22mcura P3-9 hint com adotavel valida oferece exatamente ela[39m[32m 2[2mms[22m[39m
+[31m     → mod.collectAdoptableAttributionIds is not a function[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 5 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/issue-0021-attribution.test.ts[2m > [22missue 21 corte A — attribution nas tres falhas publicadas[2m > [22mcura P1-1 modo automatico rejeita gravacao quando bytes mudam apos a avaliacao
+[31m[1mAssertionError[22m: promise resolved "{ flow_id: 'f1', …(8) }" instead of rejecting[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "changed_files": [[39m
+[31m+     "app.ts",[39m
+[31m+   ],[39m
+[31m+   "evidence": [[39m
+[31m+     {[39m
+[31m+       "evidence_id": "e1",[39m
+[31m+       "flow_id": "f1",[39m
+[31m+       "kind": "review_scope_attribution",[39m
+[31m+       "observed_result": {[39m
+[31m+         "attribution_binding": {[39m
+[31m+           "fingerprint": "sha256:e080da50ee181cad882cec994b0080de8286ebd213b786979ae8b20bd54f9bb9",[39m
+[31m+           "git_head_base": null,[39m
+[31m+           "version": 1,[39m
+[31m+         },[39m
+[31m+         "excluded_paths": [[39m
+[31m+           {[39m
+[31m+             "path": "other.ts",[39m
+[31m+             "reason": "outro trabalho",[39m
+[31m+             "source": "fixture",[39m
+[31m+           },[39m
+[31m+         ],[39m
+[31m+         "reviewer": "qa",[39m
+[31m+       },[39m
+[31m+       "scope_classification": "outside",[39m
+[31m+     },[39m
+[31m+   ],[39m
+[31m+   "flow_id": "f1",[39m
+[31m+   "gates": {},[39m
+[31m+   "goal_binding": {[39m
+[31m+     "envelope": {[39m
+[31m+       "idempotency_key": "issue21-a",[39m
+[31m+       "source": "test",[39m
+[31m+       "workspace": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\16\\ppirtv-issue21-a-Kf9OcZ",[39m
+[31m+     },[39m
+[31m+   },[39m
+[31m+   "history": [],[39m
+[31m+   "implementation_fingerprint": "sha256:ac602afcc85450916ecc218c63fd43726a65b8139e374df67f3db7bd62011b12",[39m
+[31m+   "scope": {[39m
+[31m+     "in": [],[39m
+[31m+     "out": [],[39m
+[31m+   },[39m
+[31m+   "status": "active",[39m
+[2m  }[22m
+
+[36m [2m❯[22m tests/issue-0021-attribution.test.ts:[2m61:56[22m[39m
+    [90m 59| [39m    [34mwriteFileSync[39m(path[33m.[39m[34mjoin[39m(workspace[33m,[39m [32m"app.ts"[39m)[33m,[39m [32m"v2"[39m[33m,[39m [32m"utf8"[39m)[33m;[39m
+    [90m 60| [39m    const snapshot = attributedVerdictSnapshot({ status: "pronto" } as…
+    [90m 61| [39m    [35mawait[39m [34mexpect[39m([34mprepareVerdictSnapshot[39m(flow[33m,[39m snapshot))
+    [90m   | [39m                                                       [31m^[39m
+    [90m 62| [39m      [33m.[39mrejects[33m.[39m[34mtoThrow[39m([36m/REVIEW_SNAPSHOT_FINGERPRINT_MISMATCH/[39m)[33m;[39m
+    [90m 63| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/issue-0021-attribution.test.ts[2m > [22missue 21 corte A — attribution nas tres falhas publicadas[2m > [22mcura P2-5 rota automatica conserva arquivo incorporado quando exclusao historica colide
+[31m[1mError[22m: REVIEW_SCOPE_DECLARED_PATH: a declared or frozen flow path cannot be excluded[39m
+[36m [2m❯[22m assertExternalPaths src/review-scope-attribution.ts:[2m107:11[22m[39m
+    [90m105| [39m  [35mconst[39m protectedPaths [33m=[39m [34mprotectedReviewPaths[39m(flow)[33m;[39m
+    [90m106| [39m  [35mif[39m (paths[33m.[39m[34msome[39m((value) [33m=>[39m protectedPaths[33m.[39m[34mhas[39m(value))) {
+    [90m107| [39m    throw new Error("REVIEW_SCOPE_DECLARED_PATH: a declared or frozen …
+    [90m   | [39m          [31m^[39m
+    [90m108| [39m  }
+    [90m109| [39m}
+[90m [2m❯[22m applyReviewScopeAttributions src/review-scope-attribution.ts:[2m192:5[22m[39m
+[90m [2m❯[22m tests/issue-0021-attribution.test.ts:[2m91:20[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/issue-0021-attribution.test.ts[2m > [22missue 21 corte A — attribution nas tres falhas publicadas[2m > [22mcura C-06 citar o ID antigo produz erro acionavel nomeando o path ofensivo
+[31m[1mAssertionError[22m: expected [Function] to throw error matching /REVIEW_SCOPE_DECLARED_PATH[\s\S]*othe…/ but got 'REVIEW_SCOPE_DECLARED_PATH: a declare…'[39m
+
+[32m- Expected:[39m 
+/REVIEW_SCOPE_DECLARED_PATH[\s\S]*other\.ts/
+
+[31m+ Received:[39m 
+"REVIEW_SCOPE_DECLARED_PATH: a declared or frozen flow path cannot be excluded"
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/issue-0021-attribution.test.ts[2m > [22missue 21 corte A — attribution nas tres falhas publicadas[2m > [22mcura P3-9 hint so oferece ids adotaveis e orienta renovacao quando existe vencida
+[31m[1mAssertionError[22m: expected 'undefined' to be 'function' // Object.is equality[39m
+
+Expected: [32m"[7mf[27mun[7mction[27m"[39m
+Received: [31m"un[7mdefined[27m"[39m
+
+[36m [2m❯[22m tests/issue-0021-attribution.test.ts:[2m108:55[22m[39m
+    [90m106| [39m      collectAdoptableAttributionIds?: (flow: Flow) => Promise<string[…
+    [90m107| [39m    }[33m;[39m
+    [90m108| [39m    [34mexpect[39m([35mtypeof[39m mod[33m.[39mcollectAdoptableAttributionIds)[33m.[39m[34mtoBe[39m([32m"function"[39m)[33m;[39m
+    [90m   | [39m                                                      [31m^[39m
+    [90m109| [39m    [35mconst[39m adotaveis [33m=[39m [35mawait[39m mod[33m.[39m[34mcollectAdoptableAttributionIds[39m(flow)[33m;[39m
+    [90m110| [39m    [34mexpect[39m(adotaveis)[33m.[39m[34mtoEqual[39m([])[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/issue-0021-attribution.test.ts[2m > [22missue 21 corte A — attribution nas tres falhas publicadas[2m > [22mcura P3-9 hint com adotavel valida oferece exatamente ela
+[31m[1mTypeError[22m: mod.collectAdoptableAttributionIds is not a function[39m
+[36m [2m❯[22m tests/issue-0021-attribution.test.ts:[2m125:33[22m[39m
+    [90m123| [39m      collectAdoptableAttributionIds: (flow: Flow) => Promise<string[]…
+    [90m124| [39m    }[33m;[39m
+    [90m125| [39m    [35mconst[39m adotaveis [33m=[39m [35mawait[39m mod[33m.[39m[34mcollectAdoptableAttributionIds[39m(flow)[33m;[39m
+    [90m   | [39m                                [31m^[39m
+    [90m126| [39m    [34mexpect[39m(adotaveis)[33m.[39m[34mtoEqual[39m([[32m"e1"[39m])[33m;[39m
+    [90m127| [39m    [35mconst[39m policy [33m=[39m [35mawait[39m [35mimport[39m([32m"../src/verdict-fiscal-policy.js"[39m) [35mas[39m {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m5 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[90m (7)[39m
+[2m   Start at [22m 12:45:28
+[2m   Duration [22m 342ms[2m (transform 82ms, setup 0ms, collect 99ms, tests 38ms, environment 0ms, prepare 86ms)[22m
+

@@ -1,0 +1,51 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.6 [39m[90mC:/CodexProjetos/dex-PPIRTV[39m
+
+ [31m❯[39m tests/emenda-a2-deadlock.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 63[2mms[22m[39m
+[31m   [31m×[31m emenda A2 — anexo aceita escopo corroborado pendente do bloqueio[2m > [22mcura ciclo pendingReviewScopeForAttach devolve o escopo do ultimo bloqueio pendente[39m[32m 31[2mms[22m[39m
+[31m     → expected 'undefined' to be 'function' // Object.is equality[39m
+   [32m✓[39m emenda A2 — anexo aceita escopo corroborado pendente do bloqueio[2m > [22mcaracterizacao sem bloqueio pendente devolve null e anexo segue exato[32m 0[2mms[22m[39m
+[31m   [31m×[31m emenda A2 — anexo aceita escopo corroborado pendente do bloqueio[2m > [22mcura ciclo fingerprint da uniao persistido com pending iguala o corroborado[39m[32m 2[2mms[22m[39m
+[31m     → expected 'undefined' to be 'function' // Object.is equality[39m
+   [32m✓[39m emenda A2 — anexo aceita escopo corroborado pendente do bloqueio[2m > [22mcaracterizacao fiscal intacto exige fingerprint corrente do flow avaliado[32m 29[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/emenda-a2-deadlock.test.ts[2m > [22memenda A2 — anexo aceita escopo corroborado pendente do bloqueio[2m > [22mcura ciclo pendingReviewScopeForAttach devolve o escopo do ultimo bloqueio pendente
+[31m[1mAssertionError[22m: expected 'undefined' to be 'function' // Object.is equality[39m
+
+Expected: [32m"[7mf[27mun[7mction[27m"[39m
+Received: [31m"un[7mdefined[27m"[39m
+
+[36m [2m❯[22m tests/emenda-a2-deadlock.test.ts:[2m57:52[22m[39m
+    [90m 55| [39m      pendingReviewScopeForAttach?: (flow: Flow) => { changed_files: s…
+    [90m 56| [39m    }[33m;[39m
+    [90m 57| [39m    [34mexpect[39m([35mtypeof[39m mod[33m.[39mpendingReviewScopeForAttach)[33m.[39m[34mtoBe[39m([32m"function"[39m)[33m;[39m
+    [90m   | [39m                                                   [31m^[39m
+    [90m 58| [39m    [35mconst[39m flow [33m=[39m [34mflowComHistoria[39m([[33mBLOQUEIO[39m][33m,[39m [[32m"src/app.ts"[39m])[33m;[39m
+    [90m 59| [39m    [35mconst[39m pending [33m=[39m mod[33m.[39m[34mpendingReviewScopeForAttach[39m[33m![39m(flow)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/emenda-a2-deadlock.test.ts[2m > [22memenda A2 — anexo aceita escopo corroborado pendente do bloqueio[2m > [22mcura ciclo fingerprint da uniao persistido com pending iguala o corroborado
+[31m[1mAssertionError[22m: expected 'undefined' to be 'function' // Object.is equality[39m
+
+Expected: [32m"[7mf[27mun[7mction[27m"[39m
+Received: [31m"un[7mdefined[27m"[39m
+
+[36m [2m❯[22m tests/emenda-a2-deadlock.test.ts:[2m86:52[22m[39m
+    [90m 84| [39m    }[33m;[39m
+    [90m 85| [39m    expect(typeof mod.strictReviewSnapshotFingerprint).toBe("function"…
+    [90m 86| [39m    [34mexpect[39m([35mtypeof[39m mod[33m.[39mpendingReviewScopeForAttach)[33m.[39m[34mtoBe[39m([32m"function"[39m)[33m;[39m
+    [90m   | [39m                                                   [31m^[39m
+    [90m 87| [39m    [90m// corroborado: o conjunto ampliado que o fiscal avaliara[39m
+    [90m 88| [39m    const corroborado = flowComHistoria([], ["src/app.ts", "playbook.m…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[90m (4)[39m
+[2m   Start at [22m 14:40:46
+[2m   Duration [22m 283ms[2m (transform 81ms, setup 0ms, collect 37ms, tests 63ms, environment 0ms, prepare 76ms)[22m
+

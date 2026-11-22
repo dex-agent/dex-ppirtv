@@ -2266,5 +2266,55 @@
       "red_command": "npx vitest run tests/issue-0022-pending-cycle.test.ts -t \"cura review com o hash do evento anexa quando o pending contem arquivo removido por commit\"",
       "behavior_preserved_by": "tests/issue-0022-pending-cycle.test.ts 6 its: 4 repros curadas (exclusao, escopo corrente pos-attribution com retry reconhecendo sem segunda rodada, persistencia os-dois-ou-nenhum, status publicando o escopo que o anexo aceita) + 2 caracterizacoes (FILE_REQUIRED sem exclusao comprovada; rejeicao do escopo congelado pos-attribution)."
     }
-  ]
+  ],
+  "evidence_redirects": {
+    ".agents/AUDITORIAS/2026-11-17-maratona-pipeline-binding/MUTACOES/m1-default-risks.json": {
+      "target": "docs/architecture/ledger-evidence/2026-11-17-maratona-pipeline-binding/MUTACOES/m1-default-risks.json",
+      "sha256": "c6f24a2ec6b4cfde9e5b1a056bee8976182ba0402c17522c7aded21826ee9ee3"
+    },
+    ".agents/AUDITORIAS/2026-11-17-maratona-pipeline-binding/MUTACOES/m2-evidence-text.json": {
+      "target": "docs/architecture/ledger-evidence/2026-11-17-maratona-pipeline-binding/MUTACOES/m2-evidence-text.json",
+      "sha256": "0448779f24389e2bab18e42f30ddfedb535cc8901df493fc7c40fea46537e4d2"
+    },
+    ".agents/AUDITORIAS/2026-11-17-maratona-pipeline-binding/MUTACOES/m3-mismatch-msg.json": {
+      "target": "docs/architecture/ledger-evidence/2026-11-17-maratona-pipeline-binding/MUTACOES/m3-mismatch-msg.json",
+      "sha256": "c1e699af8042ac26088c01ceab25df99a52eab9d9032e95bcce49e3043d4eb06"
+    },
+    ".agents/AUDITORIAS/2026-11-17-maratona-pipeline-binding/MUTACOES/m4-idempotency-msg.json": {
+      "target": "docs/architecture/ledger-evidence/2026-11-17-maratona-pipeline-binding/MUTACOES/m4-idempotency-msg.json",
+      "sha256": "34b6b2246327fd6bf58d4ced3678031f5098ac7b3bb1a3ea2ab92442e318849f"
+    },
+    ".agents/AUDITORIAS/2026-11-17-modo-prune-fiscal/MUTACOES/m1-death-proof.json": {
+      "target": "docs/architecture/ledger-evidence/2026-11-17-modo-prune-fiscal/MUTACOES/m1-death-proof.json",
+      "sha256": "ecc27b69b211baf0cbf0301ad4d33bceab1ed475266860c7a0015ba154609afb"
+    },
+    ".agents/AUDITORIAS/2026-11-17-modo-prune-fiscal/RED-vitest.txt": {
+      "target": "docs/architecture/ledger-evidence/2026-11-17-modo-prune-fiscal/RED-vitest.txt",
+      "sha256": "67751a862be1b7ed87d191c7018a723cd458be089e097173de1f2d7b47477ab6"
+    },
+    ".agents/AUDITORIAS/2026-11-18-emenda-a2/MUTACOES/m1-pending.json": {
+      "target": "docs/architecture/ledger-evidence/2026-11-18-emenda-a2/MUTACOES/m1-pending.json",
+      "sha256": "e7f5f4fb8704529c240742a54bf8e4f079b2bbcff13acf6eda65418689a4b5dc"
+    },
+    ".agents/AUDITORIAS/2026-11-18-emenda-a2/RED-vitest.txt": {
+      "target": "docs/architecture/ledger-evidence/2026-11-18-emenda-a2/RED-vitest.txt",
+      "sha256": "8d5f2216fb1498887007f49b3f7e99813ba933c3f4365365dd97ab3b180e2c46"
+    },
+    ".agents/AUDITORIAS/2026-11-18-issue21-corte-a/MUTACOES/m1-crivo.json": {
+      "target": "docs/architecture/ledger-evidence/2026-11-18-issue21-corte-a/MUTACOES/m1-crivo.json",
+      "sha256": "56ef3ceb86547c4d4d6d04672cfe514db5b996de43e3b3907516de879be7fa5b"
+    },
+    ".agents/AUDITORIAS/2026-11-18-issue21-corte-a/RED-vitest.txt": {
+      "target": "docs/architecture/ledger-evidence/2026-11-18-issue21-corte-a/RED-vitest.txt",
+      "sha256": "7c2cf4884512b333791f24ad8c832f13ba5e73631162924414ab46605b8f44c2"
+    },
+    ".agents/AUDITORIAS/2026-11-18-onda-verdict-d50b1/MUTACOES/m1-fonte.json": {
+      "target": "docs/architecture/ledger-evidence/2026-11-18-onda-verdict-d50b1/MUTACOES/m1-fonte.json",
+      "sha256": "f1ac4eb4a313fbedc385435a05afe177c1a31ec0cb64d1c91208e127fc475479"
+    },
+    ".agents/AUDITORIAS/2026-11-18-onda-verdict-d50b1/RED-vitest.txt": {
+      "target": "docs/architecture/ledger-evidence/2026-11-18-onda-verdict-d50b1/RED-vitest.txt",
+      "sha256": "924c30888c5cc9890ecd85e867e4dd0cf0c9148c8940ddbf626dfd0add31247a"
+    }
+  }
 }

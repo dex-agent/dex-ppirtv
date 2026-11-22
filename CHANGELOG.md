@@ -8,6 +8,24 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **redirect: evidence legada do ledger de boundary re-abrivel no clone
+  (Trilho 2026-11-21-redirect-evidence-legada-ledger, flow 5916_0001)**:
+  os 6 records selados (44-50: MARATONA-PIPELINE/BINDING, PRUNE-MATERIAL,
+  VERDICT-CLUSTER-D50B1, ISSUE21-ATTRIBUTION, EMENDA-A2) citam 12 artefatos
+  em `.agents/AUDITORIAS/` — gitignored por design (classe #19
+  claim-sem-receipt no clone) e IMUTÁVEIS por selo
+  (`LEDGER_HISTORY_MUTATED`). Cura: os 12 artefatos foram promovidos
+  byte-a-byte (sha256 conferido) para `docs/architecture/ledger-evidence/` e
+  o manifest ganha o mapa `evidence_redirects` — os records ficam
+  byte-idênticos. O gate `EVIDENCE_NOT_VERSIONED` do record-check (bootstrap)
+  resolve o redirect exigindo destino versionado existente + sha256
+  conferido; redirect inválido (destino `.agents/`, inexistente ou sha
+  divergente) reprova `EVIDENCE_REDIRECT_INVALID`/`SHA_MISMATCH`; SEM
+  redirect o gate reprova como hoje; o declaration gate (anexos novos)
+  permanece FECHADO — a porta não vira afrouxamento. RED→GREEN 4/4 → 9/9,
+  vigília por mutação PEGA (branch removido → 4 failed). Suíte
+  1049|4 (1053) → 1053|4 (1057), exit 0; `src/flow-engine.ts` intocado
+  (camping NOT_APPLICABLE, selo CORTE-B-PRIME-PENDING-CYCLE segue pendente).
 - **barata-mestra: idempotência por anchor no writeMemoryCandidate (Trilho
   2026-11-21, flow 5874_0001)**: o `l2_bloco` governado carrega
   `Candidate: `mc_N`` volátil que mudava a cada re-mineração e derrotava o

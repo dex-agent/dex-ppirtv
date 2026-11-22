@@ -1,0 +1,2114 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.6 [39m[90mC:/CodexProjetos/dex-PPIRTV[39m
+
+ [31m❯[39m tests/onda-verdict-d50b1.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[32m 23[2mms[22m[39m
+[31m   [31m×[31m onda cluster verdict d50b1 — 8 sítios usam a fonte única isPositiveVerdict[2m > [22mmotor consome isPositiveVerdict em ao menos 8 sítios + 1 import (antes: 0)[39m[32m 7[2mms[22m[39m
+[31m     → expected false to be true // Object.is equality[39m
+[31m   [31m×[31m onda cluster verdict d50b1 — 8 sítios usam a fonte única isPositiveVerdict[2m > [22mzero pares inline de pronto OU pronto_com_ressalvas no motor (antes: 8)[39m[32m 1[2mms[22m[39m
+[31m     → expected 4 to be +0 // Object.is equality[39m
+[31m   [31m×[31m onda cluster verdict d50b1 — 8 sítios usam a fonte única isPositiveVerdict[2m > [22msítio negado vira !isPositiveVerdict (antes: dupla negação inline)[39m[32m 3[2mms[22m[39m
+[31m     → expected 'import { createHash } from "node:cryp…' to match /!isPositiveVerdict\(/[39m
+   [32m✓[39m onda cluster verdict d50b1 — 8 sítios usam a fonte única isPositiveVerdict[2m > [22mfronteira preservada: singulares só-pronto deliberados permanecem (l.2630 e l.3981)[32m 1[2mms[22m[39m
+   [32m✓[39m onda cluster verdict d50b1 — 8 sítios usam a fonte única isPositiveVerdict[2m > [22mfonte única intocada no swap: POSITIVE_VERDICTS segue fechada em domain.ts[32m 10[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 3 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/onda-verdict-d50b1.test.ts[2m > [22monda cluster verdict d50b1 — 8 sítios usam a fonte única isPositiveVerdict[2m > [22mmotor consome isPositiveVerdict em ao menos 8 sítios + 1 import (antes: 0)
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m tests/onda-verdict-d50b1.test.ts:[2m22:23[22m[39m
+    [90m 20| [39m    [35mconst[39m usos [33m=[39m [33mMOTOR[39m[33m.[39m[34mmatch[39m([36m/isPositiveVerdict\(/g[39m)[33m?.[39mlength [33m??[39m [34m0[39m[33m;[39m
+    [90m 21| [39m    const importado = /import\s*\{[^}]*isPositiveVerdict[^}]*\}\s*from…
+    [90m 22| [39m    [34mexpect[39m(importado)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   | [39m                      [31m^[39m
+    [90m 23| [39m    [34mexpect[39m(usos)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m8[39m)[33m;[39m
+    [90m 24| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/onda-verdict-d50b1.test.ts[2m > [22monda cluster verdict d50b1 — 8 sítios usam a fonte única isPositiveVerdict[2m > [22mzero pares inline de pronto OU pronto_com_ressalvas no motor (antes: 8)
+[31m[1mAssertionError[22m: expected 4 to be +0 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 0[39m
+[31m+ 4[39m
+
+[36m [2m❯[22m tests/onda-verdict-d50b1.test.ts:[2m28:19[22m[39m
+    [90m 26| [39m  it("zero pares inline de pronto OU pronto_com_ressalvas no motor (an…
+    [90m 27| [39m    const pares = (MOTOR.match(PAR_INLINE) ?? []).length + (MOTOR.matc…
+    [90m 28| [39m    [34mexpect[39m(pares)[33m.[39m[34mtoBe[39m([34m0[39m)[33m;[39m
+    [90m   | [39m                  [31m^[39m
+    [90m 29| [39m  })[33m;[39m
+    [90m 30| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/onda-verdict-d50b1.test.ts[2m > [22monda cluster verdict d50b1 — 8 sítios usam a fonte única isPositiveVerdict[2m > [22msítio negado vira !isPositiveVerdict (antes: dupla negação inline)
+[31m[1mAssertionError[22m: expected 'import { createHash } from "node:cryp…' to match /!isPositiveVerdict\(/[39m
+
+[32m- Expected:[39m 
+/!isPositiveVerdict\(/
+
+[31m+ Received:[39m 
+"import { createHash } from \"node:crypto\";
+import { readFile, readdir } from \"node:fs/promises\";
+import path from \"node:path\";
+import { providedPathFindingsFields, providedPathFindingsFor, providedPathPreviewFields } from \"./gate-provided-paths.js\";
+import { PHASES, COMPACT_PHASES, GOAL_FLOW_ROLES, type AnyPhase, type Cooperator, type CriterionProofInput, type Evidence, type Flow, type GateRecord, type GoalBinding, type GoalEnvelope, type GoalFlowRole, type HygieneFinding, type Meeting, type MemoryCandidatePromoteScope, type MemoryCandidateResolution, type MemoryCandidateResolutionAction, type MeetingKind, type MeetingType, type MemoryMiningSummary, type MemoryPostWriteValidation, type MemoryReviewStatus, type MemoryWritePolicy, type PipelineFlowResult, type PipelineItem, type PresentationEnvelope, type Phase, type Scope, type SptValidationResult, type Verdict, type VerdictStatus, type WorkProgressEvent, type WorkProgressStatus, type WorkProgressSummary } from \"./domain.js\";
+import { canonicalVerdictChangedFiles, hasRequirement, invalidateStaleDownstreamGates, isStructuredReviewEvidence, mergePathFacts, officialGoalNeedsCanonicalVerdict, providedIgnoredKeys, providedRequirementDiagnostic, resolveGateRequirements, reviewCurrencyAppliesToPhase, reviewCurrencyMissing, reviewEvidenceDiagnostics, reviewEvidenceRequested, reviewEvidenceValidity, savedGateReusable, strictPathArray, structuredReviewAttestationRequested, type GateRequirementResolution } from \"./gate-resolution.js\";
+import { requiredCooperationDiagnostics, meetingClosedIndex, meetingOutcomeSummaries, meetingOutcomeCounts, requiredCooperationNeedsMeetingIdRetry, meetingKindForType, meetingTypeForKind, requiredMeetingKind, requiredMeetingParticipants, meetingClosedLedgerData, applyClosedMeetingToFlow, assertMeetingClosed } from \"./meeting-policy.js\";
+import { attributionHint, evaluateFiscalPolicyWithDeps, countHistory, countRegressions, explicitMeetingTrigger, fiscalResultWithDeps, fiscalText, MEMORY_MINING_BLOCKED_VERDICT_REASON, reportFiscalSignals, reportRecurringRiskCleared, requiredCooWithDeps, type FiscalPolicyResult } from \"./verdict-fiscal-policy.js\";
+import { sanitizePersistedProvided } from \"./input-unwrap.js\";
+import { assertNoSecretLikeItems, assertNoSecretLikePayload, assertNoSecretLikeText } from \"./security/secret-redaction.js\";
+import { assertLegacyFlowCanReceiveFirstGoalBinding, ensureLedgerTransitionRecorded, GoalIdempotencyDuplicateBindingsError } from \"./goal-ledger-recovery.js\";
+import { classifyDexMemoriaV2MiningCandidate, classifyMemoryCandidate, classifyDexMemoriaV2Intent, collectMemoryNuggets, executeDexMemoriaV2Adapter, governAutoWriteCandidate, isWritableCandidate, linkParkingToGold, MemoryLibrarian, miningVisibilityEgress, resolveDexMemoriaHome, validateMemoryPostWrite, writeMemoryCandidate, type DexMemoriaV2CanonicalReceipt, type DexMemoriaV2Destination, type DexMemoriaV2FlowWriterConfig, type DexMemoriaV2MiningClassification, type DexMemoriaV2ValidationReceiptRef, type MemoryHookRunner } from \"./memory/index.js\";
+import { errorMessage, requireText, nowIso, normalizeComparable } from \"./lang-utils.js\";
+import { presentArtifact, presentChecklist, presentFlow, presentGate } from \"./presentation.js\";
+import {
+  applyMemoryCandidateResolution,
+  candidateResolutionLedgerData,
+  candidateScoreTotal,
+  confinedV2Workspace,
+  hasV2CandidateIdentity,
+  isMemoryCandidateScope,
+  isPromotionScope,
+  isV2CommittedBoundaryError,
+  latestTraceableCandidateResolutionMap,
+  memoryCandidateIdentity,
+  memoryCandidateLedgerDataWithResolution,
+  memoryCandidateLookup,
+  memoryEditSuggestion,
+  memoryNonWriteReason,
+  freshOperationIdForRetry,
+  memoryV2CandidateId,
+  memoryV2OperationId,
+  memoryV2ReconciliationId,
+  memoryV2Slug,
+  memoryWriteDecision,
+  promotionDestination,
+  promotionScopeForDestinations,
+  promotionThemeForDestinations,
+  requestedV2MiningClassification,
+  requireConfiguredV2Root,
+  requireV2CandidateDestinations,
+  sameCandidateResolution,
+  v2CommittedBoundaryError,
+  v2PromotionClassification,
+  v2ReceiptsProveCommittedEffect,
+} from \"./memory-promotion.js\";
+import { ppirtvCheckIn, ppirtvCheckOut, compactPpirtvCheckout, classifyEvidenceQuality, missingQuandoGate, goalEvidenceMetadataNote, mergeEvidenceNotes, workProgressSummary, memoryMiningStatus, workProgressEvents, progressText, validateProgressNumbers } from \"./ppirtv-checkin.js\";
+import { type RecallVisualStatus, type MemoryMiningV2Summary, type V2MemoryCandidateResolution, FISCAL_POLICY_DEPS, latestLibrarianStatus, latestLibrarianStatusFromLedger, structuredLibrarianStatus, librarianCheckoutAccountability, hasHygieneBlocking, hasHygieneScan, hasMemoryMiningRun, isMaterialHygieneFinding, needsReviewCoherence, latestFiscalBlock, reconciledBlockers, blockerDiagnosticsFor, memoryMiningVerdictBlockers, memoryMiningBlockedAction, blockedDirectAction, phaseAdvanceDirectAction, blockedArchiveDirectAction, withDirectAction, fiscalBackTo, MEETING_RESOLVABLE_BLOCKERS, blockerOwner, nextRequiredActionFor, blockerResolutionGuidance, fiscalLoopMonitor, strongestLoopMonitor, blockerLoopId, lastIndexWhere } from \"./fiscal-blockers.js\";
+import { defaultWorkflow, earlySecurityProportionalityPolicy, finalReportModel, gateFinalOutput, principleChecklist, readyDefinition, scanOperationalPrinciples, secretEnvConsumptionPolicy, type DefaultWorkflow, type OperationalPolicyBlock, type PrincipleChecklistItem } from \"./principles.js\";
+import { PpirtvStore } from \"./store.js\";
+import { assertPhaseInProfile, assertPhaseTransitionDirection, nextPhaseOrThrow, phaseAdvanceAllowed, profileFor } from \"./phase-profile.js\";
+import { FISCAL_CONFIG, graphifyRecallConfigured, sameRuntimePath } from \"./config.js\";
+import { fingerprintSptContract, parseSptDocument, sha256SptDocument } from \"./spt-contract.js\";
+import { fiscalStateSegment } from \"./error-envelope.js\";
+import { missingValidationDiagnostic, runtimeWorkspaceMismatchDiagnostic, SptPathContractError, validationSptPathDiagnostic, resolveSptPath, isDirectory, isFile, isInsideOrEqual, isSensitivePath } from \"./spt-path-diagnostics.js\";
+import { assertCriterionProofRevisionCurrent, criterionProjection, evidenceRequirementProjection, assertSptV3PositiveVerdictCoverage, assertCriterionProofAdmission, sptTraceabilityReattachedEventData, taskProjection, traceabilityFromContract } from \"./spt-traceability.js\";
+import { requiresGoalEvidence } from \"./spt-traceability.js\";
+import { unique, stringArray, uniqueCooperators } from \"./lang-utils.js\";
+import { normalizePipelineItem, pipelineEvidenceText } from \"./pipeline-policy.js\";
+import { assertCompatibleGoalBinding } from \"./goal-binding-compat.js\";
+import { sptBindingIntegrityFor } from \"./provenance-trace.js\";
+import { freezeGitHeadBase, normalizeReviewPath, pendingReviewAdditionsFor, restoreBlockedVerdictSnapshot, strictReviewSnapshotFingerprint, withCurrentImplementationFingerprint, withGitCorroboratedChangedFiles, withRestoredBlockedVerdictSnapshot } from \"./review-snapshot.js\";
+import { applyReviewScopeAttributions, attributedVerdictSnapshot, bindReviewScopeAttribution, prepareVerdictSnapshot, type GoalVerdictInput } from \"./review-scope-attribution.js\";
+import { normalizeRecallConsumptionInput, sameRecallReferences, validateRecallConsumptionReferences, type RecallConsumptionInput } from \"./memory/recall-consumption-contract.js\";
+import { assertGovernedTag } from \"./memory/governed-tag.js\";
+import { blockerSignature, hasVerdictAfterLatestMemoryMining, memoryPostWriteValidationBlocks, memoryRequiredByFlow, noMemoryWasPromoted, numericMemoryField, requireV2PromotionMetadata, type FiscalVerdictInput } from \"./memory/mining-policy.js\";
+import { deriveVerdictLearning } from \"./verdict-learning.js\";
+
+export {
+  boundedRecallErrorReferences,
+  RecallConsumptionReferenceError,
+  RECALL_ERROR_MAX_REFERENCE_LENGTH,
+  RECALL_ERROR_MAX_REFERENCES
+} from \"./memory/recall-consumption-contract.js\";
+
+const DEFAULT_SCOPE: Scope = { in: [], out: [] };
+export const WORK_PROGRESS_MAX_RUNNING_EVENTS = 100;
+
+
+type ResolveMemoryCandidatesInput = {
+  flow_id: string;
+  candidate_ids: string[];
+  action: MemoryCandidateResolutionAction;
+  rationale: string;
+  when?: string;
+  target_scope?: MemoryCandidatePromoteScope;
+  theme?: string;
+  density?: \"light\" | \"deep\";
+  owner_skill?: string;
+  tags?: string[];
+};
+
+type WorkProgressInput = {
+  flow_id?: string;
+  idempotency_key?: string;
+  event_key: string;
+  source: string;
+  operation: string;
+  stage: string;
+  current: number;
+  total: number;
+  status: WorkProgressStatus;
+  message?: string;
+};
+
+export class WorkProgressContractError extends Error {
+  readonly code: \"PROGRESS_OUT_OF_ORDER\" | \"PROGRESS_TOTAL_MISMATCH\" | \"PROGRESS_AFTER_TERMINAL\";
+  readonly details: Record<string, unknown>;
+
+  constructor(code: WorkProgressContractError[\"code\"], details: Record<string, unknown>) {
+    super(code);
+    this.name = \"WorkProgressContractError\";
+    this.code = code;
+    this.details = details;
+  }
+}
+
+type CanonicalGoalEnvelope = Omit<GoalEnvelope, \"mode\"> & { mode?: \"full\" | \"compact\" };
+
+export type FlowEngineOptions = {
+  memory_writer?: { profile: \"unconfigured\" | \"legacy-v1\" } | DexMemoriaV2FlowWriterConfig;
+  legacy_candidate_writer?: typeof writeMemoryCandidate;
+};
+
+
+
+
+export class FlowEngine {
+  readonly store: PpirtvStore;
+  readonly memoryHooks: MemoryHookRunner;
+  readonly options: FlowEngineOptions;
+
+  constructor(store: PpirtvStore, memoryHooks?: MemoryHookRunner, options: FlowEngineOptions = {}) {
+    this.store = store;
+    this.memoryHooks = memoryHooks ?? new MemoryLibrarian(store.root);
+    this.options = options;
+  }
+
+  async createFlow(input: {
+    goal: string;
+    owner?: string;
+    context?: string;
+    scope?: Partial<Scope>;
+    risks?: string[];
+    uncertainties?: string[];
+  }): Promise<Flow & PresentationEnvelope> {
+    await this.store.init();
+    requireText(input.goal, \"goal\");
+    // Laudo F4: segredo nao pode entrar no flow JSON nem no ledger.
+    assertNoSecretLikePayload(input, \"createFlow\");
+    const now = nowIso();
+    const flow = this.buildInitialFlow(input, await this.store.nextId(\"flow\"), now);
+    await this.store.saveFlow(flow);
+    await this.ledger(flow.flow_id, \"flow_created\", { goal: flow.goal, phase: flow.phase });
+    return presentFlow(flow);
+  }
+
+  private buildInitialFlow(
+    input: {
+      goal: string;
+      owner?: string;
+      context?: string;
+      scope?: Partial<Scope>;
+      risks?: string[];
+      uncertainties?: string[];
+    },
+    flowId: string,
+    now: string
+  ): Flow {
+    return {
+      flow_id: flowId,
+      goal: input.goal,
+      owner: input.owner,
+      context: input.context,
+      phase: \"pensamentos\",
+      status: \"active\",
+      scope: {
+        in: input.scope?.in ?? DEFAULT_SCOPE.in,
+        out: input.scope?.out ?? DEFAULT_SCOPE.out
+      },
+      risks: input.risks ?? [],
+      uncertainties: input.uncertainties ?? [],
+      tasks: [],
+      done_criteria: [],
+      expected_evidence: [],
+      changed_files: [],
+      deleted_files: [],
+      decisions: [],
+      parking_lot: [],
+      gold_mining: [],
+      goal_learning_links: [],
+      cooperators: [],
+      active_credits: [],
+      evidence: [],
+      meetings: [],
+      verdicts: [],
+      gates: {},
+      history: [{ at: now, type: \"flow_created\", data: { phase: \"pensamentos\" } }],
+      created_at: now,
+      updated_at: now
+    };
+  }
+
+  async status(flowId: string): Promise<Flow & PresentationEnvelope> {
+    return presentFlow(await this.store.loadFlow(flowId));
+  }
+
+  async updateFlowFacts(
+    flowId: string,
+    facts: Partial<
+      Pick<
+        Flow,
+        | \"context\"
+        | \"risks\"
+        | \"uncertainties\"
+        | \"tasks\"
+        | \"done_criteria\"
+        | \"expected_evidence\"
+        | \"changed_files\"
+        | \"deleted_files\"
+        | \"decisions\"
+      >
+    > & { scope?: Partial<Scope> }
+  ): Promise<Flow> {
+    return this.store.withFlowLock(flowId, () => this.updateFlowFactsUnlocked(flowId, facts));
+  }
+
+  private async updateFlowFactsUnlocked(
+    flowId: string,
+    facts: Partial<
+      Pick<
+        Flow,
+        | \"context\"
+        | \"risks\"
+        | \"uncertainties\"
+        | \"tasks\"
+        | \"done_criteria\"
+        | \"expected_evidence\"
+        | \"changed_files\"
+        | \"deleted_files\"
+        | \"decisions\"
+      >
+    > & { scope?: Partial<Scope> }
+  ): Promise<Flow> {
+    const flow = await this.store.loadFlow(flowId);
+    assertFlowAcceptsMutation(flow);
+    // Laudo F4: fato com segredo rejeita antes de persistir.
+    assertNoSecretLikePayload(facts, \"update_flow_facts\");
+    const now = nowIso();
+    flow.context = facts.context ?? flow.context;
+    flow.risks = facts.risks ?? flow.risks;
+    flow.uncertainties = facts.uncertainties ?? flow.uncertainties;
+    flow.tasks = facts.tasks ?? flow.tasks;
+    flow.done_criteria = facts.done_criteria ?? flow.done_criteria;
+    flow.expected_evidence = facts.expected_evidence ?? flow.expected_evidence;
+    const pathFacts = mergePathFacts(flow.changed_files, facts as Record<string, unknown>, flow.deleted_files);
+    flow.changed_files = pathFacts.changed_files;
+    flow.deleted_files = pathFacts.deleted_files;
+    assertDeletedFilesBelongToChangedFiles(flow.changed_files, flow.deleted_files);
+    // Laudo F5: mudanca de changed_files invalida gates downstream passados.
+    invalidateStaleDownstreamGates(flow.gates, flow.changed_files);
+    flow.decisions = facts.decisions ?? flow.decisions;
+    flow.scope = {
+      in: facts.scope?.in ?? flow.scope.in,
+      out: facts.scope?.out ?? flow.scope.out
+    };
+    flow.updated_at = now;
+    flow.history.push({ at: now, type: \"flow_facts_updated\", data: facts as Record<string, unknown> });
+    await this.store.saveFlow(flow);
+    await this.ledger(flow.flow_id, \"flow_facts_updated\", facts as Record<string, unknown>);
+    return flow;
+  }
+
+  async validateSpt(input: { workspace: string; spt_path: string; objective?: string }): Promise<SptValidationResult> {
+    requireText(input.workspace, \"workspace\");
+    requireText(input.spt_path, \"spt_path\");
+    const workspace = path.resolve(input.workspace);
+    const sptPath = resolveSptPath(workspace, input.spt_path);
+    const planTasksDir = path.join(workspace, \".agents\", \"PLAN-TASKS\");
+    const checks: Record<string, boolean> = {};
+    const missing: string[] = [];
+    const warnings: string[] = [];
+    const risks: string[] = [];
+
+    checks.workspace_absolute = path.isAbsolute(input.workspace);
+    checks.workspace_exists = await this.store.pathExists(workspace);
+    checks.workspace_is_directory = checks.workspace_exists && (await isDirectory(workspace));
+    checks.spt_path_not_sensitive = !isSensitivePath(sptPath);
+    checks.spt_inside_workspace = checks.workspace_is_directory && isInsideOrEqual(workspace, sptPath);
+    checks.spt_under_plan_tasks = checks.workspace_is_directory && isInsideOrEqual(planTasksDir, sptPath);
+    checks.spt_exists = checks.spt_path_not_sensitive && (await this.store.pathExists(sptPath));
+    checks.spt_is_file = checks.spt_exists && (await isFile(sptPath));
+
+    let text = \"\";
+    let documentBytes: Buffer | null = null;
+    if (checks.spt_is_file && checks.spt_inside_workspace && checks.spt_under_plan_tasks) {
+      documentBytes = await readFile(sptPath);
+      text = documentBytes.toString(\"utf8\");
+    }
+
+    const parsedSpt = parseSptDocument(text);
+    const contract = parsedSpt.contract;
+    // SPT gate-integrity-hardening-2 (R4): risks do CONTRATO (validation.risks
+    // so carrega avisos do validador) passam pelo guard central no choke point.
+    assertNoSecretLikeItems(contract?.risks ?? [], \"spt.risks\");
+    const contractLabel = contract?.version === 3 || parsedSpt.errors.some((error) => error.startsWith(\"spt_v3.\"))
+      ? \"spt_v3\"
+      : \"spt_v2\";
+    checks.spt_frontmatter_present = parsedSpt.checks.frontmatter_present;
+    checks.spt_frontmatter_closed = parsedSpt.checks.frontmatter_closed;
+    checks.spt_yaml_valid = parsedSpt.checks.yaml_valid;
+    checks.spt_schema_valid = parsedSpt.checks.schema_valid;
+    checks.spt_semantics_valid = parsedSpt.checks.semantics_valid;
+    checks.spt_workspace_matches = !!contract && path.resolve(contract.workspace) === workspace;
+    checks.spt_objective_matches =
+      !input.objective || (!!contract && normalizeComparable(contract.goal.objective) === normalizeComparable(input.objective));
+    checks[`${contractLabel}_frontmatter_present`] = checks.spt_frontmatter_present;
+    checks[`${contractLabel}_frontmatter_closed`] = checks.spt_frontmatter_closed;
+    checks[`${contractLabel}_yaml_valid`] = checks.spt_yaml_valid;
+    checks[`${contractLabel}_schema_valid`] = checks.spt_schema_valid;
+    checks[`${contractLabel}_semantics_valid`] = checks.spt_semantics_valid;
+    checks[`${contractLabel}_workspace_matches`] = checks.spt_workspace_matches;
+    checks[`${contractLabel}_objective_matches`] = checks.spt_objective_matches;
+
+    const requiredChecks: Record<string, string> = {
+      workspace_absolute: \"workspace_absolute\",
+      workspace_exists: \"workspace_exists\",
+      workspace_is_directory: \"workspace_is_directory\",
+      spt_path_not_sensitive: \"spt_path_not_sensitive\",
+      spt_inside_workspace: \"spt_inside_workspace\",
+      spt_under_plan_tasks: \"spt_under_plan_tasks\",
+      spt_exists: \"spt_exists\",
+      spt_is_file: \"spt_is_file\",
+      spt_frontmatter_present: `${contractLabel}.frontmatter`,
+      spt_frontmatter_closed: `${contractLabel}.frontmatter_closing_marker`,
+      spt_yaml_valid: `${contractLabel}.yaml`,
+      spt_schema_valid: `${contractLabel}.schema`,
+      spt_semantics_valid: `${contractLabel}.semantics`,
+      spt_workspace_matches: `${contractLabel}.workspace_matches_request`,
+      spt_objective_matches: `${contractLabel}.objective_matches_request`
+    };
+    for (const [key, label] of Object.entries(requiredChecks)) {
+      if (!checks[key]) {
+        missing.push(label);
+      }
+    }
+
+    if (contract && /\\b(api[_-]?key|token|password|secret|authorization)\\b/i.test(JSON.stringify(contract))) {
+      warnings.push(\"spt_mentions_sensitive_terms_review_without_echoing_values\");
+    }
+    const contractErrors = parsedSpt.errors.map((error) =>
+      contractLabel === \"spt_v2\" ? error.replace(/^spt\\./, \"spt_v2.\") : error.replace(/^spt\\./, \"spt_v3.\")
+    );
+    missing.push(...contractErrors.filter((error) => !missing.includes(error)));
+    if (!checks.spt_under_plan_tasks) {
+      risks.push(\"SPT fora de .agents/PLAN-TASKS pode quebrar a retomada canonica.\");
+    }
+    if (!checks.spt_path_not_sensitive) {
+      risks.push(\"SPT aponta para path sensivel e nao deve ser lido pelo harness.\");
+    }
+
+    const diagnostic = validationSptPathDiagnostic({ checks, contractErrors });
+    return {
+      valid: missing.length === 0,
+      workspace,
+      spt_path: sptPath,
+      contract_version: contract?.version ?? null,
+      execution_eligible: contract?.version === 3,
+      goal_id: contract?.goal.id ?? null,
+      contract_fingerprint: contract ? fingerprintSptContract(contract) : null,
+      document_sha256: documentBytes ? sha256SptDocument(documentBytes) : null,
+      checks,
+      contract_errors: contractErrors,
+      missing,
+      warnings,
+      risks,
+      diagnostic,
+      tasks:
+        contract?.version === 3
+          ? taskProjection(contract)
+          : contract?.tasks ?? [],
+      expected_evidence:
+        contract?.version === 3
+          ? evidenceRequirementProjection(contract)
+          : contract?.expected_evidence ?? [],
+      done_criteria:
+        contract?.version === 3
+          ? criterionProjection(contract)
+          : contract?.done_criteria ?? [],
+      ...(contract?.version === 3 ? { traceability: traceabilityFromContract(contract) } : {}),
+      next_step:
+        missing.length > 0
+          ? `corrigir_spt: ${missing.join(\", \")}`
+          : contract?.version === 3
+            ? \"goal_start\"
+            : \"migrar_spt_v3_para_nova_execucao\"
+    };
+  }
+
+  async startGoal(input: GoalEnvelope): Promise<Record<string, unknown>> {
+    const idempotencyKey = normalizeGoalEnvelope(input).idempotency_key;
+    const claimId = `goal_start_${createHash(\"sha256\").update(idempotencyKey, \"utf8\").digest(\"hex\").slice(0, 24)}`;
+    const deadline = Date.now() + 35_000;
+    while (true) {
+      try {
+        return await this.store.withFlowLock(claimId, () => this.startGoalUnlocked(input));
+      } catch (error) {
+        if (!errorMessage(error).startsWith(`MEETING_LOCKED: ${claimId};`) || Date.now() >= deadline) {
+          throw error;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+    }
+  }
+
+  private async startGoalUnlocked(input: GoalEnvelope): Promise<Record<string, unknown>> {
+    // Laudo F4: envelope com segredo (objective/context) rejeita antes de
+    // qualquer persistencia — mesmo vindo de SPT valido.
+    assertNoSecretLikePayload(input, \"goal_start\");
+    const envelope = normalizeGoalEnvelope(input);
+    const canonicalStore = path.basename(this.store.root).toLowerCase() === \".ppirtv\";
+    if (!canonicalStore && !this.store.fixtureOnlyNoncanonicalRoot) {
+      throw new Error(
+        \"PPIRTV_STORE_PROJECT_ROOT_REQUIRED: goal_start requires a canonical <workspace>/.ppirtv store; noncanonical roots are fixture-only and must be declared explicitly\"
+      );
+    }
+    const workspaceMatchesStore =
+      this.store.fixtureOnlyNoncanonicalRoot
+      || sameRuntimePath(envelope.workspace, this.store.runtimePaths.projectRoot);
+    if (!workspaceMatchesStore) {
+      throw new SptPathContractError(
+        runtimeWorkspaceMismatchDiagnostic(),
+        `GOAL_WORKSPACE_STORE_MISMATCH: requested workspace ${envelope.workspace} differs from runtime project_root ${this.store.runtimePaths.projectRoot}`
+      );
+    }
+    const validation = await this.validateSpt({
+      workspace: envelope.workspace,
+      spt_path: envelope.spt_path,
+      objective: envelope.objective
+    });
+    if (!validation.valid) {
+      throw new SptPathContractError(
+        validation.diagnostic ?? missingValidationDiagnostic(),
+        `Invalid SPT for goal_start: ${validation.missing.join(\", \")}`
+      );
+    }
+    const now = nowIso();
+    const existingByKey = await this.findGoalFlowByIdempotencyKey(envelope.idempotency_key);
+    let flow: Flow;
+    let reused = false;
+    let newlyCreated = false;
+    if (envelope.flow_id) {
+      flow = await this.store.loadFlow(envelope.flow_id);
+      if (existingByKey && existingByKey.flow_id !== flow.flow_id) {
+        throw new Error(`idempotency_key already belongs to ${existingByKey.flow_id}`);
+      }
+      assertCompatibleGoalBinding(flow.goal_binding, envelope, validation.contract_fingerprint);
+      reused = flow.goal_binding !== undefined;
+    } else if (existingByKey) {
+      assertCompatibleGoalBinding(existingByKey.goal_binding, envelope, validation.contract_fingerprint);
+      flow = existingByKey;
+      reused = true;
+    } else {
+      flow = this.buildInitialFlow({
+        goal: envelope.objective,
+        owner: \"dex-code\",
+        context: `GOAL/SPT via dex-code. Workspace: ${envelope.workspace}. SPT: ${envelope.spt_path}.`,
+        scope: {
+          in: [\"Executar fluxo PPIRTV do SPT validado\", \"Registrar evidencias rastreaveis\", \"Emitir veredito PPIRTV\"],
+          out: [\"Executar hooks invisiveis\", \"Ler .env ou segredos\", \"Duplicar flow por retry\"]
+        },
+        risks: [\"Conclusao positiva exige evidencia rastreavel.\", ...validation.risks],
+        uncertainties: [\"Integracao real do dex-code pode ajustar campos futuros sem quebrar este envelope.\"]
+      }, await this.store.nextId(\"flow\"), now);
+      newlyCreated = true;
+    }
+
+    const effectiveFlowRole = envelope.flow_role ?? \"execution\";
+    if (
+      !reused
+      && validation.contract_version === 2
+      && effectiveFlowRole === \"execution\"
+      && !this.store.fixtureOnlyNoncanonicalRoot
+    ) {
+      throw new Error(
+        \"SPT_V2_EXECUTION_MIGRATION_REQUIRED: new execution bindings require an explicit SPT v3; v2 remains readable for exact retry, recovery or reconciliation\"
+      );
+    }
+
+    return this.store.withFlowLock(flow.flow_id, async () => {
+    if (!newlyCreated) {
+      flow = await this.store.loadFlow(flow.flow_id);
+      reused = flow.goal_binding !== undefined;
+    }
+    if (reused) {
+      assertCompatibleGoalBinding(flow.goal_binding, envelope, validation.contract_fingerprint);
+    }
+    if (!flow.goal_binding && flowIsTerminal(flow)) {
+      throw new Error(
+        `GOAL_TERMINAL_FLOW_UNBOUND: flow ${flow.flow_id} is terminal and cannot receive its first GOAL binding`
+      );
+    }
+    assertLegacyFlowCanReceiveFirstGoalBinding(flow, envelope);
+    if (reused && flowIsTerminal(flow)) {
+      await backfillReattachLedger(this.store, flow, flow.goal_binding!);
+      return {
+        ...(await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })),
+        started: false,
+        reused: true,
+        spt_validation: validation,
+        goal_envelope: flow.goal_binding?.envelope
+      };
+    }
+    const previousBinding = flow.goal_binding;
+    const previousMode = flow.mode;
+    const previousPhase = flow.phase;
+    // Corte de cura P1 (adversarial Onda 2b): o ledger do re-attach e append-only
+    // — so pode ser escrito depois que saveFlow persiste o flow.
+    let reattachLedgerData: Record<string, unknown> | null = null;
+    const incomingMode = envelope.mode ?? (reused ? flow.mode ?? \"compact\" : \"compact\");
+    const flowRole = previousBinding?.flow_role ?? envelope.flow_role ?? \"execution\";
+    const { flow_role: _inputFlowRole, ...envelopeWithoutFlowRole } = envelope;
+    const boundEnvelope = previousBinding?.envelope ?? {
+      ...envelopeWithoutFlowRole,
+      flow_id: flow.flow_id,
+      mode: incomingMode
+    };
+    flow.goal_binding = {
+      envelope: boundEnvelope,
+      flow_role: previousBinding ? previousBinding.flow_role : flowRole,
+      goal_id: previousBinding ? previousBinding.goal_id : validation.goal_id ?? undefined,
+      spt_contract_fingerprint: previousBinding?.spt_contract_fingerprint ?? validation.contract_fingerprint ?? undefined,
+      spt_document_sha256_at_start:
+        previousBinding ? previousBinding.spt_document_sha256_at_start : validation.document_sha256 ?? undefined,
+      started_at: previousBinding?.started_at ?? now,
+      last_seen_at: now
+    };
+    if (!previousBinding) {
+      flow.spt_contract_version = validation.contract_version ?? undefined;
+      flow.spt_traceability = validation.traceability;
+    } else if (!flow.spt_traceability && validation.contract_version === 3) {
+      // Issue #10: cura de flow orfao — re-bind do mesmo SPT v3 reata a
+      // traceability perdida (sem isso o flow ficava cego para sempre: o
+      // criterion_proof exigia traceability que nenhuma rota regravava).
+      flow.spt_contract_version = flow.spt_contract_version ?? validation.contract_version;
+      flow.spt_traceability = validation.traceability;
+      // Onda 2b (FE-DEBT-006): re-attach deixa trilha de auditoria. O history
+      // persiste atomicamente com o saveFlow; o ledger (append-only, sem
+      // compensacao) so entra DEPOIS do salvamento — corte de cura P1
+      // adversarial: trilha falsa impossivel quando saveFlow falha.
+      const reattachData = sptTraceabilityReattachedEventData(
+        flow.flow_id,
+        flow.goal_binding?.spt_contract_fingerprint ?? validation.contract_fingerprint ?? undefined
+      );
+      flow.history.push({ at: now, type: \"spt_traceability_reattached\", data: reattachData });
+      reattachLedgerData = reattachData;
+    }
+    await freezeGitHeadBase(flow, boundEnvelope.workspace);
+    assertNoSecretLikeItems(parsedValidationItems(validation), \"spt_validation\");
+    flow.tasks = unique([...flow.tasks, ...validation.tasks]);
+    flow.done_criteria = unique([...flow.done_criteria, ...validation.done_criteria]);
+    flow.expected_evidence = unique([...flow.expected_evidence, ...validation.expected_evidence, ...envelope.required_evidence]);
+    flow.risks = unique([...flow.risks, \"Conclusao positiva exige evidencia rastreavel.\", ...validation.risks]);
+    flow.updated_at = now;
+    flow.history.push({
+      at: now,
+      type: reused ? \"goal_reused\" : \"goal_started\",
+      data: goalLedgerData(flow.goal_binding, flow)
+    });
+    // Patch A (modo compact wire-up): propagar envelope.mode para flow.mode.
+    // Default \"compact\" quando ausente. Em retry sem modo explicito, preservar
+    // o perfil persistido para nao migrar um flow antigo no meio da execucao.
+    // Se compact e o flow ainda esta em fase
+    // full inicial (\"pensamentos\"), migrar para a fase inicial compact
+    // (\"concepcao\") para que advance/checkGate operem no perfil certo.
+    // R2 (revisor-codigo): se o flow ja existe com modo diferente (idempotency
+    // reuse), rejeitar em vez de sobrescrever silenciosamente — isso quebraria
+    // o fluxo em fase avancada.
+    // P2a (hardening): snapshot do estado pre-mutacao para rollback em caso
+    // de falha em saveFlow. Sem isso, o flow em memoria fica divergente do
+    // disco apos IO error.
+    if (reused && flow.mode && flow.mode !== incomingMode) {
+      throw new Error(`MODE_MISMATCH: flow already in mode \"${flow.mode}\", cannot switch to \"${incomingMode}\" (idempotency_key=${envelope.idempotency_key})`);
+    }
+    flow.mode = incomingMode;
+    if (flow.mode === \"compact\" && flow.phase === \"pensamentos\" && flow.verdicts.length === 0 && Object.keys(flow.gates).length === 0) {
+      flow.phase = \"concepcao\";
+      flow.history.push({ at: now, type: \"flow_created\", data: { phase: \"concepcao\", mode: \"compact\" } });
+    }
+    try {
+      await this.store.saveFlow(flow);
+    } catch (saveError) {
+      // Rollback defensivo: restaurar estado pre-mutacao para nao deixar o
+      // flow em memoria divergente do disco.
+      flow.mode = previousMode;
+      flow.phase = previousPhase;
+      throw saveError;
+    }
+    if (reattachLedgerData) {
+      // Corte de cura P1: o flow persistiu — agora sim a trilha de auditoria
+      // do re-attach entra no ledger (ator engine-autorado como os irmaos).
+      await this.ledger(flow.flow_id, \"spt_traceability_reattached\", reattachLedgerData, \"dex-code\");
+    }
+    const existingLedger = await this.store.readLedger(flow.flow_id);
+    if (newlyCreated) {
+      await this.ledger(flow.flow_id, \"flow_created\", {
+        goal: flow.goal,
+        phase: flow.history.find((event) => event.type === \"flow_created\")?.data.phase ?? flow.phase
+      });
+      await this.ledger(flow.flow_id, \"goal_started\", goalLedgerData(flow.goal_binding, flow), \"dex-code\");
+    } else if (!reused) {
+      await ensureLedgerTransitionRecorded(this.store, flow, {
+        originalType: \"flow_created\",
+        recoveredType: \"flow_created_recovered\",
+        originalAt: flow.created_at,
+        data: { goal: flow.goal, phase: flow.history.find((event) => event.type === \"flow_created\")?.data.phase ?? flow.phase }
+      });
+      await this.ledger(flow.flow_id, \"goal_started\", goalLedgerData(flow.goal_binding, flow), \"dex-code\");
+    } else {
+      const hasGoalStarted = existingLedger.some(
+        (event) => event.type === \"goal_started\" || event.type === \"goal_started_recovered\"
+      );
+      // Cura-2/4: backfill do re-attach — o history persistiu o evento com o
+      // save, mas o append do ledger pode ter falhado depois (IO); helper UNICO
+      // com ordem unificada (reattach -> flow_created -> goal_started).
+      await backfillReattachLedger(this.store, flow, flow.goal_binding);
+      if (hasGoalStarted) {
+        await this.ledger(flow.flow_id, \"goal_reused\", goalLedgerData(flow.goal_binding, flow), \"dex-code\");
+      }
+    }
+
+    return {
+      ...(await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })),
+      started: !reused,
+      reused,
+      spt_validation: validation,
+      goal_envelope: flow.goal_binding.envelope
+    };
+    });
+  }
+
+  async goalStatus(input: { flow_id?: string; idempotency_key?: string; detail?: \"lean\" | \"compact\" | \"full\" }): Promise<Record<string, unknown>> {
+    let flow = await this.resolveGoalFlow(input);
+    flow = await withCurrentImplementationFingerprint(flow);
+    const detail = input.detail === \"lean\" ? \"lean\" : input.detail === \"compact\" ? \"compact\" : \"full\";
+    // Issue #10 review-fixes: diagnostico de binding SPT v3 em UMA fonte
+    // (SRP) compartilhada por lean (default da frota) e compact/full — 2
+    // escalares, sem PII; sem isso o consumidor natural nao distingue orfao.
+    // Issue #19: drift de fingerprint do contrato SPT na MESMA fonte unica
+    // do #10 — computacao reusada do trace (classifyFlow via wrapper); lean
+    // ganha 2 escalares SOMENTE quando drifted (economia frota), full
+    // recebe o objeto completo.
+    const sptBindingIntegrity = await sptBindingIntegrityFor(
+      this.store,
+      flow,
+      path.resolve(this.store.runtimePaths.projectRoot)
+    );
+    const sptBindingStatus = {
+      spt_contract_version: flow.spt_contract_version ?? null,
+      spt_traceability_present: Boolean(flow.spt_traceability),
+      ...(sptBindingIntegrity.status === \"drifted\"
+        ? { spt_binding_integrity: { status: sptBindingIntegrity.status, reason_code: sptBindingIntegrity.reason_code } }
+        : {})
+    };
+    // DT-04 (pragmatic/chato): detail \"lean\" retorna apenas nucleo do status
+    // (fase, status, blockers, next_step, display, aliases) sem montar
+    // checkout, checkin, checklist ou fiscal_policy. Target: <5KB.
+    if (detail === \"lean\") {
+      const gate = flow.gates[flow.phase];
+      const phaseSnapshot = this.resolveGateSnapshot(
+        flow,
+        flow.phase,
+        (gate?.provided ?? {}) as Record<string, unknown>
+      );
+      const phaseBlockers = reconciledBlockers(flow, phaseSnapshot.missing);
+      // BUG-LEAN-01+02: calcular campos acionaveis de blocker mesmo em lean.
+      // Sem isso, o operador fica preso sem saber o que fazer para destravar.
+      const fiscal = evaluateFiscalPolicy(flow);
+      const persistedFiscal = latestFiscalBlock(flow);
+      const meetings = await this.store.listMeetings(flow.flow_id);
+      const closureBlockers = closureBlockersFor(flow, meetings);
+      const allBlockers = unique([...phaseBlockers, ...closureBlockers]);
+      const meetingRequired = allBlockers.includes(\"required_cooperation\");
+      const requiredCooperation = meetingRequired
+        ? fiscal.required_cooperation.length > 0
+          ? fiscal.required_cooperation
+          : persistedFiscal.required_cooperation.length > 0
+            ? persistedFiscal.required_cooperation
+            : requiredCoo(allBlockers)
+        : [];
+      const regressCount = countRegressions(flow);
+      const regressLimitReached = regressCount >= FISCAL_CONFIG.maxRegressions;
+      const nextPhase = profileFor(flow.mode).nextPhase[flow.phase] as AnyPhase | null;
+      const canAdvancePhase = phaseAdvanceAllowed(flow, phaseBlockers, closureBlockers);
+      const next = phaseBlockers.length > 0
+        ? `complete_gate_${flow.phase}`
+        : nextPhase
+          ? `advance_to_${nextPhase}`
+          : closureBlockers.length > 0
+            ? fiscalResult(true, closureBlockers).direct_action
+            : \"complete\";
+      // next_required_action: acao concreta para o operador destravar.
+      let nextRequiredAction = nextRequiredActionFor(
+        flow,
+        meetings,
+        allBlockers,
+        allBlockers.length > 0 ? fiscalBackTo(flow) : null,
+        regressCount,
+        regressLimitReached,
+        null
+      );
+      if (!nextRequiredAction) {
+        if (allBlockers.includes(\"review_required\")) {
+          nextRequiredAction = { type: \"attach_review\", tool: \"evidence_add\", reason: \"review_required exige evidencia de revisao\" };
+        } else if (allBlockers.includes(\"memory_required_but_empty\")) {
+          nextRequiredAction = { type: \"run_memory_mining\", tool: \"mm_memory_mining\", reason: \"memory_required_but_empty exige mineracao\" };
+        } else if (allBlockers.length > 0) {
+          nextRequiredAction = { type: \"resolve_blockers\", tool: \"goal_status\", detail: \"full\", reason: `blockers: ${allBlockers.join(\", \")}` };
+        }
+      }
+      const directAction = allBlockers.length > 0
+        ? `Bloqueado: ${allBlockers.join(\", \")}`
+        : \"Sem bloqueio local; verificar status fiscal antes de avancar\";
+      // barata_scan (auditoria): incluir counts de vizinhos do erro para o
+      // operador aplicar \"barata nunca esta sozinha\" sem precisar de full.
+      const currentVerdict = flow.verdicts.at(-1) ?? null;
+      const loopMonitor = strongestLoopMonitor(flow, phaseBlockers, closureBlockers, allBlockers);
+      const runtimeLayoutStatus = await this.store.runtimeLayoutStatus();
+      const workProgress = workProgressSummary(flow);
+      const lean: Record<string, unknown> = {
+        flow_id: flow.flow_id,
+        phase: flow.phase,
+        mode: flow.mode,
+        status: effectiveFlowStatus(flow, allBlockers),
+        project_root: runtimeLayoutStatus.project_root,
+        ppirtv_home: runtimeLayoutStatus.ppirtv_home,
+        runtime_layout_status: runtimeLayoutStatus,
+        memory_writer_runtime: memoryWriterRuntimeSummary(this.options.memory_writer, runtimeLayoutStatus.project_root),
+        blockers: allBlockers,
+        phase_blockers: phaseBlockers,
+        closure_blockers: closureBlockers,
+        phase_advance_allowed: canAdvancePhase,
+        next_step: next,
+        gate_status: gate ? (phaseBlockers.length === 0 ? \"passed\" : \"blocked\") : \"unchecked\",
+        gate_missing: phaseBlockers,
+        goal: flow.goal,
+        goal_envelope: flow.goal_binding?.envelope ?? null,
+        implementation_fingerprint: flow.implementation_fingerprint ?? null,
+        // Campos acionaveis de blocker (BUG-LEAN-01+02): pequenos em bytes
+        // mas essenciais para o operador saber COMO destravar o flow.
+        required_cooperation: requiredCooperation,
+        next_required_action: nextRequiredAction,
+        phase_next_required_action: canAdvancePhase && nextPhase
+          ? {
+              type: \"advance_phase\",
+              tool: \"goal_advance\",
+              reason: closureBlockers.length > 0
+                ? `gate local concluido; pendencias fiscais permanecem para o fechamento: ${closureBlockers.join(\", \")}`
+                : \"gate local concluido\"
+            }
+          : null,
+        phase_direct_action: canAdvancePhase && nextPhase
+          ? phaseAdvanceDirectAction(closureBlockers, nextPhase)
+          : null,
+        meeting_required: meetingRequired,
+        regress_required: allBlockers.length > 0 && !regressLimitReached,
+        regress_count: regressCount,
+        max_regressions: FISCAL_CONFIG.maxRegressions,
+        regress_limit_reached: regressLimitReached,
+        // Issue #11: acrescimos da corroboracao git rejeitados no ultimo
+        // veredito — count + receita em lean (teto <5KB); array completo no full.
+        pending_review_additions: pendingReviewAdditionsFor(flow, \"lean\"),
+        // barata_scan (auditoria vizinhos): counts e sinal, nao arrays.
+        evidence_count: flow.evidence.length,
+        meetings_count: flow.meetings.length,
+        meeting_outcome_summary: meetingOutcomeCounts(flow),
+        current_verdict: currentVerdict ? { verdict_id: currentVerdict.verdict_id, status: currentVerdict.status } : null,
+        current_verdict_status: currentVerdict?.status ?? null,
+        ...sptBindingStatus,
+        work_progress: workProgress,
+        loop_monitor: loopMonitor ? { count: loopMonitor.count, signature: loopMonitor.signature, escalation_active: loopMonitor.escalation?.active ?? false } : null,
+        aliases: {
+          fase: flow.phase,
+          faltando: allBlockers,
+          proximo: next
+        },
+        display: {
+          phase_label: profileFor(flow.mode).displayMeta[flow.phase]?.label ?? flow.phase,
+          phase_emoji: profileFor(flow.mode).displayMeta[flow.phase]?.emoji ?? \"\",
+          direct_action: directAction,
+          work_progress: workProgress
+        }
+      };
+      return lean;
+    }
+    const checklist = await this.renderChecklist(flow.flow_id, detail === \"compact\" ? \"compact\" : \"full\");
+    const savedGate = flow.gates[flow.phase];
+    // SPT input-nunca-bloqueante-frentes-2: o provided persistido do flow
+    // velho pode conter o artefato de cliente {\"value\": X} gravado antes do
+    // fix (laudo jumper 2026-10-18). A LEITURA saneia antes de rejogar no
+    // checkGate — diagnostico nunca morre por dado persistido sujo.
+    const gateProvided = savedGate?.status === \"blocked\" || (savedGate?.status === \"passed\" && officialGoalNeedsCanonicalVerdict(flow))
+      ? sanitizePersistedProvided(savedGate.provided)
+      : {};
+    const gate = await this.checkGate({ flow_id: flow.flow_id, phase: flow.phase, provided: gateProvided, persist: false });
+    const currentVerdict = flow.verdicts.at(-1) ?? null;
+    let rawLibrarianStatus = latestLibrarianStatus(flow) ?? latestLibrarianStatusFromLedger(await this.store.readLedger(flow.flow_id));
+    if (!rawLibrarianStatus && graphifyRecallConfigured() && flow.status !== \"archived\") {
+      rawLibrarianStatus = await this.runBeforePhaseHook(flow, flow.phase, \"ppirtv_checkin\");
+      flow = await withCurrentImplementationFingerprint(await this.store.loadFlow(flow.flow_id));
+    }
+    const fiscal = evaluateFiscalPolicy(flow);
+    const persistedFiscal = latestFiscalBlock(flow);
+    const librarianStatus = structuredLibrarianStatus(rawLibrarianStatus);
+    let requiredCooperation = fiscal.required_cooperation.length > 0 ? fiscal.required_cooperation : persistedFiscal.required_cooperation;
+    const meetings = await this.store.listMeetings(flow.flow_id);
+    const gateBlockers = flow.status === \"complete\" || flow.status === \"archived\" ? [] : gate.status === \"blocked\" ? gate.missing : [];
+    const memoryMiningBlockers = memoryMiningVerdictBlockers(flow);
+    const closureBlockers = closureBlockersFor(flow, meetings);
+    const blockers = unique([...gateBlockers, ...closureBlockers]);
+    const nextPhase = profileFor(flow.mode).nextPhase[flow.phase] as AnyPhase | null;
+    const canAdvancePhase = phaseAdvanceAllowed(flow, gateBlockers, closureBlockers);
+    if (blockers.includes(\"required_cooperation\") && requiredCooperation.length === 0) {
+      requiredCooperation = requiredCoo(blockers);
+    }
+    const blockerDiagnostics = blockerDiagnosticsFor(flow, meetings, gate, gateBlockers, fiscal, persistedFiscal, blockers, memoryMiningBlockers);
+    const effectiveStatus = effectiveFlowStatus(flow, blockers);
+    const presentationFlow = { ...flow, status: effectiveStatus };
+    const directAction = blockers.length > 0 ? blockedDirectAction(blockers) : checklist.display.direct_action;
+    const checklistStatus = directAction ? withDirectAction(checklist, directAction) : checklist;
+    const backTo = blockers.length > 0 ? fiscalBackTo(flow) : null;
+    const regressCount = countRegressions(flow);
+    const regressLimitReached = regressCount >= FISCAL_CONFIG.maxRegressions;
+    const loopMonitor = strongestLoopMonitor(flow, gateBlockers, closureBlockers, blockers);
+    const nextRequiredAction = nextRequiredActionFor(
+      flow,
+      meetings,
+      blockers,
+      backTo,
+      regressCount,
+      regressLimitReached,
+      loopMonitor
+    );
+    const resolutionGuidance = blockerResolutionGuidance(blockers, nextRequiredAction, loopMonitor);
+    const runtimeLayoutStatus = await this.store.runtimeLayoutStatus();
+    const workProgress = workProgressSummary(flow);
+    const pendingReview = pendingReviewAdditionsFor(flow, \"full\");
+    return {
+      flow_id: flow.flow_id,
+      status: effectiveStatus,
+      phase: flow.phase,
+      project_root: runtimeLayoutStatus.project_root,
+      ppirtv_home: runtimeLayoutStatus.ppirtv_home,
+      runtime_layout_status: runtimeLayoutStatus,
+      memory_writer_runtime: memoryWriterRuntimeSummary(this.options.memory_writer, runtimeLayoutStatus.project_root),
+      pending_review_additions: pendingReview,
+      phase_label: checklistStatus.display.phase_label,
+      phase_emoji: checklistStatus.display.phase_emoji,
+      checklist: checklistStatus,
+      tasks: flow.tasks,
+      expected_evidence: flow.expected_evidence,
+      done_criteria: flow.done_criteria,
+      implementation_fingerprint: flow.implementation_fingerprint ?? null,
+      evidence: flow.evidence.map((evidence) => ({
+        evidence_id: evidence.evidence_id,
+        kind: evidence.kind,
+        title: evidence.title,
+        uri: evidence.uri,
+        created_at: evidence.created_at,
+        evidence_quality: classifyEvidenceQuality(evidence)
+      })),
+      meetings: meetings.map((meeting) => ({
+        meeting_id: meeting.meeting_id,
+        type: meeting.type,
+        kind: meeting.kind,
+        status: meeting.status,
+        question: meeting.question,
+        opened_at: meeting.opened_at,
+        closed_at: meeting.closed_at,
+        participants_required: meeting.participants_required,
+        participants_present: meeting.participants_present,
+        suggested_cooperators: meeting.suggested_cooperators,
+        questions: meeting.questions,
+        findings: meeting.findings,
+        decision: meeting.decision,
+        next_required_action: meeting.next_required_action,
+        satisfies_blockers: meeting.satisfies_blockers,
+        created_by: meeting.created_by,
+        evidence_ids: meeting.evidence_ids,
+        turns: meeting.turns,
+        cooperators: meeting.cooperators,
+        active_credits: meeting.active_credits
+      })),
+      ...(detail === \"full\" ? { meeting_outcomes: meetingOutcomeSummaries(flow) } : {}),
+      meeting_outcome_summary: meetingOutcomeCounts(flow),
+      gates: flow.gates,
+      parking_lot: flow.parking_lot,
+      gold_mining: flow.gold_mining,
+      goal_learning_links: flow.goal_learning_links,
+      cooperators: flow.cooperators,
+      active_credits: flow.active_credits,
+      memory_mining: memoryMiningStatus(flow),
+      work_progress: workProgress,
+      blockers,
+      phase_blockers: gateBlockers,
+      closure_blockers: closureBlockers,
+      phase_advance_allowed: canAdvancePhase,
+      gate_status: gate.status,
+      gate_missing: reconciledBlockers(flow, gate.missing),
+      blocker_diagnostics: blockerDiagnostics,
+      next_step: gateBlockers.length > 0
+        ? `complete_gate_${flow.phase}`
+        : nextPhase
+          ? `advance_to_${nextPhase}`
+          : closureBlockers.length > 0
+            ? fiscalResult(true, closureBlockers).direct_action
+            : nextGoalStep(flow, gate),
+      meeting_required: blockers.includes(\"required_cooperation\"),
+      phase_next_required_action: canAdvancePhase && nextPhase
+        ? {
+            type: \"advance_phase\",
+            tool: \"goal_advance\",
+            reason: closureBlockers.length > 0
+              ? `gate local concluido; pendencias fiscais permanecem para o fechamento: ${closureBlockers.join(\", \")}`
+              : \"gate local concluido\"
+          }
+        : null,
+      phase_direct_action: canAdvancePhase && nextPhase
+        ? phaseAdvanceDirectAction(closureBlockers, nextPhase)
+        : null,
+      regress_required: blockers.length > 0 && !regressLimitReached,
+      regress_count: regressCount,
+      max_regressions: FISCAL_CONFIG.maxRegressions,
+      regress_limit_reached: regressLimitReached,
+      locked_by_limit: regressLimitReached,
+      back_to: backTo,
+      loop_monitor: loopMonitor,
+      next_required_action: nextRequiredAction,
+      resolution_guidance: resolutionGuidance,
+      can_retry_verdict: blockers.length === 0,
+      current_verdict: currentVerdict,
+      goal_envelope: flow.goal_binding?.envelope ?? null,
+      ...sptBindingStatus,
+      spt_binding_integrity: sptBindingIntegrity,
+      aliases: checklistStatus.aliases,
+      display: {
+        ...checklistStatus.display,
+        direct_action: directAction,
+        librarian: rawLibrarianStatus ?? checklist.display.librarian,
+        work_progress: workProgress
+      },
+      suggested_cooperation: gate.suggested_cooperation,
+      required_cooperation: requiredCooperation,
+      fiscal_policy: fiscal,
+      librarian_status: librarianStatus,
+      ppirtv_checkin: ppirtvCheckIn(presentationFlow, requiredCooperation, librarianStatus, blockers, resolutionGuidance),
+      ppirtv_checkout: compactPpirtvCheckout(
+        ppirtvCheckOut(
+          presentationFlow,
+          librarianStatus,
+          blockers,
+          resolutionGuidance,
+          blockerDiagnostics,
+          runtimeLayoutStatus,
+          {
+            phase_blockers: gateBlockers,
+            closure_blockers: closureBlockers,
+            phase_advance_allowed: canAdvancePhase
+          }
+        ),
+        detail
+      )
+    };
+  }
+
+  async goalCheckout(input: { flow_id?: string; idempotency_key?: string; detail?: \"lean\" | \"compact\" | \"full\" }): Promise<Record<string, unknown>> {
+    if (input.detail === \"lean\") {
+      const flow = await this.resolveGoalFlow(input);
+      const status = await this.goalStatus({ ...input, detail: \"lean\" });
+      const rawLibrarianStatus = latestLibrarianStatus(flow) ?? latestLibrarianStatusFromLedger(await this.store.readLedger(flow.flow_id));
+      const librarianStatus = structuredLibrarianStatus(rawLibrarianStatus);
+      const display = (status.display as Record<string, unknown> | undefined) ?? {};
+      const currentVerdict = flow.verdicts.at(-1) ?? null;
+      return {
+        flow_id: flow.flow_id,
+        status: status.status,
+        phase: flow.phase,
+        mode: flow.mode,
+        blockers: status.blockers,
+        phase_blockers: status.phase_blockers,
+        closure_blockers: status.closure_blockers,
+        phase_advance_allowed: status.phase_advance_allowed,
+        direct_action: display.direct_action ?? status.next_step,
+        complete: status.status === \"complete\",
+        verdict: currentVerdict ? { verdict_id: currentVerdict.verdict_id, status: currentVerdict.status } : null,
+        evidence_count: status.evidence_count,
+        meetings_count: status.meetings_count,
+        memory_review_status: flow.memory_mining?.memory_review_status ?? \"not_required\",
+        work_progress: status.work_progress,
+        project_root: status.project_root,
+        ppirtv_home: status.ppirtv_home,
+        runtime_layout_status: status.runtime_layout_status,
+        recall_executed: librarianStatus.recall_executed,
+        consumption_confirmed: librarianStatus.consumption_confirmed,
+        librarian_accountability: librarianCheckoutAccountability(librarianStatus)
+      };
+    }
+    const statusDetail = input.detail;
+    const status = await this.goalStatus({ ...input, detail: statusDetail });
+    const checkout = status.ppirtv_checkout as Record<string, unknown>;
+    // A+C (DRY): o checkout interno ja foi processado por compactPpirtvCheckout
+    // quando detail=compact. Nao reomitir nem recompute count aqui — confiar
+    // no processamento anterior. Apenas espelhar campos do checkout no top-level.
+    return {
+      flow_id: status.flow_id,
+      status: status.status,
+      phase: status.phase,
+      blockers: status.blockers,
+      phase_blockers: status.phase_blockers,
+      closure_blockers: status.closure_blockers,
+      phase_advance_allowed: status.phase_advance_allowed,
+      direct_action: checkout.direct_action,
+      complete: checkout.complete,
+      verdict: checkout.verdict,
+      memory_accountability: checkout.memory_accountability,
+      learning_accountability: checkout.learning_accountability,
+      cooperation_accountability: checkout.cooperation_accountability,
+      librarian_accountability: checkout.librarian_accountability,
+      work_progress: checkout.work_progress,
+      contract_accountability: checkout.contract_accountability,
+      ready_definition: checkout.ready_definition,
+      gate_final_output: checkout.gate_final_output,
+      final_report_model: checkout.final_report_model,
+      default_workflow: checkout.default_workflow,
+      project_root: checkout.project_root,
+      ppirtv_home: checkout.ppirtv_home,
+      runtime_layout_status: checkout.runtime_layout_status,
+      evidence_accountability: checkout.evidence_accountability,
+      blocker_diagnostics: checkout.blocker_diagnostics,
+      utility_accountability: checkout.utility_accountability,
+      prestacao_de_contas: checkout.prestacao_de_contas,
+      prestacao_de_contas_count: checkout.prestacao_de_contas_count,
+      residual_risks: checkout.residual_risks,
+      resolution_guidance: checkout.resolution_guidance,
+      ppirtv_checkout: checkout
+    };
+  }
+
+  async resumeGoal(input: { flow_id?: string; idempotency_key?: string; note?: string }): Promise<Record<string, unknown>> {
+    const resolvedFlow = await this.resolveGoalFlow(input);
+    return this.store.withFlowLock(resolvedFlow.flow_id, async () => {
+    const flow = await this.store.loadFlow(resolvedFlow.flow_id);
+    assertGoalBinding(flow);
+    assertFlowAcceptsMutation(flow);
+    const now = nowIso();
+    if (flow.goal_binding) {
+      flow.goal_binding.last_seen_at = now;
+    }
+    flow.updated_at = now;
+    flow.history.push({ at: now, type: \"goal_resumed\", data: { note: input.note ?? \"resume requested\" } });
+    await this.store.saveFlow(flow);
+    await this.ledger(flow.flow_id, \"goal_resumed\", { note: input.note ?? \"resume requested\" }, \"dex-code\");
+    return {
+      ...(await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })),
+      resumed: true
+    };
+    });
+  }
+
+  async goalGateCheck(input: {
+    flow_id?: string;
+    idempotency_key?: string;
+    phase?: AnyPhase;
+    provided?: Record<string, unknown>;
+    persist?: boolean;
+    detail?: \"lean\" | \"compact\" | \"full\";
+  }): Promise<Record<string, unknown>> {
+    const flow = await this.resolveGoalFlow(input);
+    assertGoalBinding(flow);
+    assertNoSecretLikePayload(input.provided, \"provided\");
+    const gate = await this.checkGate({
+      flow_id: flow.flow_id,
+      phase: input.phase,
+      provided: input.provided,
+      persist: input.persist ?? true
+    });
+    return {
+      ...gate,
+      persisted: input.persist ?? true,
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow, input.detail) })
+    };
+  }
+
+  async goalGatePreflight(input: {
+    flow_id?: string;
+    idempotency_key?: string;
+    phase?: AnyPhase;
+    provided?: Record<string, unknown>;
+    detail?: \"lean\" | \"compact\";
+  }): Promise<Record<string, unknown>> {
+    const flow = await this.resolveGoalFlow(input);
+    assertGoalBinding(flow);
+    assertNoSecretLikePayload(input.provided, \"provided\");
+    const phase = input.phase ?? flow.phase;
+    assertPhase(phase);
+    // SPT input-nunca-bloqueante-frentes-2: persisted legado sujo e saneado
+    // antes do merge — o input NOVO continua estrito (contrato R2 do
+    // hardening-3 preservado); so o replay de dado antigo nao mata a chamada.
+    const persistedProvided = sanitizePersistedProvided(flow.gates[phase]?.provided);
+    const effectiveProvided = { ...persistedProvided, ...(input.provided ?? {}) };
+    const snapshot = this.resolveGateSnapshot(flow, phase, effectiveProvided);
+    const meetings = await this.store.listMeetings(flow.flow_id);
+    const closureBlockers = closureBlockersFor(flow, meetings);
+    const currentPhaseAdvanceAllowed = phase === flow.phase && phaseAdvanceAllowed(flow, snapshot.missing, closureBlockers);
+    const evidenceCandidates = unique(snapshot.requirements.flatMap((item) => item.evidence_ids));
+    // ISSUE-LOCAL-0001 (emenda adversarial D-34, P2 simetria): o typo de
+    // chave desconhecida também é nomeado na rota read-only — o invariante
+    // D-31 vale para a família inteira de avisos do provided.
+    const providedIgnored = providedIgnoredKeys(effectiveProvided, snapshot.requirements.map((item) => item.key));
+    return {
+      flow_id: flow.flow_id,
+      phase,
+      status: snapshot.missing.length === 0 ? \"passed\" : \"blocked\",
+      required: snapshot.requirements.map((item) => ({
+        key: item.key,
+        label: item.label,
+        accepted_sources: item.accepted_sources,
+        // SPT gate-integrity-hardening-2 (R8): diagnostico de shape no gate bloqueado.
+        ...(providedRequirementDiagnostic(item.key, effectiveProvided[item.key]) && !item.satisfied
+          ? { diagnostic: providedRequirementDiagnostic(item.key, effectiveProvided[item.key]) }
+          : {})
+      })),
+      already_satisfied: snapshot.requirements.filter((item) => item.satisfied).map((item) => item.key),
+      missing: snapshot.missing,
+      phase_blockers: snapshot.missing,
+      // ISSUE-LOCAL-0002 (emenda adversarial D-31): preflight simétrico ao
+      // gate persistente — a rota read-only não silencia o typo.
+      ...providedPathPreviewFields(flow, effectiveProvided.changed_files, flow.deleted_files ?? [], phase),
+      ...(providedIgnored.length > 0 ? { provided_ignored: providedIgnored } : {}),
+      closure_blockers: closureBlockers,
+      phase_advance_allowed: currentPhaseAdvanceAllowed,
+      evidence_candidates: evidenceCandidates,
+      next_required_action: phase !== flow.phase
+        ? { type: \"preview_future_phase\", executable: false, current_phase: flow.phase }
+        : snapshot.missing.length === 0
+          ? { tool: \"goal_advance\", provided: input.provided ?? {} }
+          : { tool: \"goal_advance\", missing: snapshot.missing },
+      read_only: true,
+      persisted: false
+    };
+  }
+
+  async goalAdvance(input: {
+    flow_id?: string;
+    idempotency_key?: string;
+    provided?: Record<string, unknown>;
+    evidence_ids?: string[];
+    recall_consumption?: RecallConsumptionInput;
+    detail?: \"lean\" | \"compact\" | \"full\";
+  }): Promise<Record<string, unknown>> {
+    const flow = await this.resolveGoalFlow(input);
+    return this.store.withFlowLock(flow.flow_id, () => this.goalAdvanceUnlocked(input, flow.flow_id));
+  }
+
+  private async goalAdvanceUnlocked(input: {
+    flow_id?: string;
+    idempotency_key?: string;
+    provided?: Record<string, unknown>;
+    evidence_ids?: string[];
+    recall_consumption?: RecallConsumptionInput;
+    detail?: \"lean\" | \"compact\" | \"full\";
+  }, resolvedFlowId: string): Promise<Record<string, unknown>> {
+    const flow = await this.store.loadFlow(resolvedFlowId);
+    assertGoalBinding(flow);
+    if (flowIsTerminal(flow)) {
+      return this.advanceUnlocked({
+        flow_id: flow.flow_id,
+        evidence_ids: input.evidence_ids,
+        actor: \"dex-code\"
+      });
+    }
+    assertNoSecretLikePayload(input.provided, \"provided\");
+    const recallConsumption = input.recall_consumption
+      ? await this.confirmRecallConsumption(flow, input.recall_consumption, \"dex-code\")
+      : null;
+    const beforeSnapshot = this.resolveGateSnapshot(
+      flow,
+      flow.phase,
+      (flow.gates[flow.phase]?.provided ?? {}) as Record<string, unknown>
+    );
+    // SPT gate-integrity-hardening-2 (R3): fingerprint atual decide o reuse —
+    // conteudo mudado no mesmo path nao reusa gate stale.
+    const reuseFlow = await withCurrentImplementationFingerprint(flow);
+    const savedGate = reuseFlow.gates[reuseFlow.phase];
+    const shouldReuseSavedGate = savedGateReusable(
+      savedGate,
+      reuseFlow.changed_files,
+      reuseFlow.implementation_fingerprint ?? null,
+      { providedPresent: Boolean(input.provided), needsCanonicalVerdict: officialGoalNeedsCanonicalVerdict(reuseFlow) }
+    );
+    const providedForGate =
+      !input.provided && savedGate?.status === \"passed\" && officialGoalNeedsCanonicalVerdict(flow)
+        ? savedGate.provided
+        : input.provided;
+    const gate = shouldReuseSavedGate
+      ? presentGate(savedGate as GateRecord & Record<string, unknown>, flow)
+      : await this.checkGateUnlocked({
+          flow_id: flow.flow_id,
+          phase: flow.phase,
+          provided: providedForGate,
+          persist: true
+        });
+    if (gate.status === \"blocked\") {
+      if (input.detail === \"compact\") {
+        const fresh = await this.store.loadFlow(flow.flow_id);
+        const meetings = await this.store.listMeetings(fresh.flow_id);
+        return this.compactMutationReceipt(fresh, meetings, {
+          action: \"goal_advance\",
+          advanced: false,
+          before_missing: beforeSnapshot.missing
+        });
+      }
+      return {
+        ...gate,
+        advanced: false,
+        blocked: true,
+        recall_consumption: recallConsumption,
+        status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow, input.detail) })
+      };
+    }
+    const advanced = await this.advanceUnlocked({
+      flow_id: flow.flow_id,
+      evidence_ids: input.evidence_ids,
+      actor: \"dex-code\"
+    });
+    if (input.detail === \"compact\") {
+      const fresh = await this.store.loadFlow(flow.flow_id);
+      const meetings = await this.store.listMeetings(fresh.flow_id);
+      return this.compactMutationReceipt(fresh, meetings, {
+        action: \"goal_advance\",
+        advanced: advanced.advanced === true,
+        from: flow.phase,
+        before_missing: beforeSnapshot.missing,
+        result_missing: stringArray(advanced.missing)
+      });
+    }
+    return {
+      ...advanced,
+      gate,
+      recall_consumption: recallConsumption,
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow, input.detail) })
+    };
+  }
+
+  async recordGoalProgress(input: WorkProgressInput): Promise<Record<string, unknown>> {
+    const resolvedFlow = await this.resolveGoalFlow(input);
+    return this.store.withFlowLock(resolvedFlow.flow_id, async () => {
+    const flow = await this.store.loadFlow(resolvedFlow.flow_id);
+    assertGoalBinding(flow);
+    assertFlowAcceptsMutation(flow);
+    assertNoSecretLikePayload(input, \"goal_progress_record\");
+    const eventKey = progressText(input.event_key, 120, \"event_key\");
+    const source = progressText(input.source, 80, \"source\");
+    const operation = progressText(input.operation, 120, \"operation\");
+    const stage = progressText(input.stage, 120, \"stage\");
+    const message = input.message ? progressText(input.message, 240, \"message\") : undefined;
+    validateProgressNumbers(input.current, input.total, input.status);
+
+    const operationEvents = workProgressEvents(flow).filter(
+      (event) => event.source === source && event.operation === operation
+    );
+    const existing = operationEvents.find((event) => event.event_key === eventKey);
+    if (existing) {
+      return progressReceipt(flow, existing, { recorded: false, reused: true, throttled: false, reason: \"event_key_reused\" });
+    }
+    const latest = operationEvents.at(-1);
+    if (latest?.status === \"completed\" || latest?.status === \"failed\") {
+      throw new WorkProgressContractError(\"PROGRESS_AFTER_TERMINAL\", {
+        source,
+        operation,
+        terminal_status: latest.status,
+        terminal_progress_id: latest.progress_id
+      });
+    }
+    if (latest && latest.total !== input.total) {
+      throw new WorkProgressContractError(\"PROGRESS_TOTAL_MISMATCH\", {
+        source,
+        operation,
+        expected_total: latest.total,
+        received_total: input.total
+      });
+    }
+    if (latest && input.current < latest.current) {
+      throw new WorkProgressContractError(\"PROGRESS_OUT_OF_ORDER\", {
+        source,
+        operation,
+        latest_current: latest.current,
+        received_current: input.current,
+        total: input.total
+      });
+    }
+    if (latest && latest.current === input.current && latest.stage === stage && latest.status === input.status) {
+      return progressReceipt(flow, latest, { recorded: false, reused: false, throttled: true, reason: \"no_material_change\" });
+    }
+    const terminal = input.status === \"completed\" || input.status === \"failed\";
+    const runningEvents = operationEvents.filter((event) => event.status === \"queued\" || event.status === \"running\");
+    if (!terminal && runningEvents.length >= WORK_PROGRESS_MAX_RUNNING_EVENTS) {
+      return progressReceipt(flow, latest ?? null, { recorded: false, reused: false, throttled: true, reason: \"retention_limit\" });
+    }
+
+    const now = nowIso();
+    const event: WorkProgressEvent = {
+      progress_id: await this.store.nextId(\"prg\"),
+      event_key: eventKey,
+      source,
+      operation,
+      stage,
+      current: input.current,
+      total: input.total,
+      percent: Math.round((input.current / input.total) * 10_000) / 100,
+      status: input.status,
+      ...(message ? { message } : {}),
+      recorded_at: now
+    };
+    flow.history.push({ at: now, type: \"work_progress_recorded\", data: event as unknown as Record<string, unknown> });
+    flow.updated_at = now;
+    await this.store.saveFlow(flow);
+    await this.ledger(flow.flow_id, \"work_progress_recorded\", event as unknown as Record<string, unknown>, source);
+    return {
+      ...progressReceipt(flow, event, { recorded: true, reused: false, throttled: false, reason: \"material_progress\" }),
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: \"lean\" })
+    };
+    });
+  }
+
+  async goalMeetingOpen(input: {
+    flow_id?: string;
+    idempotency_key?: string;
+    type?: MeetingType;
+    kind?: MeetingKind;
+    question: string;
+    participants_required?: string[];
+    created_by?: string;
+    evidence_ids?: string[];
+    suggested_cooperators?: Cooperator[];
+  }): Promise<Record<string, unknown>> {
+    const flow = await this.resolveGoalFlow(input);
+    assertGoalBinding(flow);
+    assertNoSecretLikeText(input.question, \"question\");
+    const suggestedCooperators = normalizeSuggestedCooperators(input.suggested_cooperators ?? []);
+    const meeting = await this.openMeeting({
+      flow_id: flow.flow_id,
+      type: input.type,
+      kind: input.kind,
+      question: input.question,
+      participants_required: input.participants_required,
+      suggested_cooperators: suggestedCooperators,
+      created_by: input.created_by ?? \"goal_meeting_open\",
+      evidence_ids: input.evidence_ids
+    });
+    return {
+      ...meeting,
+      suggested_cooperators: suggestedCooperators,
+      credit_rule: \"suggested_cooperators are not active credits until goal_meeting_close records material decision and participants\",
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })
+    };
+  }
+
+  async goalMeetingAddTurn(input: {
+    flow_id?: string;
+    idempotency_key?: string;
+    meeting_id: string;
+    speaker?: string;
+    question?: string;
+    finding?: string;
+    note?: string;
+    evidence_ids?: string[];
+  }): Promise<Record<string, unknown>> {
+    const flow = await this.resolveGoalFlow(input);
+    assertGoalBinding(flow);
+    const meeting = await this.store.loadMeeting(input.meeting_id);
+    if (meeting.flow_id !== flow.flow_id) {
+      throw new Error(`meeting_id ${input.meeting_id} does not belong to GOAL flow ${flow.flow_id}`);
+    }
+    assertNoSecretLikePayload(input, \"goal_meeting_add_turn\");
+    const updated = await this.addMeetingTurn(input);
+    return {
+      ...updated,
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })
+    };
+  }
+
+  async goalMeetingClose(input: Partial<Meeting> & {
+    flow_id?: string;
+    idempotency_key?: string;
+    meeting_id: string;
+    participants_present?: string[];
+    findings?: string[];
+    decision: string;
+    next_required_action?: Record<string, unknown> | null;
+    satisfies_blockers?: string[];
+    evidence_ids?: string[];
+  }): Promise<Record<string, unknown>> {
+    const flow = await this.resolveGoalFlow(input);
+    assertGoalBinding(flow);
+    const meeting = await this.store.loadMeeting(input.meeting_id);
+    if (meeting.flow_id !== flow.flow_id) {
+      throw new Error(`meeting_id ${input.meeting_id} does not belong to GOAL flow ${flow.flow_id}`);
+    }
+    assertNoSecretLikePayload(input, \"goal_meeting_close\");
+    const closed = await this.closeMeeting(input);
+    return {
+      ...closed,
+      status_snapshot: await this.goalStatus({ flow_id: flow.flow_id, detail: mutationStatusDetail(flow) })
+    };
+  }
+
+  async mineMemory(input: {
+    flow_id: string;
+    auto_classify?: boolean;
+    write_policy?: MemoryWritePolicy;
+    v2_destinations?: DexMemoriaV2Destination[];
+    v2_density?: \"light\" | \"deep\";
+    v2_owner_skill?: string;
+    v2_tags?: string[];
+  }): Promise<Record<string, unknown>> {
+    requireText(input.flow_id, \"flow_id\");
+    return await this.store.withFlowLock(input.flow_id, () => this.mineMemoryUnlocked(input));
+  }
+
+  private async mineMemoryUnlocked(input: {
+    flow_id: string;
+    auto_classify?: boolean;
+    write_policy?: MemoryWritePolicy;
+    v2_destinations?: DexMemoriaV2Destination[];
+    v2_density?: \"light\" | \"deep\";
+    v2_owner_skill?: string;
+    v2_tags?: string[];
+  }): Promise<Record<string, unknown>> {
+    const flow = await this.store.loadFlow(input.flow_id);
+    assertFlowAcceptsMutation(flow);
+    const writePolicy = input.write_policy ?? \"auto_write\";
+    if (writePolicy !== \"auto_write\" && writePolicy !== \"classify_only\") {
+      throw new Error(`Invalid write_policy: ${writePolicy}`);
+    }
+    const autoClassify = input.auto_classify ?? true;
+    if (!autoClassify && writePolicy === \"auto_write\") {
+      throw new Error(\"AUTO_CLASSIFY_DISABLED_AUTO_WRITE: use auto_classify=true for auto_write or switch write_policy to classify_only\");
+    }
+    const v2Writer = this.options.memory_writer?.profile === \"v2\" ? this.options.memory_writer : undefined;
+    const dexMemoriaHome = v2Writer
+      ? requireConfiguredV2Root(v2Writer.memory_home, \"MEMORY_HOME\")
+      : resolveDexMemoriaHome();
+    if (!autoClassify) {
+      return {
+        flow_id: flow.flow_id,
+        dex_memoria_home: dexMemoriaHome,
+        auto_classify: false,
+        write_policy: writePolicy,
+        classification_skipped: true,
+        candidates: [],
+        written: [],
+        ledger_only: [],
+        estacionamento: [],
+        discarded: [],
+        blocked: [],
+        write_decisions: [],
+        edit_queue: [],
+        destination_warnings: [],
+        strong_unwritten_count: 0,
+        unclassified: 0,
+        blocked_verdict: false
+      };
+    }
+    const workspace = v2Writer
+      ? confinedV2Workspace({
+        storeWorkspace: this.store.runtimePaths.projectRoot,
+        writerWorkspace: v2Writer.workspace_root,
+        envelopeWorkspace: flow.goal_binding?.envelope.workspace
+      })
+      : path.resolve(flow.goal_binding?.envelope.workspace ?? process.cwd());
+    const linkNow = nowIso();
+    const promotedGold = linkParkingToGold(flow, flow.parking_lot, \"memory_mining\", flow.flow_id, linkNow);
+    flow.gold_mining = unique([...flow.gold_mining, ...promotedGold]);
+    const meetings = await this.store.listMeetings(flow.flow_id);
+    const nuggets = collectMemoryNuggets(flow, meetings);
+    if (this.options.memory_writer?.profile === \"v2\") {
+      return await this.mineMemoryV2({
+        flow,
+        nuggets,
+        writePolicy,
+        autoClassify,
+        workspace,
+        memoryHome: dexMemoriaHome,
+        writer: this.options.memory_writer,
+        requestClassification: requestedV2MiningClassification(input)
+      });
+    }
+    const resolutionMap = latestTraceableCandidateResolutionMap(flow);
+    const rawCandidates = nuggets.map((nugget, index) =>
+      classifyMemoryCandidate({
+        id: `mc_${index + 1}`,
+        item: nugget.item,
+        source: nugget.source,
+        evidenceScore: nugget.evidenceScore,
+        workspace,
+        dexMemoriaHome
+      })
+    );
+    const resolvedCandidates = rawCandidates.map((candidate) => applyMemoryCandidateResolution(candidate, resolutionMap.get(candidate.id), workspace, dexMemoriaHome));
+    const candidates = writePolicy === \"auto_write\" ? resolvedCandidates.map((candidate) => governAutoWriteCandidate(candidate, flow.flow_id)) : resolvedCandidates;
+    const blocked = candidates.filter((candidate) => candidate.blocked);
+    const unresolvedBlocked = blocked.filter((candidate) => !resolutionMap.has(candidate.id));
+    const writable = candidates.filter((candidate) => isWritableCandidate(candidate));
+    const ledgerOnly = candidates.filter((candidate) => candidate.scope === \"ledger_only\");
+    const estacionamento = candidates.filter((candidate) => candidate.scope === \"estacionamento\");
+    const discarded = candidates.filter((candidate) => candidate.scope === \"descartar\");
+    const written: Array<{ candidate_id: string; files: string[] }> = [];
+    const writeFailures: Array<{ candidate_id: string; reason: string }> = [];
+
+    if (writePolicy === \"auto_write\") {
+      const legacyCandidateWriter = this.options.legacy_candidate_writer ?? writeMemoryCandidate;
+      for (const candidate of writable) {
+        try {
+          const files = await legacyCandidateWriter(candidate);
+          written.push({ candidate_id: candidate.id, files });
+        } catch (error) {
+          writeFailures.push({ candidate_id: candidate.id, reason: errorMessage(error) });
+        }
+      }
+    }
+
+    const now = nowIso();
+    const writtenIds = new Set(written.map((item) => item.candidate_id));
+    const postWriteValidation = await validateMemoryPostWrite({ written, candidates, validatedAt: now });
+    const postWriteParkingLot = postWriteValidation.parking_lot;
+    if (postWriteParkingLot.length > 0) {
+      flow.parking_lot = unique([...flow.parking_lot, ...postWriteParkingLot]);
+    }
+    if (postWriteValidation.required) {
+      const validationEvidence: Evidence = {
+        evidence_id: await this.store.nextId(\"evd\"),
+        flow_id: flow.flow_id,
+        kind: \"memory_post_write_validation\",
+        title: `mm_memory_mining post-write validation: ${postWriteValidation.status}`,
+        content: JSON.stringify(
+          {
+            status: postWriteValidation.status,
+            validator: postWriteValidation.validator,
+            touched_files: postWriteValidation.touched_files,
+            findings: postWriteValidation.findings,
+            checked_triggers: postWriteValidation.checked_triggers,
+            recall_proof: postWriteValidation.recall_proof
+          },
+          null,
+          2
+        ),
+        note: \"Validacao estrutural pos-write para impedir tratar written_count como memoria consolidada sem L1<->L2/L3 e recall.\",
+        parking_lot: postWriteParkingLot,
+        gold_mining: [],
+        cooperators: [{ name: \"consciencia-memorias\", reason: \"validou contrato L1/L2/L3 pos-write de mm_memory_mining\", material: true }],
+        active_credits: [\"consciencia-memorias validou memoria automatica antes do veredito\"],
+        created_at: now
+      };
+      postWriteValidation.evidence_id = validationEvidence.evidence_id;
+      flow.evidence.push(validationEvidence);
+      await this.store.saveEvidence(validationEvidence);
+    }
+    const postWriteBlocked = memoryPostWriteValidationBlocks(postWriteValidation);
+    const strongUnwrittenCandidates =
+      writePolicy === \"auto_write\"
+        ? candidates.filter((candidate) => candidate.score.total >= 6 && !writtenIds.has(candidate.id) && !candidate.blocked && candidate.scope !== \"estacionamento\" && candidate.scope !== \"descartar\")
+        : [];
+    const strongUnwritten = strongUnwrittenCandidates.filter((candidate) => !resolutionMap.has(candidate.id));
+    const resolvedStrongUnwritten = rawCandidates.filter((candidate) => candidate.score.total >= 6 && resolutionMap.has(candidate.id));
+    const resolvedCandidateIds = candidates.filter((candidate) => resolutionMap.has(candidate.id)).map((candidate) => candidate.id);
+    const candidateResolutions = resolvedCandidateIds.map((candidateId) => resolutionMap.get(candidateId)).filter((item): item is MemoryCandidateResolution => Boolean(item));
+    const writeDecisions = candidates.map((candidate) => memoryWriteDecision(candidate, writePolicy, writtenIds, resolutionMap.get(candidate.id)));
+    const editQueue = candidates
+      .filter((candidate) => !writtenIds.has(candidate.id) && !resolutionMap.has(candidate.id))
+      .map((candidate) => ({
+        candidate_id: candidate.id,
+        title: candidate.title,
+        scope: candidate.scope,
+        layer: candidate.layer,
+        score: candidate.score,
+        suggestion: memoryEditSuggestion(candidate, writePolicy),
+        target_files: candidate.target_files
+      }));
+    const destinationWarnings = [
+      ...strongUnwritten.map((candidate) => `${candidate.id}:${candidate.scope}:${memoryNonWriteReason(candidate, writePolicy, writtenIds)}`),
+      ...postWriteValidation.findings.map((finding) => `post_write_validation:${finding.code}:${finding.file ?? \"unknown\"}:${finding.line ?? \"unknown\"}`),
+      ...writeFailures.map((failure) => `write_failed:${failure.candidate_id}:${failure.reason}`)
+    ];
+    const writeFailuresCount = writeFailures.length;
+    const emptyMiningCompleted =
+      candidates.length === 0 &&
+      written.length === 0 &&
+      strongUnwritten.length === 0 &&
+      unresolvedBlocked.length === 0 &&
+      writeFailuresCount === 0 &&
+      !postWriteBlocked;
+    const memoryRequiredButEmpty = memoryRequiredByFlow(flow) && candidates.length === 0 && written.length === 0 && !emptyMiningCompleted;
+    const postWritePassed = postWriteValidation.status === \"passed\";
+    const memoryReviewStatus = reviewStatusForPostWrite(postWriteValidation, written.length);
+    const memoryConsolidated = memoryReviewStatus === \"approved\" && postWritePassed && writeFailuresCount === 0;
+    const summary: MemoryMiningSummary = {
+      required: candidates.length > 0 || memoryRequiredByFlow(flow),
+      last_run_at: now,
+      write_policy: writePolicy,
+      blocked_verdict: unresolvedBlocked.length > 0 || memoryRequiredButEmpty || strongUnwritten.length > 0 || postWriteBlocked || writeFailuresCount > 0,
+      candidates_count: candidates.length,
+      written_count: written.length,
+      blocked_count: unresolvedBlocked.length,
+      ledger_only_count: ledgerOnly.length,
+      discarded_count: discarded.length,
+      ...miningVisibilityEgress(nuggets.length),
+      strong_unwritten_count: strongUnwritten.length,
+      resolved_candidate_ids: resolvedCandidateIds,
+      resolved_strong_unwritten_count: resolvedStrongUnwritten.length,
+      candidate_resolutions: candidateResolutions,
+      memory_written: written.length > 0,
+      memory_validated: postWritePassed,
+      memory_consolidated: memoryConsolidated,
+      memory_review_status: memoryReviewStatus,
+      memory_post_write_validation: postWriteValidation,
+      memory_required_but_empty: memoryRequiredButEmpty,
+      candidates: candidates.map((candidate) => memoryCandidateLedgerDataWithResolution(candidate, resolutionMap.get(candidate.id))),
+      written,
+      write_failures: writeFailures,
+      write_failures_count: writeFailuresCount,
+      ledger_only: ledgerOnly.map((candidate) => candidate.id),
+      estacionamento: estacionamento.map((candidate) => candidate.id),
+      discarded: discarded.map((candidate) => candidate.id),
+      blocked: unresolvedBlocked.map((candidate) => ({ id: candidate.id, blocked_reason: candidate.blocked_reason })),
+      write_decisions: writeDecisions,
+      edit_queue: editQueue,
+      destination_warnings: destinationWarnings
+    };
+    flow.memory_mining = summary;
+    flow.history.push({
+      at: now,
+      type: \"memory_mined\",
+      data: {
+        write_policy: writePolicy,
+        candidates_count: candidates.length,
+        written_count: written.length,
+        write_failures_count: writeFailuresCount,
+        blocked_count: unresolvedBlocked.length,
+        resolved_candidate_ids: resolvedCandidateIds,
+        memory_written: summary.memory_written,
+        memory_validated: summary.memory_validated,
+        memory_consolidated: summary.memory_consolidated,
+        memory_review_status: summary.memory_review_status,
+        post_write_parking_lot: postWriteParkingLot,
+        memory_post_write_validation: postWriteValidation
+      }
+    });
+    flow.updated_at = now;
+    await this.store.saveFlow(flow);
+    await this.ledger(
+      flow.flow_id,
+      \"memory_mined\",
+      {
+        write_policy: writePolicy,
+        candidates: candidates.map((candidate) => memoryCandidateLedgerDataWithResolution(candidate, resolutionMap.get(candidate.id))),
+        written,
+        write_failures: writeFailures,
+        write_failures_count: writeFailuresCount,
+        ledger_only: ledgerOnly.map((candidate) => candidate.id),
+        estacionamento: estacionamento.map((candidate) => candidate.id),
+        discarded: discarded.map((candidate) => candidate.id),
+        blocked: unresolvedBlocked.map((candidate) => ({ id: candidate.id, blocked_reason: candidate.blocked_reason })),
+        write_decisions: writeDecisions,
+        edit_queue: editQueue,
+        destination_warnings: destinationWarnings,
+        strong_unwritten_count: strongUnwritten.length,
+        resolved_candidate_ids: resolvedCandidateIds,
+        resolved_strong_unwritten_count: resolvedStrongUnwritten.length,
+        candidate_resolutions: candidateResolutions,
+        memory_written: summary.memory_written,
+        memory_validated: summary.memory_validated,
+        memory_consolidated: summary.memory_consolidated,
+        memory_review_status: summary.memory_review_status,
+        post_write_parking_lot: postWriteParkingLot,
+        memory_post_write_validation: postWriteValidation,
+        blocked_verdict: summary.blocked_verdict,
+        memory_required_but_empty: summary.memory_required_but_empty
+      },
+      \"dex-code\"
+    );
+
+    return {
+      flow_id: flow.flow_id,
+      dex_memoria_home: dexMemoriaHome,
+      auto_classify: autoClassify,
+      write_policy: writePolicy,
+      candidates,
+      written,
+      write_failures: writeFailures,
+      write_failures_count: writeFailuresCount,
+      ledger_only: ledgerOnly,
+      estacionamento,
+      discarded,
+      blocked: unresolvedBlocked,
+      write_decisions: writeDecisions,
+      edit_queue: editQueue,
+      destination_warnings: destinationWarnings,
+      strong_unwritten_count: strongUnwritten.length,
+      resolved_candidate_ids: resolvedCandidateIds,
+      resolved_strong_unwritten_count: resolvedStrongUnwritten.length,
+      candidate_resolutions: candidateResolutions,
+      memory_written: summary.memory_written,
+      memory_validated: summary.memory_validated,
+      memory_consolidated: summary.memory_consolidated,
+      memory_review_status: summary.memory_review_status,
+      memory_post_write_validation: postWriteValidation,
+      unclassified: unresolvedBlocked.length,
+      blocked_verdict: summary.blocked_verdict,
+      memory_required_but_empty: summary.memory_required_but_empty,
+      ...miningVisibilityEgress(nuggets.length)
+    };
+  }
+
+  private async mineMemoryV2(input: {
+    flow: Flow;
+    nuggets: Array<{
+      item: string;
+      source: \"gold_mining\" | \"parking_lot\";
+      evidenceScore: number;
+      provenance?: Array<Record<string, unknown>>;
+    }>;
+    writePolicy: MemoryWritePolicy;
+    autoClassify: boolean;
+    workspace: string;
+    memoryHome: string;
+    writer: DexMemoriaV2FlowWriterConfig;
+    requestClassification?: DexMemoriaV2MiningClassification;
+  }): Promise<Record<string, unknown>> {
+    const now = nowIso();
+    const previous = input.flow.memory_mining as MemoryMiningV2Summary | undefined;
+    const previousReceipts = previous?.memory_profile === \"v2\" ? previous.v2_receipts ?? [] : [];
+    const candidates = [] as Array<Record<string, unknown>>;
+    const receipts: DexMemoriaV2CanonicalReceipt[] = [];
+    const validationReceipts: DexMemoriaV2ValidationReceiptRef[] = [];
+    const writtenByCandidate = new Map<string, Set<string>>();
+    const pendingDestinations: Array<Record<string, unknown>> = [];
+    const v2Failures: Array<Record<string, unknown>> = [];
+    let v2Status: MemoryMiningV2Summary[\"v2_status\"] = input.writePolicy === \"auto_write\" ? \"complete\" : \"classify_only\";
+    let unclassifiedCount = 0;
+    let strongUnclassifiedCount = 0;
+    const resolutionMap = latestTraceableCandidateResolutionMap(input.flow);
+    const resolvedCandidateIds: string[] = [];
+    const candidateResolutions: MemoryCandidateResolution[] = [];
+    const ledgerOnly: string[] = [];
+    const estacionamento: string[] = [];
+    const discarded: string[] = [];
+    const pendingPromotions: string[] = [];
+
+    for (const [index, nugget] of input.nuggets.entries()) {
+      assertNoSecretLikeText(nugget.item, `memory_v2_candidate_${index + 1}`);
+      const candidateId = memoryV2CandidateId(nugget.item);
+      const resolution = resolutionMap.get(candidateId);
+      const classifierInput = {
+        flow_id: input.flow.flow_id,
+        candidate_id: candidateId,
+        item: nugget.item,
+        source: nugget.source,
+        evidence_score: nugget.evidenceScore
+      };
+      if (resolution && resolution.action !== \"promote\") {
+        resolvedCandidateIds.push(candidateId);
+        candidateResolutions.push(resolution);
+        if (resolution.action === \"accept_ledger_only\") ledgerOnly.push(candidateId);
+        if (resolution.action === \"park\") estacionamento.push(candidateId);
+        if (resolution.action === \"discard\") discarded.push(candidateId);
+        candidates.push({
+          candidate_id: candidateId,
+          operation_id: `mmv2_resolved_${candidateId}`,
+          flow_id: input.flow.flow_id,
+          slug: memoryV2Slug(nugget.item, candidateId),
+          item: nugget.item,
+          source: nugget.source,
+          ...(nugget.provenance?.length ? { provenance: nugget.provenance } : {}),
+          classification_status: \"resolved\",
+          destinations: [],
+          route: null,
+          resolution: candidateResolutionLedgerData(resolution),
+          effective_action: resolution.action
+        });
+        continue;
+      }
+      const directive = resolution?.action === \"promote\"
+        ? v2PromotionClassification(resolution)
+        : input.requestClassification
+          ?? input.writer.classify?.(classifierInput)
+          ?? input.writer.default_classification
+          ?? classifyDexMemoriaV2MiningCandidate(classifierInput);
+      if (directive.status === \"unresolved\") {
+        unclassifiedCount += 1;
+        if (nugget.evidenceScore >= 1) strongUnclassifiedCount += 1;
+        candidates.push({
+          candidate_id: candidateId,
+          operation_id: `mmv2_pending_${candidateId}`,
+          flow_id: input.flow.flow_id,
+          slug: memoryV2Slug(nugget.item, candidateId),
+          item: nugget.item,
+          source: nugget.source,
+          ...(nugget.provenance?.length ? { provenance: nugget.provenance } : {}),
+          classification_status: \"unresolved\",
+          classification_reason: directive.reason,
+          destinations: [],
+          route: null
+        });
+        if (input.writePolicy === \"auto_write\") v2Status = \"classification_required\";
+        continue;
+      }
+      const classification = classifyDexMemoriaV2Intent({
+        item: nugget.item,
+        density: directive.density,
+        requested_destinations: directive.requested_destinations,
+        owner_skill: directive.owner_skill,
+        tags: directive.tags
+      });
+      // ISSUE-LOCAL-0007: id fresco quando o id base ficou preso em PENDING
+      // (retry do resolve não reusa operation_id não-commitado; o filtro de
+      // resume abaixo não casa o id sufixado — operação nova).
+      const operationId = freshOperationIdForRetry(memoryV2OperationId(nugget.item, classification), previousReceipts);
+      const slug = memoryV2Slug(nugget.item, candidateId);
+      if (resolution) {
+        resolvedCandidateIds.push(candidateId);
+        candidateResolutions.push(resolution);
+      }
+      candidates.push({
+        candidate_id: candidateId,
+        operation_id: operationId,
+        flow_id: input.flow.flow_id,
+        slug,
+        item: nugget.item,
+        source: nugget.source,
+        ...(nugget.provenance?.length ? { provenance: nugget.provenance } : {}),
+        destinations: classification.destinations,
+        route: classification.route,
+        tags: classification.tags,
+        density: classification.route.target === \"L3\" ? \"deep\" : \"light\",
+        ...(classification.route.target === \"L3\" ? { owner_skill: classification.route.owner_skill } : {}),
+        ...(resolution ? { resolution: candidateResolutionLedgerData(resolution), effective_action: resolution.action } : {})
+      });
+      if (input.writePolicy !== \"auto_write\") {
+        if (resolution?.action === \"promote\") pendingPromotions.push(candidateId);
+        continue;
+      }
+      const adapterResult = await executeDexMemoriaV2Adapter({
+        operation_id: operationId,
+        slug,
+        workspace_root: input.workspace,
+        memory_home: input.memoryHome,
+        classification,
+        executor: input.writer.executor,
+        resume_receipts: previousReceipts.filter((receipt) => receipt.operation_id === operationId)
+      });
+      receipts.push(...adapterResult.receipts);
+      validationReceipts.push(...adapterResult.validation_receipts);
+      const validatedFiles = adapterResult.validation_receipts.flatMap((validationReceipt) => validationReceipt.files);
+      if (validatedFiles.length > 0) {
+        const candidateFiles = writtenByCandidate.get(candidateId) ?? new Set<string>();
+        for (const file of validatedFiles) candidateFiles.add(file);
+        writtenByCandidate.set(candidateId, candidateFiles);
+      }
+      pendingDestinations.push(...adapterResult.pending_destinations);
+      if (adapterResult.status !== \"complete\") {
+        v2Status = adapterResult.status;
+        if (adapterResult.failure) {
+          v2Failures.push(adapterResult.failure);
+        }
+      }
+    }
+
+    const blockedVerdict = unclassifiedCount > 0
+      || pendingPromotions.length > 0
+      || v2Status === \"classification_required\"
+      || v2Status === \"partial_pending\"
+      || v2Status === \"resume_pending_sibling\";
+    const strongUnwrittenCount = strongUnclassifiedCount + pendingPromotions.length;
+    const blockedCandidateCount = unclassifiedCount + pendingPromotions.length
+      + (v2Status === \"partial_pending\" || v2Status === \"resume_pending_sibling\" ? 1 : 0);
+    const committedRouteCount = validationReceipts.length;
+    const written = Array.from(writtenByCandidate, ([candidate_id, files]) => ({ candidate_id, files: Array.from(files) }));
+    const reconciliationId = memoryV2ReconciliationId({
+      flowId: input.flow.flow_id,
+      writePolicy: input.writePolicy,
+      candidates,
+      receipts,
+      candidateResolutions
+    });
+    const hasCommittedEffect = v2ReceiptsProveCommittedEffect(receipts);
+    const summary: MemoryMiningV2Summary = {
+      required: candidates.length > 0 || memoryRequiredByFlow(input.flow),
+      last_run_at: now,
+      write_policy: input.writePolicy,
+      blocked_verdict: blockedVerdict,
+      candidates_count: candidates.length,
+      written_count: written.length,
+      blocked_count: blockedCandidateCount,
+      ledger_only_count: ledgerOnly.length,
+      discarded_count: discarded.length,
+      ...miningVisibilityEgress(input.nuggets.length),
+      estacionamento_count: estacionamento.length,
+      resolved_candidate_ids: resolvedCandidateIds,
+      resolved_strong_unwritten_count: resolvedCandidateIds.length,
+      candidate_resolutions: candidateResolutions,
+      strong_unwritten_count: strongUnwrittenCount,
+      memory_required_but_empty: false,
+      memory_written: committedRouteCount > 0,
+      memory_validated: committedRouteCount > 0
+        && !blockedVerdict,
+      memory_consolidated: false,
+      memory_review_status: \"not_required\",
+      candidates,
+      written,
+      ledger_only: ledgerOnly,
+      estacionamento,
+      discarded,
+      write_decisions: candidates.map((candidate) => ({
+        candidate_id: memoryCandidateIdentity(candidate),
+        action: candidate.effective_action ? `resolved_${candidate.effective_action}` : writtenByCandidate.has(memoryCandidateIdentity(candidate)) ? \"written\" : \"classified\",
+        editable: !candidate.effective_action && !writtenByCandidate.has(memoryCandidateIdentity(candidate))
+      })),
+      memory_profile: \"v2\",
+      v2_status: v2Status,
+      v2_ledger_status: hasCommittedEffect ? \"pending\" : \"confirmed\",
+      v2_reconciliation_id: reconciliationId,
+      v2_receipts: receipts,
+      v2_validation_receipts: validationReceipts,
+      v2_pending_destinations: pendingDestinations,
+      v2_failures: v2Failures
+    };
+    const finalBlockedVerdict = summary.blocked_verdict;
+    const finalBlockedCount = summary.blocked_count;
+    const finalMemoryValidated = summary.memory_validated;
+    if (hasCommittedEffect) {
+      summary.blocked_verdict = true;
+      summary.blocked_count = Math.max(1, summary.blocked_count);
+      summary.memory_validated = false;
+    }
+    input.flow.memory_mining = summary;
+    const historyData = {
+      write_policy: input.writePolicy,
+      memory_profile: \"v2\",
+      v2_status: summary.v2_status,
+      v2_ledger_status: summary.v2_ledger_status,
+      v2_reconciliation_id: reconciliationId,
+      candidates_count: candidates.length,
+      receipts_count: receipts.length,
+      blocked_verdict: summary.blocked_verdict
+    };
+    // SPT memory-gate-loop-solubility (T-4, decisao A): history e append-only —
+    // cada mineracao (mesmo resultado identico) registra um evento proprio;
+    // a idempotencia por reconciliation id vive somente no ledger.
+    input.flow.history.push({ at: now, type: \"memory_mined\", data: historyData });
+    input.flow.updated_at = now;
+    let initialPersistenceError: unknown;
+    if (hasCommittedEffect) {
+      const persisted = await this.saveV2CommittedFlowState(input.flow);
+      if (!persisted.saved) {
+        throw v2CommittedBoundaryError(persisted.error);
+      }
+      initialPersistenceError = persisted.error;
+    } else {
+      await this.store.saveFlow(input.flow);
+    }
+    const ledgerData = {
+      write_policy: input.writePolicy,
+      memory_profile: \"v2\",
+      v2_status: v2Status,
+      v2_reconciliation_id: reconciliationId,
+      candidates,
+      written,
+      ledger_only: ledgerOnly,
+      estacionamento,
+      discarded,
+      resolved_candidate_ids: resolvedCandidateIds,
+      candidate_resolutions: candidateResolutions,
+      v2_receipts: receipts,
+      v2_validation_receipts: validationReceipts,
+      v2_pending_destinations: pendingDestinations,
+      v2_failures: v2Failures,
+      blocked_verdict: blockedVerdict
+    };
+    const ledgerResult = initialPersistenceError
+      ? { confirmed: false, error: initialPersistenceError }
+      : await this.ensureV2MemoryMinedLedger(input.flow.flow_id, reconciliationId, ledgerData);
+    if (!ledgerResult.confirmed) {
+      if (!hasCommittedEffect) throw ledgerResult.error;
+      summary.v2_status = \"partial_pending\";
+      summary.v2_ledger_status = \"pending\";
+      summary.blocked_verdict = true;
+      summary.blocked_count = Math.max(1, summary.blocked_count);
+      summary.memory_validated = false;
+      summary.v2_failures.push({
+        stage: \"memory_mined_ledger\",
+        message: errorMessage(ledgerResult.error),
+        reconciliation_id: reconciliationId
+      });
+      // Ultimo evento pendente do MESMO reconciliation id: com history
+      // append-only (decisao A) podem existir varios; interessa o mais recente.
+      const pendingHistoryEvents = input.flow.history.filter((event: { type: string; data: Record<string, unknown> }) =>
+        event.type === \"memory_mined\" && event.data.v2_reconciliation_id === reconciliationId
+      );
+      const pendingHistoryEvent = pendingHistoryEvents.at(-1);
+      if (pendingHistoryEvent) {
+        pendingHistoryEvent.data.v2_status = summary.v2_status;
+        pendingHistoryEvent.data.v2_ledger_status = summary.v2_ledger_status;
+        pendingHistoryEvent.data.blocked_verdict = true;
+      }
+      input.flow.updated_at = nowIso();
+      try {
+        await this.store.saveFlow(input.flow);
+      } catch {
+        // O estado pending com receipts ja foi persistido antes da tentativa de
+        // ledger. Falhar ao enriquecer o diagnostico nao autoriza rollback.
+      }
+    } else if (hasCommittedEffect) {
+      summary.v2_ledger_status = \"confirmed\";
+      summary.blocked_verdict = finalBlockedVerdict;
+      summary.blocked_count = finalBlockedCount;
+      summary.memory_validated = finalMemoryValidated;
+      const confirmedHistoryEvent = input.flow.history.find((event) =>
+        event.type === \"memory_mined\" && event.data.v2_reconciliation_id === reconciliationId
+      );
+      if (confirmedHistoryEvent) {
+        confirmedHistoryEvent.data.v2_ledger_status = \"confirmed\";
+        confirmedHistoryEvent.data.blocked_verdict = finalBlockedVerdict;
+      }
+      input.flow.updated_at = nowIso();
+      const confirmedPersistence = await this.saveV2CommittedFlowState(input.flow);
+      ...
+
+[36m [2m❯[22m tests/onda-verdict-d50b1.test.ts:[2m32:19[22m[39m
+    [90m 30| [39m
+    [90m 31| [39m  it("sítio negado vira !isPositiveVerdict (antes: dupla negação inlin…
+    [90m 32| [39m    [34mexpect[39m([33mMOTOR[39m)[33m.[39m[34mtoMatch[39m([36m/!isPositiveVerdict\(/[39m)[33m;[39m
+    [90m   | [39m                  [31m^[39m
+    [90m 33| [39m  })[33m;[39m
+    [90m 34| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m3 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[90m (5)[39m
+[2m   Start at [22m 11:22:57
+[2m   Duration [22m 276ms[2m (transform 42ms, setup 0ms, collect 25ms, tests 23ms, environment 0ms, prepare 92ms)[22m
+

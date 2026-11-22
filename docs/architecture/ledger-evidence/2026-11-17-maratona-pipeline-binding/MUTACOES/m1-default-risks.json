@@ -1,0 +1,15 @@
+{
+  "src": "src/pipeline-policy.ts",
+  "simbolo": "normalizePipelineItem",
+  "literal": "Automacao de pipeline nao substitui evidencia externa quando a tarefa exigir execucao real.",
+  "mutacao": "MUTACAO-VIGILIA: default de risks adulterado",
+  "teste": "tests/pipeline-policy.test.ts",
+  "valido": true,
+  "restaurado": true,
+  "linha": 42,
+  "viva_no_disco": true,
+  "vitest_saida": "\n RUN  v3.2.6 C:/CodexProjetos/dex-PPIRTV\n\n ❯ tests/pipeline-policy.test.ts (9 tests | 1 failed) 20ms\n   × pipeline policy (caracterizacao maratona 2026-11-17) > aplica defaults de risks/uncertainties e fallback de context quando ausentes 14ms\n     → expected [ Array(1) ] to deeply equal [ Array(1) ]\n   ✓ pipeline policy (caracterizacao maratona 2026-11-17) > preserva risks/uncertainties declarados e deduplica todos os campos colecao 1ms\n   ✓ pipeline policy (caracterizacao maratona 2026-11-17) > fallback: changed_files herda scope_in e evidence herda expected_evidence quando vazios 0ms\n   ✓ pipeline policy (caracterizacao maratona 2026-11-17) > mantem changed_files/evidence declarados quando preenchidos 0ms\n   ✓ pipeline policy (caracterizacao maratona 2026-11-17) > exige goal preenchido 2ms\n   ✓ pipeline policy (caracterizacao maratona 2026-11-17) > bloqueia segredo em qualquer campo do item (assert agregada) 1ms\n   ✓ pipeline policy (caracterizacao maratona 2026-11-17) > serializa o evidence text com as secoes na ordem historica 1ms\n   ✓ pipeline policy (caracterizacao maratona 2026-11-17) > serializa no extra evidence declared somente quando expected_evidence tambem esta vazio 0ms\n   ✓ pipeline policy (caracterizacao maratona 2026-11-17) > serializa evidence declarado quando preenchido 0ms\n\n Test Files  1 failed (1)\n      Tests  1 failed | 8 passed (9)\n   Start at  13:47:16\n   Duration  337ms (transform 57ms, setup 0ms, collect 66ms, tests 20ms, environment 0ms, prepare 95ms)\n\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  tests/pipeline-policy.test.ts > pipeline policy (caracterizacao maratona 2026-11-17) > aplica defaults de risks/uncertainties e fallback de context quando ausentes\nAssertionError: expected [ Array(1) ] to deeply equal [ Array(1) ]\n\n- Expected\n+ Received\n\n  [\n-   \"Automacao de pipeline nao substitui evidencia externa quando a tarefa exigir execucao real.\",\n+   \"MUTACAO-VIGILIA: default de risks adulterado\",\n  ]\n\n ❯ tests/pipeline-policy.test.ts:15:24\n     13|     const item = normalizePipelineItem({ ...baseItem, context: undefin…\n     14| \n     15|     expect(item.risks).toEqual([\n       |                        ^\n     16|       \"Automacao de pipeline nao substitui evidencia externa quando a …\n     17|     ]);\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n",
+  "failed": 1,
+  "passed": 8,
+  "sobreviveu": false
+}

@@ -2114,3 +2114,20 @@ do mesmo anchor pertence à consciencia-memorias (ReviewStatus pending).
 | PLAYBOOK | regen --write (9 regras, 0 runbook) após fontes .agents mudarem | tools/playbook/generate-playbook.py |
 | Fontes | napkin (emenda causa real + 4 tropeços) · PLAN-TASKS/ACTIVE (Trilho concluído) · ACTIVE/HANDOFF/GATILHOS-VIVOS | .agents/ |
 | Suíte | inalterada 1049|4 (1053) | npx vitest run (sessão) |
+
+## Reavaliação 2026-11-21 — redirect de evidence legada do ledger de boundary
+
+> Delta do worktree sobre o HEAD `377f94a`. TOCA `scripts/` (gate com
+> resolução de redirect), `tests/` (+4 its) e `docs/architecture/`
+> (12 artefatos promovidos + manifest). `src/flow-engine.ts` INTOCADO.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| Ledger | 6 records selados (44-50) com evidence `.agents/` — imutáveis por selo | docs/architecture/flow-engine-evolution.json |
+| Prova no clone | 12 artefatos promovidos byte-a-byte (sha conferido) para `docs/architecture/ledger-evidence/` | git status |
+| Gate | `evidence_redirects` resolvido SÓ no record-check: destino versionado + existsSync + sha256; inválidos reprovam | scripts/validate-flow-engine-boundary.mjs |
+| Vigília | RED 4/4 (redirect ignorado) → GREEN 9/9; mutação do branch → 4 failed | tests/issue-0027-replay-chain.test.ts |
+| Suíte | 1049\|4 (1053) → 1053\|4 (1057), 93 arq, exit 0 | npx vitest run |
+
+**Limites:** porta do redirect não vale para declaration (anexos novos
+continuam fechados); bootstrap real é janela rara — a vigília é o teste.

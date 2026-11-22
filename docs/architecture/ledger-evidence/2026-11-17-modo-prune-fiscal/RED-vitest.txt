@@ -1,0 +1,264 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.6 [39m[90mC:/CodexProjetos/dex-PPIRTV[39m
+
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/diagnostics.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/server.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/flow-engine-boundary.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/next.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/previous.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/server.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/proof.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.agents/PLAN-TASKS/fixture.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/policy.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/server.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/flow-engine-boundary.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/policy.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.agents/PLAN-TASKS/fixture.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/policy.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/server.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/flow-engine-boundary.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/policy.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.agents/PLAN-TASKS/fixture.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/policy.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/server.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/flow-engine-boundary.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/policy.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.agents/PLAN-TASKS/fixture.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/server.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/fixture-evidence.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/FLOW_ENGINE_EVOLUTION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/flow-engine.ts', LF will be replaced by CRLF the next time Git touches it
+ [31m❯[39m tests/flow-engine-boundary.test.ts [2m([22m[2m40 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[33m 6964[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mreturns NOT_APPLICABLE when flow-engine.ts did not change[32m 7[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22maccepts SHRINK only when named symbols disappear with decisions preserved or reduced[32m 3[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22maccepts the current camping owner $oraculo-refatoracao alongside the legacy owner[32m 3[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mrejects line compression that removes no responsibility[32m 1[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22maccepts CONTAIN for glue only and opens a payable debt[32m 1[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mrejects CONTAIN when a new branch enters the facade[32m 1[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mallows one bounded EXCEPTION but rejects consecutive exceptions[32m 2[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mRED classe selagem retroativa + convergencia: EXCEPTION apos record retroativo selado ou que supersede passa; sem isso falha[32m 2[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mblocks a second CONTAIN while debt is open and accepts SHRINK that pays it[32m 1[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mdoes not let a non-SHRINK record pay debt[32m 1[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22maccepts any independently verified SHRINK as payment for global monolith debt[32m 1[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mrejects a relocated decision even when the global count stays flat[32m 1[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mrejects a relocated boolean policy disguised as guard adaptation[32m 1[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mrejects an unbounded exception with a decorative rollback[32m 1[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mreports structural metrics independently from formatting[32m 1[2mms[22m[39m
+   [33m[2m✓[22m[39m flow-engine responsibility balance[2m > [22mfails a changed worktree without changelog proof and passes after the marker exists [33m 710[2mms[22m[39m
+   [33m[2m✓[22m[39m flow-engine responsibility balance[2m > [22mrejects deleted ledger history and reuse of an old changelog marker [33m 314[2mms[22m[39m
+   [33m[2m✓[22m[39m flow-engine responsibility balance[2m > [22maccepts a covered ledger chain when the accumulated origin-main..HEAD diff spans several classified visits [33m 512[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mrejects a forged first ledger bootstrap[32m 212[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22msealedParentReasons reprova parent_commit que não casa nenhum pai real — inclusive em pai único — e aceita prefixo não-ambíguo[32m 1[2mms[22m[39m
+   [33m[2m✓[22m[39m flow-engine responsibility balance[2m > [22mselo vivo reprova parent_commit mentiroso do record selado (COMMIT_SEAL_PARENT_MISMATCH) [33m 436[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mselectorRunsAsRegex detecta seletor que substring-acha mas regex não casa o título[32m 1[2mms[22m[39m
+   [33m[2m✓[22m[39m flow-engine responsibility balance[2m > [22mselagem exige parent_commit (MISSING) e reprova remoção do campo (REMOVED) [33m 597[2mms[22m[39m
+   [33m[2m✓[22m[39m flow-engine responsibility balance[2m > [22mmotor-laundering: parent removido de record selado reprova mesmo em diff de motor [33m 521[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mrecord novo com parent fabricado reprova no path de declaracao[32m 274[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mbootstrap com seletor legado de parenteses e verde por grandfathering declarado[32m 276[2mms[22m[39m
+   [33m[2m✓[22m[39m flow-engine responsibility balance[2m > [22mseal-diff com commit inexistente devolve receipt estruturado sem crash [33m 310[2mms[22m[39m
+   [33m[2m✓[22m[39m flow-engine responsibility balance[2m > [22mrecord novo com commit de blob divergente reprova no nascimento [33m 342[2mms[22m[39m
+   [33m[2m✓[22m[39m flow-engine responsibility balance[2m > [22mdeselagem: remover commit de record selado reprova COMMIT_SEAL_COMMIT_MISSING [33m 307[2mms[22m[39m
+   [33m[2m✓[22m[39m flow-engine responsibility balance[2m > [22mledger encolhido reprova RECORD_REMOVED sem acusar base ilegivel [33m 370[2mms[22m[39m
+   [33m[2m✓[22m[39m flow-engine responsibility balance[2m > [22mchain com intermediario selado de blob divergente reprova no nascimento [33m 450[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mcommit existente sem o target reprova TARGET_MISSING distinto de NOT_FOUND[32m 265[2mms[22m[39m
+   [33m[2m✓[22m[39m flow-engine responsibility balance[2m > [22mre-serializacao com ordem de chaves trocada nao fabrica mudanca de record [33m 374[2mms[22m[39m
+   [33m[2m✓[22m[39m flow-engine responsibility balance[2m > [22mprefixo re-serializado com ordem de chaves nao-selo trocada nao e mutacao [33m 346[2mms[22m[39m
+   [33m[2m✓[22m[39m flow-engine responsibility balance[2m > [22melo com selo commitado em commit intermediario nao e re-julgado no nascimento [33m 304[2mms[22m[39m
+   [32m✓[39m flow-engine responsibility balance[2m > [22mkeeps the living architecture public and discoverable[32m 2[2mms[22m[39m
+[31m   [31m×[31m flow-engine responsibility balance[2m > [22maccepts PRUNE when removed symbols carry death proofs and no destination[39m[32m 8[2mms[22m[39m
+[31m     → expected 'FAIL' to be 'PASS' // Object.is equality[39m
+[31m   [31m×[31m flow-engine responsibility balance[2m > [22mrejects PRUNE when a removed symbol lacks a death proof[39m[32m 3[2mms[22m[39m
+[31m     → expected [ 'DECLARATION_MODE_INVALID' ] to include 'PRUNE_REQUIRES_DEATH_PROOF'[39m
+[31m   [31m×[31m flow-engine responsibility balance[2m > [22mrejects PRUNE that declares a destination module[39m[32m 1[2mms[22m[39m
+[31m     → expected [ 'DECLARATION_MODE_INVALID' ] to include 'PRUNE_FORBIDS_DESTINATION_MODULE'[39m
+[31m   [31m×[31m flow-engine responsibility balance[2m > [22mrejects PRUNE that removes no real symbol[39m[32m 1[2mms[22m[39m
+[31m     → expected [ 'DECLARATION_MODE_INVALID' ] to include 'PRUNE_REQUIRES_REMOVED_SYMBOL'[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 4 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/flow-engine-boundary.test.ts[2m > [22mflow-engine responsibility balance[2m > [22maccepts PRUNE when removed symbols carry death proofs and no destination
+[31m[1mAssertionError[22m: expected 'FAIL' to be 'PASS' // Object.is equality[39m
+
+Expected: [32m"PASS"[39m
+Received: [31m"FAIL"[39m
+
+[36m [2m❯[22m tests/flow-engine-boundary.test.ts:[2m1448:27[22m[39m
+    [90m1446| [39m    })[33m;[39m
+    [90m1447| [39m
+    [90m1448| [39m    [34mexpect[39m(result[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"PASS"[39m)[33m;[39m
+    [90m   | [39m                          [31m^[39m
+    [90m1449| [39m    [34mexpect[39m(result[33m.[39mmode)[33m.[39m[34mtoBe[39m([32m"PRUNE"[39m)[33m;[39m
+    [90m1450| [39m    [34mexpect[39m(result[33m.[39mmetrics[33m![39m[33m.[39mnonblank_lines[33m.[39mdelta)[33m.[39m[34mtoBeLessThan[39m([34m0[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/flow-engine-boundary.test.ts[2m > [22mflow-engine responsibility balance[2m > [22mrejects PRUNE when a removed symbol lacks a death proof
+[31m[1mAssertionError[22m: expected [ 'DECLARATION_MODE_INVALID' ] to include 'PRUNE_REQUIRES_DEATH_PROOF'[39m
+[36m [2m❯[22m tests/flow-engine-boundary.test.ts:[2m1467:28[22m[39m
+    [90m1465| [39m
+    [90m1466| [39m    [34mexpect[39m(result[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"FAIL"[39m)[33m;[39m
+    [90m1467| [39m    [34mexpect[39m(result[33m.[39mreasons)[33m.[39m[34mtoContain[39m([32m"PRUNE_REQUIRES_DEATH_PROOF"[39m)[33m;[39m
+    [90m   | [39m                           [31m^[39m
+    [90m1468| [39m  })[33m;[39m
+    [90m1469| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/flow-engine-boundary.test.ts[2m > [22mflow-engine responsibility balance[2m > [22mrejects PRUNE that declares a destination module
+[31m[1mAssertionError[22m: expected [ 'DECLARATION_MODE_INVALID' ] to include 'PRUNE_FORBIDS_DESTINATION_MODULE'[39m
+[36m [2m❯[22m tests/flow-engine-boundary.test.ts:[2m1483:28[22m[39m
+    [90m1481| [39m
+    [90m1482| [39m    [34mexpect[39m(result[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"FAIL"[39m)[33m;[39m
+    [90m1483| [39m    expect(result.reasons).toContain("PRUNE_FORBIDS_DESTINATION_MODULE…
+    [90m   | [39m                           [31m^[39m
+    [90m1484| [39m  })[33m;[39m
+    [90m1485| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/flow-engine-boundary.test.ts[2m > [22mflow-engine responsibility balance[2m > [22mrejects PRUNE that removes no real symbol
+[31m[1mAssertionError[22m: expected [ 'DECLARATION_MODE_INVALID' ] to include 'PRUNE_REQUIRES_REMOVED_SYMBOL'[39m
+[36m [2m❯[22m tests/flow-engine-boundary.test.ts:[2m1500:28[22m[39m
+    [90m1498| [39m
+    [90m1499| [39m    [34mexpect[39m(result[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"FAIL"[39m)[33m;[39m
+    [90m1500| [39m    [34mexpect[39m(result[33m.[39mreasons)[33m.[39m[34mtoContain[39m([32m"PRUNE_REQUIRES_REMOVED_SYMBOL"[39m)[33m;[39m
+    [90m   | [39m                           [31m^[39m
+    [90m1501| [39m  })[33m;[39m
+    [90m1502| [39m})[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m4 failed[39m[22m[2m | [22m[1m[32m36 passed[39m[22m[90m (40)[39m
+[2m   Start at [22m 18:01:57
+[2m   Duration [22m 7.51s[2m (transform 99ms, setup 0ms, collect 342ms, tests 6.96s, environment 0ms, prepare 82ms)[22m
+

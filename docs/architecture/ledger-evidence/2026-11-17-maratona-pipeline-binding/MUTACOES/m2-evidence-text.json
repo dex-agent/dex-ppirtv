@@ -1,0 +1,15 @@
+{
+  "src": "src/pipeline-policy.ts",
+  "simbolo": "pipelineEvidenceText",
+  "literal": "no extra evidence declared",
+  "mutacao": "MUTACAO evidence text",
+  "teste": "tests/pipeline-policy.test.ts",
+  "valido": true,
+  "restaurado": true,
+  "linha": 101,
+  "viva_no_disco": true,
+  "vitest_saida": "\n RUN  v3.2.6 C:/CodexProjetos/dex-PPIRTV\n\n ❯ tests/pipeline-policy.test.ts (9 tests | 1 failed) 15ms\n   ✓ pipeline policy (caracterizacao maratona 2026-11-17) > aplica defaults de risks/uncertainties e fallback de context quando ausentes 3ms\n   ✓ pipeline policy (caracterizacao maratona 2026-11-17) > preserva risks/uncertainties declarados e deduplica todos os campos colecao 1ms\n   ✓ pipeline policy (caracterizacao maratona 2026-11-17) > fallback: changed_files herda scope_in e evidence herda expected_evidence quando vazios 0ms\n   ✓ pipeline policy (caracterizacao maratona 2026-11-17) > mantem changed_files/evidence declarados quando preenchidos 0ms\n   ✓ pipeline policy (caracterizacao maratona 2026-11-17) > exige goal preenchido 1ms\n   ✓ pipeline policy (caracterizacao maratona 2026-11-17) > bloqueia segredo em qualquer campo do item (assert agregada) 0ms\n   ✓ pipeline policy (caracterizacao maratona 2026-11-17) > serializa o evidence text com as secoes na ordem historica 1ms\n   × pipeline policy (caracterizacao maratona 2026-11-17) > serializa no extra evidence declared somente quando expected_evidence tambem esta vazio 7ms\n     → expected 'Goal: cortar a onda\\n\\nScope in:\\n\\nT…' to contain '- no extra evidence declared'\n   ✓ pipeline policy (caracterizacao maratona 2026-11-17) > serializa evidence declarado quando preenchido 0ms\n\n Test Files  1 failed (1)\n      Tests  1 failed | 8 passed (9)\n   Start at  13:48:19\n   Duration  244ms (transform 39ms, setup 0ms, collect 46ms, tests 15ms, environment 0ms, prepare 66ms)\n\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  tests/pipeline-policy.test.ts > pipeline policy (caracterizacao maratona 2026-11-17) > serializa no extra evidence declared somente quando expected_evidence tambem esta vazio\nAssertionError: expected 'Goal: cortar a onda\\n\\nScope in:\\n\\nT…' to contain '- no extra evidence declared'\n\n- Expected\n+ Received\n\n- - no extra evidence declared\n+ Goal: cortar a onda\n+\n+ Scope in:\n+\n+ Tasks:\n+\n+ Expected evidence declared:\n+\n+ Done criteria:\n+\n+ Pipeline evidence:\n+ - MUTACAO evidence text\n\n ❯ tests/pipeline-policy.test.ts:101:40\n     99|   it(\"serializa no extra evidence declared somente quando expected_evi…\n    100|     const item = normalizePipelineItem({ ...baseItem }, 0);\n    101|     expect(pipelineEvidenceText(item)).toContain(\"- no extra evidence …\n       |                                        ^\n    102|   });\n    103| \n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n",
+  "failed": 1,
+  "passed": 8,
+  "sobreviveu": false
+}

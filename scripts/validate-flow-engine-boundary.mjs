@@ -15,6 +15,7 @@
 // Perigo: read-only (valida fronteira flow-engine)
 
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -545,6 +546,10 @@ function evidencePath(entry) {
   return /\.(?:ts|tsx|js|mjs|cjs|md|json)$/.test(candidate) ? candidate : null;
 }
 
+function sha256OfFile(filePath) {
+  return createHash("sha256").update(readFileSync(filePath)).digest("hex");
+}
+
 function unreleasedSection(content) {
   const start = content.indexOf("## [Unreleased]");
   if (start < 0) return "";
@@ -559,11 +564,40 @@ function evaluateCommitSealDiff({ cwd, baseManifest, headManifest }) {
   const reasons = [];
   let baseRecords = null;
   let headRecords = null;
+  let baseObj = null;
+  let headObj = null;
   try {
-    baseRecords = JSON.parse(baseManifest).records ?? null;
-    headRecords = JSON.parse(headManifest).records ?? null;
+    baseObj = JSON.parse(baseManifest);
+    headObj = JSON.parse(headManifest);
+    baseRecords = baseObj.records ?? null;
+    headRecords = headObj.records ?? null;
   } catch {
     return { ok: false, reasons: ["COMMIT_SEAL_MANIFEST_UNREADABLE"] };
+  }
+  // Trilho 2026-11-21-redirect-evidence-legada-ledger: diff de manifest que
+  // APENAS adiciona evidence_redirects (records byte-identicos) e re-ancoragem
+  // legitima de prova legada — cada destino e versionado, existente e
+  // sha-conferido AQUI no commit (nao so no bootstrap). Qualquer outro diff
+  // de manifest sem mudanca do alvo continua reprovando.
+  if (canonicalJson(baseRecords) === canonicalJson(headRecords)) {
+    const stripRedirects = (obj) => {
+      const copy = { ...obj };
+      delete copy.evidence_redirects;
+      return copy;
+    };
+    if (canonicalJson(stripRedirects(baseObj)) === canonicalJson(stripRedirects(headObj))) {
+      const redirectReasons = [];
+      for (const [origin, redirect] of Object.entries(headObj.evidence_redirects ?? {})) {
+        if (!origin.startsWith(".agents/") || !redirect || typeof redirect !== "object"
+          || redirect.target.startsWith(".agents/") || redirect.target.startsWith(".ppirtv/")
+          || !existsSync(path.join(cwd, redirect.target))
+          || (typeof redirect.sha256 === "string" && sha256OfFile(path.join(cwd, redirect.target)) !== redirect.sha256)) {
+          redirectReasons.push(`EVIDENCE_REDIRECT_INVALID:${origin}`);
+        }
+      }
+      if (redirectReasons.length > 0) return { ok: false, reasons: redirectReasons };
+      return { ok: true, sealedIds: [] };
+    }
   }
   if (!Array.isArray(baseRecords) || !Array.isArray(headRecords) || baseRecords.length !== headRecords.length) {
     return { ok: false, reasons: ["COMMIT_SEAL_SHAPE_CHANGED"] };
@@ -731,8 +765,22 @@ function validateBootstrapRecords({ cwd, records, manifest, headBlob }) {
       // PLAYBOOK) — existsSync passa na máquina local e morre no clone limpo.
       // Evidência de record tem que ser reabrível no clone (classe #19,
       // claim-sem-receipt); cerimônia local mora no flow PPIRTV.
+      // Trilho 2026-11-21-redirect-evidence-legada-ledger: records legados
+      // SELADOS não podem ser editados (LEDGER_HISTORY_MUTATED) — o redirect
+      // versionado no manifest (evidence_redirects) sanciona a re-ancoragem
+      // SOMENTE no record-check (bootstrap); o declaration gate (anexos novos)
+      // permanece fechado. Destino tem que ser versionado + sha256 conferido.
       if (evidenceFile.startsWith(".agents/")) {
-        add(record, `EVIDENCE_NOT_VERSIONED:${evidenceFile}`);
+        const redirect = manifest.evidence_redirects?.[evidenceFile];
+        if (!redirect || typeof redirect !== "object") {
+          add(record, `EVIDENCE_NOT_VERSIONED:${evidenceFile}`);
+        } else if (redirect.target.startsWith(".agents/") || redirect.target.startsWith(".ppirtv/")) {
+          add(record, `EVIDENCE_REDIRECT_INVALID:${evidenceFile}`);
+        } else if (!existsSync(path.join(cwd, redirect.target))) {
+          add(record, `EVIDENCE_REDIRECT_INVALID:${evidenceFile}`);
+        } else if (typeof redirect.sha256 === "string" && sha256OfFile(path.join(cwd, redirect.target)) !== redirect.sha256) {
+          add(record, `EVIDENCE_REDIRECT_SHA_MISMATCH:${evidenceFile}`);
+        }
       } else if (!existsSync(path.join(cwd, evidenceFile))) {
         add(record, `EVIDENCE_NOT_FOUND:${evidenceFile}`);
       }
