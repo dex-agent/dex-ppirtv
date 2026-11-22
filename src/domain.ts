@@ -149,6 +149,9 @@ export type SptV3Contract = Omit<
   "version" | "spec" | "tasks" | "expected_evidence" | "done_criteria"
 > & {
   version: 3;
+  // R19 (transicao compativel): opcional no motor — ausencia vira WARNING
+  // (nao missing); presente = validado completo. Porta dura = preflight S12.
+  abertura?: { contexto: string; ferramentas: string; mentor: string };
   requirements: SptV3Requirement[];
   tasks: SptV3Task[];
   closure_gates: string[];

@@ -118,6 +118,55 @@ describe("SPT v3 traceability contract", () => {
     expect(validation.contract_errors).toEqual(expect.arrayContaining([expect.stringContaining("spt_v3.")]));
   });
 
+  it("R19 transicao compativel: SPT v3 sem abertura valida COM warning que nunca bloqueia; com bloco fica check presente e sem warning", async () => {
+    // Alerta do dono 261122: "nao podemos implementar algo que quebre o que
+    // ja tem" — frota/replay/Trilhos historicos seguem validos; a porta DURA
+    // de criacao e o S12 do spt-kit/preflight (teste proprio do R19).
+    const workspace = path.join(tempRoot, "workspace");
+    const engine = new FlowEngine(new PpirtvStore(path.join(workspace, ".ppirtv")));
+    const semBlocoPath = await writeSpt(workspace, "v3-sem-abertura.md", v3Document(workspace));
+
+    const semBloco = await engine.validateSpt({
+      workspace,
+      spt_path: semBlocoPath,
+      objective: "Provar rastreabilidade SPT v3"
+    });
+
+    expect(semBloco.valid).toBe(true);
+    expect(semBloco.checks.spt_abertura_present).toBe(false);
+    expect(semBloco.missing).not.toContain(expect.stringContaining("abertura"));
+    expect(semBloco.warnings).toEqual(
+      expect.arrayContaining([expect.stringContaining("spt_v3.abertura ausente (R19)")])
+    );
+
+    const comBlocoPath = await writeSpt(
+      workspace,
+      "v3-com-abertura.md",
+      v3Document(workspace).replace(
+        "origin: teste causal",
+        [
+          "abertura:",
+          "  contexto: 'pago $dex-find-contexto-integrado'",
+          "  ferramentas: 'pago $dex-find-tools'",
+          "  mentor: 'mentor-documental-de-teste'",
+          "origin: teste causal"
+        ].join("\n")
+      )
+    );
+
+    const comBloco = await engine.validateSpt({
+      workspace,
+      spt_path: comBlocoPath,
+      objective: "Provar rastreabilidade SPT v3"
+    });
+
+    expect(comBloco.valid).toBe(true);
+    expect(comBloco.checks.spt_abertura_present).toBe(true);
+    expect(comBloco.warnings).not.toEqual(
+      expect.arrayContaining([expect.stringContaining("spt_v3.abertura ausente (R19)")])
+    );
+  });
+
   it("treats omitted flow_role as execution, rejects new v2, and preserves explicit recovery retries", async () => {
     const workspace = path.join(tempRoot, "workspace");
     const engine = new FlowEngine(new PpirtvStore(path.join(workspace, ".ppirtv")));

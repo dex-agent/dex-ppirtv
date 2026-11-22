@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// preflight SPT v3 — checks S00..S11: regras R1-R09 (S01..S08, S11), anti-drift S09, shape S10 — forma local; spt_validate MCP permanece a autoridade.
+// preflight SPT v3 — checks S00..S12: regras R1-R09 (S01..S08, S11), anti-drift S09, shape S10, abertura S12 (R19) — forma local; spt_validate MCP permanece a autoridade.
 // Uso: node preflight.mjs <spt.md> | node preflight.mjs --checksum <molde.md>
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -17,7 +17,7 @@ const PRE_FLIGHT_DOC = {
   ],
   schema: {
     contract: "dex.spt.preflight.doc.v1",
-    checks: "S00..S11 (forma local; spt_validate MCP permanece a autoridade)",
+    checks: "S00..S12 (forma local; spt_validate MCP permanece a autoridade)",
     exit: "0 = achados=0; 1 = achados>0"
   },
   examples: [
@@ -54,7 +54,7 @@ function loadFront(file) {
 }
 
 // S10: shape dos 21 campos — lista espelha SCHEMA/dex.spt.v3.schm.md (bump junto quando o schema mudar)
-const REQUIRED_FIELDS = ["dex_contract", "version", "status", "owner", "date", "workspace", "origin", "goal", "context", "problem", "decision", "scope", "requirements", "plan", "tasks", "closure_gates", "risks", "uncertainties", "gates", "validation", "execution_prompt"];
+const REQUIRED_FIELDS = ["dex_contract", "version", "status", "owner", "date", "workspace", "abertura", "origin", "goal", "context", "problem", "decision", "scope", "requirements", "plan", "tasks", "closure_gates", "risks", "uncertainties", "gates", "validation", "execution_prompt"];
 
 function checkRequiredShape(d) {
   const ausentes = REQUIRED_FIELDS.filter((k) => d[k] === undefined || d[k] === null);
@@ -64,6 +64,15 @@ function checkRequiredShape(d) {
   if (!Array.isArray(d.uncertainties) || d.uncertainties.length < 1) add("S10", "uncertainties exige no minimo 1 item");
   const desconhecidas = Object.keys(d).filter((k) => !REQUIRED_FIELDS.includes(k));
   if (desconhecidas.length) add("S10", `chave desconhecida: ${desconhecidas.join(", ")}; validas: ${REQUIRED_FIELDS.join(", ")}`);
+  // R19 (abertura obrigatoria): as 3 perguntas base de TODO trabalho viram
+  // gate — o hook cobra a FORMA (presenca nao-vazia dos 3 campos), o LLM
+  // paga e mostra o CONTEUDO (doc 10 lei 1; plaquinha global
+  // ABERTURA-DE-TRABALHO-REPERTORIO-PRIMEIRO, GO 261122).
+  const aberturaFaltantes = ["contexto", "ferramentas", "mentor"].filter(
+    (campo) => typeof d.abertura?.[campo] !== "string" || !d.abertura[campo].trim()
+  );
+  if (aberturaFaltantes.length)
+    add("S12", `bloco abertura incompleto (R19): pague as 3 perguntas base — faltam: ${aberturaFaltantes.join(", ")} (contexto=$dex-find-contexto-integrado; ferramentas=$dex-find-tools; mentor=mentor-documental-<assunto> p/ interrogar na dificuldade)`);
 }
 
 function checkGraph(d) {

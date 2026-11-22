@@ -645,36 +645,35 @@
       "external_sources": [
         "owner: skill dex-toolsbook (registry ~/.agents/skills) | locator: ~/.agents/skills/dex-toolsbook/scripts/toolsbook.py | revision: contrato v2 working_tree do registry (sem pin — ISSUE-LOCAL-0010) | evidence: este TOOLSBOOK.json passa no --check"
       ]
-    }
-  ],
-  "cards": [
+    },
     {
       "id": "spt-preflight",
-      "purpose": "validador estrutural local de Trilho SPT v3 antes do goal_start (fiscal S00-S11; espelho local do spt_validate MCP)",
+      "status": "reviewed",
+      "purpose": "validador estrutural local de Trilho SPT v3 antes do goal_start (fiscal S00-S12; espelho local do spt_validate MCP)",
       "when": "rodar ANTES de qualquer goal_start e ao lapidar um Trilho; also consumido por fixtures de teste que validam o fiscal",
       "how": "node spt-kit/preflight.mjs <caminho-do-trilho>; achados no stdout com exit != 0; --schema/--help/--usage pelo intercept TRIADE-DOC",
-      "inputs": [
-        "caminho do arquivo .md do Trilho (frontmatter YAML na linha 1)"
-      ],
-      "outputs": [
-        "stdout: achados=0 (verde) ou lista Snn com exit != 0"
-      ],
+      "inputs": "caminho do arquivo .md do Trilho (frontmatter YAML na linha 1); --checksum <molde> p/ anti-drift S09",
+      "outputs": "stdout: achados=0 (verde) ou lista Snn com exit != 0; banner --schema anuncia S00..S12",
       "capabilities": [
         "S00 frontmatter",
         "S03 criterios atomicos",
         "S04 expectation kinds",
-        "S11 prova de tipos por nomes completos (check:types|check inteiro; boundary de fim de token — GitHub #39)"
+        "S11 prova de tipos por nomes completos (check:types|check inteiro; boundary de fim de token — GitHub #39)",
+        "S12 bloco abertura pago (R19): 3 perguntas base contexto/ferramentas/mentor na CRIACAO do Trilho — transicao compativel, ausencia nunca bloqueia o motor"
       ],
       "not_for": [
         "validacao semantica do CONTEUDO (isso e do agente/spt_validate MCP); nao substitui goal_start binding"
       ],
-      "risks": [
-        "casamento por substring em procedure ja pagou a auditoria 377f94a (#39): boundary de fim de token e obrigatorio em novos Snn de script"
+      "risks": "casamento por substring em procedure ja pagou a auditoria 377f94a (#39): boundary de fim de token e obrigatorio em novos Snn de script; S12 cobra FORMA na criacao — conteudo das 3 respostas e do agente (doc 10 lei 1)",
+      "evidence": [
+        "tests/issue-r19-abertura.test.ts (3 its: sem bloco dispara S12; completo limpa; incompleto nomeia o campo)",
+        "tests/issue-0039-prefixo-capacity.test.ts (S11 boundary)"
       ],
-      "evidence": "tests/issue-0039-prefixo-capacity.test.ts (5 casos: capacity/flow-engine MANTem S11; check:types/check inteiro LIMPAM)",
       "sources": {
-        "spt-kit/preflight.mjs": "700722ba7fd774fef6291a3e014cd799505dc3ae8da73fcf6eecd083726a88c3"
-      }
+        "spt-kit/preflight.mjs": "65fb2b871a8e4ab47968a04de63b7682cbcb2f276af5226740f2544faee7aaf8"
+      },
+      "owner": "spt-kit (fiscal local); revisao sprinter/spt-revisor",
+      "next_review": "bump do schema dex.spt.v3 ou novo check Snn"
     }
   ]
 }

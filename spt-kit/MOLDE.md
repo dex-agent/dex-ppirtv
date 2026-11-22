@@ -13,6 +13,10 @@ status: 'RASCUNHO'
 owner: 'TODO-PREENCHER owner (skill dona da criacao)'
 date: 'TODO-PREENCHER YYYY-MM-DD'
 workspace: 'TODO-PREENCHER caminho absoluto do workspace'
+abertura:
+  contexto: 'TODO-PREENCHER o que ja sabemos disso ($dex-find-contexto-integrado: achados + fontes vivas)'
+  ferramentas: 'TODO-PREENCHER quais ferramentas/scripts/skills/receitas temos disso ($dex-find-tools + TOOLSBOOK)'
+  mentor: 'TODO-PREENCHER mentor-documental-<assunto> a interrogar na dificuldade tecnica (hipotese declarada)'
 origin: 'TODO-PREENCHER decisao ou GO que originou este trilho em 1 frase'
 goal:
   id: 'TODO-PREENCHER slug-lowercase-com-data'

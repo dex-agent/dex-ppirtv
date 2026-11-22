@@ -60,10 +60,25 @@ wrapper com outro nome que pule tests/ permanece julgamento de agente.
 O sha256 de `MOLDE.md` é registrado em `SCHEMA/dex.spt.v3.schm.md`.
 Verificação: `preflight.mjs --checksum <arquivo>` compara e acusa **S09** em divergência.
 
-## S10: shape dos 21 campos (fora da numeração R)
-Presença e shape dos 21 campos do `dex.spt.v3` (lista espelhada de
+## S10: shape dos 22 campos (fora da numeração R)
+Presença e shape dos 22 campos do `dex.spt.v3` (lista espelhada de
 `SCHEMA/dex.spt.v3.schm.md`; bump junto quando o schema mudar). Campo obrigatório
 ausente, `plan` fora de array de strings, `tasks` sem objetos, `uncertainties`
 com menos de 1 item e chave desconhecida acusam **S10**.
 Verificação: preflight confere a lista, os 3 shapes e as chaves; `spt_validate`
 permanece a autoridade do schema estrito.
+
+## S12: bloco abertura pago (R19, fora da numeração R)
+`abertura{contexto,ferramentas,mentor}` presente com os 3 campos não-vazios —
+as 3 perguntas base da casa (contexto = `$dex-find-contexto-integrado`;
+ferramentas = `$dex-find-tools`; mentor = `mentor-documental-<assunto>` para
+interrogar na dificuldade com `$interrogador-documental`). TRANSIÇÃO
+COMPATÍVEL (alerta do dono 261122: nada pode quebrar o que já tem): o bloco é
+OPCIONAL no zod do motor — ausência em SPT v3 vira WARNING
+(`spt_v3.abertura ausente (R19)`) em `validateSpt`, nunca reprovação; frota,
+replay e Trilhos históricos seguem válidos. O preflight cobra a PORTA DURA de
+criação: Trilho novo sem o bloco não passa (o hook cobra a FORMA; o LLM paga e
+mostra o CONTEÚDO — doc 10 lei 1).
+Verificação: preflight acusa **S12** nomeando os campos faltantes
+(diagnóstico que ensina, com a rota da cura no próprio finding); promoção a
+obrigatório no motor é corte próprio pós-migração da frota.

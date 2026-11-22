@@ -1,3 +1,21 @@
+## Reavaliação — R19 abertura obrigatória: S12 + warning no motor (2026-11-22)
+
+Delta: transição compatível por alerta do dono — `abertura{contexto,ferramentas,mentor}`
+opcional no zod (spt-contract.ts + domain.ts); ausência vira check
+`spt_abertura_present=false` + WARNING `spt_v3.abertura ausente (R19)` em
+`validateSpt` (DECISÃO em sptAberturaPresent/sptAberturaWarning em
+spt-contract.ts; motor em cola pura — árvore, não remendo). Porta DURA de
+criação: S12 do spt-kit/preflight (REQUIRED_FIELDS 22; banner S00..S12;
+MOLDE com bloco; RULES S12 + SCHEMA rev 5, S09 re-ancorado). Camping:
+EXCEPTION public_compatibility (CONTAIN bloqueado pela dívida aberta
+FE-DEBT-007 — fora do escopo R19); selagem pós-commit honesta do
+CORTE-B-PRIME (ae8b86f/c9a3196, blobs conferidos no git real). Prova da
+compatibilidade: suíte completa com o campo opcional verde sem patch nenhum
+nos helpers v3 (103→0); RED 3 its → GREEN; mutação dupla PEGA (3 vermelhos:
+2×S12 + 1×warning) restaurada por bytes. Testes: issue-r19-abertura (3 its,
+títulos regex-safe) + it motor em spt-contract-v3.
+Receipt `reavaliacao_r19_abertura_obrigatoria_261122`.
+
 ## Reavaliação — regen PLAYBOOK pós-GRUPO auditoria 11/11 (2026-11-22)
 
 Projeção regenerada no fechamento do grupo (fontes: frente H concluída).

@@ -8,6 +8,25 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **R19: bloco abertura obrigatório no SPT v3 — as 3 perguntas base viram
+  gate de CRIAÇÃO (Trilho 2026-11-22-r19-abertura-obrigatoria)**: transição
+  compatível por alerta do dono ("não podemos implementar algo que quebre o
+  que já tem") — `abertura{contexto,ferramentas,mentor}` opcional no zod
+  (`src/spt-contract.ts` `.optional()` + `src/domain.ts` `abertura?`);
+  ausência no motor vira check `spt_abertura_present=false` + WARNING
+  `spt_v3.abertura ausente (R19)` em `validateSpt` (nunca bloqueante — 103
+  testes da frota preservados: suíte completa verde sem patch nos helpers
+  v3); a porta DURA é o **S12** do `spt-kit/preflight.mjs` (Trilho novo sem
+  o bloco não passa; REQUIRED_FIELDS passa a 22 campos; banner S00..S12 —
+  sentinela do banner pegou o range defasado ao vivo). MOLDE com bloco
+  TODO-PREENCHER + SCHEMA rev 5 + RULES S12 (anti-drift S09 re-ancorado).
+  Camping CONTAIN
+  **FE-2026-11-22-R19-ABERTURA-WARNING-VALIDATESPT** (glue-only). Guardas:
+  `tests/issue-r19-abertura.test.ts` 3 its (S12 dispara/limpa/nomeia o
+  campo faltante) + it motor em `tests/spt-contract-v3.test.ts` (sem bloco
+  → valid=true + warning; com bloco → check true sem warning); mutação
+  PEGA. Promoção a obrigatório no motor = corte próprio pós-migração.
+
 - **frente H: S11 decide por nomes COMPLETOS — check:capacity mantém o
   diagnóstico (GitHub #39, Trilho 2026-11-22-frenteh, flow 6228_0001)**: o
   fiscal S11 do spt-kit/preflight.mjs testava `!/npm run check/.test(proc)`

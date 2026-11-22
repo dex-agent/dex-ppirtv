@@ -1,4 +1,23 @@
 {
+  "reavaliacao_r19_abertura_obrigatoria_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "src/spt-contract.ts",
+      "src/domain.ts",
+      "src/flow-engine.ts",
+      "spt-kit/preflight.mjs",
+      "spt-kit/MOLDE.md",
+      "spt-kit/RULES.md",
+      "SCHEMA/dex.spt.v3.schm.md",
+      "tests/issue-r19-abertura.test.ts",
+      "tests/spt-contract-v3.test.ts",
+      "docs/architecture/flow-engine-evolution.json",
+      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+      "CHANGELOG.md",
+      "TOOLSBOOK.json"
+    ],
+    "delta": "R19 (Trilho 2026-11-22-r19-abertura-obrigatoria, GO PADRAO): as 3 perguntas base viram gate de CRIACAO (S12 preflight, porta dura) + WARNING no motor (check spt_abertura_present; decisao em spt-contract.ts, motor cola pura). TRANSICAO COMPATIVEL por alerta do dono: abertura opcional no zod; suite completa verde sem patch nos helpers v3 (103->0); mutacao dupla PEGA (3 vermelhos) restaurada por bytes; camping EXCEPTION public_compatibility (CONTAIN bloqueado por FE-DEBT-007 aberta); selagem pos-commit do CORTE-B-PRIME (ae8b86f/c9a3196 conferidos); banner preflight S00..S12; SCHEMA rev 5 + RULES S12 + TOOLSBOOK spt-preflight re-ancorada."
+  },
   "reavaliacao_playbook_pos_frente_b2_261122": {
     "date": "2026-11-22",
     "scope": [

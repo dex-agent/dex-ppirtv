@@ -2264,7 +2264,9 @@
       "red_base_blob": "6855abec1ca270c429d8f319e742254ab6a6de97",
       "red_observed_failure": "REVIEW_SNAPSHOT_FILE_REQUIRED removed.txt ao vivo com o hash do evento e targets exatos do pending (RED 5 de 6; a caracterizacao do FILE_REQUIRED sem exclusao comprovada passa por desenho); no HEAD pos-A2 o anexo validava com requireReviewableFiles enquanto o fiscal gerou o pending sem require.",
       "red_command": "npx vitest run tests/issue-0022-pending-cycle.test.ts -t \"cura review com o hash do evento anexa quando o pending contem arquivo removido por commit\"",
-      "behavior_preserved_by": "tests/issue-0022-pending-cycle.test.ts 6 its: 4 repros curadas (exclusao, escopo corrente pos-attribution com retry reconhecendo sem segunda rodada, persistencia os-dois-ou-nenhum, status publicando o escopo que o anexo aceita) + 2 caracterizacoes (FILE_REQUIRED sem exclusao comprovada; rejeicao do escopo congelado pos-attribution)."
+      "behavior_preserved_by": "tests/issue-0022-pending-cycle.test.ts 6 its: 4 repros curadas (exclusao, escopo corrente pos-attribution com retry reconhecendo sem segunda rodada, persistencia os-dois-ou-nenhum, status publicando o escopo que o anexo aceita) + 2 caracterizacoes (FILE_REQUIRED sem exclusao comprovada; rejeicao do escopo congelado pos-attribution).",
+      "commit": "ae8b86f43969afdd8401b88f7f89e80a98fe3d80",
+      "parent_commit": "c9a3196bd7e252f3df842c0e9eff8154ac29073d"
     },
     {
       "id": "FE-2026-11-22-FRENTE-B-REVIEW-PENDING-PATHS",
@@ -2304,6 +2306,39 @@
       "red_observed_failure": "RED 6 de 8 na base: os 2 its novos (diretorio no disco; rm do disco sem git rm) resolviam o anexo — o fingerprint pendente com opcoes {} representava diretorio como non_file e ausencia como missing, ambos ENTRAVAM sem erro (falso verde do fiscal, issue #29 da auditoria 377f94a).",
       "red_command": "npx vitest run tests/issue-0022-pending-cycle.test.ts -t \"arquivo do pending removido do DISCO sem exclusao corroborada\"",
       "behavior_preserved_by": "tests/issue-0022-pending-cycle.test.ts 8 its: 2 repros novos curados (diretorio; ausencia sem corroboracao) + controle positivo it 24 (exclusao commitada pelo Git continua aceita) + 5 caracterizacoes do corte B' intactas; sem pendencia o resultado observavel e identico (o fp com requireReviewableFiles reprova com a MESMA mensagem REVIEW_SNAPSHOT_FILE_REQUIRED); mutacao da chamada (remove assertPendingReviewScopeReviewable) renasce os 2 REDs."
+    },
+    {
+      "id": "FE-2026-11-22-R19-ABERTURA-WARNING-VALIDATESPT",
+      "date": "2026-11-22",
+      "mode": "EXCEPTION",
+      "exception_reason": "public_compatibility",
+      "rollback": "Reverta o corte para restaurar validateSpt sem o check spt_abertura_present/warning R19 (ou remova as 2 linhas de cola e as funcoes sptAberturaPresent/sptAberturaWarning de spt-contract.ts).",
+      "expires": "next diff that touches src/flow-engine.ts",
+      "commit": "",
+      "parent_commit": "ea255b9f6a55494f487ee314b8f0ddd93f5bd81c",
+      "base_blob": "90a6f48610e1ad8292a6dbe90c098caf4f0625fe",
+      "head_blob": "875b6c1a3177abee47d700562c211585d2040b60",
+      "spt_path": ".agents/PLAN-TASKS/2026-11-22-r19-abertura-obrigatoria.md",
+      "responsibility": "validateSpt sinaliza a ausencia do bloco abertura (R19) em SPT v3 como check spt_abertura_present=false + WARNING 'spt_v3.abertura ausente (R19)' — TRANSICAO COMPATIVEL (alerta do dono 261122: nada quebra o que ja tem; regra anti-loop: erro nao-silencioso mas nunca invalidante): frota/replay/Trilhos historicos seguem validos (medido: obrigatorio no zod quebrava 103 testes; suite completa 1081 verdes sem patch). A DECISAO mora no dono do contrato (sptAberturaPresent/sptAberturaWarning em src/spt-contract.ts); o motor espelha com 2 linhas de cola pura (sem if/decisao nova — arvore, nao remendo). A porta DURA de criacao e o S12 do spt-kit/preflight. EXCEPTION public_compatibility: CONTAIN esta bloqueado incondicionalmente pela divida aberta FE-DEBT-007 (OPEN_DEBT_MUST_BE_PAID) que o R19 nao paga (fora de escopo — pagamento e a proxima onda densa da maratona, payment_scope any_verified_shrink).",
+      "owner": "$oraculo-refatoracao",
+      "consumers": [
+        "src/server.ts"
+      ],
+      "evidence": [
+        "tests/spt-contract-v3.test.ts",
+        "tests/issue-r19-abertura.test.ts"
+      ],
+      "evidence_selectors": {
+        "tests/spt-contract-v3.test.ts": "R19 transicao compativel: SPT v3 sem abertura valida COM warning que nunca bloqueia; com bloco fica check presente e sem warning",
+        "tests/issue-r19-abertura.test.ts": "COM o bloco completo LIMPA o S12"
+      },
+      "changelog_marker": "FE-2026-11-22-R19-ABERTURA-WARNING-VALIDATESPT",
+      "architecture_marker": "FE-2026-11-22-R19-ABERTURA-WARNING-VALIDATESPT",
+      "red_evidence": "tests/issue-r19-abertura.test.ts::SEM o bloco abertura dispara S12 — o MOLDE sem bloco não passa mais",
+      "red_base_blob": "90a6f48610e1ad8292a6dbe90c098caf4f0625fe",
+      "red_observed_failure": "RED pago antes das curas (261122): MOLDE sem bloco abertura NAO disparava nenhum achado (S12 nao existia) — o gate de criacao das 3 perguntas base era inexistente; com o corte, o mesmo arquivo reprova S12 nomeando os campos faltantes. No motor, it novo em tests/spt-contract-v3.test.ts cobre valid=true + warning na ausencia e check true sem warning com o bloco.",
+      "red_command": "npx vitest run tests/issue-r19-abertura.test.ts -t \"SEM o bloco abertura dispara S12 — o MOLDE sem bloco não passa mais\"",
+      "behavior_preserved_by": "suite completa apos as curas: 1081 passed + 2 failed conhecidos no momento da medicao (banner S00..S11 — curado no mesmo corte; replay deste record — selado por este corte); os 103 helpers v3 que quebravam com abertura obrigatoria no zod seguem verdes com o campo .optional(); build exit 0; 12/12 verdes nos 3 arquivos diretos apos a extracao arvore (sptAberturaPresent/sptAberturaWarning em spt-contract.ts, motor em cola pura); mutacao (remover o warnings.push do motor) renasce o vermelho do it motor."
     }
   ],
   "evidence_redirects": {

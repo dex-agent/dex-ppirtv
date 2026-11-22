@@ -4,7 +4,7 @@ versao: 1
 status: ativo
 dono: dex-PPIRTV
 fonte-viva: 'docs/contracts/GOAL_SPT_CANONICAL_CONTRACT.md (contrato) + src/spt-contract.ts (zod executavel) + templates/SPEC-PLAN-TASKS.template.md (template) + spt-kit/ (molde, regras, guia, preflight)'
-registro: 'rev 4 (2026-11-19, corte E ISSUE-LOCAL-0009: R9 prova de tipos integral — MOLDE ancora npm run check:types/check INTEIRO no procedure e preflight ganha S11 sentinela de tsc direto; caso: D-47 declarou check exit 0 com tsc src-only enquanto tests/ carregava 3 erros); rev 3 (2026-11-06, corte spt-kit-cobertura-total: header do MOLDE inequivoco — copiar o BLOCO YAML, nunca o arquivo integral, que gera S00; GUIA e contratos alinhados; preflight ganha S00 com diagnostico, tolerancia a BOM e S10 de shape dos 21 campos); rev 2 (2026-10-31, cura uncertainties — molde ensinava remover campo que o schema exige min 1 item; GO do dono, Trilho skills 2026-10-31-mover-porta-padrao); MOLDE.md sha256:8960f0e6f4b8a4b446f493d5dfd2078e7a40d123d5027d32c58241cf6e87ba64'
+registro: 'rev 5 (2026-11-22, R19 abertura obrigatoria: bloco abertura{contexto,ferramentas,mentor} — 3 perguntas base da casa; TRANSICAO COMPATIVEL por alerta do dono ("nao podemos implementar algo que quebra o que ja tem": opcional no zod + WARNING em validateSpt, 103 testes preservados); preflight ganha S12 porta dura de criacao; S10 passa a 22 campos); rev 4 (2026-11-19, corte E ISSUE-LOCAL-0009: R9 prova de tipos integral — MOLDE ancora npm run check:types/check INTEIRO no procedure e preflight ganha S11 sentinela de tsc direto; caso: D-47 declarou check exit 0 com tsc src-only enquanto tests/ carregava 3 erros); rev 3 (2026-11-06, corte spt-kit-cobertura-total: header do MOLDE inequivoco — copiar o BLOCO YAML, nunca o arquivo integral, que gera S00; GUIA e contratos alinhados; preflight ganha S00 com diagnostico, tolerancia a BOM e S10 de shape dos 21 campos); rev 2 (2026-10-31, cura uncertainties — molde ensinava remover campo que o schema exige min 1 item; GO do dono, Trilho skills 2026-10-31-mover-porta-padrao); MOLDE.md sha256:c3b480a17d0022886a05f0e83e937b46ad325fc9e997f9dbaf6e94ebb33d8d8c'
 ---
 
 # dex.spt.v3 — Trilho/SPT SPEC-PLAN-TASKs versão 3
@@ -16,11 +16,14 @@ Para autoria na casa, consulte `check-schemas/SKILL.md` no registry. O [contrato
 Schema do artefato executor `SPT/Trilho v3`: arquivo Markdown com front matter
 YAML estrito (grafo `requirements → criteria → tasks → evidence_requirements`),
 corpo humano livre depois do fechamento. Válido por `scripts/validate-spt.mjs`
-(zod) e conferido por `spt-kit/preflight.mjs` (regras R1-R08 + anti-drift S09).
+(zod) e conferido por `spt-kit/preflight.mjs` (regras R1-R09 + S10-S12).
 
-## Campos (21)
+## Campos (22)
 
 `dex_contract: spt`, `version: 3`, `status`, `owner`, `date`, `workspace`,
+`abertura{contexto,ferramentas,mentor}` (R19 — opcional no motor, transição
+compatível: ausência vira WARNING em `validateSpt`, nunca reprovação; o
+preflight S12 cobra a presença na CRIAÇÃO de Trilho novo),
 `origin`, `goal{id,title,objective}`, `context`, `problem`, `decision`,
 `scope{include,exclude}`, `requirements[]`, `plan[]`, `tasks[]`,
 `closure_gates[]`, `risks[]`, `uncertainties[]`, `gates[]`, `validation[]`,
@@ -31,7 +34,7 @@ measurement | text`.
 
 ## Regras de geração (R1-R08) e anti-drift
 
-Ver `spt-kit/RULES.md`. Codes S01..S09 emitidos pelo preflight.
+Ver `spt-kit/RULES.md`. Codes S01..S12 emitidos pelo preflight.
 
 ## Onde nasce um SPT novo
 

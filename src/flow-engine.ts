@@ -50,7 +50,7 @@ import { defaultWorkflow, earlySecurityProportionalityPolicy, finalReportModel, 
 import { PpirtvStore } from "./store.js";
 import { assertPhaseInProfile, assertPhaseTransitionDirection, nextPhaseOrThrow, phaseAdvanceAllowed, profileFor } from "./phase-profile.js";
 import { FISCAL_CONFIG, graphifyRecallConfigured, sameRuntimePath } from "./config.js";
-import { fingerprintSptContract, parseSptDocument, sha256SptDocument } from "./spt-contract.js";
+import { fingerprintSptContract, parseSptDocument, sha256SptDocument, sptAberturaPresent, sptAberturaWarning } from "./spt-contract.js";
 import { fiscalStateSegment } from "./error-envelope.js";
 import { missingValidationDiagnostic, runtimeWorkspaceMismatchDiagnostic, SptPathContractError, validationSptPathDiagnostic, resolveSptPath, isDirectory, isFile, isInsideOrEqual, isSensitivePath } from "./spt-path-diagnostics.js";
 import { assertCriterionProofRevisionCurrent, criterionProjection, evidenceRequirementProjection, assertSptV3PositiveVerdictCoverage, assertCriterionProofAdmission, sptTraceabilityReattachedEventData, taskProjection, traceabilityFromContract } from "./spt-traceability.js";
@@ -312,6 +312,9 @@ export class FlowEngine {
     checks.spt_schema_valid = parsedSpt.checks.schema_valid;
     checks.spt_semantics_valid = parsedSpt.checks.semantics_valid;
     checks.spt_workspace_matches = !!contract && path.resolve(contract.workspace) === workspace;
+    // R19 (abertura obrigatoria): check nomeado no receipt da cadeia — a
+    // decisao mora no dono do contrato (spt-contract.ts); o motor espelha.
+    checks.spt_abertura_present = sptAberturaPresent(contract);
     checks.spt_objective_matches =
       !input.objective || (!!contract && normalizeComparable(contract.goal.objective) === normalizeComparable(input.objective));
     checks[`${contractLabel}_frontmatter_present`] = checks.spt_frontmatter_present;
@@ -339,6 +342,11 @@ export class FlowEngine {
       spt_workspace_matches: `${contractLabel}.workspace_matches_request`,
       spt_objective_matches: `${contractLabel}.objective_matches_request`
     };
+    // R19 (transicao compativel): ausencia do bloco = WARNING (frota/replay/
+    // Trilhos historicos seguem validos); a porta DURA e o S12 do preflight
+    // na criacao. Promocao a obrigatorio: corte proprio pos-migracao. A
+    // decisao mora em sptAberturaWarning (dona do contrato); cola pura.
+    warnings.push(...sptAberturaWarning(contract));
     for (const [key, label] of Object.entries(requiredChecks)) {
       if (!checks[key]) {
         missing.push(label);

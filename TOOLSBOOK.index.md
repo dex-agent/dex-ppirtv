@@ -39,7 +39,6 @@ Quando: Avaliar se resposta de consumidor externo usou o playbook de verdade (ec
 Porta de commit com 5 gates: (1) PLAYBOOK frescor, (2) CAPACITY par MD+receipt staged, (3) CRG auto-curativo (src/tests/scripts/workflow/tools), (4) TOOLSBOOK frescor, (5) duplicacao-delta .py.
 Quando: TODO commit do repo (hook incondicional; ativar com git config core.hooksPath tools/playbook/hooks).
 
-Revisão: stale — tools/playbook/hooks/pre-commit
 ## post-merge-paridade (reviewed)
 
 Hook post-merge: confere paridade dos 4 pares canonicos global<->local apos pull (contratos compartilhados).
@@ -111,18 +110,19 @@ Busca de arquivo/pasta/executavel por NOME no sistema Windows inteiro em milisse
 Quando: gatilho ES-PRIMEIRA-BATIDA-POR-NOME: por nome, es.exe e a PRIMEIRA batida ANTES de find/glob/ls recursivo e ANTES de declarar que a fonte nao existe
 
 Revisão: warning — external_sources_not_checked; reopen the canonical owner
-Revisão: stale — AGENTS.md
 ## code-review-graph-cli (reviewed)
 
 CLI do grafo estrutural CRG: banco .agents/CODE-REVIEW-GRAPH com update incremental + consultas para review estrutural/blast radius.
 Quando: gate CRG-LOCAL-STRUCTURAL-GRAPH (todo commit que toca codigo atualiza o banco no mesmo instante — hook cura); antes de review estrutural
 
 Revisão: warning — external_sources_not_checked; reopen the canonical owner
-Revisão: stale — tools/playbook/hooks/pre-commit
 ## dex-toolsbook-motor (reviewed)
 
 Motor do proprio livro: fatos (--facts path->sha256), validacao (--check TOOLSBOOK.json), projecao (--render/--index) e ficha focal (--card ID).
 Quando: criar/mudar/recuperar ferramenta do repo; conferir frescor do livro; consulta por intenção antes de criar
 
 Revisão: warning — external_sources_not_checked; reopen the canonical owner
-Revisão: stale — tools/playbook/hooks/pre-commit
+## spt-preflight (reviewed)
+
+validador estrutural local de Trilho SPT v3 antes do goal_start (fiscal S00-S12; espelho local do spt_validate MCP)
+Quando: rodar ANTES de qualquer goal_start e ao lapidar um Trilho; also consumido por fixtures de teste que validam o fiscal

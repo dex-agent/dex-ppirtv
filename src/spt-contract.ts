@@ -134,6 +134,21 @@ const sptV3Schema: z.ZodType<SptV3Contract> = z
   .object({
     ...sharedFields,
     version: z.literal(3),
+    // R19 (abertura obrigatoria): as 3 perguntas base viram campo do
+    // contrato v3 — TRANSICAO COMPATIVEL (alerta do dono 261122: "nao podemos
+    // implementar algo que quebre o que ja tem"): opcional no MOTOR (frota,
+    // replay e Trilhos historicos seguem validos — ausencia vira WARNING em
+    // validateSpt, nao missing); presente = validado completo (3 campos).
+    // A porta DURA de criacao e o S12 do spt-kit/preflight (Trilho novo).
+    // Promocao a obrigatorio no motor: corte proprio quando a frota migrar.
+    abertura: z
+      .object({
+        contexto: requiredText,
+        ferramentas: requiredText,
+        mentor: requiredText
+      })
+      .strict()
+      .optional(),
     requirements: z.array(requirementSchema).min(1, "must contain at least one requirement"),
     tasks: z.array(taskSchema).min(1, "must contain at least one task"),
     closure_gates: requiredTextList
@@ -211,6 +226,28 @@ export function parseSptV2Document(input: string): SptV2ParseResult {
 
 export function fingerprintSptContract(contract: SptContract): string {
   return createHash("sha256").update(JSON.stringify(contract), "utf8").digest("hex");
+}
+
+// R19 (abertura obrigatoria): as 3 perguntas base viram campo do contrato
+// v3 — a DECISAO mora AQUI (dona do contrato); o motor so espelha (glue).
+// TRANSICAO COMPATIVEL (alerta do dono 261122: "nao podemos implementar algo
+// que quebre o que ja tem"): ausencia = WARNING, nunca bloqueante; a porta
+// DURA de criacao e o S12 do spt-kit/preflight. Promocao a obrigatorio no
+// motor: corte proprio pos-migracao da frota.
+export function sptAberturaPresent(contract: SptContract | null): boolean {
+  return !!contract
+    && contract.version === 3
+    && !!contract.abertura
+    && [contract.abertura.contexto, contract.abertura.ferramentas, contract.abertura.mentor].every(
+      (campo) => typeof campo === "string" && campo.trim().length > 0
+    );
+}
+
+export function sptAberturaWarning(contract: SptContract | null): string[] {
+  if (sptAberturaPresent(contract) || !contract || contract.version !== 3) return [];
+  return [
+    "spt_v3.abertura ausente (R19): pague as 3 perguntas base na criacao do proximo Trilho (contexto/ferramentas/mentor — preflight S12)"
+  ];
 }
 
 export function fingerprintSptV2Contract(contract: SptV2Contract): string {

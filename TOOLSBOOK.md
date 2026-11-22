@@ -3,7 +3,7 @@
 dex-PPIRTV: ferramentas executaveis do repo (tools/, scripts/, hooks do playbook) + ferramentas externas em uso direto pelo projeto (es.exe, code-review-graph, motor dex-toolsbook). Fonte autorada: este JSON; TOOLSBOOK.md e TOOLSBOOK.index.md sao projecoes.
 
 Fonte autorada: TOOLSBOOK.json. Projecao de leitura; nao editar esta copia.
-Checagem mecanica: needs_attention.
+Checagem mecanica: structural_fresh.
 Adequacao semantica e prontidao de commit: nao avaliadas pelo motor.
 
 ## Cobertura declarada
@@ -30,7 +30,7 @@ Inspecionado:
 - scripts/smoke-mcp-tools.mjs
 - scripts/validate-flow-engine-boundary.mjs
 - scripts/validate-spt.mjs
-- tools/TOOLSBOOK.md (v1 migrado para v2 e morto; historia preservada no git 65a0a80)
+- TOOLSBOOK.md/TOOLSBOOK.index.md na raiz (v1 de tools/ morto; historia preservada no git 65a0a80)
 
 Nao inspecionado:
 - workflow/ (2 scripts do metodo da casa; consumiveis pelo registry, nao ferramenta de produto do repo)
@@ -85,7 +85,7 @@ proximo corte de rede (D-51+): conferir se lacunas de span reaparecem
 - .agents/AUDITORIAS/2026-11-13-rede-review-snapshot/MUTACOES/
 
 **Fontes examinadas:**
-- `tools/mutacao-amostra.py` — SHA256 `081099e6dc822e85acbd59c5d0d7d447d07f48ceaccda43cfc4cc379660d6e37`
+- `tools/mutacao-amostra.py` — SHA256 `e682fd5894e4549d8476ad6a1fa6da5f463797e95a1e43f303f9165d54f2cd40`
 
 ## test-symbol-coverage
 
@@ -127,9 +127,11 @@ D-50 fechado (domain adicionado ao MARATHON_MODULES pela janela do corte); re-me
 **evidence:**
 - .agents/AUDITORIAS/2026-11-12-rede-simbolos-suporte/REDE.md (rodadas 1-9)
 - help do script (rotulo honesto)
+- regua rodada 11 D-51 (2026-11-15): principles em MARATHON_MODULES; TOTAL 99/278, sem ref 175
+- regua rodada 12 D-52 (2026-11-16): ppirtv-checkin em MARATHON_MODULES 15/21 sem-ref 6; TOTAL 114/299, sem ref 181
 
 **Fontes examinadas:**
-- `tools/test-symbol-coverage.py` — SHA256 `d50e4bdc1d0bfd0adb2004e30ce72338819f9204896c7550ecca1df2e84058d0`
+- `tools/test-symbol-coverage.py` — SHA256 `6d5ee4dc53d50c2c73b77d46bbc5f7492c31cc695f99cf7235050cf8af72191a`
 
 ## check-duplicacao-delta
 
@@ -255,7 +257,7 @@ ao adicionar/remover fonte de decisao
 - plaquinha global PLAYBOOK-ENTRADA-EXTERNA-261005
 
 **Fontes examinadas:**
-- `tools/playbook/generate-playbook.py` — SHA256 `baee0aded2eb1e40b577b31a905850eb287f0eb223048dfd0e1838b598d4148d`
+- `tools/playbook/generate-playbook.py` — SHA256 `645dac923baf27ec1d999e7e715e3056dc21137ed3965af851dd62967ebc9a96`
 
 ## judge-playbook
 
@@ -295,12 +297,11 @@ quando o formato do index mudar
 - docstring l.1-6
 
 **Fontes examinadas:**
-- `tools/playbook/judge-playbook.py` — SHA256 `5fe5fb3727bd95335640c851463726fd8b88406e3cd0b3f7633faee008140349`
+- `tools/playbook/judge-playbook.py` — SHA256 `336db15ae963ebaf074bf741287dea673f569964feb2aefe06fb76e4ca71e042`
 
 ## pre-commit-gates
 
 **Estado autorado:** reviewed
-**Revisao da fonte:** stale — tools/playbook/hooks/pre-commit
 
 **purpose:**
 Porta de commit com 5 gates: (1) PLAYBOOK frescor, (2) CAPACITY par MD+receipt staged, (3) CRG auto-curativo (src/tests/scripts/workflow/tools), (4) TOOLSBOOK frescor, (5) duplicacao-delta .py.
@@ -339,9 +340,10 @@ D-50+ (gate TOOLSBOOK reaparelhado ao contrato v2 nesta sessao)
 **evidence:**
 - tools/playbook/hooks/pre-commit (5 blocos comentados)
 - AGENTS.md local (PPIRTV-CAPACITY-COMMIT-GATE, CRG-LOCAL-STRUCTURAL-GRAPH)
+- cura TRACKER-0011 (2026-11-16, D-52 A-00): comentario do gate de duplicacao cita a dona real do motor medir-duplicacao.py (dex-complexidade-ciclomatica) — 1 linha, zero mudanca de comportamento
 
 **Fontes examinadas:**
-- `tools/playbook/hooks/pre-commit` — SHA256 `c77927570f47911ec76aac8336ff6c60e407cfa3e8636cabfd63bb10e720370b`
+- `tools/playbook/hooks/pre-commit` — SHA256 `166f25ab958dfb20aa9e74481fab739b1fba4f7a60c21b995504b02c961d9b61`
 
 ## post-merge-paridade
 
@@ -383,7 +385,7 @@ quando nascer 5o par (bump em canonical-pairs)
 
 **Fontes examinadas:**
 - `tools/playbook/hooks/post-merge` — SHA256 `d7c791c831f46c5b761195147055cf89b7964033e1bc1f58698609b22cf8779b`
-- `tools/playbook/hooks/post-merge.impl.mjs` — SHA256 `cbd7a5eaf3c1b7b748e492ffc4b4cfdfd51757f304c8d8689b024abb97c017e0`
+- `tools/playbook/hooks/post-merge.impl.mjs` — SHA256 `f645ca7e5878ced5d69f5db1120f27cefd442c7db4c9742911356d3b07de2353`
 
 ## canonical-pairs
 
@@ -423,7 +425,7 @@ no 5o par
 - cabecalho do modulo
 
 **Fontes examinadas:**
-- `scripts/canonical-pairs.mjs` — SHA256 `ccc3d7ca88851ac3fb4068986d5787679b9570355e4851e1d5b169641698a92d`
+- `scripts/canonical-pairs.mjs` — SHA256 `7da6f697ecf24a9d820dee8c2cdf8db9043af58da530db324688073f0ee1e346`
 
 ## audit-canonical-sync
 
@@ -463,7 +465,7 @@ no 5o par
 - D-39: audit pegou sync ao vivo (2f901fe)
 
 **Fontes examinadas:**
-- `scripts/audit-canonical-sync.mjs` — SHA256 `f6f5b3c169f7e809d11b11aba815c4acec44e4919d35021fb10d49bfb80ae390`
+- `scripts/audit-canonical-sync.mjs` — SHA256 `2449cebdb092dcebac43e0ff7084ae88c74e108b851263233f7e529e62b719f4`
 
 ## check-capacity
 
@@ -504,7 +506,7 @@ se o dono quiser endurecer o gate a head==HEAD (hoje proposital)
 - incidente D-47 (falso verde herdado, ISSUE-LOCAL-0009)
 
 **Fontes examinadas:**
-- `scripts/check-capacity.mjs` — SHA256 `4f5b83372afa087c184cfb5a579eac29950fd35cad73280fc6f6755ac3538d60`
+- `scripts/check-capacity.mjs` — SHA256 `db90ca026aacf7094e82d20bf69d881f41cb39c590ef5b770a6aa0f94f5e8977`
 
 ## validate-spt
 
@@ -544,7 +546,7 @@ bump do schema dex.spt.v3
 - D-49: spt_validate MCP FALSE com textos identicos; motor direto valid=true
 
 **Fontes examinadas:**
-- `scripts/validate-spt.mjs` — SHA256 `3c7412f6fafca254061faf92fc72bdd9d2bcba5b33cbc931ef59a93fcbbb90a3`
+- `scripts/validate-spt.mjs` — SHA256 `b4f6ceabc3ba0188081612a775c7eea9951ff42e2ab20bb3f005842b7f4477df`
 
 ## validate-flow-engine-boundary
 
@@ -578,6 +580,9 @@ proximo corte que tocar o monolito
 - camping-fiscal-semantico
 - selo-de-record
 - red-evidence-por-seletor-de-it
+- evidence-nao-versionada (.agents/) reprovada mesmo existindo no disco (gate EVIDENCE_NOT_VERSIONED, CI run 44505736533)
+- prune exige prova por simbolo (PRUNE_SYMBOL_UNDECLARED:<nome> — remocao real fora da declaracao reprova)
+- redirect versionado de evidence legada (evidence_redirects no manifest; destino versionado + sha256; record-check bootstrap e diff redirect-only de ledger sancionado)
 
 **not_for:**
 - visitas que nao tocam o arquivo (NOT_APPLICABLE)
@@ -585,9 +590,10 @@ proximo corte que tocar o monolito
 **evidence:**
 - memoria ppirtv-issue19-fechada-selo-camping-coreografia (4 dancas decifradas)
 - fonte l.433-446/l.1158-1229
+- Trilho 2026-11-21-redirect-evidence-legada-ledger (flow 5916_0001): 6 records re-ancorados, RED->GREEN 4/4, mutacao PEGA
 
 **Fontes examinadas:**
-- `scripts/validate-flow-engine-boundary.mjs` — SHA256 `c75542ebf15ec2fb78d1fbc547540f40910753b0470756f6cdfc3aab07597e3e`
+- `scripts/validate-flow-engine-boundary.mjs` — SHA256 `efdd2e857db7672573ae0b678d4016859b076467355f77a0802b3552e2e1601a`
 
 ## call-mcp-tool
 
@@ -630,7 +636,7 @@ mudanca de entrypoint/launcher
 - AGENTS local: validar list_tools real apos build
 
 **Fontes examinadas:**
-- `scripts/call-mcp-tool.mjs` — SHA256 `d9a0f1b623e04d3520dafb3024e338ad73501e86db97ccad3d8fe3066cc9a10a`
+- `scripts/call-mcp-tool.mjs` — SHA256 `d5b8f676cc2f57c6f6e55d1962149e447391903748eb5d0ca2e4cd1360368cca`
 
 ## smoke-mcp-tools
 
@@ -670,7 +676,7 @@ mudanca de servidor/tools
 - regra local AGENTS: validar list_tools real apos build
 
 **Fontes examinadas:**
-- `scripts/smoke-mcp-tools.mjs` — SHA256 `72e463948d1e7f9f7fedb74227a90806b29e47aa47c1f4f26aa8aa43d02d5dee`
+- `scripts/smoke-mcp-tools.mjs` — SHA256 `4fa549cbaef6ded0495061d5445e7c0a1cc7479a7af73849132769d34e9e9930`
 
 ## record-goal-progress
 
@@ -710,7 +716,7 @@ mudanca de schema de evento
 - cabecalho do script
 
 **Fontes examinadas:**
-- `scripts/record-goal-progress.mjs` — SHA256 `a3bcc8f02cc97bd52f5b2bd3fab6f6a4a0437be337c8e0f9f404b5e0ee15c9df`
+- `scripts/record-goal-progress.mjs` — SHA256 `e9620016a1765da33a411af3ee8a34959d9aba6815f73d259ac5c081a9069043`
 
 ## render-ppirtv-phase
 
@@ -750,7 +756,7 @@ mudanca de fases do contrato
 - cabecalho do script
 
 **Fontes examinadas:**
-- `scripts/render-ppirtv-phase.mjs` — SHA256 `d5baa0f94859994b65f154e86181f547e7b1385e2b27ed7976d074b2f6c482fc`
+- `scripts/render-ppirtv-phase.mjs` — SHA256 `ab6678412c2811965b11e98398dc936345565324bb5727a664c8720519fa310b`
 
 ## export-diagnostic-bundle
 
@@ -790,7 +796,7 @@ quando o contrato de relato mudar
 - cabecalho do script
 
 **Fontes examinadas:**
-- `scripts/export-diagnostic-bundle.mjs` — SHA256 `0687b3e2d2cef3eefbcf598f2f3f6a8dd8a4dd87074fece93a0abd565d67d0cc`
+- `scripts/export-diagnostic-bundle.mjs` — SHA256 `bc6c31d28a09139ad0af7ae41d5b0768e6f9ebe98413ded78934f4b656c2d8e0`
 
 ## audit-error-envelope
 
@@ -832,7 +838,7 @@ se o dono decidir virar gate
 - contrato docs/contracts (envelope de erro)
 
 **Fontes examinadas:**
-- `scripts/audit-error-envelope.mjs` — SHA256 `6bb3f8ca8f3a5a2bad050903a24f9156277dbefff2b854b668556cdec39173ae`
+- `scripts/audit-error-envelope.mjs` — SHA256 `5f721080da2616f3d0e8e600daf12d890b143c7b5a3405198cb6f0ec5dc6cd1e`
 
 ## remove-safe-path
 
@@ -873,13 +879,12 @@ sem mudanca prevista
 - nota citavel 2026-08-18
 
 **Fontes examinadas:**
-- `scripts/remove-safe-path.ps1` — SHA256 `cdacc0c5e08e82170f8aef4f38529b951a548f13f75d1f17884d4ad54b81243b`
+- `scripts/remove-safe-path.ps1` — SHA256 `c46a46e761384d8dfd42617ff1936685c55d8ec0e624be6969b9c2bde023a41d`
 
 ## es-everything-busca-nome
 
 **Estado autorado:** reviewed
 **Revisao da fonte:** warning — external_sources_not_checked; reopen the canonical owner
-**Revisao da fonte:** stale — AGENTS.md
 
 **purpose:**
 Busca de arquivo/pasta/executavel por NOME no sistema Windows inteiro em milissegundos (Everything voidtools).
@@ -918,13 +923,12 @@ upgrade do es.exe
 - owner: voidtools (ES CLI) | locator: $env:USERPROFILE\.localin\es.exe | revision: 1.1.0.37 | evidence: AGENTS.md plaquinha ES-PRIMEIRA-BATIDA-POR-NOME (caso pago 2x); skill busca-arquivos-everything
 
 **Fontes examinadas:**
-- `AGENTS.md` — SHA256 `77d47bfe8584296fcf5f188eda17df8f333727075b5b816de2b1808b3686464e`
+- `AGENTS.md` — SHA256 `5aa0e4500535c5277ef7c19cb3863634bcc3a7f08830bad330b0af7778133f2b`
 
 ## code-review-graph-cli
 
 **Estado autorado:** reviewed
 **Revisao da fonte:** warning — external_sources_not_checked; reopen the canonical owner
-**Revisao da fonte:** stale — tools/playbook/hooks/pre-commit
 
 **purpose:**
 CLI do grafo estrutural CRG: banco .agents/CODE-REVIEW-GRAPH com update incremental + consultas para review estrutural/blast radius.
@@ -966,13 +970,12 @@ sem mudanca prevista
 - owner: skill code-review-graph (registry) | locator: code-review-graph no PATH | revision: nao pinada (lacuna declarada) | evidence: hook pre-commit l.24-31 chama e confere exit; banco .agents/CODE-REVIEW-GRAPH
 
 **Fontes examinadas:**
-- `tools/playbook/hooks/pre-commit` — SHA256 `c77927570f47911ec76aac8336ff6c60e407cfa3e8636cabfd63bb10e720370b`
+- `tools/playbook/hooks/pre-commit` — SHA256 `166f25ab958dfb20aa9e74481fab739b1fba4f7a60c21b995504b02c961d9b61`
 
 ## dex-toolsbook-motor
 
 **Estado autorado:** reviewed
 **Revisao da fonte:** warning — external_sources_not_checked; reopen the canonical owner
-**Revisao da fonte:** stale — tools/playbook/hooks/pre-commit
 
 **purpose:**
 Motor do proprio livro: fatos (--facts path->sha256), validacao (--check TOOLSBOOK.json), projecao (--render/--index) e ficha focal (--card ID).
@@ -981,7 +984,7 @@ Motor do proprio livro: fatos (--facts path->sha256), validacao (--check TOOLSBO
 criar/mudar/recuperar ferramenta do repo; conferir frescor do livro; consulta por intenção antes de criar
 
 **how:**
-python -B ~/.agents/skills/dex-toolsbook/scripts/toolsbook.py --repo . --check tools/TOOLSBOOK.json | --render ... | --index ... | --card tools/TOOLSBOOK.json <id>
+python -B ~/.agents/skills/dex-toolsbook/scripts/toolsbook.py --repo . --check TOOLSBOOK.json (raiz) | --render ... | --index ... | --card TOOLSBOOK.json (raiz) <id>
 
 **inputs:**
 TOOLSBOOK.json v2 (authority llm_authored)
@@ -1016,4 +1019,49 @@ ISSUE-LOCAL-0010 (pinar versao da skill na frota)
 - owner: skill dex-toolsbook (registry ~/.agents/skills) | locator: ~/.agents/skills/dex-toolsbook/scripts/toolsbook.py | revision: contrato v2 working_tree do registry (sem pin — ISSUE-LOCAL-0010) | evidence: este TOOLSBOOK.json passa no --check
 
 **Fontes examinadas:**
-- `tools/playbook/hooks/pre-commit` — SHA256 `c77927570f47911ec76aac8336ff6c60e407cfa3e8636cabfd63bb10e720370b`
+- `tools/playbook/hooks/pre-commit` — SHA256 `166f25ab958dfb20aa9e74481fab739b1fba4f7a60c21b995504b02c961d9b61`
+
+## spt-preflight
+
+**Estado autorado:** reviewed
+
+**purpose:**
+validador estrutural local de Trilho SPT v3 antes do goal_start (fiscal S00-S12; espelho local do spt_validate MCP)
+
+**when:**
+rodar ANTES de qualquer goal_start e ao lapidar um Trilho; also consumido por fixtures de teste que validam o fiscal
+
+**how:**
+node spt-kit/preflight.mjs <caminho-do-trilho>; achados no stdout com exit != 0; --schema/--help/--usage pelo intercept TRIADE-DOC
+
+**inputs:**
+caminho do arquivo .md do Trilho (frontmatter YAML na linha 1); --checksum <molde> p/ anti-drift S09
+
+**outputs:**
+stdout: achados=0 (verde) ou lista Snn com exit != 0; banner --schema anuncia S00..S12
+
+**risks:**
+casamento por substring em procedure ja pagou a auditoria 377f94a (#39): boundary de fim de token e obrigatorio em novos Snn de script; S12 cobra FORMA na criacao — conteudo das 3 respostas e do agente (doc 10 lei 1)
+
+**owner:**
+spt-kit (fiscal local); revisao sprinter/spt-revisor
+
+**next_review:**
+bump do schema dex.spt.v3 ou novo check Snn
+
+**capabilities:**
+- S00 frontmatter
+- S03 criterios atomicos
+- S04 expectation kinds
+- S11 prova de tipos por nomes completos (check:types|check inteiro; boundary de fim de token — GitHub #39)
+- S12 bloco abertura pago (R19): 3 perguntas base contexto/ferramentas/mentor na CRIACAO do Trilho — transicao compativel, ausencia nunca bloqueia o motor
+
+**not_for:**
+- validacao semantica do CONTEUDO (isso e do agente/spt_validate MCP); nao substitui goal_start binding
+
+**evidence:**
+- tests/issue-r19-abertura.test.ts (3 its: sem bloco dispara S12; completo limpa; incompleto nomeia o campo)
+- tests/issue-0039-prefixo-capacity.test.ts (S11 boundary)
+
+**Fontes examinadas:**
+- `spt-kit/preflight.mjs` — SHA256 `65fb2b871a8e4ab47968a04de63b7682cbcb2f276af5226740f2544faee7aaf8`
