@@ -1,4 +1,14 @@
 {
+  "reavaliacao_emenda_ci_r19_sha_canonico_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "spt-kit/preflight.mjs",
+      "TOOLSBOOK.json",
+      "TOOLSBOOK.md",
+      "TOOLSBOOK.index.md"
+    ],
+    "delta": "Emenda CI do R19 (run 45072963525 ubuntu reprovou P2-8 do corte-d): ficha spt-preflight re-ancorada com o sha do BLOB CANONICO LF do HEAD (e1a532be...38b279, medido por comando — cauda anterior digitada de cabeca, vacina numero-so-depois-de-comando) e preflight.mjs normalizado para LF no disco (disco == blob: um sha so nos dois gates). Sem mudanca de logica; P2-8 local 5/5; TOOLSBOOK check 0 violacoes."
+  },
   "reavaliacao_r19_abertura_obrigatoria_261122": {
     "date": "2026-11-22",
     "scope": [

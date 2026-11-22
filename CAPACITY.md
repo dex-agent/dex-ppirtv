@@ -1,3 +1,12 @@
+## Reavaliação — emenda CI R19: sha canônico da ficha spt-preflight (2026-11-22)
+
+Delta da emenda: spt-kit/preflight.mjs normalizado para LF no disco (disco ==
+blob canônico do HEAD — um sha só nos dois gates) + TOOLSBOOK.json/md/index
+com o sha completo REAL medido por comando (a cauda do sha anterior havia
+sido digitada de cabeça; vacina número-só-depois-de-comando). P2-8 local
+5/5; TOOLSBOOK --check 0 violações; sem mudança de lógica (EOL apenas).
+Receipt `reavaliacao_emenda_ci_r19_sha_canonico_261122`.
+
 ## Reavaliação — R19 abertura obrigatória: S12 + warning no motor (2026-11-22)
 
 Delta: transição compatível por alerta do dono — `abertura{contexto,ferramentas,mentor}`

@@ -1064,4 +1064,4 @@ bump do schema dex.spt.v3 ou novo check Snn
 - tests/issue-0039-prefixo-capacity.test.ts (S11 boundary)
 
 **Fontes examinadas:**
-- `spt-kit/preflight.mjs` — SHA256 `65fb2b871a8e4ab47968a04de63b7682cbcb2f276af5226740f2544faee7aaf8`
+- `spt-kit/preflight.mjs` — SHA256 `e1a532be23c1521fc0bc4605ceda01c9376e36387d76ecb1f718fdcbff38b279`
