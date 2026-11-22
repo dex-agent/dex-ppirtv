@@ -1906,5 +1906,13 @@
       "CHANGELOG.md"
     ],
     "delta": "Redirect versionado de evidence legada do ledger de boundary (Trilho 2026-11-21-redirect-evidence-legada-ledger, flow 5916_0001): os 6 records selados (44-50) citam 12 artefatos .agents/AUDITORIAS — imutaveis por selo (LEDGER_HISTORY_MUTATED) e nao re-abriveis no clone (classe #19). Cura $ponytail: artefatos promovidos byte-a-byte para docs/architecture/ledger-evidence/ + mapa evidence_redirects no manifest (records byte-identicos) + gate resolve redirect SOMENTE no record-check (bootstrap) exigindo destino versionado existente + sha256 conferido; sem redirect o gate reprova como hoje; declaration gate (anexos novos) permanece fechado. RED->GREEN 4/4 (redirect ignorado na base -> 9/9), mutacao PEGA (branch removido -> 4 failed). Suite 1049|4(1053) -> 1053|4(1057), 93 arq, exit 0 medido."
+  },
+  "reavaliacao_playbook_pos_redirect_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json"
+    ],
+    "delta": "Regen da projecao apos o fechamento do bloco redirect (fontes .agents: napkin com tropeços da sessão do redirect + PLAN-TASKS/ACTIVE com o Trilho redirect concluido + ACTIVE atualizado). Sem mudanca de codigo/teste; suite inalterada 1053|4 (1057); flow 5916_0001 COMPLETE, CI 44969338943 success (re-run; 1o run flaky timeout windows)."
   }
 }

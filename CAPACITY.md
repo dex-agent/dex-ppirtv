@@ -2131,3 +2131,14 @@ do mesmo anchor pertence à consciencia-memorias (ReviewStatus pending).
 
 **Limites:** porta do redirect não vale para declaration (anexos novos
 continuam fechados); bootstrap real é janela rara — a vigília é o teste.
+
+## Reavaliação 2026-11-22 — regen PLAYBOOK pós-corte redirect
+
+> Delta sobre `8f2cfa7` (regen de projeção + fechamento). Sem mudança de
+> código/teste. Flow 5916_0001 COMPLETE; CI 44969338943 success (re-run).
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| PLAYBOOK | regen --write após fontes .agents mudarem | tools/playbook/generate-playbook.py |
+| Fontes | napkin (5 tropeços do redirect) · PLAN-TASKS/ACTIVE · ACTIVE | .agents/ |
+| Suíte | inalterada 1053\|4 (1057) | npx vitest run (sessão) |
