@@ -1,3 +1,10 @@
+## Reavaliação — regen PLAYBOOK pós-Frente F (2026-11-22)
+
+Projeção regenerada após o fechamento (flow 6167_0001 complete; fontes
+`.agents` atualizadas: napkin tropeços frente F + PLAN-TASKS/ACTIVE com
+Trilho F concluído e fila G=#36-#38). Sem mudança de código/teste.
+Receipt `reavaliacao_playbook_pos_frente_f_261122`.
+
 ## Reavaliação — Frente F #33+#34: replay determinístico (2026-11-22)
 
 Delta: validate-flow-engine-boundary (cwd no spawn --is-ancestor da selagem

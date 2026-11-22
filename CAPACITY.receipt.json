@@ -2062,5 +2062,13 @@
    "TOOLSBOOK.json"
   ],
   "delta": "Frente F (GitHub 33+34): cwd no spawn de ancestralidade da selagem (l.989 \u2014 spawn sem cwd rodava no diretorio do processo chamador; CONSECUTIVE_EXCEPTION falso de fora do repo). #34 conferida JA-PAGA no codigo atual (append posterior preserva o recibo \u2014 fixture de conferencia). RED -> GREEN + mutacao PEGA; suite 1066|4 (1070). Camping NOT_APPLICABLE (scripts/)."
+ },
+ "reavaliacao_playbook_pos_frente_f_261122": {
+  "date": "2026-11-22",
+  "scope": [
+   "PLAYBOOK.md",
+   "PLAYBOOK.index.json"
+  ],
+  "delta": "Regen pos-fechamento da Frente F (fontes .agents: napkin trope\u00e7os frente F + PLAN-TASKS/ACTIVE com Trilho F concluido e fila G). Sem mudanca de codigo/teste."
  }
 }
