@@ -8,6 +8,28 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **frente G: tríade honesta de CLIs — JSON ilegível reprova no local-only
+  (#36), schema próprio por entrypoint (#37), helps alinhados ao parser
+  (#38) (Trilho 2026-11-22-frenteg, flow 6193_0001)**: três mentiras
+  documentais da auditoria 377f94a curadas na mesma classe (o contrato
+  publicado divergia do contrato real). **#36**: o passo `--local-only`
+  do audit só media tamanho — contrato JSON com sintaxe inválida
+  (`{not-json`) devolvia exit 0 "passed"; cura = `assertJsonParses` no
+  ramo local (nomeia o arquivo, mesmo crivo do caminho completo). **#37**:
+  o bloco TRIADE-DOC de `canonical-pairs.mjs` avaliava `process.argv` no
+  IMPORT e fazia `process.exit(0)` — `audit --schema` e `post-merge
+  --schema` devolviam o contrato de OUTRO programa (`canonical-pairs`);
+  cura = guard de entrypoint (`pathToFileURL(process.argv[1]).href ===
+  import.meta.url`) — o doc do módulo só responde quando ELE é o
+  entrypoint. **#38**: helps/usages ensinavam formas que os próprios
+  parsers rejeitam — validate-spt anunciava posicional (parser:
+  `--workspace/--spt-path`), record anunciava `<args.json>` (parser: 7
+  flags), export anunciava `--flow <id>`/`--out <dir>` (parser:
+  `--flow-id`; `--out` é ARQUIVO), validador anunciava `--cwd` (flag
+  inexistente no CLI; cwd é da API JS). Python ×2 conferidos já-pagos
+  (não anunciam `--repo`). RED 7F|2P → GREEN 9/9 + mutação PEGA
+  5F|4P (3 classes; guard desligado derruba QUALQUER consumidor —
+  load-bearing); suíte 1075|4 (1079); camping NOT_APPLICABLE (scripts/).
 - **frente F: replay determinístico — cwd na ancestralidade (#33) e #34
   já-paga conferida (Trilho 2026-11-22-frentef, flow 6167_0001)**: a
   selagem retroativa (`marcaSealedAncestors`) chamava `git

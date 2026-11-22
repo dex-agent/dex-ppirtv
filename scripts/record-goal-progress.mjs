@@ -5,9 +5,9 @@
   const _av = process.argv.slice(2);
   const _docFlag = (f) => _av.includes(f) && (_av.indexOf(f) === _av.length - 1 || String(_av[_av.indexOf(f) + 1]).startsWith("--"));
   if (_docFlag("--help") || _docFlag("--schema") || _docFlag("--usage")) {
-    const _doc = {"tool": "record-goal-progress", "purpose": "registro de progresso de goal no flow (evidencia/meeting)", "contract": "dex.triade.v1", "inputs": ["<args.json> com flow_id/phase/notas"], "outputs": ["stdout receipt"]};
+    const _doc = {"tool": "record-goal-progress", "purpose": "registro de progresso de goal no flow (evidencia/meeting)", "contract": "dex.triade.v1", "inputs": ["--workspace <dir>", "--flow-id <id>", "--event-key <chave>", "--source <fonte>", "--operation <op>", "--stage <etapa>", "--status <status>"], "outputs": ["stdout receipt"]};
     if (_docFlag("--schema")) console.log(JSON.stringify(_doc, null, 2));
-    else console.log('usage: node scripts/record-goal-progress.mjs <args.json> — registra progresso de goal no flow PPIRTV.');
+    else console.log('usage: node scripts/record-goal-progress.mjs --workspace <dir> --flow-id <id> --event-key <k> --source <s> --operation <op> --stage <etapa> --status <status> — registra progresso de goal no flow PPIRTV.');
     process.exit(0);
   }
 }

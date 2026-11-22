@@ -1,3 +1,18 @@
+## Reavaliação — Frente G #36+#37+#38: tríade honesta de CLIs (2026-11-22)
+
+Delta: 6 scripts (.mjs) + tests/issue-0036-0037-0038 nova + TOOLSBOOK
+re-ancorado. #36: `assertJsonParses` no ramo `--local-only` do
+audit-canonical-sync (JSON ilegível reprova nomeando o arquivo; era só
+size-check → exit 0 "passed"). #37: guard de entrypoint
+(`pathToFileURL(argv[1]) === import.meta.url`) no bloco TRIADE-DOC do
+canonical-pairs — o doc do módulo importado interceptava `--schema` dos
+consumidores (audit/post-merge devolviam contrato alheio). #38: helps
+alinhados AO PARSER REAL (validate-spt `--workspace/--spt-path`; record 7
+flags; export `--flow-id`/`--out <arquivo>`; validador sem `--cwd`).
+Python ×2 conferidos já-pagos. RED 7F|2P → GREEN 9/9; mutação 3 classes
+PEGA 5F|4P. Motor intocado (camping NOT_APPLICABLE).
+Receipt `reavaliacao_frente_g_triade_clis_261122`.
+
 ## Reavaliação — regen PLAYBOOK pós-Frente F (2026-11-22)
 
 Projeção regenerada após o fechamento (flow 6167_0001 complete; fontes

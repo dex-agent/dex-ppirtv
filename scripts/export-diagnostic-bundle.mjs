@@ -5,9 +5,9 @@
   const _av = process.argv.slice(2);
   const _docFlag = (f) => _av.includes(f) && (_av.indexOf(f) === _av.length - 1 || String(_av[_av.indexOf(f) + 1]).startsWith("--"));
   if (_docFlag("--help") || _docFlag("--schema") || _docFlag("--usage")) {
-    const _doc = {"tool": "export-diagnostic-bundle", "purpose": "exportacao de bundle diagnostico (flows/logs) para relato", "contract": "dex.triade.v1", "inputs": ["--flow <id>", "--out <dir>"], "outputs": ["stdout/arquivo bundle"]};
+    const _doc = {"tool": "export-diagnostic-bundle", "purpose": "exportacao de bundle diagnostico (flows/logs) para relato", "contract": "dex.triade.v1", "inputs": ["--flow-id <id>", "--out <arquivo>", "--ppirtv-home <dir>", "--ledger-limit <n>", "--include-evidence-content"], "outputs": ["stdout/arquivo bundle"]};
     if (_docFlag("--schema")) console.log(JSON.stringify(_doc, null, 2));
-    else console.log('usage: node scripts/export-diagnostic-bundle.mjs --flow <id> — exporta bundle diagnostico do flow.');
+    else console.log('usage: node scripts/export-diagnostic-bundle.mjs --flow-id <id> [--out <arquivo>] — exporta bundle diagnostico do flow.');
     process.exit(0);
   }
 }

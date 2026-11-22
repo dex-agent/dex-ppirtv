@@ -64,6 +64,9 @@ function assertLocalCopiesPresent(pairs) {
     if (!existsSync(pair.local)) continue;
     const size = readFileSync(pair.local, "utf8").trim().length;
     if (size === 0) fail(`${pair.label} local vazio: ${pair.local}`);
+    // Frente G (GitHub #36): o passo local não pode aprovar contrato JSON
+    // ilegível — mesmo crivo do caminho completo (nomeia o arquivo no fail).
+    if (pair.json) assertJsonParses(pair.local, `${pair.label} local (--local-only)`);
   }
 }
 
