@@ -1,3 +1,10 @@
+## Reavaliação — regen PLAYBOOK pós-Frente E (2026-11-22)
+
+Projeção regenerada após o fechamento (flow 6100_0001 complete; fontes
+`.agents` atualizadas: napkin tropeços frente E + PLAN-TASKS/ACTIVE com
+Trilho E concluído e fila D=#35). Sem mudança de código/teste.
+Receipt `reavaliacao_playbook_pos_frente_e_261122`.
+
 ## Reavaliação — Frente E #32: ENOENT entre EPERM e lstat vira retry limitado (2026-11-22)
 
 Delta: store (withFlowLock — contador epermEnoentRounds consecutivo com

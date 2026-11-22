@@ -2012,5 +2012,13 @@
    "PLAYBOOK.index.json"
   ],
   "delta": "Regen da projecao ANTES do commit da Frente E: fonte napkin editada na abertura do bloco (regua finders+CRG+o-arquiteto) e ACTIVE com Trilho E. Sem mudanca de codigo/teste."
+ },
+ "reavaliacao_playbook_pos_frente_e_261122": {
+  "date": "2026-11-22",
+  "scope": [
+   "PLAYBOOK.md",
+   "PLAYBOOK.index.json"
+  ],
+  "delta": "Regen da projecao apos o fechamento da Frente E (fontes .agents: napkin trope\u00e7os frente E + PLAN-TASKS/ACTIVE com Trilho E concluido e fila D=35). Sem mudanca de codigo/teste; suite inalterada 1063|4 (1067)."
  }
 }
