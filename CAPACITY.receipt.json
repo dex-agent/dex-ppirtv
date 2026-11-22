@@ -1,4 +1,12 @@
 {
+  "reavaliacao_playbook_pos_frente_c_261122": {
+    "date": "2026-11-22",
+    "scope": [
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json"
+    ],
+    "delta": "Regen da projecao apos o fechamento da Frente C (fontes .agents: napkin tropeços da sessao + PLAN-TASKS/ACTIVE com Trilho concluido e fila B-2=#31). Sem mudanca de codigo/teste; suite inalterada 1060|4 (1064)."
+  },
   "reavaliacao_frente_c_anchor_colisao_261122": {
     "date": "2026-11-22",
     "scope": [

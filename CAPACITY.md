@@ -1,3 +1,10 @@
+## Reavaliação — regen PLAYBOOK pós-Frente C (2026-11-22)
+
+Projeção regenerada após o fechamento (flow 6028_0001 complete; fontes
+`.agents` atualizadas: napkin tropeços frente C + PLAN-TASKS/ACTIVE fila
+B-2=#31). Sem mudança de código/teste.
+Receipt `reavaliacao_playbook_pos_frente_c_261122`.
+
 ## Reavaliação — Frente C #30: anchors distintos p/ prefixo comum >64 (2026-11-22)
 
 Delta: memory/mining-policy (memoryAnchor slug>64 → 56+sha7 determinístico;
