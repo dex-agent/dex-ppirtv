@@ -1,3 +1,10 @@
+## Reavaliação — regen PLAYBOOK pós-Frente D (2026-11-22)
+
+Projeção regenerada após o fechamento (flow 6132_0001 complete; fontes
+`.agents` atualizadas: napkin tropeços frente D + PLAN-TASKS/ACTIVE com
+Trilho D concluído e fila F=#33+#34). Sem mudança de código/teste.
+Receipt `reavaliacao_playbook_pos_frente_d_261122`.
+
 ## Reavaliação — ficha TOOLSBOOK do validador re-ancorada no blob HEAD (2026-11-22)
 
 Adds do commit 0957c80 abortaram silenciosamente (TOOLSBOOK.index.json

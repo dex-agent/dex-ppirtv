@@ -2044,5 +2044,13 @@
    "TOOLSBOOK.json"
   ],
   "delta": "Re-ancoragem da ficha validate-flow-engine-boundary no blob do HEAD 0957c80 (sha c4cd94d6): os adds do commit anterior abortaram por path inexistente (TOOLSBOOK.index.json) com stderr engolido e o CI ubuntu pegou o frescor P2-8. Sem mudanca de codigo/teste."
+ },
+ "reavaliacao_playbook_pos_frente_d_261122": {
+  "date": "2026-11-22",
+  "scope": [
+   "PLAYBOOK.md",
+   "PLAYBOOK.index.json"
+  ],
+  "delta": "Regen pos-fechamento da Frente D (fontes .agents: napkin trope\u00e7os frente D + PLAN-TASKS/ACTIVE com Trilho D concluido e fila F). Sem mudanca de codigo/teste."
  }
 }
