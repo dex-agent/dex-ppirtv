@@ -1,4 +1,11 @@
 {
+  "reavaliacao_emenda_tipos_trilho_v_261123": {
+    "date": "2026-11-23",
+    "scope": [
+      "tests/issue-0041-0045-fronteira-revisao-avaliada.test.ts"
+    ],
+    "delta": "Emenda de tipos no teste novo do Trilho V (CI do commit dcd05f0 reprovou no check:types): helper record devolve Registro (Record<string, unknown> & { id }) e o selo do elo aceita Record<string, unknown>. Sem mudanca de comportamento; 11/11 verdes; check:types exit 0."
+  },
   "reavaliacao_aud2_v_validador_fronteira_261123": {
     "date": "2026-11-23",
     "scope": [

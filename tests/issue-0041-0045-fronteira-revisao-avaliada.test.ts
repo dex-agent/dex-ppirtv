@@ -76,7 +76,11 @@ async function criarRepo(prefixo: string, extrasIniciais: Record<string, string>
 const rodar = async (repo: Repo, base: string, head: string): Promise<Receipt> =>
   JSON.parse((await runBoundaryCli({ cwd: repo.dir, argv: ["--base", base, "--head", head] })).output as string) as Receipt;
 
-function record(id: string, extra: Record<string, unknown> = {}) {
+// Registro de record como dado aberto: os campos de selo e de elo variam por caso.
+// biome-ignore lint/suspicious/noExplicitAny: dado de fixture do ledger.
+type Registro = Record<string, unknown> & { id: string };
+
+function record(id: string, extra: Record<string, unknown> = {}): Registro {
   return {
     id, date: "2026-11-23", mode: "EXCEPTION",
     owner: "$oraculo-refatoracao",
@@ -252,7 +256,7 @@ describe("GitHub #41 — cadeia de elos pode terminar antes do último record", 
       "tests/FE-41-DOIS.test.ts": TESTE_FIXTURE,
       ".agents/PLAN-TASKS/trilho-dois.md": "# trilho dois\n"
     });
-    const elo = (id: string, base: string, head: string, tag: string, selo?: { commit: string; parent: string }) => record(id, {
+    const elo = (id: string, base: string, head: string, tag: string, selo: Record<string, unknown> = {}): Registro => record(id, {
       base_blob: repo.blobDoMotor(base), head_blob: repo.blobDoMotor(head),
       ...(selo ?? {}),
       spt_path: `.agents/PLAN-TASKS/trilho-${tag}.md`, responsibility: `fixture ${tag}`,

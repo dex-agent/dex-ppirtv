@@ -1,3 +1,15 @@
+## Reavaliação — emenda de tipos no teste do Trilho V (2026-11-23)
+
+Delta: `tests/issue-0041-0045-fronteira-revisao-avaliada.test.ts` — o helper
+`record` passa a devolver `Registro` (`Record<string, unknown> & { id }`) e o
+parâmetro de selo do elo aceita `Record<string, unknown>`; dois erros de tipo
+(TS2339 em `head_blob`, TS2353 em `parent_commit`) que o vitest não vê e o
+`check:types` e o CI do commit `dcd05f0` acusaram. Sem mudança de
+comportamento: 11/11 verdes nos dois arquivos; `check:types` exit 0.
+Lição: typecheck e execução são provas distintas — rodar `npm run check:types`
+logo depois de escrever teste em TypeScript.
+Receipt `reavaliacao_emenda_tipos_trilho_v_261123`.
+
 ## Reavaliação — Trilho V: validador de fronteira (GitHub #41, #44, #45) (2026-11-23)
 
 Delta: `scripts/validate-flow-engine-boundary.mjs` — `isGitTracked` ganhou o
