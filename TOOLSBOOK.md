@@ -1033,10 +1033,10 @@ ISSUE-LOCAL-0010 (pinar versao da skill na frota)
 **Estado autorado:** reviewed
 
 **purpose:**
-validador estrutural local de Trilho SPT v3 antes do goal_start (fiscal S00-S12; espelho local do spt_validate MCP)
+validador estrutural local de Trilho SPT v3 antes do goal_start (fiscal S00-S12; regras locais + PARIDADE COM O MOTOR: quando dist/spt-contract.js esta ao lado do kit, reporta como S10 o que o schema do motor rejeita)
 
 **when:**
-rodar ANTES de qualquer goal_start e ao lapidar um Trilho; also consumido por fixtures de teste que validam o fiscal
+rodar ANTES de qualquer goal_start e ao lapidar um Trilho; also consumido por fixtures de teste que validam o fiscal; no kit copiado para outro workspace roda sem o motor ao lado e avisa que a paridade esta desligada
 
 **how:**
 node spt-kit/preflight.mjs <caminho-do-trilho>; achados no stdout com exit != 0; --schema/--help/--usage pelo intercept TRIADE-DOC
@@ -1060,15 +1060,21 @@ bump do schema dex.spt.v3 ou novo check Snn
 - S00 frontmatter
 - S03 criterios atomicos
 - S04 expectation kinds
-- S11 prova de tipos por nomes completos (check:types|check inteiro; boundary de fim de token — GitHub #39)
+- S11 prova de tipos por nomes completos (check:types|check inteiro; boundary de fim de token aceita separador do shell colado — GitHub #39 e #50)
 - S12 bloco abertura pago (R19): 3 perguntas base contexto/ferramentas/mentor na CRIACAO do Trilho — transicao compativel, ausencia nunca bloqueia o motor
+- S10 paridade com o motor (GitHub #51): com o build ao lado, cada rejeicao do schema do motor vira achado S10 com rota; invariante: o preflight acusa se e somente se o motor rejeita
+- rota de capacidade exigida (GitHub #49): motor que recusa a chave abertura recebe 'atualize o motor (ordem: motor primeiro, kit depois)'
+- degradacao declarada: sem dist/spt-contract.js ao lado do kit, imprime a nota de paridade desligada e segue so com as regras locais
 
 **not_for:**
 - validacao semantica do CONTEUDO (isso e do agente/spt_validate MCP); nao substitui goal_start binding
 
 **evidence:**
-- tests/issue-r19-abertura.test.ts (3 its: sem bloco dispara S12; completo limpa; incompleto nomeia o campo)
-- tests/issue-0039-prefixo-capacity.test.ts (S11 boundary)
+- tests/issue-0048-0053-forma-spt-paridade.test.ts (14 its: 5 mutacoes schema/grafo preflight x motor; documento valido; kit copiado sem build; motor anterior ao bloco abertura; rota de campo x rota de update; S11 do separador; template; QUICKSTART; guia x ledger)
+- tests/issue-r19-abertura.test.ts (3 its S12; fixtures legiveis pelo motor — GitHub #52)
+- tests/issue-0039-prefixo-capacity.test.ts (5 casos S11 boundary)
+- mutacao de sessao 2026-11-23: M1 conferencia desligada, M2 rota larga, M3 S11, M8 nota, M4 template, M5 QUICKSTART, M6 guia, M7a/M7b fixtures R19 -> 9 PEGA, 0 sobrevivente
+- spt-kit/fixtures/trilho-valido-v3.md (Trilho valido versionado usado como base das mutacoes)
 
 **Fontes examinadas:**
-- `spt-kit/preflight.mjs` — SHA256 `e1a532be23c1521fc0bc4605ceda01c9376e36387d76ecb1f718fdcbff38b279`
+- `spt-kit/preflight.mjs` — SHA256 `da64e5575668b7ab71d5ba353f1e211b10d663bd3c6d6523fd54a670fe1f5358`

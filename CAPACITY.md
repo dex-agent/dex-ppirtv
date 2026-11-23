@@ -1,3 +1,21 @@
+## Reavaliação — Trilho K: forma do SPT v3 (GitHub #48 a #53) (2026-11-23)
+
+Delta: `spt-kit/preflight.mjs` — quando `dist/spt-contract.js` está ao lado do
+kit, o preflight pergunta ao motor (`parseSptDocument`) e reporta cada
+rejeição como S10 com rota (paridade; fecha a classe da #51); rota própria
+para motor anterior ao bloco `abertura` (#49); sem o build, imprime a nota de
+paridade desligada; S11 aceita separador do shell colado (#50).
+`templates/SPEC-PLAN-TASKS.template.md` e `docs/guides/MCP_AGENT_QUICKSTART.md`
+ganham o bloco `abertura` (#48); `spt-kit/GUIA.md` publica a capacidade exigida
+e a ordem de atualização; `spt-kit/RULES.md` (R9 e S10);
+`docs/architecture/FLOW_ENGINE_EVOLUTION.md` alinhado ao ledger (#53);
+`tests/issue-r19-abertura.test.ts` com fixtures em YAML válido (#52). Novos:
+`tests/issue-0048-0053-forma-spt-paridade.test.ts` (14 its) e a fixture
+versionada `spt-kit/fixtures/trilho-valido-v3.md`. RED 9F|4P → GREEN 31/31;
+mutação de sessão 9/9 PEGA (5 arquivos restaurados byte a byte). `src/`
+intocado (sem camping).
+Receipt `reavaliacao_aud2_k_forma_spt_v3_261123`.
+
 ## Reavaliação — Trilho P: gerador do Playbook (GitHub #42 + #43 + ISSUE-LOCAL-0031) (2026-11-23)
 
 Delta: `tools/playbook/generate-playbook.py` — `resolve_sources` só marca

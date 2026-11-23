@@ -13,6 +13,15 @@ import os from "node:os";
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
+import { parseSptDocument } from "../src/spt-contract.js";
+
+// GitHub #52 (2026-11-23): a fixture tem de ser um documento que o motor LÊ.
+// Antes as duas fixtures abaixo inseriam `abertura` num MOLDE_BLOCK que já
+// tinha a chave — YAML com chave duplicada, que o motor rejeita com
+// "Map keys must be unique" enquanto o preflight aceitava.
+const yamlLegivelPeloMotor = (doc: string) => {
+  expect(parseSptDocument(doc).errors).not.toEqual(expect.arrayContaining([expect.stringContaining("must be unique")]));
+};
 
 const REPO = path.resolve(import.meta.dirname, "..");
 const PREFLIGHT = path.join(REPO, "spt-kit", "preflight.mjs");
@@ -56,21 +65,23 @@ describe("R19 — bloco abertura obrigatório no SPT v3 (preflight S12)", () => 
   });
 
   it("COM o bloco completo LIMPA o S12", async () => {
-    const comBloco = MOLDE_BLOCK.replace(
+    const comBloco = MOLDE_SEM_ABERTURA.replace(
       /^goal:/m,
       ["abertura:", "  contexto: 'pagamos $dex-find-contexto-integrado'", "  ferramentas: 'pagamos $dex-find-tools'", "  mentor: 'mentor-documental-do-assunto'", "goal:"].join("\n")
     );
     const trilho = await fixture(comBloco);
+    yamlLegivelPeloMotor(comBloco);
     const out = runPreflight(trilho);
     expect(out).not.toContain("S12");
   });
 
   it("bloco INCOMPLETO dispara S12 nomeando o campo faltante — diagnóstico que ensina", async () => {
-    const incompleto = MOLDE_BLOCK.replace(
+    const incompleto = MOLDE_SEM_ABERTURA.replace(
       /^goal:/m,
       ["abertura:", "  contexto: 'so isto'", "goal:"].join("\n")
     );
     const trilho = await fixture(incompleto);
+    yamlLegivelPeloMotor(incompleto);
     const out = runPreflight(trilho);
     expect(out).toContain("S12");
     expect(out).toContain("ferramentas");

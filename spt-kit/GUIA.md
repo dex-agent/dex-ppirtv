@@ -3,6 +3,8 @@
 ## Instalar
 1. Aponte para este kit (path central) OU copie `spt-kit/` para `<workspace>\.agents\spt-kit\`.
 2. Dependência: Node com o pacote `yaml` (já presente no repo dex-PPIRTV).
+3. **Capacidade exigida (R19):** este kit emite o bloco `abertura`. Atualize na ordem **motor primeiro, kit depois** — um motor anterior ao commit `4003d59` do dex-PPIRTV rejeita o bloco, e o preflight aponta a atualização quando encontra esse motor. O motor novo aceita documento antigo com aviso; é a única direção garantida sem subir a versão.
+4. **Paridade com o motor (GitHub #51):** o preflight usa `dist/spt-contract.js` quando o build está ao lado do kit e reporta como `S10` o que o motor rejeita. No kit copiado para outro workspace o build não está ao lado: o preflight avisa que a paridade está desligada e valem só as regras locais. `scripts/validate-spt.mjs` continua sendo a conferência pelo motor.
 
 ## Criar um SPT (ordem)
 1. Copie o BLOCO YAML do `MOLDE.md` (da primeira linha `---` ate a ultima `---`) para `<workspace>\.agents\PLAN-TASKS\YYYY-MM-DD-<slug>.md` — nunca o arquivo integral: o header de prosa do molde gera S00.

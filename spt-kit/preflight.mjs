@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// preflight SPT v3 — checks S00..S12: regras R1-R09 (S01..S08, S11), anti-drift S09, shape S10, abertura S12 (R19) — forma local; spt_validate MCP permanece a autoridade.
+// preflight SPT v3 — checks S00..S12: regras R1-R09 (S01..S08, S11), anti-drift S09, shape S10, abertura S12 (R19) — forma local; spt_validate MCP permanece a autoridade. S10 inclui a rejeição do MOTOR quando o build está ao lado do kit (paridade, GitHub #51).
 // Uso: node preflight.mjs <spt.md> | node preflight.mjs --checksum <molde.md>
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { parseDocument } from "yaml";
 
@@ -37,10 +37,12 @@ if (docFlag) {
 
 const achados = [];
 const add = (code, msg) => achados.push(`${code}: ${msg}`);
+let textoLido = ""; // texto do Trilho (sem BOM) — repassado ao motor na conferência de forma
 
 function loadFront(file) {
   let raw = readFileSync(file, "utf8");
   if (raw.startsWith("\uFEFF")) raw = raw.slice(1); // BOM UTF-8: o parser oficial tolera; aqui tambem ignora
+  textoLido = raw;
   if (raw.includes("\r\n")) add("S07", "arquivo usa CRLF; use apenas LF (R7)");
   const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!m) {
@@ -122,8 +124,11 @@ function checkGraph(d) {
       // "npm run check:capacity"/"check:flow-engine" contêm o prefixo
       // "npm run check" mas NÃO são prova de tipagem (package.json define
       // operações distintas); substring silenciava o fiscal.
+      // GitHub #50 (2026-11-23): o limite depois do nome completo aceita os
+      // separadores do shell colados (`;`, `&&`, `||`, `|`) e `)` — antes só
+      // espaço ou fim de texto, e "… check:types; npm test" dava falso S11.
       const proc = String(e.procedure || "");
-      if (/(npx\s+tsc|\btsc\s+(-p|--noEmit|--project))/.test(proc) && !/npm run check(:types)?(\s|$)/.test(proc))
+      if (/(npx\s+tsc|\btsc\s+(-p|--noEmit|--project))/.test(proc) && !/npm run check(:types)?(\s|[;&|)]|$)/.test(proc))
         add("S11", `${e.id}: prova de tipos com tsc direto (R9) — cite npm run check:types ou npm run check INTEIRO`);
     }
   }
@@ -131,6 +136,34 @@ function checkGraph(d) {
   if (!Array.isArray(d.closure_gates) || !d.closure_gates.length) add("S05", "closure_gates ausente/ vazio (R5)");
   if (!Array.isArray(d.gates) || !d.gates.length) add("S06", "gates do plano ausentes/ vazios (R6)");
   if (d.dex_contract !== "spt" || d.version !== 3) add("S00", "dex_contract: spt e version: 3 obrigatorios");
+}
+
+// GitHub #51 (2026-11-23) — fechar a CLASSE, não a porta: o preflight e o
+// motor validavam a mesma forma com políticas diferentes (o S10 cobria só as
+// chaves do topo e o S12 só os 3 campos de `abertura`; o zod do motor é
+// estrito em TODOS os subobjetos). A fonte única da forma é o schema do motor
+// (src/spt-contract.ts). Quando o build está ao lado do kit, o preflight
+// PERGUNTA ao motor e traduz a rejeição em achado; sem o build, segue só com
+// as regras locais e declara isso — nunca finge paridade. Doc 10 lei 1: o
+// hook cobra a forma; o conteúdo segue sendo do autor.
+async function conferirComOMotor(frontPresente) {
+  const motorUrl = new URL("../dist/spt-contract.js", import.meta.url);
+  if (!existsSync(motorUrl)) {
+    console.log("nota: paridade de forma com o motor desligada (dist/spt-contract.js ausente ao lado deste kit) — rode `npm run build` no repo do motor para habilita-la; valem so as regras locais S00-S12.");
+    return;
+  }
+  if (!frontPresente) return; // o S00 já acusou o front matter
+  const { parseSptDocument } = await import(motorUrl.href);
+  for (const erro of parseSptDocument(textoLido).errors) {
+    // GitHub #49 (decisão do dono 2026-11-23: declarar a capacidade exigida,
+    // sem subir a versão): kit novo emite `abertura`; motor anterior rejeita a
+    // CHAVE `abertura`. Recusa de subcampo dentro de `abertura` é outra coisa
+    // (campo extra) e recebe a rota de correção de campo, nunca a de update.
+    const rota = /Unrecognized key\(s\) in object: 'abertura'/.test(erro)
+      ? " — o motor DESTA instalação é anterior ao bloco abertura (R19): atualize o motor antes de usar este kit (ordem: motor primeiro, kit depois)"
+      : " — corrija o campo citado; a lista oficial é o schema do motor (src/spt-contract.ts)";
+    add("S10", `rejeitado pelo motor: ${erro}${rota}`);
+  }
 }
 
 if (args[0] === "--checksum") {
@@ -143,6 +176,7 @@ if (args[0] === "--checksum") {
 } else if (args[0]) {
   const d = loadFront(args[0]);
   if (d) { checkRequiredShape(d); checkGraph(d); }
+  await conferirComOMotor(d !== null);
 } else {
   console.error("uso: node preflight.mjs <spt.md> | node preflight.mjs --checksum <molde.md>");
   process.exit(2);

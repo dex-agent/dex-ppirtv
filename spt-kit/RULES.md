@@ -53,6 +53,9 @@ o verde parcial NÃO é verde de tipos (ISSUE-LOCAL-0009: o D-47 declarou
 "check exit 0" com tsc src-only enquanto tests/ carregava 3 erros vivos).
 Verificação: preflight acusa **S11** quando a `procedure` de um ER command
 invoca `tsc` direto (npx tsc / tsc -p / tsc --noEmit) sem `npm run check`.
+Limite depois do nome completo: espaço, fim de texto ou separador do shell
+colado (`;`, `&&`, `||`, `|`, `)`) — "… check:types; npm test" é prova de
+tipos válida (GitHub #50); `check:capacity` e `check:flow-engine` mantêm o S11.
 Cobertura declarada: sentinela de padrões CONHECIDOS de tsc direto — script
 wrapper com outro nome que pule tests/ permanece julgamento de agente.
 
@@ -67,6 +70,17 @@ ausente, `plan` fora de array de strings, `tasks` sem objetos, `uncertainties`
 com menos de 1 item e chave desconhecida acusam **S10**.
 Verificação: preflight confere a lista, os 3 shapes e as chaves; `spt_validate`
 permanece a autoridade do schema estrito.
+**Paridade com o motor (GitHub #51):** quando `dist/spt-contract.js` está ao
+lado do kit, o preflight PERGUNTA ao motor (`parseSptDocument`) e reporta cada
+rejeição como **S10** "rejeitado pelo motor: …" com a rota de correção — o
+preflight e o motor deixam de ser dois validadores com políticas diferentes
+(o S10 local cobre o topo, o S12 os 3 campos; o zod do motor é estrito em
+todos os subobjetos). Motor que recusa a chave `abertura` recebe a rota
+"atualize o motor (ordem: motor primeiro, kit depois)". Sem o build ao lado
+(kit copiado para outro workspace), o preflight avisa que a paridade está
+desligada e valem só as regras locais — nunca finge concordância. Invariante
+vigiada: o preflight acusa se e somente se o motor rejeita
+(`tests/issue-0048-0053-forma-spt-paridade.test.ts`).
 
 ## S12: bloco abertura pago (R19, fora da numeração R)
 `abertura{contexto,ferramentas,mentor}` presente com os 3 campos não-vazios —

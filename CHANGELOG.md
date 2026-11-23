@@ -8,6 +8,31 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **Trilho K — forma do SPT v3: o preflight pergunta ao motor, paridade
+  testada, S11 do separador, entradas oficiais e guia × ledger (GitHub #48,
+  #49, #50, #51, #52 e #53; Trilho 2026-11-23-aud2-k-forma-spt-v3; auditoria
+  externa de 2026-11-23)**: #51 — o preflight e o motor validavam a mesma
+  forma com políticas diferentes (o S10 cobria só as chaves do topo e o S12 só
+  os 3 campos de `abertura`; o zod do motor é estrito em todos os subobjetos).
+  Cura pela classe: quando `dist/spt-contract.js` está ao lado do kit, o
+  preflight chama `parseSptDocument` e reporta cada rejeição como S10
+  "rejeitado pelo motor: …" com rota; sem o build ao lado, avisa que a
+  paridade está desligada. O vermelho mostrou que a classe era maior que o
+  relato (campo extra em `goal` também passava). #49 (decisão do dono:
+  declarar a capacidade exigida, sem subir a versão): motor que recusa a
+  chave `abertura` recebe a rota "atualize o motor (ordem: motor primeiro,
+  kit depois)"; `spt-kit/GUIA.md` publica a ordem. #50 — o S11 passa a aceitar
+  separador do shell colado (`;`, `&&`, `||`, `|`, `)`); `check:capacity`
+  continua reprovado. #48 — `templates/SPEC-PLAN-TASKS.template.md` e o
+  trecho de front matter de `docs/guides/MCP_AGENT_QUICKSTART.md` ganham o
+  bloco `abertura`. #52 — as fixtures do `tests/issue-r19-abertura.test.ts`
+  nascem do MOLDE sem o bloco e afirmam ser lidas pelo motor. #53 — o record
+  R19 do guia de arquitetura passa a dizer EXCEPTION `public_compatibility`,
+  com a expiração, e um teste cruza todo cabeçalho do guia com o ledger.
+  RED 9F|4P → GREEN 31/31; mutação de sessão 9/9 PEGA. Novos
+  `tests/issue-0048-0053-forma-spt-paridade.test.ts` e a fixture versionada
+  `spt-kit/fixtures/trilho-valido-v3.md`.
+
 - **Trilho P — gerador do Playbook: modo consumidor só por fonte declarada,
   par recebido conferido e parser por declaração (GitHub #42 + #43 +
   ISSUE-LOCAL-0031; Trilho 2026-11-23-aud2-p-playbook-gerador; auditoria

@@ -124,5 +124,5 @@ Quando: criar/mudar/recuperar ferramenta do repo; conferir frescor do livro; con
 Revisão: warning — external_sources_not_checked; reopen the canonical owner
 ## spt-preflight (reviewed)
 
-validador estrutural local de Trilho SPT v3 antes do goal_start (fiscal S00-S12; espelho local do spt_validate MCP)
-Quando: rodar ANTES de qualquer goal_start e ao lapidar um Trilho; also consumido por fixtures de teste que validam o fiscal
+validador estrutural local de Trilho SPT v3 antes do goal_start (fiscal S00-S12; regras locais + PARIDADE COM O MOTOR: quando dist/spt-contract.js esta ao lado do kit, reporta como S10 o que o schema do motor rejeita)
+Quando: rodar ANTES de qualquer goal_start e ao lapidar um Trilho; also consumido por fixtures de teste que validam o fiscal; no kit copiado para outro workspace roda sem o motor ao lado e avisa que a paridade esta desligada

@@ -1,4 +1,23 @@
 {
+  "reavaliacao_aud2_k_forma_spt_v3_261123": {
+    "date": "2026-11-23",
+    "scope": [
+      "spt-kit/preflight.mjs",
+      "spt-kit/GUIA.md",
+      "spt-kit/RULES.md",
+      "spt-kit/fixtures/trilho-valido-v3.md",
+      "templates/SPEC-PLAN-TASKS.template.md",
+      "docs/guides/MCP_AGENT_QUICKSTART.md",
+      "docs/architecture/FLOW_ENGINE_EVOLUTION.md",
+      "tests/issue-0048-0053-forma-spt-paridade.test.ts",
+      "tests/issue-r19-abertura.test.ts",
+      "TOOLSBOOK.json",
+      "TOOLSBOOK.md",
+      "TOOLSBOOK.index.md",
+      "CHANGELOG.md"
+    ],
+    "delta": "Trilho K (GitHub #48 a #53; auditoria externa 2026-11-23). #51 fechada pela classe: com dist/spt-contract.js ao lado do kit, o preflight chama parseSptDocument e reporta cada rejeicao como S10 com rota (o preflight e o motor deixam de ter politicas diferentes; o vermelho mostrou campo extra em goal tambem passando); sem o build, nota de paridade desligada. #49 (decisao do dono: declarar a capacidade exigida, sem subir a versao): rota \"atualize o motor\" so quando o motor recusa a chave abertura; GUIA publica a ordem motor primeiro, kit depois. #50: S11 aceita separador do shell colado. #48: bloco abertura no template e no trecho do QUICKSTART. #52: fixtures do R19 a partir do MOLDE sem bloco, lidas pelo motor. #53: record R19 do guia como EXCEPTION com expiracao; teste cruza todo cabecalho do guia com o ledger. RED 9F|4P -> GREEN 31/31; mutacao de sessao 9/9 PEGA com 5 arquivos restaurados byte a byte. src/ intocado — sem camping."
+  },
   "reavaliacao_aud2_p_playbook_gerador_261123": {
     "date": "2026-11-23",
     "scope": [

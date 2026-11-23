@@ -5,6 +5,10 @@ status: RASCUNHO
 owner: '<owner>'
 date: '<yyyy-mm-dd>'
 workspace: '<absolute-workspace-path>'
+abertura:
+  contexto: '<what the house already knows about this work: findings and live sources>'
+  ferramentas: '<which tools, scripts, skills and recipes already exist for this work>'
+  mentor: '<mentor-documental-<subject> to interrogate if a technical step stalls>'
 origin: '<origin>'
 goal:
   id: '<stable-lowercase-goal-id>'

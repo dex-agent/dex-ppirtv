@@ -66,7 +66,15 @@ For a new official execution, the Trilho must use YAML front matter with:
 dex_contract: spt
 version: 3
 status: AUTORIZADO
+abertura:
+  contexto: '<what the house already knows about this work: findings and live sources>'
+  ferramentas: '<tools, scripts, skills and recipes that already exist for this work>'
+  mentor: '<mentor-documental-<subject> to interrogate if a technical step stalls>'
 ```
+
+`abertura` carries the three base questions of every work item. The full
+shape comes from `spt-kit/MOLDE.md`; `spt-kit/preflight.mjs` reports `S12`
+when the block is missing or incomplete.
 
 SPT v2 remains readable for history, exact retry and explicit
 `recovery`/`reconciliation`; it does not authorize a new execution. Heading-
