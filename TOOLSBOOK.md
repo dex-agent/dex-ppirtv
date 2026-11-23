@@ -222,13 +222,13 @@ no primeiro falso positivo real
 **Estado autorado:** reviewed
 
 **purpose:**
-Projecao deterministica PLAYBOOK.md + PLAYBOOK.index.json das regras de decisao do repo (fontes em tools/playbook/playbook-sources.txt) COM MODO CONSUMIDOR: clone do destinatario sem as fontes declaradas nao gera drift fuso nem degrada a projecao (TRACKER 0030).
+Projecao deterministica PLAYBOOK.md + PLAYBOOK.index.json das regras de decisao do repo (fontes em tools/playbook/playbook-sources.txt). MODO CONSUMIDOR so por fonte DECLARADA ausente (TRACKER 0030; GitHub #42 #43): o clone do destinatario nao gera drift falso nem degrada a projecao, e o produtor minimo gera o primeiro par. PARSER POR DECLARACAO (ISSUE-LOCAL-0031): so e regra a secao cujo token foi declarado no titulo, numa linha 'Localizador:' ou sozinho na primeira bala do corpo.
 
 **when:**
 Editar fonte (README/AGENTS/INDEX/napkin) regenerar na MESMA sessao; --check no pre-commit (gate 1); preparar envio a terceiros.
 
 **how:**
-python -B tools/playbook/generate-playbook.py --repo . --write (regen) | --check (frescor; exit 2 = drift)
+python -B tools/playbook/generate-playbook.py --repo . --write (regen) | --check (frescor; exit 2 = drift, projecao incompleta ou recusa) | --check-sent (fontes enviadas) | [--sources a,b]
 
 **inputs:**
 fontes declaradas em playbook-sources.txt
@@ -248,7 +248,9 @@ ao adicionar/remover fonte de decisao
 **capabilities:**
 - projecao-externa
 - gate-frescor
-- modo consumidor (fonte declarada ausente): --check exit 0 c/ aviso nomeando as ausentes (hook do clone destrava); --write RECUSA exit 2 preservando a projecao recebida
+- modo consumidor SO por fonte declarada (manifesto ou --sources) ausente: --check exit 0 c/ aviso nomeando as ausentes, depois de conferir o par recebido; --write RECUSA exit 2 preservando a projecao; autodeteccao sem manifesto nunca ativa o modo (produtor minimo gera)
+- par recebido conferido: --check e --check-sent reprovam (exit 2) clone sem PLAYBOOK.md ou sem PLAYBOOK.index.json
+- parser por declaracao: localizador so do titulo, de linha 'Localizador:' ou de bala sozinha no topo; citacao interna vira secao nao decodificada c/ motivo; gatilho so de linha 'Gatilho:'; extrato so de prosa; dedupe por localizador
 
 **not_for:**
 - edicao manual da projecao (nunca)
@@ -257,9 +259,12 @@ ao adicionar/remover fonte de decisao
 - hook pre-commit l.5
 - plaquinha global PLAYBOOK-ENTRADA-EXTERNA-261005
 - tests/issue-0030-playbook-clone-consumidor.test.ts (4 its: clone check=aviso/write=recusa preservando bytes/check-sent/fonte drift real segue exit 2)
+- tests/issue-0042-0043-playbook-consumidor.test.ts (4 its: produtor minimo exit 0; clone sem md / sem index / check-sent exit 2)
+- tests/issue-local-0031-playbook-parser.test.ts (10 its: localizador por declaracao x citacao interna; gatilho; extrato; linha omitida; dedupe; grafia)
+- mutacao de sessao 2026-11-23: 7 mutacoes (M1 autodeteccao, M2 par recebido, M3 localizador, M4 gatilho, M5 dedupe, M6 extrato, M7 render) -> 7 PEGA, 0 sobrevivente
 
 **Fontes examinadas:**
-- `tools/playbook/generate-playbook.py` — SHA256 `8d4c141f5ec24dbfc8cd6158c2d98be88be8c9ad48bc4692277c586b2a885f51`
+- `tools/playbook/generate-playbook.py` — SHA256 `fc5393270b0e75f5f10583d20511d8da8f3886a40091d9a93cf662888b5a96a6`
 
 ## judge-playbook
 

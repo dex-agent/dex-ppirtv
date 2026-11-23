@@ -26,7 +26,7 @@ Quando: Falso positivo confirmado do gate Type-2 em .py.
 
 ## generate-playbook (reviewed)
 
-Projecao deterministica PLAYBOOK.md + PLAYBOOK.index.json das regras de decisao do repo (fontes em tools/playbook/playbook-sources.txt) COM MODO CONSUMIDOR: clone do destinatario sem as fontes declaradas nao gera drift fuso nem degrada a projecao (TRACKER 0030).
+Projecao deterministica PLAYBOOK.md + PLAYBOOK.index.json das regras de decisao do repo (fontes em tools/playbook/playbook-sources.txt). MODO CONSUMIDOR so por fonte DECLARADA ausente (TRACKER 0030; GitHub #42 #43): o clone do destinatario nao gera drift falso nem degrada a projecao, e o produtor minimo gera o primeiro par. PARSER POR DECLARACAO (ISSUE-LOCAL-0031): so e regra a secao cujo token foi declarado no titulo, numa linha 'Localizador:' ou sozinho na primeira bala do corpo.
 Quando: Editar fonte (README/AGENTS/INDEX/napkin) regenerar na MESMA sessao; --check no pre-commit (gate 1); preparar envio a terceiros.
 
 ## judge-playbook (reviewed)

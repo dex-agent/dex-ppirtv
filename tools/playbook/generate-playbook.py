@@ -25,12 +25,19 @@ Fontes (nesta ordem de precedencia):
   1. --sources caminho1,caminho2  (override explicito)
   2. <repo>/tools/playbook/playbook-sources.txt (1 por linha; escrito pelo
      instalador da dex-playbook-entrada)
-  3. auto-deteccao: AGENTS.md, 00-governanca-mesa-de-skills.md,
-     .agents/napkin.md, .agents/PLAN-TASKS/ACTIVE.md (os que existirem)
+3. auto-deteccao: AGENTS.md, 00-governanca-mesa-de-skills.md,
+   .agents/napkin.md, .agents/PLAN-TASKS/ACTIVE.md (os que existirem).
+   Auto-deteccao NAO declara fonte: candidato opcional ausente nunca ativa o
+   modo consumidor (GitHub #43 — o produtor minimo gera o primeiro par).
 
 Papel de cada fonte: arquivo terminado em napkin.md = runbook (itens datados);
-demais .md = regras (secoes '## ' com token CAPS-hifen >=12 em backticks,
-primeiro token top-down; listas numeradas = rotas). Faixas entre marcadores
+demais .md = regras: secoes '## ' cujo token CAPS-hifen >=12 em backticks foi
+DECLARADO como nome da regra — no titulo, numa linha 'Localizador:' ou sozinho
+na primeira bala do corpo. Citação interna nunca nomeia a regra: a secao sem
+localizador declarado vai para "nao decodificadas" com a ancora (ISSUE-LOCAL-
+0031). Gatilho so vem de linha 'Gatilho:'; extrato so de prosa (nunca cerca de
+codigo nem a bala do localizador); listas numeradas = rotas; localizador
+repetido em duas fontes projeta a primeira ocorrencia. Faixas entre marcadores
 <!-- nome:start/end --> (graphify-local, registry-catalog-shadow,
 playbook-pointer) sao excluidas.
 
@@ -70,6 +77,13 @@ NAPKIN_RE = re.compile(
 FACA_RE = re.compile(r"Fa[cç]a em vez disso:\s*(.+)")
 ROUTE_RE = re.compile(r"^\s*\d+[.)]\s+(.*)$")
 MESA_KEY_RE = re.compile(r"^(Status|Escopo|Governance-Version):\s*(.+)$", re.MULTILINE)
+# ISSUE-LOCAL-0031: so linha que DECLARA o campo alimenta a projecao.
+LOCALIZADOR_RE = re.compile(r"^\s*(?:[-*]\s*)?Localizador:\s*(.+)$", re.IGNORECASE)
+GATILHO_RE = re.compile(r"^\s*(?:[-*]\s*)?Gatilho:\s*(.+)$", re.IGNORECASE)
+SO_TOKEN_RE = re.compile(r"^[-*]\s*`([A-Z][A-Z0-9]+(?:-[A-Z0-9]+)+)`\s*$")
+FENCE_RE = re.compile(r"^\s*(```|~~~)")
+BULLET_RE = re.compile(r"^[-*]\s+")
+NAO_DECLARADO = "não declarado"
 
 
 def clip(text, limit):
@@ -115,32 +129,71 @@ def split_sections(lines, mask):
     return sections
 
 
+def tokens_of(text):
+    return [t for t in TOKEN_RE.findall(text) if len(t) >= 12]
+
+
+def locator_of(title, body):
+    """Token que DECLARA o nome da regra: no titulo, numa linha 'Localizador:'
+    ou sozinho na primeira bala do corpo. Citacao interna nunca nomeia a
+    regra; sem declaracao devolve ''."""
+    no_titulo = tokens_of(title)
+    if no_titulo:
+        return no_titulo[0]
+    for ln in body[1:]:
+        m = LOCALIZADOR_RE.match(ln)
+        if m:
+            declarado = tokens_of(m.group(1))
+            if declarado:
+                return declarado[0]
+    primeira = next((ln for ln in body[1:] if ln.strip()), "")
+    m = SO_TOKEN_RE.match(primeira.strip())
+    return m.group(1) if m else ""
+
+
+def gatilho_of(body):
+    """Valor da linha que declara 'Gatilho:'; '' quando a fonte nao declara."""
+    for ln in body[1:]:
+        m = GATILHO_RE.match(ln)
+        if m and m.group(1).strip():
+            return clip(m.group(1).strip(), 140)
+    return ""
+
+
+def extrato_of(body):
+    """Primeira linha de prosa do corpo: pula titulo, localizador, gatilho,
+    rota numerada e cerca de codigo. '' quando a fonte nao tem prosa."""
+    em_cerca = False
+    for ln in body[1:]:
+        if FENCE_RE.match(ln):
+            em_cerca = not em_cerca
+            continue
+        alvo = ln.strip()
+        if (em_cerca or not alvo or alvo.startswith("#")
+                or LOCALIZADOR_RE.match(ln) or GATILHO_RE.match(ln)
+                or ROUTE_RE.match(ln) or SO_TOKEN_RE.match(alvo)):
+            continue
+        return clip(BULLET_RE.sub("", alvo), 140)
+    return ""
+
+
 def parse_rules_file(repo, rel):
     path = repo / Path(rel)
     if not path.exists():
         return [], []
     lines = read_lines(path)
-    mask = generated_mask(lines)
-    sections = split_sections(lines, mask)
+    sections = split_sections(lines, generated_mask(lines))
     rules, undecoded = [], []
     for title, start, body in sections:
-        text = "\n".join(body)
-        tokens = [t for t in TOKEN_RE.findall(text) if len(t) >= 12]
-        anchor = "%s#L%d-L%d" % (rel, start + 1, start + len(body))
-        if not tokens:
-            undecoded.append({"titulo": title, "ancora": "%s#L%d" % (rel, start + 1)})
+        locator = locator_of(title, body)
+        if not locator:
+            undecoded.append({
+                "titulo": title,
+                "ancora": "%s#L%d" % (rel, start + 1),
+                "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)",
+            })
             continue
-        locator = tokens[0]
-        gatilho = "ndeclarado"
-        for ln in body:
-            if "gatilho" in ln.lower():
-                gatilho = clip(ln, 140)
-                break
-        extrato = ""
-        for ln in body[1:]:
-            if ln.strip():
-                extrato = clip(ln, 140)
-                break
+        anchor = "%s#L%d-L%d" % (rel, start + 1, start + len(body))
         rotas = []
         for ln in body[1:]:
             r = ROUTE_RE.match(ln)
@@ -152,12 +205,29 @@ def parse_rules_file(repo, rel):
             "seal": seal_of(locator, anchor),
             "locator": locator,
             "title": title,
-            "gatilho": gatilho,
-            "extrato": extrato,
+            "gatilho": gatilho_of(body) or NAO_DECLARADO,
+            "extrato": extrato_of(body),
             "rotas": rotas,
             "fonte": anchor,
         })
     return rules, undecoded
+
+
+def dedupe_rules(rules):
+    """Primeira ocorrencia de cada localizador ganha; a repetida vira nao
+    decodificada apontando a fonte que ganhou."""
+    vencedora, unicas, repetidas = {}, [], []
+    for rule in rules:
+        if rule["locator"] in vencedora:
+            repetidas.append({
+                "titulo": rule["title"],
+                "ancora": rule["fonte"],
+                "motivo": "localizador `%s` ja projetado por `%s`" % (rule["locator"], vencedora[rule["locator"]]),
+            })
+            continue
+        vencedora[rule["locator"]] = rule["fonte"]
+        unicas.append(rule)
+    return unicas, repetidas
 
 
 def parse_mesa_keys(repo, rel):
@@ -214,6 +284,9 @@ def parse_napkin(repo, rel):
 
 
 def resolve_sources(repo, override):
+    """Fontes presentes e, entre elas, as DECLARADAS ausentes. So fonte
+    declarada (override ou manifesto) ausente sinaliza clone consumidor;
+    candidato da auto-deteccao e opcional e nao declara nada (GitHub #43)."""
     if override:
         rels = [s.strip().replace("\\", "/") for s in override.split(",") if s.strip()]
     else:
@@ -221,11 +294,18 @@ def resolve_sources(repo, override):
         if cfg.exists():
             rels = [ln.strip().replace("\\", "/") for ln in read_lines(cfg) if ln.strip() and not ln.startswith("#")]
         else:
-            rels = list(DEFAULT_CANDIDATES)
+            # Auto-deteccao: produtor sem manifesto — os que existirem bastam.
+            return [r for r in DEFAULT_CANDIDATES if (repo / Path(r)).exists()], []
     solved, ausentes = [], []
     for rel in rels:
         (solved if (repo / Path(rel)).exists() else ausentes).append(rel)
     return solved, ausentes
+
+
+def projecoes_ausentes(md_path, idx_path):
+    """Arquivos publicados que faltam no clone: o consumidor recebe o par
+    inteiro, e nenhuma conferencia o aprova sem ele (GitHub #42)."""
+    return [rotulo for caminho, rotulo in ((md_path, "PLAYBOOK.md"), (idx_path, "PLAYBOOK.index.json")) if not caminho.exists()]
 
 
 def git_ls_files(repo):
@@ -273,6 +353,8 @@ def collect(repo, override):
         r, u = parse_rules_file(repo, rel)
         rules.extend(r)
         undecoded.extend(u)
+    rules, repetidas = dedupe_rules(rules)
+    undecoded.extend(repetidas)
     return {
         "fontes_ausentes": ausentes,
         "repo_name": repo.resolve().name,
@@ -326,7 +408,8 @@ def render(repo, data):
         out.append("")
         out.append("- Localizador: `%s`" % rule["locator"])
         out.append("- Gatilho: %s" % rule["gatilho"])
-        out.append("- Extrato: %s" % rule["extrato"])
+        if rule["extrato"]:
+            out.append("- Extrato: %s" % rule["extrato"])
         if rule["rotas"]:
             out.append("- Rotas (nomes, na ordem):")
             for r in rule["rotas"]:
@@ -341,9 +424,9 @@ def render(repo, data):
         keys, mesa_secs = data["mesa_keys"], data["mesa_secoes"]
         out.append("## Mesa de governanca")
         out.append("")
-        out.append("- Status: %s" % keys.get("Status", "ndeclarado"))
-        out.append("- Escopo: %s" % keys.get("Escopo", "ndeclarado"))
-        out.append("- Governance-Version: %s" % keys.get("Governance-Version", "ndeclarado"))
+        out.append("- Status: %s" % keys.get("Status", NAO_DECLARADO))
+        out.append("- Escopo: %s" % keys.get("Escopo", NAO_DECLARADO))
+        out.append("- Governance-Version: %s" % keys.get("Governance-Version", NAO_DECLARADO))
         out.append("- Indice (%d secoes, contagem derivada em runtime):" % len(mesa_secs))
         for sec in mesa_secs:
             out.append("  - %s -> `%s`" % (sec["titulo"], sec["ancora"]))
@@ -380,7 +463,7 @@ def render(repo, data):
     out.append("")
     if data["undecoded"]:
         for u in data["undecoded"]:
-            out.append("- %s -> `%s` (sem token de localizador)" % (u["titulo"], u["ancora"]))
+            out.append("- %s -> `%s` (%s)" % (u["titulo"], u["ancora"], u.get("motivo", "sem token de localizador")))
     else:
         out.append("- (nenhuma)")
     out.append("")
@@ -444,6 +527,7 @@ def main():
     # ausentes — o hook do clone chama --check e para de travar commit de
     # terceiro); --write RECUSA preservando a projecao (degradar 9->2 era o
     # dano real). --check-sent segue a rota de conferencia do destinatario.
+    # GitHub #42: exit 0 so depois de conferir que o par recebido existe.
     ausentes = data.get("fontes_ausentes") or []
     if ausentes and (args.write or args.check):
         print("MODO CONSUMIDOR: %d fonte(s) declarada(s) ausente(s) neste clone: %s"
@@ -452,6 +536,11 @@ def main():
         if args.write:
             print("RECUSA: --write degradaria a projecao recebida (fontes ausentes) — clone consumidor nao regenera (exit 2).")
             print("  Para conferir as fontes ENVIADAS neste clone: --check-sent")
+            return 2
+        faltando = projecoes_ausentes(md_path, idx_path)
+        if faltando:
+            print("PROJECAO INCOMPLETA: arquivo recebido ausente neste clone: %s" % ", ".join(faltando))
+            print("  o checkout nao contem o Playbook publicado inteiro; nada a conferir (exit 2).")
             return 2
         print("  PLAYBOOK recebido preservado; commit segue destravado (sem fontes nao ha drift).")
         print("  Para conferir as fontes ENVIADAS neste clone: --check-sent")
@@ -484,8 +573,11 @@ def main():
         return 0
 
     if args.check_sent:
-        if not idx_path.exists():
-            print("PLAYBOOK.index.json ausente neste clone (exit 2)")
+        faltando = projecoes_ausentes(md_path, idx_path)
+        if faltando:
+            print("CHECK-SENT FALHOU (exit 2):")
+            for rotulo in faltando:
+                print("  - arquivo recebido ausente: %s" % rotulo)
             return 2
         idx = json.loads(idx_path.read_text(encoding="utf-8-sig"))
         problems = []

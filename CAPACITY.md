@@ -1,3 +1,18 @@
+## Reavaliação — Trilho P: gerador do Playbook (GitHub #42 + #43 + ISSUE-LOCAL-0031) (2026-11-23)
+
+Delta: `tools/playbook/generate-playbook.py` — `resolve_sources` só marca
+ausente a fonte DECLARADA (manifesto ou `--sources`); `projecoes_ausentes()`
+exige o par recebido em `--check` e `--check-sent`; parser reorganizado em
+funções puras (`tokens_of`, `locator_of`, `gatilho_of`, `extrato_of`,
+`dedupe_rules`) — token só nomeia regra por declaração. Projeção do repo
+regenerada: 2 regras + 11 seções não decodificadas (antes 9 + 4). Testes
+novos: `tests/issue-0042-0043-playbook-consumidor.test.ts` (4 its) e
+`tests/issue-local-0031-playbook-parser.test.ts` (10 its). RED 11F|3P →
+GREEN 18/18 (com o 0030); mutação de sessão 7/7 PEGA (gerador restaurado
+byte a byte, sha `fc539327…`). Fichas do TOOLSBOOK: `generate-playbook`
+re-ancorada. `src/` intocado (sem camping).
+Receipt `reavaliacao_aud2_p_playbook_gerador_261123`.
+
 ## Reavaliação — regen PLAYBOOK pós-TRACKER 0030 (2026-11-22)
 
 Projeção regenerada no fechamento do 0030 (fontes `.agents` atualizadas:

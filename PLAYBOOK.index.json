@@ -3,15 +3,15 @@
   "generated_by": "tools/playbook/generate-playbook.py",
   "authority": "derived_projection",
   "repo_name": "dex-PPIRTV",
-  "sources_revision": "sha256:d14aceded2ea222efa8eac8d18fcf035236921823ee79a045703f16e78e2e0ec",
+  "sources_revision": "sha256:7bd72751315701e57fc0d44408851e369dcfadc4e6130784fa5550b97c3d03e4",
   "sent_revision": "sha256:c3fe3900353785713ca9fdb1d0ff4a840d2eade60eadca73b9a4ac228bd6dc0f",
   "rules": [
     {
       "seal": "pb-72414c9b",
       "locator": "PAINEL-DE-FERRAMENTAS",
       "title": "Painel de Ferramentas",
-      "gatilho": "- Gatilho: na retomada e antes de implementar, consulte as ferramentas e rotas de conhecimento já disponíveis para o projeto.",
-      "extrato": "- `PAINEL-DE-FERRAMENTAS`",
+      "gatilho": "na retomada e antes de implementar, consulte as ferramentas e rotas de conhecimento já disponíveis para o projeto.",
+      "extrato": "",
       "rotas": [
         "Abra [o índice de documentação](INDEX.md) para localizar fe...",
         "No ambiente de trabalho, consulte o painel local em `AGENTS..."
@@ -22,91 +22,13 @@
       "seal": "pb-e48a5b0f",
       "locator": "PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL",
       "title": "Documentação publicada e localizável",
-      "gatilho": "- Gatilho: ao publicar guia, FAQ, runbook ou contrato explicativo, confira se o destinatário consegue encontrá-lo.",
-      "extrato": "- `PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL`",
+      "gatilho": "ao publicar guia, FAQ, runbook ou contrato explicativo, confira se o destinatário consegue encontrá-lo.",
+      "extrato": "",
       "rotas": [
         "Vincule o documento no README, no índice de documentação e...",
         "Valide a busca pelo título ou localizador e confira os link..."
       ],
       "fonte": "docs/PLAYBOOK-RULES.md#L9-L13"
-    },
-    {
-      "seal": "pb-b04ade35",
-      "locator": "PAINEL-DE-FERRAMENTAS",
-      "title": "Painel de Ferramentas",
-      "gatilho": "### 4. Memorias quentes (L1 vivos — completo em `.agents/GATILHOS-VIVOS.md`)",
-      "extrato": "(consultar ANTES de qualquer pesquisa web — molde de ecossistema",
-      "rotas": [],
-      "fonte": "AGENTS.md#L26-L68"
-    },
-    {
-      "seal": "pb-06b352f2",
-      "locator": "CONSELHEIRO-ATIVO-PADRAO-REPO",
-      "title": "Regras locais",
-      "gatilho": "mapa quente em `.agents/GATILHOS-VIVOS.md`).",
-      "extrato": "- `CONSELHEIRO-ATIVO-PADRAO-REPO` (GO do dono 2026-11-09): toda sessão de",
-      "rotas": [],
-      "fonte": "AGENTS.md#L69-L239"
-    },
-    {
-      "seal": "pb-4cfa8c97",
-      "locator": "PPIRTV-CAPACITY-COMMIT-GATE",
-      "title": "Validacao minima",
-      "gatilho": "ndeclarado",
-      "extrato": "```powershell",
-      "rotas": [],
-      "fonte": "AGENTS.md#L289-L311"
-    },
-    {
-      "seal": "pb-e564e30f",
-      "locator": "PPIRTV-CHATO-LIVE-PREFLIGHT",
-      "title": "Ordens diretas do Comandante Owner o $chato 🗣️",
-      "gatilho": "2. $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamento da $estacionamento ao lado da $garimpeiro e tudo que for achado MEMORÁVEL...",
-      "extrato": "### Mandatory live preflight — `PPIRTV-CHATO-LIVE-PREFLIGHT`",
-      "rotas": [
-        "Mantenha $garimpeiro e $estacionamento ativos durante todo...",
-        "$chato 🗣️ quero que o $dex-memoria v2 fique no estacionamen...",
-        "Ative o fluxo visual PPIRTV com checklist visual dinâmico u...",
-        "Sempre finalize o trabalho analisando \"com lentes dos espec..."
-      ],
-      "fonte": "AGENTS.md#L312-L374"
-    },
-    {
-      "seal": "pb-89ba9245",
-      "locator": "PPIRTV-GIT-CONSOLIDACAO-SELETIVA-MAIN",
-      "title": "Dex Agent Local",
-      "gatilho": "- Antes de qualquer consolidacao Git deste repositorio, recupere o gatilho",
-      "extrato": "- Projeto: `dex-PPIRTV`",
-      "rotas": [],
-      "fonte": "AGENTS.md#L375-L419"
-    },
-    {
-      "seal": "pb-7ade542d",
-      "locator": "TRACKER-LOCAL",
-      "title": "Bootstrap (toda janela nova, nesta ordem)",
-      "gatilho": "operar) → `.agents\\GATILHOS-VIVOS.md` (hub de gatilhos quentes de reuso).",
-      "extrato": "1. Leia o AGENTS global: `$env:USERPROFILE\\.agents\\AGENTS.md` (PowerShell) /",
-      "rotas": [
-        "Leia o AGENTS global: `$env:USERPROFILE\\.agents\\AGENTS.md`...",
-        "Leia este `AGENTS.md` inteiro.",
-        "Leia o estado vivo, nesta ordem: `.agents\\ACTIVE.md` → `.ag...",
-        "Gatilhos L1: `.agents\\lembranca.md` — abra L2/L3 somente po..."
-      ],
-      "fonte": "AGENTS.md#L453-L474"
-    },
-    {
-      "seal": "pb-ef47a378",
-      "locator": "PENDENTES-LEDGER",
-      "title": "Leitura obrigatoria (bootstrap)",
-      "gatilho": "5. `.agents/PENDENTES.md` — ledger de pendências append-only (schema `dex.pendencias.v2`; gatilho `PENDENTES-LEDGER`)",
-      "extrato": "1. `AGENTS.md`",
-      "rotas": [
-        "`AGENTS.md`",
-        "`.agents/ACTIVE.md`",
-        "`.agents/HANDOFF.md`",
-        "`.agents/PLAN-TASKS/ACTIVE.md`"
-      ],
-      "fonte": "AGENTS.md#L502-L509"
     }
   ],
   "mesa": {
@@ -119,20 +41,59 @@
   "runbook": [],
   "nao_decodificadas": [
     {
+      "titulo": "Painel de Ferramentas",
+      "ancora": "AGENTS.md#L26",
+      "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
+    },
+    {
+      "titulo": "Regras locais",
+      "ancora": "AGENTS.md#L69",
+      "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
+    },
+    {
       "titulo": "Organizacao De Artefatos E Scripts",
-      "ancora": "AGENTS.md#L240"
+      "ancora": "AGENTS.md#L240",
+      "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
+    },
+    {
+      "titulo": "Validacao minima",
+      "ancora": "AGENTS.md#L289",
+      "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
+    },
+    {
+      "titulo": "Ordens diretas do Comandante Owner o $chato 🗣️",
+      "ancora": "AGENTS.md#L312",
+      "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
+    },
+    {
+      "titulo": "Dex Agent Local",
+      "ancora": "AGENTS.md#L375",
+      "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
     },
     {
       "titulo": "Graphify local",
-      "ancora": "AGENTS.md#L420"
+      "ancora": "AGENTS.md#L420",
+      "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
+    },
+    {
+      "titulo": "Bootstrap (toda janela nova, nesta ordem)",
+      "ancora": "AGENTS.md#L453",
+      "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
     },
     {
       "titulo": "Indexação (doutrina da casa)",
-      "ancora": "AGENTS.md#L475"
+      "ancora": "AGENTS.md#L475",
+      "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
     },
     {
       "titulo": "Envio a terceiros",
-      "ancora": "AGENTS.md#L482"
+      "ancora": "AGENTS.md#L482",
+      "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
+    },
+    {
+      "titulo": "Leitura obrigatoria (bootstrap)",
+      "ancora": "AGENTS.md#L502",
+      "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
     }
   ],
   "fontes": [
@@ -148,12 +109,12 @@
     },
     {
       "caminho": ".agents/napkin.md",
-      "sha256": "2a85b4c23fd3208b32f9ed670e2eb271ab3c99edbb7149e6bdd897bd09cbd3fe",
+      "sha256": "d5c9dc8d25c106992b67d44091c081d3693c77d43ae2d90d66fd5b4ff7379b0c",
       "enviado": false
     },
     {
       "caminho": ".agents/PLAN-TASKS/ACTIVE.md",
-      "sha256": "264f9caf810749ed039727629b8bccc67067dded8e7e54096c39dc1d556126cf",
+      "sha256": "a741dff47cb4b57ba22338c60252427accfd66003b1a5ef2b1105c1f97980b4c",
       "enviado": false
     }
   ]

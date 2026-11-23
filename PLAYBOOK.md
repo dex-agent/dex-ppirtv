@@ -4,7 +4,7 @@ description: "Regras de decisao e procedimentos deste projeto - projecao gerada 
 type: playbook
 generated_by: "tools/playbook/generate-playbook.py"
 authority: derived_projection
-sources_revision: "sha256:d14aceded2ea222efa8eac8d18fcf035236921823ee79a045703f16e78e2e0ec"
+sources_revision: "sha256:7bd72751315701e57fc0d44408851e369dcfadc4e6130784fa5550b97c3d03e4"
 sent_revision: "sha256:c3fe3900353785713ca9fdb1d0ff4a840d2eade60eadca73b9a4ac228bd6dc0f"
 do_not_edit: true
 ---
@@ -24,8 +24,7 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 ### Painel de Ferramentas
 
 - Localizador: `PAINEL-DE-FERRAMENTAS`
-- Gatilho: - Gatilho: na retomada e antes de implementar, consulte as ferramentas e rotas de conhecimento já disponíveis para o projeto.
-- Extrato: - `PAINEL-DE-FERRAMENTAS`
+- Gatilho: na retomada e antes de implementar, consulte as ferramentas e rotas de conhecimento já disponíveis para o projeto.
 - Rotas (nomes, na ordem):
   - Abra [o índice de documentação](INDEX.md) para localizar fe...
   - No ambiente de trabalho, consulte o painel local em `AGENTS...
@@ -35,84 +34,12 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 ### Documentação publicada e localizável
 
 - Localizador: `PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL`
-- Gatilho: - Gatilho: ao publicar guia, FAQ, runbook ou contrato explicativo, confira se o destinatário consegue encontrá-lo.
-- Extrato: - `PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL`
+- Gatilho: ao publicar guia, FAQ, runbook ou contrato explicativo, confira se o destinatário consegue encontrá-lo.
 - Rotas (nomes, na ordem):
   - Vincule o documento no README, no índice de documentação e...
   - Valide a busca pelo título ou localizador e confira os link...
 - Fonte: `docs/PLAYBOOK-RULES.md#L9-L13`
 - Selo: `pb-e48a5b0f`
-
-### Painel de Ferramentas
-
-- Localizador: `PAINEL-DE-FERRAMENTAS`
-- Gatilho: ### 4. Memorias quentes (L1 vivos — completo em `.agents/GATILHOS-VIVOS.md`)
-- Extrato: (consultar ANTES de qualquer pesquisa web — molde de ecossistema
-- Fonte: `AGENTS.md#L26-L68`
-- Selo: `pb-b04ade35`
-
-### Regras locais
-
-- Localizador: `CONSELHEIRO-ATIVO-PADRAO-REPO`
-- Gatilho: mapa quente em `.agents/GATILHOS-VIVOS.md`).
-- Extrato: - `CONSELHEIRO-ATIVO-PADRAO-REPO` (GO do dono 2026-11-09): toda sessão de
-- Fonte: `AGENTS.md#L69-L239`
-- Selo: `pb-06b352f2`
-
-### Validacao minima
-
-- Localizador: `PPIRTV-CAPACITY-COMMIT-GATE`
-- Gatilho: ndeclarado
-- Extrato: ```powershell
-- Fonte: `AGENTS.md#L289-L311`
-- Selo: `pb-4cfa8c97`
-
-### Ordens diretas do Comandante Owner o $chato 🗣️
-
-- Localizador: `PPIRTV-CHATO-LIVE-PREFLIGHT`
-- Gatilho: 2. $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamento da $estacionamento ao lado da $garimpeiro e tudo que for achado MEMORÁVEL...
-- Extrato: ### Mandatory live preflight — `PPIRTV-CHATO-LIVE-PREFLIGHT`
-- Rotas (nomes, na ordem):
-  - Mantenha $garimpeiro e $estacionamento ativos durante todo...
-  - $chato 🗣️ quero que o $dex-memoria v2 fique no estacionamen...
-  - Ative o fluxo visual PPIRTV com checklist visual dinâmico u...
-  - Sempre finalize o trabalho analisando "com lentes dos espec...
-- Fonte: `AGENTS.md#L312-L374`
-- Selo: `pb-e564e30f`
-
-### Dex Agent Local
-
-- Localizador: `PPIRTV-GIT-CONSOLIDACAO-SELETIVA-MAIN`
-- Gatilho: - Antes de qualquer consolidacao Git deste repositorio, recupere o gatilho
-- Extrato: - Projeto: `dex-PPIRTV`
-- Fonte: `AGENTS.md#L375-L419`
-- Selo: `pb-89ba9245`
-
-### Bootstrap (toda janela nova, nesta ordem)
-
-- Localizador: `TRACKER-LOCAL`
-- Gatilho: operar) → `.agents\GATILHOS-VIVOS.md` (hub de gatilhos quentes de reuso).
-- Extrato: 1. Leia o AGENTS global: `$env:USERPROFILE\.agents\AGENTS.md` (PowerShell) /
-- Rotas (nomes, na ordem):
-  - Leia o AGENTS global: `$env:USERPROFILE\.agents\AGENTS.md`...
-  - Leia este `AGENTS.md` inteiro.
-  - Leia o estado vivo, nesta ordem: `.agents\ACTIVE.md` → `.ag...
-  - Gatilhos L1: `.agents\lembranca.md` — abra L2/L3 somente po...
-- Fonte: `AGENTS.md#L453-L474`
-- Selo: `pb-7ade542d`
-
-### Leitura obrigatoria (bootstrap)
-
-- Localizador: `PENDENTES-LEDGER`
-- Gatilho: 5. `.agents/PENDENTES.md` — ledger de pendências append-only (schema `dex.pendencias.v2`; gatilho `PENDENTES-LEDGER`)
-- Extrato: 1. `AGENTS.md`
-- Rotas (nomes, na ordem):
-  - `AGENTS.md`
-  - `.agents/ACTIVE.md`
-  - `.agents/HANDOFF.md`
-  - `.agents/PLAN-TASKS/ACTIVE.md`
-- Fonte: `AGENTS.md#L502-L509`
-- Selo: `pb-ef47a378`
 
 ## Runbook <-> Playbook (procedimentos)
 
@@ -128,8 +55,8 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 | --- | --- | --- |
 | `docs/PLAYBOOK-RULES.md` | `3aebb8df98b19a4c1042973c59e14b0a8cfc728777839caa2f2c40c80e76f92c` | sim |
 | `AGENTS.md` | `5aa0e4500535c5277ef7c19cb3863634bcc3a7f08830bad330b0af7778133f2b` | nao |
-| `.agents/napkin.md` | `2a85b4c23fd3208b32f9ed670e2eb271ab3c99edbb7149e6bdd897bd09cbd3fe` | nao |
-| `.agents/PLAN-TASKS/ACTIVE.md` | `264f9caf810749ed039727629b8bccc67067dded8e7e54096c39dc1d556126cf` | nao |
+| `.agents/napkin.md` | `d5c9dc8d25c106992b67d44091c081d3693c77d43ae2d90d66fd5b4ff7379b0c` | nao |
+| `.agents/PLAN-TASKS/ACTIVE.md` | `a741dff47cb4b57ba22338c60252427accfd66003b1a5ef2b1105c1f97980b4c` | nao |
 
 ## Superficie enviada vs local
 
@@ -139,7 +66,14 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 ## Secoes nao decodificadas
 
-- Organizacao De Artefatos E Scripts -> `AGENTS.md#L240` (sem token de localizador)
-- Graphify local -> `AGENTS.md#L420` (sem token de localizador)
-- Indexação (doutrina da casa) -> `AGENTS.md#L475` (sem token de localizador)
-- Envio a terceiros -> `AGENTS.md#L482` (sem token de localizador)
+- Painel de Ferramentas -> `AGENTS.md#L26` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Regras locais -> `AGENTS.md#L69` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Organizacao De Artefatos E Scripts -> `AGENTS.md#L240` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Validacao minima -> `AGENTS.md#L289` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Ordens diretas do Comandante Owner o $chato 🗣️ -> `AGENTS.md#L312` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Dex Agent Local -> `AGENTS.md#L375` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Graphify local -> `AGENTS.md#L420` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Bootstrap (toda janela nova, nesta ordem) -> `AGENTS.md#L453` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Indexação (doutrina da casa) -> `AGENTS.md#L475` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Envio a terceiros -> `AGENTS.md#L482` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Leitura obrigatoria (bootstrap) -> `AGENTS.md#L502` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))

@@ -1,3 +1,36 @@
+# Changelog
+
+Todas as mudancas relevantes deste projeto devem ser registradas aqui.
+
+Este changelog comeca em 2026-06-06. Historico anterior nao foi
+retrocatalogado; entradas futuras devem registrar mudancas confirmadas com data,
+escopo, evidencias e lacunas quando existirem.
+
+## [Unreleased] - 2026-07-28
+
+- **Trilho P — gerador do Playbook: modo consumidor só por fonte declarada,
+  par recebido conferido e parser por declaração (GitHub #42 + #43 +
+  ISSUE-LOCAL-0031; Trilho 2026-11-23-aud2-p-playbook-gerador; auditoria
+  externa de 2026-11-23)**: #43 (regressão nascida no corte do 0030) —
+  `resolve_sources` lia candidato da autodetecção como fonte declarada
+  ausente, e o `--write` recusava o produtor mínimo; agora só fonte
+  declarada (manifesto ou `--sources`) sinaliza clone consumidor. #42 — no
+  modo consumidor o `--check` devolvia exit 0 sem conferir o par recebido;
+  `projecoes_ausentes()` passa a exigir `PLAYBOOK.md` e
+  `PLAYBOOK.index.json` em `--check` e em `--check-sent`. ISSUE-LOCAL-0031
+  — `parse_rules_file` usava o 1º token do corpo como localizador
+  (citação interna virava nome de regra), qualquer linha com "gatilho"
+  virava gatilho, e a 1ª linha não vazia virava extrato; agora
+  `locator_of` (token só por declaração: título, linha `Localizador:` ou
+  bala sozinha no topo), `gatilho_of`, `extrato_of` e `dedupe_rules`, e a
+  seção sem declaração vira "não decodificada" com motivo. Efeito na
+  projeção do repo: 2 regras verdadeiras e 11 seções não decodificadas
+  (antes, 9 regras — 7 com localizador trocado e fonte que não viaja).
+  RED 11F|3P → GREEN 18/18 (o 0030 sem regressão); mutação 7/7 PEGA.
+  Emenda no mesmo corte: a entrada do 0030 deste changelog estava acima do
+  título do arquivo (empilhada por engano no corte de 2026-11-22) e volta
+  para dentro de `[Unreleased]`.
+
 - **TRACKER 0030: modo consumidor do PLAYBOOK no clone do destinatário —
   --check destrava, --write recusa degradar (Trilho
   2026-11-22-issue0030-playbook-clone-consumidor, GO do dono no quiz da
@@ -14,16 +47,6 @@
   fonte idêntico (drift real continua exit 2; FRESCO 9 regras conferido).
   RED 2F|2P → GREEN 4/4; mutação PEGA. Trilho born-with bloco `abertura`
   — 1ª prova viva do S12 do R19.
-
-# Changelog
-
-Todas as mudancas relevantes deste projeto devem ser registradas aqui.
-
-Este changelog comeca em 2026-06-06. Historico anterior nao foi
-retrocatalogado; entradas futuras devem registrar mudancas confirmadas com data,
-escopo, evidencias e lacunas quando existirem.
-
-## [Unreleased] - 2026-07-28
 
 - **R19: bloco abertura obrigatório no SPT v3 — as 3 perguntas base viram
   gate de CRIAÇÃO (Trilho 2026-11-22-r19-abertura-obrigatoria)**: transição

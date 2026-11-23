@@ -1,4 +1,19 @@
 {
+  "reavaliacao_aud2_p_playbook_gerador_261123": {
+    "date": "2026-11-23",
+    "scope": [
+      "tools/playbook/generate-playbook.py",
+      "tests/issue-0042-0043-playbook-consumidor.test.ts",
+      "tests/issue-local-0031-playbook-parser.test.ts",
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json",
+      "TOOLSBOOK.json",
+      "TOOLSBOOK.md",
+      "TOOLSBOOK.index.md",
+      "CHANGELOG.md"
+    ],
+    "delta": "Trilho P (GitHub #42 + #43 + ISSUE-LOCAL-0031; auditoria externa 2026-11-23; GO do dono ao plano do $oraculo-solid). #43 regressao do corte 0030: resolve_sources so marca ausente a fonte DECLARADA (manifesto ou --sources) — autodeteccao sem manifesto nunca ativa o modo consumidor. #42: projecoes_ausentes() exige PLAYBOOK.md e PLAYBOOK.index.json em --check e --check-sent (exit 2 nomeando o ausente). 0031: parser por declaracao — locator_of (titulo, linha Localizador:, bala sozinha no topo), gatilho_of (so linha Gatilho:), extrato_of (so prosa; linha omitida quando nao ha), dedupe_rules (primeira ocorrencia ganha), grafia \"nao declarado\". Projeção do repo regenerada: 2 regras + 11 nao decodificadas (antes 9 + 4). RED 11F|3P -> GREEN 18/18 (com o 0030 sem regressao); mutacao de sessao 7/7 PEGA, gerador restaurado byte a byte (sha fc539327). src/ intocado — sem camping. Emenda: entrada do 0030 no CHANGELOG estava acima do titulo e volta para [Unreleased]."
+  },
   "reavaliacao_playbook_pos_0030_261122": {
     "date": "2026-11-22",
     "scope": [
