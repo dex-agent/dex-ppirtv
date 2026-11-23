@@ -243,6 +243,11 @@ export class PpirtvStore {
             }
             throw permError;
           }
+        } else {
+          // Trilho R (GitHub #46): EEXIST é disputa comprovada — o lock de outra
+          // pessoa existiu no instante da criação. Interrompe a sequência de
+          // permissão negada (EPERM, EEXIST, EPERM, EEXIST, EPERM não soma 3).
+          epermEnoentRounds = 0;
         }
         let existing: Awaited<ReturnType<typeof readStableFlowLock>>;
         try {
@@ -250,6 +255,15 @@ export class PpirtvStore {
         } catch (readError) {
           const readErrorCode = (readError as NodeJS.ErrnoException).code;
           if (readErrorCode === "ENOENT" || readErrorCode === "MEETING_LOCK_IDENTITY_CHANGED") {
+            continue;
+          }
+          if (readErrorCode === "EPERM") {
+            // Trilho R (CI runs 45024229827 e 45203987470): no Windows o open de
+            // um lock cujo outro titular acabou de sair (remoção pendente) chega
+            // como EPERM entre o lstat e o readFile — transição de disputa, não
+            // permissão. Repete com a pausa da disputa clássica até o deadline;
+            // permissão real na CRIAÇÃO segue falhando rápido (limite 3 acima).
+            await new Promise((resolve) => setTimeout(resolve, 10));
             continue;
           }
           throw readError;

@@ -98,7 +98,7 @@ Regua perene da rede simbolo x suite: mede mention_refs e code_refs de cada expo
 Antes/depois de corte de rede; decidir proximo maior monte com cara de corte; calibrar no REDE.md.
 
 **how:**
-python -B tools/test-symbol-coverage.py --json <caminho.json> (tabela vai ao stdout; JSON tem modules/total/prose_suspects)
+python -B tools/test-symbol-coverage.py [--json <caminho.json>] (a raiz do repo deriva de __file__, sem --repo; tabela vai ao stdout; JSON tem modules/total/prose_suspects)
 
 **inputs:**
 src/ e tests/ do repo (root derivado de __file__; copia relocada ABORTA alto, nunca 0/0 silencioso)
@@ -131,7 +131,7 @@ D-50 fechado (domain adicionado ao MARATHON_MODULES pela janela do corte); re-me
 - regua rodada 12 D-52 (2026-11-16): ppirtv-checkin em MARATHON_MODULES 15/21 sem-ref 6; TOTAL 114/299, sem ref 181
 
 **Fontes examinadas:**
-- `tools/test-symbol-coverage.py` — SHA256 `6d5ee4dc53d50c2c73b77d46bbc5f7492c31cc695f99cf7235050cf8af72191a`
+- `tools/test-symbol-coverage.py` — SHA256 `ee20ebabe1dc71ba1d0494dca9f92b2332bd6d31aeb6f4d736ae2de58c46648b`
 
 ## check-duplicacao-delta
 
@@ -277,7 +277,7 @@ Juiz mecanico da prova cega V5 do playbook (design arena-zcode campeao): interse
 Avaliar se resposta de consumidor externo usou o playbook de verdade (eco do AGENTS nao casa).
 
 **how:**
-python -B tools/playbook/judge-playbook.py <resposta> <index> (ver criterios no docstring)
+python -B tools/playbook/judge-playbook.py --answer <resposta.md> --index <PLAYBOOK.index.json> (ver criterios no docstring; exit 0 passou, exit 2 falhou)
 
 **inputs:**
 resposta do consumidor + PLAYBOOK.index.json
@@ -304,7 +304,7 @@ quando o formato do index mudar
 - docstring l.1-6
 
 **Fontes examinadas:**
-- `tools/playbook/judge-playbook.py` — SHA256 `336db15ae963ebaf074bf741287dea673f569964feb2aefe06fb76e4ca71e042`
+- `tools/playbook/judge-playbook.py` — SHA256 `a295092a1c3f86f829aa019d586f78e68ef4357754d0e03e7a68d3a852f2c41b`
 
 ## pre-commit-gates
 
@@ -485,7 +485,7 @@ Gate CAPACITY: todo commit exige CAPACITY.md (secao Reavaliacao atual) + CAPACIT
 todo commit (hook); quando toca src/tests/scripts/package.json/tsconfig.json a reavaliacao cobre os deltas
 
 **how:**
-node scripts/check-capacity.mjs --staged
+node scripts/check-capacity.mjs --staged [--json] [--root <dir>]
 
 **inputs:**
 staged do commit
@@ -513,7 +513,7 @@ se o dono quiser endurecer o gate a head==HEAD (hoje proposital)
 - incidente D-47 (falso verde herdado, ISSUE-LOCAL-0009)
 
 **Fontes examinadas:**
-- `scripts/check-capacity.mjs` — SHA256 `db90ca026aacf7094e82d20bf69d881f41cb39c590ef5b770a6aa0f94f5e8977`
+- `scripts/check-capacity.mjs` — SHA256 `bec2ffa150525514d43a3be55c695ac1fcd79b89af13460c94d5b1bf471722d4`
 
 ## validate-spt
 
@@ -566,7 +566,7 @@ Fiscal do camping de src/flow-engine.ts: todo edit recebe SHRINK/CONTAIN/EXCEPTI
 toda visita que TOCA src/flow-engine.ts (gatilho PPIRTV-FLOW-ENGINE-CAMPING-RULE; consulta read-only = NOT_APPLICABLE)
 
 **how:**
-npm run check:flow-engine (wrappa este validador)
+npm run check:flow-engine (wrappa este validador); janela explicita: node scripts/validate-flow-engine-boundary.mjs --base <git-ref> [--head <git-ref|WORKTREE>] [--manifest <path>]
 
 **inputs:**
 diff da visita, ledger, declaredTestTitles (titulos de it/test EXATOS, nunca describe)
@@ -606,7 +606,7 @@ proximo corte que tocar o monolito
 - mutacao de sessao 2026-11-23: M1 revisao ignorada, M2/M3 redirect sem versionado, M4 cadeia pelo ultimo record -> 4 PEGA, 0 sobrevivente
 
 **Fontes examinadas:**
-- `scripts/validate-flow-engine-boundary.mjs` — SHA256 `b25d6e86410b0ebcc11c8e6214c2ebeafdffbc14e86d896788fe87728cd4e831`
+- `scripts/validate-flow-engine-boundary.mjs` — SHA256 `6d291fb3316a16e289b0647a3b28dba199854d2ccf29303289d453a790ee838f`
 
 ## call-mcp-tool
 
@@ -702,7 +702,7 @@ Persiste progresso de goal no flow (eventos de fase/checklist) via tools MCP do 
 cerimonia /GOAL: avancos de fase e checklist visual
 
 **how:**
-node scripts/record-goal-progress.mjs <args do evento>
+node scripts/record-goal-progress.mjs --workspace <dir> --flow-id <id> --event-key <k> --source <s> --operation <op> --stage <etapa> --status <status> --current <n> --total <n> [--message <texto>]
 
 **inputs:**
 flow alvo, payload do progresso
@@ -729,7 +729,7 @@ mudanca de schema de evento
 - cabecalho do script
 
 **Fontes examinadas:**
-- `scripts/record-goal-progress.mjs` — SHA256 `e9620016a1765da33a411af3ee8a34959d9aba6815f73d259ac5c081a9069043`
+- `scripts/record-goal-progress.mjs` — SHA256 `336557e7724409a501bf2ac97f6ea63a32de17747962dcc4386e6a54845bff01`
 
 ## render-ppirtv-phase
 
@@ -742,7 +742,7 @@ Hook visual (ZCode/Claude Code compativel): renderiza a barra de fases PPIRTV do
 sessao com checklist visual dinamico (ancora-fluxo --detail full)
 
 **how:**
-node scripts/render-ppirtv-phase.mjs (render puro, read-only)
+node scripts/render-ppirtv-phase.mjs [<dir-do-workspace>] (render puro, read-only; o evento do hook chega pelo stdin)
 
 **inputs:**
 .ppirtv/flows/*.json do workspace ativo
@@ -769,7 +769,7 @@ mudanca de fases do contrato
 - cabecalho do script
 
 **Fontes examinadas:**
-- `scripts/render-ppirtv-phase.mjs` — SHA256 `ab6678412c2811965b11e98398dc936345565324bb5727a664c8720519fa310b`
+- `scripts/render-ppirtv-phase.mjs` — SHA256 `22175c4ffb3c1b79256a365f5b76fc43176828de6d71adff8b5a1b77b9068a6f`
 
 ## export-diagnostic-bundle
 

@@ -70,7 +70,7 @@
       "id": "test-symbol-coverage",
       "purpose": "Regua perene da rede simbolo x suite: mede mention_refs e code_refs de cada export dos modulos da serie (maratona Ondas 1-7 + domain desde D-50).",
       "when": "Antes/depois de corte de rede; decidir proximo maior monte com cara de corte; calibrar no REDE.md.",
-      "how": "python -B tools/test-symbol-coverage.py --json <caminho.json> (tabela vai ao stdout; JSON tem modules/total/prose_suspects)",
+      "how": "python -B tools/test-symbol-coverage.py [--json <caminho.json>] (a raiz do repo deriva de __file__, sem --repo; tabela vai ao stdout; JSON tem modules/total/prose_suspects)",
       "inputs": "src/ e tests/ do repo (root derivado de __file__; copia relocada ABORTA alto, nunca 0/0 silencioso)",
       "outputs": "tabela por modulo (code/mention/sem-ref) + JSON {modules:{<mod>:{exports,mention_refs,code_refs,without_nominal_ref[]}}, total, prose_suspects}",
       "capabilities": [
@@ -93,7 +93,7 @@
         "regua rodada 12 D-52 (2026-11-16): ppirtv-checkin em MARATHON_MODULES 15/21 sem-ref 6; TOTAL 114/299, sem ref 181"
       ],
       "sources": {
-        "tools/test-symbol-coverage.py": "6d5ee4dc53d50c2c73b77d46bbc5f7492c31cc695f99cf7235050cf8af72191a"
+        "tools/test-symbol-coverage.py": "ee20ebabe1dc71ba1d0494dca9f92b2332bd6d31aeb6f4d736ae2de58c46648b"
       },
       "inspected": null
     },
@@ -186,7 +186,7 @@
       "id": "judge-playbook",
       "purpose": "Juiz mecanico da prova cega V5 do playbook (design arena-zcode campeao): intersecao de conjuntos — mencionar PLAYBOOK.md, citar selo pb-<8hex> real, localizador real e rota da regra citada.",
       "when": "Avaliar se resposta de consumidor externo usou o playbook de verdade (eco do AGENTS nao casa).",
-      "how": "python -B tools/playbook/judge-playbook.py <resposta> <index> (ver criterios no docstring)",
+      "how": "python -B tools/playbook/judge-playbook.py --answer <resposta.md> --index <PLAYBOOK.index.json> (ver criterios no docstring; exit 0 passou, exit 2 falhou)",
       "inputs": "resposta do consumidor + PLAYBOOK.index.json",
       "outputs": "veredito mecanico por criterio",
       "capabilities": [
@@ -203,7 +203,7 @@
         "docstring l.1-6"
       ],
       "sources": {
-        "tools/playbook/judge-playbook.py": "336db15ae963ebaf074bf741287dea673f569964feb2aefe06fb76e4ca71e042"
+        "tools/playbook/judge-playbook.py": "a295092a1c3f86f829aa019d586f78e68ef4357754d0e03e7a68d3a852f2c41b"
       }
     },
     {
@@ -314,7 +314,7 @@
       "id": "check-capacity",
       "purpose": "Gate CAPACITY: todo commit exige CAPACITY.md (secao Reavaliacao atual) + CAPACITY.receipt.json (dex.capacity.snapshot.v1) STAGED no mesmo commit.",
       "when": "todo commit (hook); quando toca src/tests/scripts/package.json/tsconfig.json a reavaliacao cobre os deltas",
-      "how": "node scripts/check-capacity.mjs --staged",
+      "how": "node scripts/check-capacity.mjs --staged [--json] [--root <dir>]",
       "inputs": "staged do commit",
       "outputs": "verde ou bloqueio com campos faltantes",
       "capabilities": [
@@ -332,7 +332,7 @@
         "incidente D-47 (falso verde herdado, ISSUE-LOCAL-0009)"
       ],
       "sources": {
-        "scripts/check-capacity.mjs": "db90ca026aacf7094e82d20bf69d881f41cb39c590ef5b770a6aa0f94f5e8977"
+        "scripts/check-capacity.mjs": "bec2ffa150525514d43a3be55c695ac1fcd79b89af13460c94d5b1bf471722d4"
       }
     },
     {
@@ -363,7 +363,7 @@
       "id": "validate-flow-engine-boundary",
       "purpose": "Fiscal do camping de src/flow-engine.ts: todo edit recebe SHRINK/CONTAIN/EXCEPTION/FAIL; exige record causal no ledger de blobs + RED real em EXCEPTION; sela no commit seguinte. Evidência de janela explícita é conferida na ÁRVORE da revisão que fecha a janela (GitHub #44); destino de redirecionamento precisa ser versionado (#45); cadeia de elos pode terminar antes do último record (#41).",
       "when": "toda visita que TOCA src/flow-engine.ts (gatilho PPIRTV-FLOW-ENGINE-CAMPING-RULE; consulta read-only = NOT_APPLICABLE)",
-      "how": "npm run check:flow-engine (wrappa este validador)",
+      "how": "npm run check:flow-engine (wrappa este validador); janela explicita: node scripts/validate-flow-engine-boundary.mjs --base <git-ref> [--head <git-ref|WORKTREE>] [--manifest <path>]",
       "inputs": "diff da visita, ledger, declaredTestTitles (titulos de it/test EXATOS, nunca describe)",
       "outputs": "veredito semantico por edicao + record selado no commit seguinte (commit/parent_commit preenchidos por evaluateCommitSealDiff)",
       "capabilities": [
@@ -393,7 +393,7 @@
         "mutacao de sessao 2026-11-23: M1 revisao ignorada, M2/M3 redirect sem versionado, M4 cadeia pelo ultimo record -> 4 PEGA, 0 sobrevivente"
       ],
       "sources": {
-        "scripts/validate-flow-engine-boundary.mjs": "b25d6e86410b0ebcc11c8e6214c2ebeafdffbc14e86d896788fe87728cd4e831"
+        "scripts/validate-flow-engine-boundary.mjs": "6d291fb3316a16e289b0647a3b28dba199854d2ccf29303289d453a790ee838f"
       }
     },
     {
@@ -451,7 +451,7 @@
       "id": "record-goal-progress",
       "purpose": "Persiste progresso de goal no flow (eventos de fase/checklist) via tools MCP do goal.",
       "when": "cerimonia /GOAL: avancos de fase e checklist visual",
-      "how": "node scripts/record-goal-progress.mjs <args do evento>",
+      "how": "node scripts/record-goal-progress.mjs --workspace <dir> --flow-id <id> --event-key <k> --source <s> --operation <op> --stage <etapa> --status <status> --current <n> --total <n> [--message <texto>]",
       "inputs": "flow alvo, payload do progresso",
       "outputs": "mutacao em .ppirtv/ (evento persistido)",
       "capabilities": [
@@ -468,14 +468,14 @@
         "cabecalho do script"
       ],
       "sources": {
-        "scripts/record-goal-progress.mjs": "e9620016a1765da33a411af3ee8a34959d9aba6815f73d259ac5c081a9069043"
+        "scripts/record-goal-progress.mjs": "336557e7724409a501bf2ac97f6ea63a32de17747962dcc4386e6a54845bff01"
       }
     },
     {
       "id": "render-ppirtv-phase",
       "purpose": "Hook visual (ZCode/Claude Code compativel): renderiza a barra de fases PPIRTV do workspace ativo lendo .ppirtv/flows/*.json.",
       "when": "sessao com checklist visual dinamico (ancora-fluxo --detail full)",
-      "how": "node scripts/render-ppirtv-phase.mjs (render puro, read-only)",
+      "how": "node scripts/render-ppirtv-phase.mjs [<dir-do-workspace>] (render puro, read-only; o evento do hook chega pelo stdin)",
       "inputs": ".ppirtv/flows/*.json do workspace ativo",
       "outputs": "barra visual P🧠->P🗂️->I🛠️->R🔎->T🧪->V✅ com fase corrente",
       "capabilities": [
@@ -492,7 +492,7 @@
         "cabecalho do script"
       ],
       "sources": {
-        "scripts/render-ppirtv-phase.mjs": "ab6678412c2811965b11e98398dc936345565324bb5727a664c8720519fa310b"
+        "scripts/render-ppirtv-phase.mjs": "22175c4ffb3c1b79256a365f5b76fc43176828de6d71adff8b5a1b77b9068a6f"
       }
     },
     {

@@ -5,9 +5,9 @@
   const _av = process.argv.slice(2);
   const _docFlag = (f) => _av.includes(f) && (_av.indexOf(f) === _av.length - 1 || String(_av[_av.indexOf(f) + 1]).startsWith("--"));
   if (_docFlag("--help") || _docFlag("--schema") || _docFlag("--usage")) {
-    const _doc = {"tool": "validate-flow-engine-boundary", "purpose": "fiscal camping: valida visitas/records do ledger do flow-engine por modo", "contract": "dex.triade.v1", "inputs": ["argumentos de record/replay (cwd e chamada JS da API; nao ha flag CLI)"], "outputs": ["stdout receipt JSON; exit != 0 em FAIL"]};
+    const _doc = {"tool": "validate-flow-engine-boundary", "purpose": "fiscal camping: valida visitas/records do ledger do flow-engine por modo", "contract": "dex.triade.v1", "inputs": ["(sem flags) comparacao padrao", "--base <git-ref>", "--head <git-ref|WORKTREE> (opcional)", "--manifest <path> (opcional)"], "outputs": ["stdout receipt JSON; exit != 0 em FAIL"]};
     if (_docFlag("--schema")) console.log(JSON.stringify(_doc, null, 2));
-    else console.log('usage: node scripts/validate-flow-engine-boundary.mjs — fiscal do camping de src/flow-engine.ts (SHRINK/CONTAIN/EXCEPTION/PRUNE).');
+    else console.log('usage: node scripts/validate-flow-engine-boundary.mjs [--base <git-ref> [--head <git-ref|WORKTREE>]] [--manifest <path>] — fiscal do camping de src/flow-engine.ts (SHRINK/CONTAIN/EXCEPTION/PRUNE); sem --base usa a comparacao padrao (worktree, FLOW_ENGINE_BASE_REF/GITHUB_BASE_SHA ou origin/main).');
     process.exit(0);
   }
 }

@@ -6,9 +6,9 @@
   const _av = process.argv.slice(2);
   const _docFlag = (f) => _av.includes(f) && (_av.indexOf(f) === _av.length - 1 || String(_av[_av.indexOf(f) + 1]).startsWith("--"));
   if (_docFlag("--help") || _docFlag("--schema") || _docFlag("--usage")) {
-    const _doc = {"tool": "render-ppirtv-phase", "purpose": "render da linha visual PPIRTV (fases do workflow base)", "contract": "dex.triade.v1", "inputs": ["--phase <nome>", "--detail <level>"], "outputs": ["stdout linha visual"]};
+    const _doc = {"tool": "render-ppirtv-phase", "purpose": "render da linha visual PPIRTV (fases do workflow base)", "contract": "dex.triade.v1", "inputs": ["[<dir-do-workspace>] (posicional, opcional; senao ZCODE_PROJECT_DIR, CLAUDE_PROJECT_DIR ou o cwd)", "stdin: JSON do evento do hook (opcional; sem stdin = Stop)"], "outputs": ["stdout linha visual"]};
     if (_docFlag("--schema")) console.log(JSON.stringify(_doc, null, 2));
-    else console.log('usage: node scripts/render-ppirtv-phase.mjs --phase <nome> [--detail full] — render da linha visual PPIRTV.');
+    else console.log('usage: node scripts/render-ppirtv-phase.mjs [<dir-do-workspace>] — render da linha visual PPIRTV; o evento do hook chega pelo stdin (JSON) e sem argumento o workspace vem de ZCODE_PROJECT_DIR, CLAUDE_PROJECT_DIR ou o cwd.');
     process.exit(0);
   }
 }

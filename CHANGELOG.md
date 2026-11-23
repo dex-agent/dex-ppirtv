@@ -8,6 +8,38 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **Trilho R — disputa de lock lida como disputa (criação e leitura) e ajuda
+  de CLI que casa com o parser (GitHub #46 e #47; Trilho
+  2026-11-23-aud2-r-remanescentes; reaberturas das frentes E e G)**: #46 — no
+  `withFlowLock` o contador `epermEnoentRounds` só zerava quando um EPERM
+  encontrava o arquivo presente; uma tentativa `EEXIST` no meio (disputa
+  comprovada) não zerava, e a sequência EPERM, EEXIST, EPERM, EEXIST, EPERM
+  terminava em `MEETING_LOCK_EPERM_PERSISTENT` com o lock livre. Agora o
+  `EEXIST` interrompe a sequência. Teste intermitente do runner Windows
+  (`meeting-outcome`, "serializes many concurrent meeting opens"): o EPERM
+  não era na criação do lock, era na LEITURA — `readStableFlowLock` faz
+  `lstat` e depois `readFile`, e entre os dois o outro titular remove o
+  arquivo; o Windows devolve EPERM no open com remoção pendente, que o laço
+  de aquisição não tolerava. Agora repete com a pausa de 10 ms da disputa
+  clássica até o deadline. Permissão real na criação segue falhando rápido
+  (limite 3; os its de `tests/store-lock-eperm.test.ts` não mudaram). #47 —
+  `record-goal-progress` exigia `--current`/`--total` sem anunciá-los (o
+  exemplo publicado morria em `Missing --current` depois de subir o
+  servidor); `judge-playbook.py` e `test-symbol-coverage.py` anunciavam
+  `--repo`, que nenhum argparse aceita. Cabeçalhos `--usage`/`--schema`
+  alinhados ao parser, parsers intocados. Varredura semântica uso × parser
+  dos 12 executáveis com tríade achou três baratas irmãs, corrigidas no
+  mesmo corte: `check-capacity` anunciava `--refresh-hint` que não existe;
+  `render-ppirtv-phase` anunciava `--phase`/`--detail` e lê `argv[2]` como
+  pasta do workspace; `validate-flow-engine-boundary` negava ter flag CLI
+  (`--base`, `--head`, `--manifest`). Fichas do TOOLSBOOK re-ancoradas e
+  `how` corrigidos (o do `judge-playbook` ensinava argumentos posicionais).
+  RED 6F|4C → GREEN 37/37 com `store-lock-eperm` e `meeting-outcome`;
+  `check:types` exit 0; mutação de sessão 6/6 PEGA. Novos
+  `tests/issue-0046-lock-disputa-intercalada.test.ts` e
+  `tests/issue-0047-ajuda-casa-parser.test.ts` (fecha a classe nos scripts
+  Python com tríade, descobertos ao vivo).
+
 - **Trilho V — validador de fronteira: evidência na árvore da revisão
   avaliada, redirecionamento versionado e cadeia que termina no meio do
   ledger (GitHub #41, #44 e #45; Trilho 2026-11-23-aud2-v-validador-fronteira;

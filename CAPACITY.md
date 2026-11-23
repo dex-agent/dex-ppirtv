@@ -1,3 +1,25 @@
+## Reavaliação — Trilho R: disputa de lock lida como disputa e ajuda de CLI casada com o parser (GitHub #46, #47) (2026-11-23)
+
+Delta: `src/store.ts` — `withFlowLock`: (1) tentativa `EEXIST` no meio da
+sequência zera `epermEnoentRounds` (disputa comprovada interrompe a contagem de
+permissão negada); (2) `EPERM` na LEITURA do lock durante a aquisição (o outro
+titular remove o arquivo entre o `lstat` e o `readFile`; o Windows devolve
+EPERM no open com remoção pendente) repete com a pausa de 10 ms da disputa
+clássica em vez de virar erro fatal. Permissão real na criação segue falhando
+rápido (limite 3; os its de `tests/store-lock-eperm.test.ts` não mudaram).
+Cabeçalhos `--usage`/`--schema` alinhados ao parser, parsers intocados:
+`scripts/record-goal-progress.mjs`, `tools/playbook/judge-playbook.py`,
+`tools/test-symbol-coverage.py` e as três baratas irmãs da varredura semântica
+uso × parser (`scripts/check-capacity.mjs`, `scripts/render-ppirtv-phase.mjs`,
+`scripts/validate-flow-engine-boundary.mjs`). Fichas do TOOLSBOOK re-ancoradas
+(sha do disco LF) e `how` corrigidos. Novos
+`tests/issue-0046-lock-disputa-intercalada.test.ts` (2 its) e
+`tests/issue-0047-ajuda-casa-parser.test.ts` (8 its). RED 6F|4C → GREEN 37/37
+com `store-lock-eperm` e `meeting-outcome`; `check:types` exit 0; mutação de
+sessão 6/6 PEGA (a M6 sobreviveu até o teste cobrar uso e schema separados).
+`src/flow-engine.ts` intocado (camping NOT_APPLICABLE).
+Receipt `reavaliacao_aud2_r_remanescentes_261123`.
+
 ## Reavaliação — emenda de tipos no teste do Trilho V (2026-11-23)
 
 Delta: `tests/issue-0041-0045-fronteira-revisao-avaliada.test.ts` — o helper

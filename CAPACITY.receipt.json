@@ -1,4 +1,22 @@
 {
+  "reavaliacao_aud2_r_remanescentes_261123": {
+    "date": "2026-11-23",
+    "scope": [
+      "src/store.ts",
+      "scripts/record-goal-progress.mjs",
+      "scripts/check-capacity.mjs",
+      "scripts/render-ppirtv-phase.mjs",
+      "scripts/validate-flow-engine-boundary.mjs",
+      "tools/playbook/judge-playbook.py",
+      "tools/test-symbol-coverage.py",
+      "tests/issue-0046-lock-disputa-intercalada.test.ts",
+      "tests/issue-0047-ajuda-casa-parser.test.ts",
+      "TOOLSBOOK.json",
+      "TOOLSBOOK.md",
+      "CHANGELOG.md"
+    ],
+    "delta": "Trilho R (GitHub #46 e #47; auditoria externa 2026-11-23). withFlowLock: EEXIST no meio zera epermEnoentRounds; EPERM na leitura do lock durante a aquisicao repete com pausa de 10 ms (intermitente do runner Windows em meeting-outcome); permissao real na criacao segue fail-fast. Cabecalhos --usage/--schema de seis executaveis alinhados ao parser (tres do auditor + tres baratas irmas da varredura semantica), parsers intocados; fichas TOOLSBOOK re-ancoradas e how corrigidos. RED 6F|4C -> GREEN 37/37; check:types exit 0; mutacao de sessao 6/6 PEGA. src/flow-engine.ts intocado."
+  },
   "reavaliacao_emenda_tipos_trilho_v_261123": {
     "date": "2026-11-23",
     "scope": [
