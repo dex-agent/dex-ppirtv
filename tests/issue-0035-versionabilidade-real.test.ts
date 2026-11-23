@@ -3,13 +3,20 @@
 // redirect versionado, mas o else só faz existsSync — arquivo IGNORADO pelo
 // git (artifacts/) ou UNTRACKED no disco passa na máquina produtora e morre
 // no clone limpo de quem revisa (falso verde local, claim-sem-receipt na
-// frota). Cura: versionabilidade REAL pelo índice do Git (ls-files
-// --error-unmatch) nos dois sítios da classe (record-check + declaration
-// gate gêmeo).
+// frota). Cura: versionabilidade REAL (ls-files --error-unmatch) nos dois
+// sítios da classe (record-check + declaration gate gêmeo).
 //
-// Coreografia: o record-check casa UM record por par base_blob×head_blob da
-// janela — cada caso precisa da PRÓPRIA janela do motor (v1→v2 ignorado,
-// v2→v3 untracked, v3→v4 versionado) e o CLI roda uma vez por janela.
+// GitHub #44 (2026-11-23, reabre a #35): a checagem pelo ÍNDICE aceitava
+// laudo commitado DEPOIS da revisão que fecha a janela — e o controle
+// positivo deste teste consagrava o defeito (criava o laudo após v4 e esperava
+// passar na janela que termina em v4). Agora a evidência de janela explícita é
+// conferida na ÁRVORE da revisão que fecha a janela: o laudo de controle
+// entra ANTES da janela, e nasce o caso 4 (laudo tardio → reprova).
+//
+// Coreografia: o gate casa UM record por par base_blob×head_blob da janela —
+// cada caso precisa da PRÓPRIA janela do motor (v1→v2 ignorado, v2→v3
+// untracked, v3→v4 versionado, v4→v5 laudo tardio) e o CLI roda uma vez por
+// janela. Janelas por SHA: HEAD~k muda quando a fixture ganha um commit.
 import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -39,8 +46,8 @@ function exceptionRecord(id: string, extra: Record<string, unknown> = {}) {
   };
 }
 
-describe("frente D (#35) — versionabilidade REAL por índice do Git (fora de .agents/)", () => {
-  it("laudo em artifacts/ (gitignored) e laudo untracked reprovam; laudo versionado passa", async () => {
+describe("frente D (#35) — versionabilidade REAL, conferida na revisão que fecha a janela (#44)", () => {
+  it("laudo ignorado, untracked e commitado depois da janela reprovam; laudo versionado antes da janela passa", async () => {
     const git = (args: string[]) => execFileSync("git", ["-C", tempRoot, ...args], { stdio: ["ignore", "pipe", "pipe"] }).toString();
     tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-fd-"));
     await mkdir(path.join(tempRoot, "src"), { recursive: true });
@@ -55,18 +62,24 @@ describe("frente D (#35) — versionabilidade REAL por índice do Git (fora de .
     await writeFile(path.join(tempRoot, ".gitignore"), "artifacts/\n", "utf8");
 
     const motorBlob = () => execFileSync("git", ["-C", tempRoot, "hash-object", "src/flow-engine.ts"]).toString().trim();
+    const sha = (ref: string) => git(["rev-parse", ref]).trim();
     const commitMotor = async (value: string, message: string) => {
       await writeFile(path.join(tempRoot, "src", "flow-engine.ts"), `export const a = ${value};\n`, "utf8");
       git(["add", "."]); git(["commit", "-qm", message]);
+      return sha("HEAD");
     };
 
-    await commitMotor("1", "v1"); const blobV1 = motorBlob();
-    await commitMotor("2", "v2"); const blobV2 = motorBlob();
-    await commitMotor("3", "v3"); const blobV3 = motorBlob();
-    await commitMotor("4", "v4"); const blobV4 = motorBlob();
-
-    // Controle positivo: laudo REALMENTE versionado (vai no commit do ledger).
+    const v1 = await commitMotor("1", "v1"); const blobV1 = motorBlob();
+    const v2 = await commitMotor("2", "v2"); const blobV2 = motorBlob();
+    const v3 = await commitMotor("3", "v3"); const blobV3 = motorBlob();
+    // Controle positivo HONESTO (#44): o laudo entra ANTES da janela que o
+    // cita — quem abre a revisão v4 o encontra na árvore.
     await writeFile(path.join(tempRoot, "docs", "laudo-ok.json"), "{}", "utf8");
+    const v4 = await commitMotor("4", "v4"); const blobV4 = motorBlob();
+    const v5 = await commitMotor("5", "v5"); const blobV5 = motorBlob();
+    // Caso 4: laudo TARDE — commitado só no commit do ledger, depois da
+    // janela v4→v5 que o cita. Existe no índice de hoje; não existe em v5.
+    await writeFile(path.join(tempRoot, "docs", "laudo-tarde.json"), "{}", "utf8");
     // Caso 1: laudo ignorado — existe no disco, artifacts/ no .gitignore.
     await writeFile(path.join(tempRoot, "artifacts", "diagnostico.json"), "{}", "utf8");
 
@@ -83,6 +96,10 @@ describe("frente D (#35) — versionabilidade REAL por índice do Git (fora de .
         exceptionRecord("FE-FD-VERSIONADO", {
           base_blob: blobV3, head_blob: blobV4,
           evidence: ["docs/laudo-ok.json"], red_evidence: ""
+        }),
+        exceptionRecord("FE-FD-TARDE", {
+          base_blob: blobV4, head_blob: blobV5,
+          evidence: ["docs/laudo-tarde.json"], red_evidence: ""
         })
       ]
     };
@@ -96,24 +113,27 @@ describe("frente D (#35) — versionabilidade REAL por índice do Git (fora de .
     // índice — mesma coreografia da fixture 0027 com .agents/).
     await writeFile(path.join(tempRoot, "docs", "laudo-novo.json"), "{}", "utf8");
 
-    // HEAD=ledger, HEAD~1=v4, HEAD~2=v3, HEAD~3=v2, HEAD~4=v1 — uma janela
-    // por caso (o record-check casa UM record por par de blobs).
+    // Uma janela por caso (o gate casa UM record por par de blobs).
     const run = async (base: string, head: string) => {
       const result = await runBoundaryCli({ cwd: tempRoot, argv: ["--base", base, "--head", head] }) as { exitCode: number; output: string };
       return JSON.parse(result.output) as { status: string; reasons?: string[] };
     };
-    const receitaIgnorado = await run("HEAD~4", "HEAD~3");
-    const receitaUntracked = await run("HEAD~3", "HEAD~2");
-    const receitaVersionado = await run("HEAD~2", "HEAD~1");
+    const receitaIgnorado = await run(v1, v2);
+    const receitaUntracked = await run(v2, v3);
+    const receitaVersionado = await run(v3, v4);
+    const receitaTarde = await run(v4, v5);
 
     // Caso 1: ignorado no disco local é aceito pelo existsSync — precisa
     // reprovar por NÃO-versionado (o clone limpo não abre).
     expect(receitaIgnorado.reasons ?? []).toContain("EVIDENCE_NOT_VERSIONED:artifacts/diagnostico.json");
     // Caso 2: untracked (sem ignore, sem stage) reprova igual.
     expect(receitaUntracked.reasons ?? []).toContain("EVIDENCE_NOT_VERSIONED:docs/laudo-novo.json");
-    // Controle positivo: o versionado não gera reason de versionabilidade
-    // (nem NOT_FOUND — existe e está no índice).
+    // Controle positivo: o versionado ANTES da janela não gera reason de
+    // versionabilidade (nem NOT_FOUND — existe e está na árvore da revisão).
     expect(receitaVersionado.reasons ?? []).not.toContain("EVIDENCE_NOT_VERSIONED:docs/laudo-ok.json");
     expect(receitaVersionado.reasons ?? []).not.toContain("EVIDENCE_NOT_FOUND:docs/laudo-ok.json");
+    // Caso 4 (#44): commitado DEPOIS da revisão que fecha a janela — está no
+    // índice de hoje, mas não na árvore de v5.
+    expect(receitaTarde.reasons ?? []).toContain("EVIDENCE_NOT_VERSIONED:docs/laudo-tarde.json");
   });
 });

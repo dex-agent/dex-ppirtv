@@ -1,4 +1,17 @@
 {
+  "reavaliacao_aud2_v_validador_fronteira_261123": {
+    "date": "2026-11-23",
+    "scope": [
+      "scripts/validate-flow-engine-boundary.mjs",
+      "tests/issue-0041-0045-fronteira-revisao-avaliada.test.ts",
+      "tests/issue-0035-versionabilidade-real.test.ts",
+      "TOOLSBOOK.json",
+      "TOOLSBOOK.md",
+      "TOOLSBOOK.index.md",
+      "CHANGELOG.md"
+    ],
+    "delta": "Trilho V (GitHub #41 #44 #45; reaberturas das frentes F e D; auditoria externa 2026-11-23). isGitTracked ganhou o parametro de revisao: em janela explicita o gate da declaracao pergunta a arvore da revisao que fecha a janela (cat-file -e), o record-check a arvore do commit que selou o record (HEAD sem selo), e em stage segue o indice. Destino de redirecionamento precisa estar versionado no record-check (em HEAD) e no diff do ledger (headRef da janela). Busca da cadeia de tras para frente a partir do record que fecha a janela, parando quando a contiguidade quebra. O teste da #35 deixou de consagrar o defeito (laudo de controle antes da janela + caso do laudo tardio). Medicao antes: no ledger real 85 evidencias de records selados na arvore do commit, 5 legados com texto no campo, 7 records sem selo, 12 redirecionamentos com destino em HEAD e ausente na arvore do proprio record (por isso a regra dos redirects e HEAD). RED 5F|5P -> GREEN 60/60 com os vizinhos (issue-0027, flow-engine-boundary); mutacao 4/4 PEGA; check:flow-engine do repo NOT_APPLICABLE exit 0; src/ intocado."
+  },
   "reavaliacao_aud2_k_forma_spt_v3_261123": {
     "date": "2026-11-23",
     "scope": [

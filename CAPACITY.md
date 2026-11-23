@@ -1,3 +1,19 @@
+## Reavaliação — Trilho V: validador de fronteira (GitHub #41, #44, #45) (2026-11-23)
+
+Delta: `scripts/validate-flow-engine-boundary.mjs` — `isGitTracked` ganhou o
+parâmetro de revisão: em janela explícita (`--base`/`--head`) o gate da
+declaração pergunta à árvore da revisão que fecha a janela; o record-check à
+árvore do commit que selou o record (HEAD sem selo); em stage segue o índice.
+Destino de redirecionamento precisa estar versionado (record-check em HEAD;
+diff do ledger pela revisão da janela). Busca da cadeia de trás para frente a
+partir do record que fecha a janela. O teste da #35 deixou de consagrar o
+defeito. Novo `tests/issue-0041-0045-fronteira-revisao-avaliada.test.ts` (10
+its, começa pela caracterização do ledger real). RED 5F|5P → GREEN 60/60 com
+os vizinhos; mutação de sessão 4/4 PEGA. Medição antes: 85 evidências de
+records selados na árvore do commit; 12 redirecionamentos com destino em HEAD.
+`src/` intocado.
+Receipt `reavaliacao_aud2_v_validador_fronteira_261123`.
+
 ## Reavaliação — Trilho K: forma do SPT v3 (GitHub #48 a #53) (2026-11-23)
 
 Delta: `spt-kit/preflight.mjs` — quando `dist/spt-contract.js` está ao lado do

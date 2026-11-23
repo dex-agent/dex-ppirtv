@@ -524,8 +524,19 @@ function git(args, cwd) {
 // Git: ls-files --error-unmatch (staged passa — via no commit; untracked/
 // ignored reprova; fora de repo git = não-versionado, sem quebrar o
 // validador).
-function isGitTracked(cwd, filePath) {
+// GitHub #44 (reabre #35, 2026-11-23): em janela EXPLÍCITA (--base/--head) a
+// pergunta certa é à ÁRVORE da revisão que fecha a janela, não ao índice de
+// hoje — laudo commitado depois da revisão avaliada estava no índice e
+// contava como disponível, mas não existe em quem abre aquela revisão.
+// `revisao` informada e diferente de WORKTREE = cat-file na árvore dela;
+// WORKTREE ou ausente = índice, que é a referência certa para validação de
+// stage (arquivo no índice vai no commit).
+function isGitTracked(cwd, filePath, revisao) {
   try {
+    if (typeof revisao === "string" && revisao && revisao !== "WORKTREE") {
+      git(["cat-file", "-e", `${revisao}:${filePath}`], cwd);
+      return true;
+    }
     return git(["ls-files", "--error-unmatch", "--", filePath], cwd).length > 0;
   } catch {
     return false;
@@ -575,7 +586,9 @@ function unreleasedSection(content) {
 // SPT gate-integrity-hardening-2 (R7): diff de manifest limitado a selagem de
 // commit. Records precisam ser os mesmos (mesma ordem, mesmos ids, resto
 // identico); cada commit selado precisa apontar para o head_blob do record.
-function evaluateCommitSealDiff({ cwd, baseManifest, headManifest }) {
+// `headRef` (GitHub #45): revisão em que o destino do redirecionamento precisa
+// estar versionado — em stage é o índice; em janela explícita, a árvore do head.
+function evaluateCommitSealDiff({ cwd, baseManifest, headManifest, headRef }) {
   const reasons = [];
   let baseRecords = null;
   let headRecords = null;
@@ -606,6 +619,7 @@ function evaluateCommitSealDiff({ cwd, baseManifest, headManifest }) {
         if (!origin.startsWith(".agents/") || !redirect || typeof redirect !== "object"
           || redirect.target.startsWith(".agents/") || redirect.target.startsWith(".ppirtv/")
           || !existsSync(path.join(cwd, redirect.target))
+          || !isGitTracked(cwd, redirect.target, headRef)
           || (typeof redirect.sha256 === "string" && sha256OfFile(path.join(cwd, redirect.target)) !== redirect.sha256)) {
           redirectReasons.push(`EVIDENCE_REDIRECT_INVALID:${origin}`);
         }
@@ -793,14 +807,22 @@ function validateBootstrapRecords({ cwd, records, manifest, headBlob }) {
           add(record, `EVIDENCE_REDIRECT_INVALID:${evidenceFile}`);
         } else if (!existsSync(path.join(cwd, redirect.target))) {
           add(record, `EVIDENCE_REDIRECT_INVALID:${evidenceFile}`);
+        } else if (!isGitTracked(cwd, redirect.target, "HEAD")) {
+          // GitHub #45 (reabre #35): existir no disco não é estar versionado.
+          // O destino é conferido em HEAD — a re-ancoragem sancionada
+          // versiona a prova DEPOIS do commit do record (medido no ledger
+          // real em 2026-11-23: dos 12 redirecionamentos, nenhum destino
+          // existe na árvore do commit do próprio record).
+          add(record, `EVIDENCE_REDIRECT_INVALID:${evidenceFile}`);
         } else if (typeof redirect.sha256 === "string" && sha256OfFile(path.join(cwd, redirect.target)) !== redirect.sha256) {
           add(record, `EVIDENCE_REDIRECT_SHA_MISMATCH:${evidenceFile}`);
         }
       } else if (!existsSync(path.join(cwd, evidenceFile))) {
         add(record, `EVIDENCE_NOT_FOUND:${evidenceFile}`);
-      } else if (!isGitTracked(cwd, evidenceFile)) {
-        // #35: presente no disco mas fora do índice do Git (ignored ou
-        // untracked) — o clone limpo não abre esta prova.
+      } else if (!isGitTracked(cwd, evidenceFile, nonEmptyString(record.commit) ? record.commit : "HEAD")) {
+        // #35: presente no disco mas fora do Git (ignored ou untracked) — o
+        // clone limpo não abre esta prova. GitHub #44: a árvore consultada é
+        // a do commit que selou o record (HEAD quando o record não tem selo).
         add(record, `EVIDENCE_NOT_VERSIONED:${evidenceFile}`);
       }
     }
@@ -960,15 +982,19 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
   // commit->push fica vermelha sem causa no codigo.
   let chainRecords = null;
   if (!declaration && baseBlob !== headBlob) {
-    const chainStart = records.findIndex((entry, index) => {
-      if (entry?.base_blob !== baseBlob) return false;
-      for (let link = index; link < records.length - 1; link += 1) {
-        if (records[link]?.head_blob !== records[link + 1]?.base_blob) return false;
-      }
-      return records.at(-1)?.head_blob === headBlob;
-    });
+    // GitHub #41 (reabre #34, 2026-11-23): a cadeia precisa COBRIR a janela —
+    // e pode terminar antes do último record do ledger (janela histórica com
+    // cortes posteriores válidos). A busca vai de trás para frente a partir
+    // do record que fecha a janela e para quando a contiguidade quebra; elo
+    // quebrado entre a base e o fim continua sem declaração.
+    const chainEnd = records.findLastIndex((entry) => entry?.head_blob === headBlob);
+    let chainStart = -1;
+    for (let index = chainEnd; index >= 0 && chainStart < 0; index -= 1) {
+      if (records[index]?.base_blob === baseBlob) chainStart = index;
+      else if (records[index - 1]?.head_blob !== records[index]?.base_blob) break;
+    }
     if (chainStart >= 0) {
-      chainRecords = records.slice(chainStart);
+      chainRecords = records.slice(chainStart, chainEnd + 1);
       declaration = chainRecords.at(-1);
     }
   }
@@ -1084,7 +1110,7 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
       // APENAS adiciona/atualiza `commit`/`parent_commit` em records existentes
       // — com blob do commit conferindo contra o head_blob do proprio record —
       // e selagem pos-commit legitima, nao mutacao silenciosa do ledger.
-      const seal = evaluateCommitSealDiff({ cwd, baseManifest, headManifest });
+      const seal = evaluateCommitSealDiff({ cwd, baseManifest, headManifest, headRef: comparison?.head });
       if (seal.ok) {
         receipt.ledger_commit_seal = {
           status: "PASS",
@@ -1329,10 +1355,11 @@ export function runBoundaryCli({ cwd = process.cwd(), argv = process.argv.slice(
       }
       if (!safeProjectPath(evidence, evidence.startsWith("tests/") ? "tests" : evidence.split("/", 1)[0]) || !existsSync(path.join(cwd, evidence))) {
         receipt.reasons.push(`EVIDENCE_NOT_FOUND:${evidence}`);
-      } else if (!isGitTracked(cwd, evidence)) {
-        // #35 (gate gêmeo): no índice do Git ou não é evidência reabrível no
-        // clone — arquivo ignorado (artifacts/) e teste ainda não adicionado
-        // reprovam aqui também.
+      } else if (!isGitTracked(cwd, evidence, comparison?.head)) {
+        // #35 (gate gêmeo): fora do Git não é evidência reabrível no clone —
+        // arquivo ignorado (artifacts/) e teste ainda não adicionado
+        // reprovam aqui também. GitHub #44: em janela explícita a árvore
+        // consultada é a da revisão que fecha a janela; em stage, o índice.
         receipt.reasons.push(`EVIDENCE_NOT_VERSIONED:${evidence}`);
       }
     }

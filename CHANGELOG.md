@@ -8,6 +8,27 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **Trilho V — validador de fronteira: evidência na árvore da revisão
+  avaliada, redirecionamento versionado e cadeia que termina no meio do
+  ledger (GitHub #41, #44 e #45; Trilho 2026-11-23-aud2-v-validador-fronteira;
+  reaberturas das frentes F e D)**: #44 — `isGitTracked` perguntava ao índice
+  atual, então laudo commitado depois da revisão avaliada contava como
+  disponível; ganhou o parâmetro de revisão: em janela explícita o gate da
+  declaração consulta a árvore da revisão que fecha a janela, o record-check a
+  árvore do commit que selou o record (HEAD sem selo), e em stage segue o
+  índice. #45 — os dois ramos de `evidence_redirects` conferiam existência e
+  hash no disco; destino gitignored presente no disco passava; agora precisa
+  estar versionado (record-check em HEAD, diff do ledger pela revisão da
+  janela). #41 — a cadeia de elos só era aceita se terminasse no último record
+  do ledger; a busca passa a ir de trás para frente a partir do record que
+  fecha a janela. O controle positivo de
+  `tests/issue-0035-versionabilidade-real.test.ts` consagrava o defeito da
+  #44 (laudo criado depois da janela que o cita) e foi corrigido. Medição no
+  ledger real antes da mudança: 85 evidências de records selados na árvore do
+  commit; 12 redirecionamentos com destino em HEAD e ausente na árvore do
+  próprio record. RED 5F|5P → GREEN 60/60; mutação de sessão 4/4 PEGA. Novo
+  `tests/issue-0041-0045-fronteira-revisao-avaliada.test.ts`.
+
 - **Trilho K — forma do SPT v3: o preflight pergunta ao motor, paridade
   testada, S11 do separador, entradas oficiais e guia × ledger (GitHub #48,
   #49, #50, #51, #52 e #53; Trilho 2026-11-23-aud2-k-forma-spt-v3; auditoria

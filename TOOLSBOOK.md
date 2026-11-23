@@ -560,7 +560,7 @@ bump do schema dex.spt.v3
 **Estado autorado:** reviewed
 
 **purpose:**
-Fiscal do camping de src/flow-engine.ts: todo edit recebe SHRINK/CONTAIN/EXCEPTION/FAIL; exige record causal no ledger de blobs + RED real em EXCEPTION; sela no commit seguinte.
+Fiscal do camping de src/flow-engine.ts: todo edit recebe SHRINK/CONTAIN/EXCEPTION/FAIL; exige record causal no ledger de blobs + RED real em EXCEPTION; sela no commit seguinte. Evidência de janela explícita é conferida na ÁRVORE da revisão que fecha a janela (GitHub #44); destino de redirecionamento precisa ser versionado (#45); cadeia de elos pode terminar antes do último record (#41).
 
 **when:**
 toda visita que TOCA src/flow-engine.ts (gatilho PPIRTV-FLOW-ENGINE-CAMPING-RULE; consulta read-only = NOT_APPLICABLE)
@@ -575,7 +575,7 @@ diff da visita, ledger, declaredTestTitles (titulos de it/test EXATOS, nunca des
 veredito semantico por edicao + record selado no commit seguinte (commit/parent_commit preenchidos por evaluateCommitSealDiff)
 
 **risks:**
-record pos-commit = LEDGER_CHANGE/SHAPE_CHANGED (emenda exige reset --soft e dancar); seletor sem acento exato = RED_SELECTOR_NOT_FOUND
+record pos-commit = LEDGER_CHANGE/SHAPE_CHANGED (emenda exige reset --soft e dancar); seletor sem acento exato = RED_SELECTOR_NOT_FOUND; no record-check os reasons vem prefixados com BOOTSTRAP_RECORD_INVALID:<id>: — assercao por substring
 
 **owner:**
 oraculo-refatoracao
@@ -590,6 +590,9 @@ proximo corte que tocar o monolito
 - evidence-nao-versionada (.agents/) reprovada mesmo existindo no disco (gate EVIDENCE_NOT_VERSIONED, CI run 44505736533)
 - prune exige prova por simbolo (PRUNE_SYMBOL_UNDECLARED:<nome> — remocao real fora da declaracao reprova)
 - redirect versionado de evidence legada (evidence_redirects no manifest; destino versionado + sha256; record-check bootstrap e diff redirect-only de ledger sancionado)
+- evidencia por revisao (GitHub #44): em --base/--head o gate pergunta a arvore do head (cat-file -e), e o record-check a arvore do commit que selou o record (HEAD sem selo); em stage segue o indice
+- redirecionamento versionado (GitHub #45): destino so no disco (gitignored) reprova no record-check e no diff do ledger
+- cadeia intermediaria (GitHub #41): a busca vai de tras para frente a partir do record que fecha a janela; elo quebrado segue sem declaracao
 
 **not_for:**
 - visitas que nao tocam o arquivo (NOT_APPLICABLE)
@@ -598,9 +601,12 @@ proximo corte que tocar o monolito
 - memoria ppirtv-issue19-fechada-selo-camping-coreografia (4 dancas decifradas)
 - fonte l.433-446/l.1158-1229
 - Trilho 2026-11-21-redirect-evidence-legada-ledger (flow 5916_0001): 6 records re-ancorados, RED->GREEN 4/4, mutacao PEGA
+- tests/issue-0041-0045-fronteira-revisao-avaliada.test.ts (10 its: caracterizacao do ledger real; laudo tardio x cedo x stage; redirect so no disco x versionado x diff do ledger; cadeia no meio do ledger x elo quebrado; janela real 94a9b0c..ae8b86f)
+- tests/issue-0035-versionabilidade-real.test.ts (4 casos; o controle positivo passou a criar o laudo ANTES da janela — o antigo consagrava o defeito da #44)
+- mutacao de sessao 2026-11-23: M1 revisao ignorada, M2/M3 redirect sem versionado, M4 cadeia pelo ultimo record -> 4 PEGA, 0 sobrevivente
 
 **Fontes examinadas:**
-- `scripts/validate-flow-engine-boundary.mjs` — SHA256 `efdd2e857db7672573ae0b678d4016859b076467355f77a0802b3552e2e1601a`
+- `scripts/validate-flow-engine-boundary.mjs` — SHA256 `b25d6e86410b0ebcc11c8e6214c2ebeafdffbc14e86d896788fe87728cd4e831`
 
 ## call-mcp-tool
 

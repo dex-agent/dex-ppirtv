@@ -66,7 +66,7 @@ Quando: antes de goal_start; quando MCP indisponivel ou para conferencia dupla
 
 ## validate-flow-engine-boundary (reviewed)
 
-Fiscal do camping de src/flow-engine.ts: todo edit recebe SHRINK/CONTAIN/EXCEPTION/FAIL; exige record causal no ledger de blobs + RED real em EXCEPTION; sela no commit seguinte.
+Fiscal do camping de src/flow-engine.ts: todo edit recebe SHRINK/CONTAIN/EXCEPTION/FAIL; exige record causal no ledger de blobs + RED real em EXCEPTION; sela no commit seguinte. Evidência de janela explícita é conferida na ÁRVORE da revisão que fecha a janela (GitHub #44); destino de redirecionamento precisa ser versionado (#45); cadeia de elos pode terminar antes do último record (#41).
 Quando: toda visita que TOCA src/flow-engine.ts (gatilho PPIRTV-FLOW-ENGINE-CAMPING-RULE; consulta read-only = NOT_APPLICABLE)
 
 ## call-mcp-tool (reviewed)
