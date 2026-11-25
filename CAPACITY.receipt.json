@@ -1,4 +1,16 @@
 {
+  "reavaliacao_principles_p12_261125": {
+    "date": "2026-11-25",
+    "scope": [
+      "principles/PRINCIPLES.md",
+      "CHANGELOG.md",
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json"
+    ],
+    "delta": "Sobre f42be47: so documentacao. principles/PRINCIPLES.md recebe o P12 (46 linhas) e fica identico ao global (562 linhas cada). PLAYBOOK.md e PLAYBOOK.index.json regenerados porque a fonte .agents/PLAN-TASKS/ACTIVE.md mudou (so a soma da fonte e a revisao geral; --check FRESCO). npm run check completo exit 0 com o P12 aplicado, medido antes da regeneracao do PLAYBOOK (106 arquivos, 1144 aprovados, 4 pulados). Nenhum arquivo de src/, tests/ ou scripts/ tocado."
+  },
   "reavaliacao_merge_untangle_onda1_261125": {
     "date": "2026-11-25",
     "scope": [

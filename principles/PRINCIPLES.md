@@ -172,6 +172,7 @@ Frases guia:
 - “Idempotência não é detalhe; é proteção.”
 - “Sintoma se contém. Causa se resolve. Correção sem causa raiz é dívida com juros.”
 - “O determinístico sempre vence o conveniente.”
+- “O determinístico cobra o schema. O LLM cumpre o schema. O conteúdo é do LLM.” (P12)
 - “Um sistema bom prova. Um excelente impede.”
 - “Cada componente deve justificar sua existência.”
 - “Se não produz evidência exclusiva, questione sua existência.”
@@ -453,6 +454,51 @@ tolerancia. Impossibilitar o erro e engenharia."
 Nascimento: depoimento do agente apos erro 4x adivinhando envelope de gate
 Jev (2026-10-12 18:32), questionado pelo dono na 5a tentativa; padrao formal
 emitido pelo dono (Autor: Dex) na mesma sessao. Texto integral preservado.
+
+### P12. O deterministico cobra o schema; o LLM cumpre o schema
+
+LOCALIZADOR: `DETERMINISTICO-COBRA-O-SCHEMA-LLM-CUMPRE`
+
+> # O deterministico COBRA o schema. O LLM CUMPRE o schema. O conteudo e do LLM.
+>
+> **Verde de maquina nunca prova conteudo. Conteudo sem maquina nao prova forma.**
+
+Toda verificacao tem tres papeis, e confundi-los e o erro que a casa mais comete:
+
+| Papel | Quem | Faz | Nunca faz |
+| --- | --- | --- | --- |
+| COBRA | maquina deterministica (gate, hook, fiscal, validador, schema) | confere se o artefato TEM a forma: campos, tipos, existencia, bytes, contagem, exit | dizer se o conteudo e bom, verdadeiro ou suficiente |
+| CUMPRE | o LLM, na sessao | produz DE VERDADE o conteudo que o schema pede: consulta, mede, executa, cita | preencher por preencher; afirmar o que nao fez |
+| PROVA | os dois | a maquina prova que a forma existe; o conteudo mostrado prova que foi cumprido | chamar `exit 0` de "esta pronto" |
+
+A regra vale nos DOIS lados:
+
+- **Gate que barra** (commit, admissao): o hook cobra o recibo; o LLM paga o repertorio.
+  `exit 0` do hook nao prova que a sessao consultou.
+- **Instrumento que mede** (medidor, regua, wrapper, scanner): a maquina emite o NUMERO e o
+  MOTIVO; nunca promove numero em veredito de qualidade. Cinco regras:
+  1. Nao medido != limpo: toda saida diz `medido`, `nao_aplicavel` ou `nao_verificavel`.
+     "Zero achados" so e verde se o alvo foi medido.
+  2. Parcial nunca e verde: saida incompleta vira `nao_verificavel`.
+  3. Heuristica orienta, nao decide: regex e lista saem com `julgamento: pendente`.
+  4. O que nao conferiu, declara ("sintaxe nao conferida").
+  5. Queda nunca e finding: erro interno e uso invalido saem como nao verificado, nunca exit 1.
+
+Teste de 10 segundos, antes de emitir verde, exit code, numero ou veredito:
+
+1. Ha especificacao formal que torna a resposta unica? -> a maquina decide. Nao rejeite a
+   decisao mecanica por ser mecanica.
+2. A resposta depende de contexto, adequacao ou "foi feito de verdade"? -> o LLM decide, e
+   MOSTRA a evidencia.
+3. Vai escrever `exit 0`, "OK", "SEM-OCORRENCIA", `status ok`? -> PARE. Diga O QUE foi medido
+   e O QUE nao foi. Se nao sabe dizer, e `nao_verificavel`.
+4. Vai escrever "aprovado" apoiado so em exit code? -> PARE. Abra o conteudo.
+
+Nascimento: GO do dono em 2026-11-24 ("isso e nosso maior erro"), no terceiro dia da mesma
+classe de defeito (issues 0060, 0068, 0071, 0072, 0073, 0074). A regra existia so para o lado
+do gate (Lei 1 do doc 10 da casa dex) e com a palavra "forma"; o lado do instrumento que mede
+nao estava escrito. Fundamento integral, com os erros reais em tabela:
+`C:\CodexProjetos\dex\docs\dex-foundation\10-GATES-E-SCHEMAS.md`, secao "Lei 1".
 
 ## Gate Final PPIRTV
 
