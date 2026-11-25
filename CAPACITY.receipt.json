@@ -1,4 +1,15 @@
 {
+  "reavaliacao_ramo_wip_ensaio_locks_e1_261125": {
+    "date": "2026-11-25",
+    "scope": [
+      "tests/lock-classe-transitorios.test.ts",
+      "tests/helpers/lock-fixture.ts",
+      "tests/helpers/fs-promises-mock.ts",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json"
+    ],
+    "delta": "Ramo de trabalho e1-ensaio-locks-wip (fora de main): ensaio exaustivo da classe dos erros transitorios do withFlowLock, 172 sequencias. MEDIDO: 91 falham e 81 passam; tsc limpo. As falhas sao do ensaio (mock do caso BC sem criar o arquivo; fila unica de leitura) e sao a A-01 do Trilho E1. src, scripts e tools intocados; nenhuma capacidade nova ou alterada; os testes nao comprovam capacidade enquanto falharem."
+  },
   "reavaliacao_fechamento_janela_261125": {
     "date": "2026-11-25",
     "scope": [

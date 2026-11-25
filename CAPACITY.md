@@ -1,3 +1,24 @@
+## Reavaliação — ramo de trabalho do Trilho E1: ensaio da classe dos transitórios do lock (2026-11-25)
+
+Delta sobre `6f08943`, **só no ramo `e1-ensaio-locks-wip`, nunca em `main`**: nascem
+três arquivos de teste ainda sem commit — `tests/lock-classe-transitorios.test.ts`,
+`tests/helpers/lock-fixture.ts` e `tests/helpers/fs-promises-mock.ts`. É o
+ensaio exaustivo da classe dos erros transitórios do `withFlowLock` (172
+sequências do alfabeto A/BD/BC/PE/PJ). **Estado medido: 91 falham, 81 passam**
+(`npx vitest run tests/lock-classe-transitorios.test.ts`); `tsc --noEmit` limpo
+nos três. As 91 falhas são do ENSAIO (o mock do caso BC não cria o arquivo, e a
+fila única de leitura entrega a resposta a outra rodada) — diagnóstico das
+lentes em 2026-11-24, ainda não curado. Entra em ramo para não se perder e para
+não derrubar o CI de `main`; `src/`, `scripts/`, `tools/` INTOCADOS; nenhuma
+capacidade nova ou alterada (as 36 do recibo anterior continuam; estes testes
+NÃO comprovam capacidade enquanto falharem). Receipt
+`reavaliacao_ramo_wip_ensaio_locks_e1_261125`.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| Suíte de testes | 1 arquivo novo: 172 casos, 91 vermelhos, 81 verdes | `npx vitest run tests/lock-classe-transitorios.test.ts` → exit 1 |
+| Tipos | 3 arquivos novos sem erro | `npx tsc --noEmit -p .` sem menção aos três |
+
 ## Reavaliação — fechamento da janela 261125 (2026-11-25)
 
 Delta sobre `65ef302`: SÓ a projeção do PLAYBOOK (`PLAYBOOK.md`,
