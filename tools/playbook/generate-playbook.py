@@ -505,6 +505,39 @@ def write_bytes(path, text):
         fh.write(text)
 
 
+def check_sent_sources(repo, md_path, idx_path):
+    faltando = projecoes_ausentes(md_path, idx_path)
+    if faltando:
+        print("CHECK-SENT FALHOU (exit 2):")
+        for rotulo in faltando:
+            print("  - arquivo recebido ausente: %s" % rotulo)
+        return 2
+    try:
+        idx = json.loads(idx_path.read_text(encoding="utf-8-sig"))
+    except (ValueError, OSError) as error:
+        print("CHECK-SENT FALHOU (exit 2): PLAYBOOK.index.json ilegivel: %s" % error)
+        return 2
+
+    problems = []
+    sent = [row for row in idx.get("fontes", []) if row.get("enviado")]
+    for row in sent:
+        path = repo / Path(row["caminho"])
+        if not path.is_file():
+            problems.append("fonte enviada ausente: %s" % row["caminho"])
+            continue
+        if hashlib.sha256(path.read_bytes()).hexdigest() != row["sha256"]:
+            problems.append("sha256 divergente: %s" % row["caminho"])
+    if revision_of(sent) != idx.get("sent_revision"):
+        problems.append("sent_revision divergente")
+    if problems:
+        print("CHECK-SENT FALHOU (exit 2):")
+        for problem in problems:
+            print("  - " + problem)
+        return 2
+    print("CHECK-SENT OK: %d fontes enviadas conferem" % len(sent))
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser(description="Projecao PLAYBOOK (generico, dex-playbook-entrada)")
     ap.add_argument("--repo", default=".")
@@ -515,36 +548,27 @@ def main():
     mode.add_argument("--check-sent", action="store_true")
     args = ap.parse_args()
     repo = Path(args.repo).resolve()
+    md_path, idx_path = repo / "PLAYBOOK.md", repo / "PLAYBOOK.index.json"
+    if args.check_sent:
+        return check_sent_sources(repo, md_path, idx_path)
 
     data = collect(repo, args.sources)
-    md_text = render(repo, data)
-    idx_text = json.dumps(build_index(data), ensure_ascii=False, indent=2) + "\n"
-    md_path, idx_path = repo / "PLAYBOOK.md", repo / "PLAYBOOK.index.json"
 
-    # TRACKER 0030 (P1, UAT-1 A3): fonte declarada AUSENTE = clone do
-    # destinatario (modo consumidor) — a projecao e artigo RECEBIDO, nao
-    # derivavel ali. Drift falso destrava (exit 0 c/ aviso nomeando as
-    # ausentes — o hook do clone chama --check e para de travar commit de
-    # terceiro); --write RECUSA preservando a projecao (degradar 9->2 era o
-    # dano real). --check-sent segue a rota de conferencia do destinatario.
-    # GitHub #42: exit 0 so depois de conferir que o par recebido existe.
+    # A projecao recebida nao e derivavel sem as fontes privadas. Confira
+    # a presenca do par (#42) e o hash das fontes enviadas (#57).
     ausentes = data.get("fontes_ausentes") or []
-    if ausentes and (args.write or args.check):
+    if ausentes:
         print("MODO CONSUMIDOR: %d fonte(s) declarada(s) ausente(s) neste clone: %s"
               % (len(ausentes), ", ".join(ausentes)))
-        print("  clone de destinatario recebe a projecao pronta; o frescor e conferivel no projeto fonte.")
+        print("  o projeto fonte confere a projecao completa; este clone confere as fontes enviadas.")
         if args.write:
             print("RECUSA: --write degradaria a projecao recebida (fontes ausentes) — clone consumidor nao regenera (exit 2).")
             print("  Para conferir as fontes ENVIADAS neste clone: --check-sent")
             return 2
-        faltando = projecoes_ausentes(md_path, idx_path)
-        if faltando:
-            print("PROJECAO INCOMPLETA: arquivo recebido ausente neste clone: %s" % ", ".join(faltando))
-            print("  o checkout nao contem o Playbook publicado inteiro; nada a conferir (exit 2).")
-            return 2
-        print("  PLAYBOOK recebido preservado; commit segue destravado (sem fontes nao ha drift).")
-        print("  Para conferir as fontes ENVIADAS neste clone: --check-sent")
-        return 0
+        return check_sent_sources(repo, md_path, idx_path)
+
+    md_text = render(repo, data)
+    idx_text = json.dumps(build_index(data), ensure_ascii=False, indent=2) + "\n"
 
     if args.write:
         write_bytes(md_path, md_text)
@@ -571,35 +595,6 @@ def main():
         print("FRESCO: projecao bate byte-a-byte com as fontes (%d regras, %d itens runbook)"
               % (len(data["rules"]), len(data["napkin"])))
         return 0
-
-    if args.check_sent:
-        faltando = projecoes_ausentes(md_path, idx_path)
-        if faltando:
-            print("CHECK-SENT FALHOU (exit 2):")
-            for rotulo in faltando:
-                print("  - arquivo recebido ausente: %s" % rotulo)
-            return 2
-        idx = json.loads(idx_path.read_text(encoding="utf-8-sig"))
-        problems = []
-        for row in idx.get("fontes", []):
-            if not row.get("enviado"):
-                continue
-            path = repo / Path(row["caminho"])
-            if not path.exists():
-                problems.append("fonte enviada ausente: %s" % row["caminho"])
-                continue
-            if hashlib.sha256(path.read_bytes()).hexdigest() != row["sha256"]:
-                problems.append("sha256 divergente: %s" % row["caminho"])
-        if revision_of(idx.get("fontes", []), only_sent=True) != idx.get("sent_revision"):
-            problems.append("sent_revision divergente")
-        if problems:
-            print("CHECK-SENT FALHOU (exit 2):")
-            for p in problems:
-                print("  - " + p)
-            return 2
-        print("CHECK-SENT OK: %d fontes enviadas conferem" % sum(1 for r in idx.get("fontes", []) if r.get("enviado")))
-        return 0
-
 
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):

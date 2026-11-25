@@ -1,4 +1,21 @@
 {
+  "reavaliacao_issues_55_57_261125": {
+    "date": "2026-11-25",
+    "scope": [
+      "scripts/canonical-pairs.mjs",
+      "scripts/validate-spt.mjs",
+      "tools/playbook/generate-playbook.py",
+      "docs/guides/MCP_AGENT_QUICKSTART.md",
+      "tests/issue-0036-0037-0038-triade-clis.test.ts",
+      "tests/spt-validate-skeletons.test.ts",
+      "tests/issue-0030-playbook-clone-consumidor.test.ts",
+      "CHANGELOG.md",
+      "TOOLSBOOK.json",
+      "TOOLSBOOK.md",
+      "TOOLSBOOK.index.md"
+    ],
+    "delta": "Sobre 6f08943: schema de canonical-pairs aceita caminho por juncao; validate-spt publica a normalizacao ja usada; --check no clone consumidor verifica hashes das fontes enviadas e preserva as projecoes. A referencia global do Everything usa somente a fonte externa ja registrada no TOOLSBOOK. Tres regressoes reproduzidas antes da correcao, 41 testes focados aprovados depois. Nenhuma capacidade adicionada ou removida."
+  },
   "reavaliacao_fechamento_janela_261125": {
     "date": "2026-11-25",
     "scope": [

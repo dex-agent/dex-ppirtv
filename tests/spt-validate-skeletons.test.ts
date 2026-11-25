@@ -67,6 +67,32 @@ describe("proof_skeletons na descoberta de formato", () => {
     });
   }, 60000);
 
+  it("#56: o contrato da CLI descreve a comparação de objetivo observada", async () => {
+    const sptPath = path.join(workspace, ".agents", "PLAN-TASKS", "objective.md");
+    await writeSpt(sptPath, v3Document(workspace));
+    const run = (args: string[]) => spawnSync(process.execPath, [scriptPath, ...args], {
+      encoding: "utf8",
+      cwd: repoRoot
+    });
+    const schema = run(["--schema"]);
+    expect(schema.status).toBe(0);
+    expect(JSON.parse(schema.stdout).inputs.join(" ")).toContain("normaliza caixa e espaços");
+    for (const flag of ["--help", "-h", "--usage"]) {
+      const help = run([flag]);
+      expect(help.status).toBe(0);
+      expect(help.stdout).toContain("normaliza caixa e espaços");
+    }
+    for (const [objective, matches] of [
+      ["Provar skeletons", true],
+      ["  PROVAR   skeletons ", true],
+      ["Provar outro objetivo", false]
+    ] as const) {
+      const result = run(["--workspace", workspace, "--spt-path", sptPath, "--objective", objective]);
+      expect(result.status).toBe(matches ? 0 : 1);
+      expect(JSON.parse(result.stdout).spt_validate.checks.spt_objective_matches).toBe(matches);
+    }
+  }, 60000);
+
   it("contrato inválido não emite skeletons (apenas diagnostico)", async () => {
     if (!existsSync(distEntry)) {
       throw new Error("dist/index.js ausente: rode `npm run build` antes deste teste focado");
