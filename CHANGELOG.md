@@ -8,6 +8,12 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **Auditoria #55–#57**: `canonical-pairs --schema` funciona também por
+  junção de diretório no Windows. A ajuda e o schema de `validate-spt`
+  descrevem a normalização de caixa e espaços já usada pelo servidor. No
+  clone consumidor, o `--check` do Playbook verifica os hashes das fontes
+  distribuídas e reprova a divergência sem reescrever a projeção.
+
 - **Régua de projeto + regra de publicação versionada (ISSUE-LOCAL-0050;
   lado do projeto do Trilho do registry
   `2026-11-23-regua-cardapio-copia-local`)**: nasce `docs/regua-projeto.md` —

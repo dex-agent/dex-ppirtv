@@ -248,7 +248,7 @@ ao adicionar/remover fonte de decisao
 **capabilities:**
 - projecao-externa
 - gate-frescor
-- modo consumidor SO por fonte declarada (manifesto ou --sources) ausente: --check exit 0 c/ aviso nomeando as ausentes, depois de conferir o par recebido; --write RECUSA exit 2 preservando a projecao; autodeteccao sem manifesto nunca ativa o modo (produtor minimo gera)
+- modo consumidor SO por fonte declarada (manifesto ou --sources) ausente: --check nomeia as fontes ausentes e confere o par recebido e os hashes das fontes enviadas; --write RECUSA exit 2 preservando a projecao; autodeteccao sem manifesto nunca ativa o modo (produtor minimo gera)
 - par recebido conferido: --check e --check-sent reprovam (exit 2) clone sem PLAYBOOK.md ou sem PLAYBOOK.index.json
 - parser por declaracao: localizador so do titulo, de linha 'Localizador:' ou de bala sozinha no topo; citacao interna vira secao nao decodificada c/ motivo; gatilho so de linha 'Gatilho:'; extrato so de prosa; dedupe por localizador
 
@@ -258,13 +258,13 @@ ao adicionar/remover fonte de decisao
 **evidence:**
 - hook pre-commit l.5
 - plaquinha global PLAYBOOK-ENTRADA-EXTERNA-261005
-- tests/issue-0030-playbook-clone-consumidor.test.ts (4 its: clone check=aviso/write=recusa preservando bytes/check-sent/fonte drift real segue exit 2)
+- tests/issue-0030-playbook-clone-consumidor.test.ts (6 its: clone intacto passa, write recusa, check e check-sent detectam drift de fonte enviada preservando as projecoes, produtor segue detectando drift)
 - tests/issue-0042-0043-playbook-consumidor.test.ts (4 its: produtor minimo exit 0; clone sem md / sem index / check-sent exit 2)
 - tests/issue-local-0031-playbook-parser.test.ts (10 its: localizador por declaracao x citacao interna; gatilho; extrato; linha omitida; dedupe; grafia)
 - mutacao de sessao 2026-11-23: 7 mutacoes (M1 autodeteccao, M2 par recebido, M3 localizador, M4 gatilho, M5 dedupe, M6 extrato, M7 render) -> 7 PEGA, 0 sobrevivente
 
 **Fontes examinadas:**
-- `tools/playbook/generate-playbook.py` — SHA256 `fc5393270b0e75f5f10583d20511d8da8f3886a40091d9a93cf662888b5a96a6`
+- `tools/playbook/generate-playbook.py` — SHA256 `de84e16125a9e8fbe91cd753772009856ddcee7c1af74904fb05a5a5959be26a`
 
 ## judge-playbook
 
@@ -405,7 +405,7 @@ Modulo de DADOS dos 4 pares canonicos global<->local (fonte unica; consumido pel
 nascer/mudar par de contrato compartilhado
 
 **how:**
-import { canonicalPairs } from scripts/canonical-pairs.mjs
+import { canonicalPairs } from scripts/canonical-pairs.mjs | node scripts/canonical-pairs.mjs --schema
 
 **inputs:**
 repoRoot, userProfile
@@ -429,10 +429,10 @@ no 5o par
 - logica de comparacao (mora nos consumidores)
 
 **evidence:**
-- cabecalho do modulo
+- tests/issue-0036-0037-0038-triade-clis.test.ts: schema direto e por alias de diretorio, imports sem interceptacao
 
 **Fontes examinadas:**
-- `scripts/canonical-pairs.mjs` — SHA256 `7da6f697ecf24a9d820dee8c2cdf8db9043af58da530db324688073f0ee1e346`
+- `scripts/canonical-pairs.mjs` — SHA256 `939132007e8d05922fc05bdd77d1edb867ad6b29675dfdad09215d24548cc86c`
 
 ## audit-canonical-sync
 
@@ -526,10 +526,10 @@ Validador LOCAL do Trilho/SPT v3 (mesma regra do spt_validate MCP, motor direto 
 antes de goal_start; quando MCP indisponivel ou para conferencia dupla
 
 **how:**
-node scripts/validate-spt.mjs <trilho>
+node scripts/validate-spt.mjs --workspace <dir> --spt-path <trilho> [--objective <text>]
 
 **inputs:**
-arquivo do Trilho (.agents/PLAN-TASKS/*.md)
+workspace, Trilho (.agents/PLAN-TASKS/*.md) e objetivo opcional comparado com caixa e espacos normalizados
 
 **outputs:**
 receipt estrutural (valid, contract_version, missing, contract_errors)
@@ -551,9 +551,10 @@ bump do schema dex.spt.v3
 
 **evidence:**
 - D-49: spt_validate MCP FALSE com textos identicos; motor direto valid=true
+- tests/spt-validate-skeletons.test.ts: ajuda e schema descrevem a normalizacao; a CLI distingue objetivo equivalente de objetivo diferente
 
 **Fontes examinadas:**
-- `scripts/validate-spt.mjs` — SHA256 `b4f6ceabc3ba0188081612a775c7eea9951ff42e2ab20bb3f005842b7f4477df`
+- `scripts/validate-spt.mjs` — SHA256 `840072e7d48fef213481f5cd7e2618f46d055e9277be51b0cd1040b17ce3b6be`
 
 ## validate-flow-engine-boundary
 
@@ -936,7 +937,6 @@ upgrade do es.exe
 - owner: voidtools (ES CLI) | locator: $env:USERPROFILE\.localin\es.exe | revision: 1.1.0.37 | evidence: AGENTS.md plaquinha ES-PRIMEIRA-BATIDA-POR-NOME (caso pago 2x); skill busca-arquivos-everything
 
 **Fontes examinadas:**
-- `AGENTS.md` — SHA256 `5aa0e4500535c5277ef7c19cb3863634bcc3a7f08830bad330b0af7778133f2b`
 
 ## code-review-graph-cli
 

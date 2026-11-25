@@ -1,3 +1,19 @@
+## Reavaliação — correções da auditoria #55–#57 (2026-11-25)
+
+Delta sobre `6f08943`. O schema de `canonical-pairs` continua disponível
+por caminho direto e por junção e os importadores emitem os próprios
+schemas. `validate-spt` descreve a comparação normalizada da CLI, coberta
+por teste com servidor real. No Playbook, produtor e consumidor continuam
+com modos próprios. O consumidor agora verifica os hashes das fontes
+enviadas, preservando as duas projeções.
+
+O TOOLSBOOK mantém a referência externa do Everything, cuja fonte global
+fica fora do clone.
+
+Validação focada no Windows: três regressões falharam antes das correções e
+41 testes passaram depois, em seis suítes. As 36 capacidades já
+inventariadas permanecem. Recibo `reavaliacao_issues_55_57_261125`.
+
 ## Reavaliação — fechamento da janela 261125 (2026-11-25)
 
 Delta sobre `65ef302`: SÓ a projeção do PLAYBOOK (`PLAYBOOK.md`,

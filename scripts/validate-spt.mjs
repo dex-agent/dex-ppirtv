@@ -2,13 +2,15 @@
 // TRIADE-DOC-261119 (--help/schema/usage; casa GATE-DOC-ADMISSAO-HELP-SCHEMA-USAGE,
 // cobranca do toolsbook --check registry 3.531.0) — intercept de documentacao
 // ANTES da logica util (flag sem valor; com valor segue o fluxo normal).
+const objectiveHelp = "A comparação com o frontmatter normaliza caixa e espaços.";
+const usage = "node scripts/validate-spt.mjs --workspace <dir> --spt-path <file> [--objective <text>]";
 {
   const _av = process.argv.slice(2);
   const _docFlag = (f) => _av.includes(f) && (_av.indexOf(f) === _av.length - 1 || String(_av[_av.indexOf(f) + 1]).startsWith("--"));
   if (_docFlag("--help") || _docFlag("--schema") || _docFlag("--usage")) {
-    const _doc = {"tool": "validate-spt", "purpose": "validacao estrutural local de SPT v3 (espelho local do spt_validate MCP)", "contract": "dex.triade.v1", "inputs": ["--workspace <dir>", "--spt-path <file>", "--objective <text> (opcional; literal ao frontmatter)"], "outputs": ["stdout achados; exit != 0 com findings"]};
+    const _doc = {"tool": "validate-spt", "purpose": "validacao estrutural local de SPT v3 (espelho local do spt_validate MCP)", "contract": "dex.triade.v1", "inputs": ["--workspace <dir>", "--spt-path <file>", `--objective <text> (opcional). ${objectiveHelp}`], "outputs": ["stdout achados; exit != 0 com findings"]};
     if (_docFlag("--schema")) console.log(JSON.stringify(_doc, null, 2));
-    else console.log('usage: node scripts/validate-spt.mjs --workspace <dir> --spt-path <file> [--objective <text>] — validador estrutural local de Trilho SPT v3 (irmão do preflight).');
+    else printHelp();
     process.exit(0);
   }
 }
@@ -43,8 +45,9 @@ function parseArgs(argv) {
 
 function printHelp() {
   console.log(`Usage:
-  node scripts/validate-spt.mjs --workspace <dir> --spt-path <file> [--objective <text>]
+  ${usage}
 
+--objective é opcional. ${objectiveHelp}
 Starts the dex-PPIRTV MCP server directly over stdio with the consumer
 workspace as cwd, then calls tools/list, runtime_probe and spt_validate.
 Exits 0 only when valid=true, contract_version=3, execution_eligible=true,

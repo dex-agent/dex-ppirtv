@@ -115,7 +115,10 @@ Minimum GOAL sequence:
 1. `runtime_probe` — confirm the active `project_root`, runtime and memory
    writer before creating state.
 2. `spt_validate` — validate an absolute path or one relative to the confirmed
-   runtime `project_root`, plus the literal objective.
+   runtime `project_root`. Pass the literal objective you intend to use in
+   `goal_start`. The validator and its `validate-spt.mjs` CLI compare the
+   objective after lowercasing it, collapsing whitespace and trimming the
+   ends. A successful comparison does not establish literal equality.
 3. `goal_start` — start or reuse the official flow with one stable
    `idempotency_key`.
 4. `goal_status` — read phase blockers and the exact next action.

@@ -98,6 +98,23 @@ describe("TRACKER 0030 — modo consumidor do PLAYBOOK no clone do destinatário
     expect(r.code).toBe(0);
   });
 
+  it.each([
+    ["--check"],
+    ["--check-sent"]
+  ])("#57: %s acusa drift de fonte distribuída mesmo com o par recebido", async (flag) => {
+    const clone = await cloneLimpo();
+    const source = path.join(clone, "docs", "PLAYBOOK-RULES.md");
+    const projectionPaths = ["PLAYBOOK.md", "PLAYBOOK.index.json"].map((file) => path.join(clone, file));
+    const before = await Promise.all(projectionPaths.map((file) => readFile(file)));
+    expect(rodar(clone, [flag]).code).toBe(0);
+
+    await writeFile(source, "# Regra distribuída atualizada\n", "utf8");
+    const r = rodar(clone, [flag]);
+    expect(r.code).toBe(2);
+    expect(r.stdout).toContain("sha256 divergente: docs/PLAYBOOK-RULES.md");
+    expect(await Promise.all(projectionPaths.map((file) => readFile(file)))).toEqual(before);
+  });
+
   it("projeto fonte: drift REAL continua exit 2 e fresco continua exit 0 (sem regressao do gate do fonte)", async () => {
     const fonte = await fonteSintetica();
     const fresco = rodar(fonte, ["--check", "--sources", "docs/REGRAS.md"]);

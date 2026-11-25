@@ -13,7 +13,7 @@
 // (posicional no validate-spt, <args.json> no record, --flow/--out <dir> no
 // export, --cwd no validador). O parser real é a verdade; o help aprende.
 import { execFileSync } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -85,6 +85,14 @@ describe("frente G (#37) — cada entrypoint emite o próprio contrato", () => {
 
   it("controle: canonical-pairs.mjs --schema direto continua devolvendo o próprio doc", () => {
     const out = runNode([path.join(REPO, "scripts", "canonical-pairs.mjs"), "--schema"], REPO);
+    expect(JSON.parse(out).tool).toBe("canonical-pairs");
+  });
+
+  it("#55: canonical-pairs mantém o schema ao usar um alias de diretório", async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), "ppirtv-0055-"));
+    const alias = path.join(tempRoot, "scripts");
+    await symlink(path.join(REPO, "scripts"), alias, process.platform === "win32" ? "junction" : "dir");
+    const out = runNode([path.join(alias, "canonical-pairs.mjs"), "--schema"], REPO);
     expect(JSON.parse(out).tool).toBe("canonical-pairs");
   });
 });
