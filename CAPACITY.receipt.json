@@ -1,4 +1,13 @@
 {
+  "reavaliacao_red_prefixo_artefato_review_261125": {
+    "date": "2026-11-25",
+    "scope": [
+      "tests/mining-policy.test.ts",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json"
+    ],
+    "delta": "Sobre f42be47 (ramo prefixo-artefato-review-red-261125): so tests/mining-policy.test.ts. RED de proposito: 3 expectativas novas pedem que o caminho do artefato de review seja bookkeeping (cru e embrulhado) e nao vire candidato de memoria; a expectativa antiga foi invertida. npx vitest run tests/mining-policy.test.ts: 3 falham, 12 passam. Codigo de src/ intocado; a cura (prefixo na fonte dona VERDICT_BOOKKEEPING_PREFIX) ainda nao foi escrita."
+  },
   "reavaliacao_merge_untangle_onda1_261125": {
     "date": "2026-11-25",
     "scope": [

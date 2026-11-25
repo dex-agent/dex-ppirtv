@@ -1,3 +1,20 @@
+## Reavaliação — RED do prefixo "Artefato de review para consulta" (2026-11-25)
+
+Delta sobre `f42be47` (ramo `prefixo-artefato-review-red-261125`): só
+`tests/mining-policy.test.ts`. Três expectativas novas pedem que o caminho do
+artefato de review seja tratado como registro operacional (bookkeeping) e não
+vire candidato de memória, cru e embrulhado pela promoção; a expectativa antiga
+que pedia o contrário foi invertida. **Suíte VERMELHA de propósito neste
+commit** (3 falham, 12 passam no arquivo): é o RED que a mudança de
+comportamento exige. A cura (o prefixo passar à fonte dona
+`VERDICT_BOOKKEEPING_PREFIX`) ainda não foi escrita. Recibo
+`reavaliacao_red_prefixo_artefato_review_261125`.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| CAP-13 resolução de candidatos de memória | só o teste muda de expectativa; o código segue igual e o caminho do artefato de review ainda vira candidato | `npx vitest run tests/mining-policy.test.ts`: 3 falham, 12 passam |
+| Demais superfícies | inalteradas | nenhum arquivo de `src/` tocado |
+
 ## Reavaliação — união da onda 1 do untangle rodada 2 ao main (2026-11-25)
 
 Delta sobre `32750e0`: merge do ramo `untangle-onda1-261125` (commit `e13d150`)

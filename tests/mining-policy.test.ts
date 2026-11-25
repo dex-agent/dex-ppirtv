@@ -79,12 +79,15 @@ describe("isWritableCandidate", () => {
 // Regressao ACH-01 (flow_20260914103135338_2081_0063): bookkeeping do proprio
 // flow nao pode ser promovido a candidato de memoria.
 describe("isBookkeepingNugget", () => {
-  it("reconhece os 5 prefixos de bookkeeping do flow", () => {
+  it("reconhece os 6 prefixos de bookkeeping do flow", () => {
     expect(isBookkeepingNugget("Racional de veredito: objetivo atendido")).toBe(true);
     expect(isBookkeepingNugget("Risco residual: PEND-01 aberto")).toBe(true);
     expect(isBookkeepingNugget("Risco residual estacionado: PEND-01 aberto")).toBe(true);
     expect(isBookkeepingNugget("Evidencia usada no veredito: C-01 backup")).toBe(true);
     expect(isBookkeepingNugget("Achado garimpado do veredito: resumo do veredito")).toBe(true);
+    // RED 2026-11-25: o caminho do artefato de review e registro operacional
+    // (onde consultar), nao aprendizado reutilizavel. Oraculo por string.
+    expect(isBookkeepingNugget("Artefato de review para consulta: C:\\tmp\\review.json")).toBe(true);
   });
 
   it("nao classifica aprendizado real como bookkeeping", () => {
@@ -152,6 +155,9 @@ describe("isBookkeepingNugget na forma final do item", () => {
     expect(isBookkeepingNugget("Heuristica pratica: Risco residual: P-01 aberto")).toBe(true);
     expect(isBookkeepingNugget("Armadilha observada: Heuristica pratica: Evidencia usada no veredito: ER-01")).toBe(true);
     expect(isBookkeepingNugget("Heurística prática: Racional de veredito: objetivo atendido")).toBe(true);
+    // RED 2026-11-25: o artefato de review embrulhado pela promocao tambem e bookkeeping.
+    expect(isBookkeepingNugget("Armadilha observada: Artefato de review para consulta: C:\\tmp\\review.json")).toBe(true);
+    expect(isBookkeepingNugget("Heuristica pratica: Armadilha observada: Artefato de review para consulta: C:\\tmp\\review.json")).toBe(true);
   });
 
   it("preserva aprendizado legitimo, inclusive embrulhado", () => {
@@ -232,6 +238,10 @@ describe("caminho real de promocao (linkParkingToGold -> collectMemoryNuggets)",
 
     expect(items).toContain(`Armadilha observada: ${legitimo}`);
     expect(items).toContain("Achado de review: P1 achado real de review");
-    expect(items).toContain("Artefato de review para consulta: C:\\tmp\\review.json");
+    // RED 2026-11-25: o caminho do artefato de review NAO vira candidato de
+    // memoria. O registro segue no veredito para consulta (parking_lot do
+    // verdict acima); so a mineracao que deixa de ve-lo.
+    expect(items).not.toContain("Artefato de review para consulta: C:\\tmp\\review.json");
+    expect(items.some((item) => item.includes("Artefato de review para consulta:"))).toBe(false);
   });
 });
