@@ -8,6 +8,13 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **Candidatos de memória (2026-11-25)**: a linha
+  `Artefato de review para consulta: <caminho>` do veredito passa a ser
+  tratada como registro operacional, como já eram o risco residual e a
+  evidência usada, e não vira mais candidato de memória. O registro continua
+  no veredito para consulta. O texto do prefixo passa a morar em uma fonte só
+  (`VERDICT_BOOKKEEPING_PREFIX`).
+
 - **Princípios da casa (2026-11-25)**: `principles/PRINCIPLES.md` sincronizado
   com a fonte global — entra o P12 ("o determinístico cobra o schema; o LLM
   cumpre o schema"). `npm run audit:canonical`, que parava aqui, volta a

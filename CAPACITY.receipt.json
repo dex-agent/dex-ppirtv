@@ -1,4 +1,52 @@
 {
+  "reavaliacao_merge_cura_prefixo_261125": {
+    "date": "2026-11-25",
+    "scope": [
+      "src/memory/mining-policy.ts",
+      "src/verdict-learning.ts",
+      "tests/mining-policy.test.ts",
+      "tests/verdict-learning-filter.test.ts",
+      "CHANGELOG.md",
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json"
+    ],
+    "delta": "Sobre 81972ee: merge do ramo prefixo-artefato-review-red-261125 (cabeca c498ce3), com GO do dono, sem conflito. CAP-13 alterada pela cura (ver reavaliacao_cura_prefixo_artefato_review_261125); a uniao nao acrescenta mudanca de codigo. PLAYBOOK regenerado porque a fonte .agents/PLAN-TASKS/ACTIVE.md mudou (so a soma da fonte e a revisao geral; --check FRESCO). Medido no ramo: npm run check exit 0, 106 arquivos, 1145 aprovados, 4 pulados; a trava do merge mede de novo a arvore unida. src/flow-engine.ts intocado."
+  },
+  "reavaliacao_cura_prefixo_artefato_review_261125": {
+    "date": "2026-11-25",
+    "scope": [
+      "src/memory/mining-policy.ts",
+      "src/verdict-learning.ts",
+      "tests/verdict-learning-filter.test.ts",
+      "CHANGELOG.md",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json"
+    ],
+    "delta": "Sobre df4279c (ramo prefixo-artefato-review-red-261125): chave nova artefatoReviewConsulta em VERDICT_BOOKKEEPING_PREFIX (src/memory/mining-policy.ts), uso da constante em src/verdict-learning.ts e teste do registro preservado em tests/verdict-learning-filter.test.ts. CAP-13 ALTERADA: o caminho do artefato de review deixa de virar candidato de memoria, cru e embrulhado; o registro segue no parking_lot do veredito. isBookkeepingNugget nao mudou. Provas: tests/mining-policy.test.ts 15/15 (os 3 do RED passam); tests/verdict-learning-filter.test.ts 2/2; mutacao da chave faz 4 falharem e, restaurada, da 17/17; rg do texto do prefixo em src/ da 1 linha; npm run check exit 0 com 106 arquivos, 1145 aprovados, 4 pulados. src/flow-engine.ts intocado."
+  },
+  "reavaliacao_uniao_main_no_ramo_prefixo_261125": {
+    "date": "2026-11-25",
+    "scope": [
+      "principles/PRINCIPLES.md",
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json",
+      "CHANGELOG.md",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json"
+    ],
+    "delta": "Sobre 72cb244: uniao do main (81972ee) ao ramo prefixo-artefato-review-red-261125. So documentacao vinda do main (P12 em principles/PRINCIPLES.md, PLAYBOOK, CHANGELOG). Conflito em CAPACITY.md e CAPACITY.receipt.json resolvido mantendo as duas entradas. Sem arquivo de src/, tests/ ou scripts/ neste commit. npm run check exit 0 na arvore unida, medido com a cura do prefixo ainda por commitar (106 arquivos, 1145 aprovados, 4 pulados). Playbook --check FRESCO."
+  },
+  "reavaliacao_red_prefixo_artefato_review_261125": {
+    "date": "2026-11-25",
+    "scope": [
+      "tests/mining-policy.test.ts",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json"
+    ],
+    "delta": "Sobre f42be47 (ramo prefixo-artefato-review-red-261125): so tests/mining-policy.test.ts. RED de proposito: 3 expectativas novas pedem que o caminho do artefato de review seja bookkeeping (cru e embrulhado) e nao vire candidato de memoria; a expectativa antiga foi invertida. npx vitest run tests/mining-policy.test.ts: 3 falham, 12 passam. Codigo de src/ intocado; a cura (prefixo na fonte dona VERDICT_BOOKKEEPING_PREFIX) ainda nao foi escrita."
+  },
   "reavaliacao_principles_p12_261125": {
     "date": "2026-11-25",
     "scope": [

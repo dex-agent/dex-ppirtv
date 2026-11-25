@@ -69,4 +69,24 @@ describe("verdict learning: promocao de review_findings com filtro (issue #5.2)"
     // O finding fraco permanece evidência do verdict (não some do histórico).
     expect(verdict.review_findings).toContain(fraco);
   });
+
+  // Trilho 2026-11-25-prefixo-artefato-review-bookkeeping (C-03): a linha do
+  // artefato de review deixou de virar candidato de memória, mas o registro
+  // segue no veredito para consulta.
+  it("C-03: o caminho do artefato de review segue no parking_lot do veredito", async () => {
+    const artefato = ".agents/REPORTS/review-terminal.md";
+    await engine.goalVerdict({
+      flow_id: flowId,
+      status: "pronto_com_ressalvas",
+      rationale: "Corte confirmado.",
+      evidence_ids: [lastEvidenceId],
+      review_findings: [],
+      review_artifact_path: artefato,
+      residual_risks: [],
+      next_step: "Quando este corte terminar, encerrar."
+    });
+    const reloaded = await engine.store.loadFlow(flowId);
+    const verdict = reloaded.verdicts.at(-1)!;
+    expect(verdict.parking_lot).toContain(`Artefato de review para consulta: ${artefato}`);
+  });
 });
