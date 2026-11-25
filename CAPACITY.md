@@ -1,3 +1,25 @@
+## Reavaliação — régua de projeto e regra de publicação versionada (2026-11-23)
+
+Delta sobre `af6ddd7`: SÓ documentação e `.gitignore` — `src/`, `tests/`,
+`scripts/`, `tools/` INTOCADOS (camping NOT_APPLICABLE). Nasce a régua de
+projeto `docs/regua-projeto.md` (candidata; molde `regua-projeto-casa` v1 da
+skill global; fiscal 1.2.0). A regra de "documentação publicada" passa a
+exigir que o Git leve o documento, conferida por `git ls-files
+--error-unmatch` e `git cat-file -e HEAD:` (só código 0 conta), em três
+superfícies. Exceções nomeadas no `.gitignore`: `!docs/regua-projeto.md`; por
+decisão do dono, `!docs/adr/` + `!docs/adr/**` e `!/INDEX.md`. O link
+`(INDEX.md)` de `docs/PLAYBOOK-RULES.md` virou caminho (a projeção copia links
+sem rebasar para a raiz — registry ISSUE-LOCAL-0061). Sem mudança de
+código/teste; a suíte de testes NÃO foi rodada neste delta (os arquivos de
+teste do Trilho E ficam fora deste commit). Receipt
+`reavaliacao_regua_projeto_publicado_versionado_261123`.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| Links no clone | árvore pós-commit (índice temporário, repositório novo): 100 links locais nos 72 `.md` rastreados, 0 quebrados (no clone do `af6ddd7`: 3 de 100) | auditoria em clone limpo; ISSUE-LOCAL-0050 |
+| Fiscal da régua | `forma_ok`, 0 achados de forma, `git_leva: sim`, dentro da árvore pós-commit | check-regua-projeto.py 1.2.0 (43 testes; reversão da suíte: 6 falhas contra a versão anterior) |
+| PLAYBOOK | regen com o item 3 da regra de publicação e sem o link quebrado | generate-playbook.py --check FRESCO |
+
 ## Reavaliação — Trilho R: disputa de lock lida como disputa e ajuda de CLI casada com o parser (GitHub #46, #47) (2026-11-23)
 
 Delta: `src/store.ts` — `withFlowLock`: (1) tentativa `EEXIST` no meio da

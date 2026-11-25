@@ -8,6 +8,30 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **Régua de projeto + regra de publicação versionada (ISSUE-LOCAL-0050;
+  lado do projeto do Trilho do registry
+  `2026-11-23-regua-cardapio-copia-local`)**: nasce `docs/regua-projeto.md` —
+  a régua global da casa (bússola) lida como GPS deste repositório, no molde
+  `regua-projeto-casa` v1: escala do passo calibrada, critérios por momento
+  com comando e custo medido, tipos de teste, tropeços pagos e exceções com
+  dono. `candidata` até uso medido em Trilho e decisão do dono. **Achado
+  pago no bloco:** a instância nasceu ignorada pelo Git (`.gitignore:29`,
+  `docs/*`) com o fiscal respondendo `forma_ok`, e "publicado" estava
+  definido em três superfícies sem comando e sem conferência. Em clone limpo
+  do `af6ddd7`, 3 de 100 links locais quebrados (ADR ignorado, citado pelo
+  índice público; PLAYBOOK e `workflow/INDEX.md` linkando o `INDEX.md` da
+  raiz, ignorado). Mudanças: (1) `.gitignore` — `!docs/regua-projeto.md`; por
+  decisão do dono, `!docs/adr/` + `!docs/adr/**` e `!/INDEX.md`; (2)
+  `docs/INDEX.md` e `docs/PLAYBOOK-RULES.md` — a regra passa a exigir que o
+  Git leve o documento, conferida por `git ls-files --error-unmatch` e
+  `git cat-file -e HEAD:` (só código 0 conta); (3) `docs/PLAYBOOK-RULES.md` —
+  o link `(INDEX.md)` virou caminho: a projeção copia links sem rebasar para
+  a raiz (registry ISSUE-LOCAL-0061); (4) `README.md`, `PLAYBOOK.md` e
+  `PLAYBOOK.index.json` regenerados. Prova: na árvore pós-commit (índice
+  temporário, repositório novo) 100 links locais, 0 quebrados; o fiscal da
+  régua (versão 1.2.0 da skill global) responde `forma_ok / sim`. Sem
+  mudança de `src/`, `tests/`, `scripts/` ou `tools/`; a suíte não foi rodada
+  neste delta.
 - **Trilho R — disputa de lock lida como disputa (criação e leitura) e ajuda
   de CLI que casa com o parser (GitHub #46 e #47; Trilho
   2026-11-23-aud2-r-remanescentes; reaberturas das frentes E e G)**: #46 — no

@@ -3,8 +3,8 @@
   "generated_by": "tools/playbook/generate-playbook.py",
   "authority": "derived_projection",
   "repo_name": "dex-PPIRTV",
-  "sources_revision": "sha256:ddb9e39547b80fc77f687a9a920c211c101a5bddc2cea1014b313d64dd5330b1",
-  "sent_revision": "sha256:c3fe3900353785713ca9fdb1d0ff4a840d2eade60eadca73b9a4ac228bd6dc0f",
+  "sources_revision": "sha256:81cdff5c514e99560adb4559e95c2e24c4b2ec6c8ce10f132bf2f34913c9860b",
+  "sent_revision": "sha256:4168c941ed6490071348f65b62ea8abab2c9d42238f2726d6e3042c5986d82e0",
   "rules": [
     {
       "seal": "pb-72414c9b",
@@ -13,22 +13,23 @@
       "gatilho": "na retomada e antes de implementar, consulte as ferramentas e rotas de conhecimento já disponíveis para o projeto.",
       "extrato": "",
       "rotas": [
-        "Abra [o índice de documentação](INDEX.md) para localizar fe...",
+        "Abra o índice de documentação (`docs/INDEX.md`, na raiz do...",
         "No ambiente de trabalho, consulte o painel local em `AGENTS..."
       ],
       "fonte": "docs/PLAYBOOK-RULES.md#L3-L8"
     },
     {
-      "seal": "pb-e48a5b0f",
+      "seal": "pb-bb6ed9b2",
       "locator": "PPIRTV-DOCUMENTACAO-PUBLICADA-ACHAVEL",
       "title": "Documentação publicada e localizável",
       "gatilho": "ao publicar guia, FAQ, runbook ou contrato explicativo, confira se o destinatário consegue encontrá-lo.",
       "extrato": "",
       "rotas": [
         "Vincule o documento no README, no índice de documentação e...",
-        "Valide a busca pelo título ou localizador e confira os link..."
+        "Valide a busca pelo título ou localizador e confira os link...",
+        "Confirme que o Git leva o documento: `git ls-files --error-..."
       ],
-      "fonte": "docs/PLAYBOOK-RULES.md#L9-L13"
+      "fonte": "docs/PLAYBOOK-RULES.md#L9-L14"
     }
   ],
   "mesa": {
@@ -52,69 +53,69 @@
     },
     {
       "titulo": "Organizacao De Artefatos E Scripts",
-      "ancora": "AGENTS.md#L240",
+      "ancora": "AGENTS.md#L262",
       "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
     },
     {
       "titulo": "Validacao minima",
-      "ancora": "AGENTS.md#L289",
+      "ancora": "AGENTS.md#L311",
       "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
     },
     {
       "titulo": "Ordens diretas do Comandante Owner o $chato 🗣️",
-      "ancora": "AGENTS.md#L312",
+      "ancora": "AGENTS.md#L334",
       "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
     },
     {
       "titulo": "Dex Agent Local",
-      "ancora": "AGENTS.md#L375",
+      "ancora": "AGENTS.md#L397",
       "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
     },
     {
       "titulo": "Graphify local",
-      "ancora": "AGENTS.md#L420",
+      "ancora": "AGENTS.md#L442",
       "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
     },
     {
       "titulo": "Bootstrap (toda janela nova, nesta ordem)",
-      "ancora": "AGENTS.md#L453",
-      "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
-    },
-    {
-      "titulo": "Indexação (doutrina da casa)",
       "ancora": "AGENTS.md#L475",
       "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
     },
     {
+      "titulo": "Indexação (doutrina da casa)",
+      "ancora": "AGENTS.md#L497",
+      "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
+    },
+    {
       "titulo": "Envio a terceiros",
-      "ancora": "AGENTS.md#L482",
+      "ancora": "AGENTS.md#L504",
       "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
     },
     {
       "titulo": "Leitura obrigatoria (bootstrap)",
-      "ancora": "AGENTS.md#L502",
+      "ancora": "AGENTS.md#L524",
       "motivo": "sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala)"
     }
   ],
   "fontes": [
     {
       "caminho": "docs/PLAYBOOK-RULES.md",
-      "sha256": "3aebb8df98b19a4c1042973c59e14b0a8cfc728777839caa2f2c40c80e76f92c",
+      "sha256": "0230fe2800fb45c04483fc36a3eb8c081fba33d05e0d788a3bdb5bb308feb7ad",
       "enviado": true
     },
     {
       "caminho": "AGENTS.md",
-      "sha256": "5aa0e4500535c5277ef7c19cb3863634bcc3a7f08830bad330b0af7778133f2b",
+      "sha256": "8bac3dc0c140d45dd6f21069dd533cca7d104f74537a4d42b688f33930e7ec57",
       "enviado": false
     },
     {
       "caminho": ".agents/napkin.md",
-      "sha256": "dd54439c6e1ac48cf944b17c03dc76d2d03fd1b506da99a33fc0cdbc664ef48f",
+      "sha256": "f78a6b0f983410f71de161b228bbdd85997109bb675e4a53f5586b5e3d0d8781",
       "enviado": false
     },
     {
       "caminho": ".agents/PLAN-TASKS/ACTIVE.md",
-      "sha256": "575d88d807ff001de4a9b94a1c15d01757de7049adf75232f51e3a829045e62c",
+      "sha256": "108adde9764a1a6d6d22d625efcdf2496235736ee5faeaa342ebb0b069784e3f",
       "enviado": false
     }
   ]

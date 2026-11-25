@@ -19,6 +19,7 @@ artifacts/
 # Local development/agent workspace notes
 AGENTS.md
 INDEX.md
+!/INDEX.md
 CONTEXT.md
 DOCS.md
 PLAN.md
@@ -28,6 +29,9 @@ SPRINTS.md
 TASKS.md
 docs/*
 !docs/INDEX.md
+!docs/regua-projeto.md
+!docs/adr/
+!docs/adr/**
 !docs/guides/
 !docs/guides/**
 !docs/contracts/

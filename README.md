@@ -65,6 +65,9 @@ acceptance still depends on review and the applicable checks for that revision.
   with honest status (24 proven live, 9 partial, 1 unproven); regenerate with
   the `dex-mapa-capacidades` skill, do not hand-edit verdicts.
 - [`docs/INDEX.md`](docs/INDEX.md) is the public documentation map.
+- [`docs/regua-projeto.md`](docs/regua-projeto.md) is this repository's
+  development ruler (candidate): how the house rules apply here, with measured
+  cost, step scale and test types.
 - [MCP quickstart for agents](docs/guides/MCP_AGENT_QUICKSTART.md) explains the
   minimum GOAL flow, `tools/list` as machine-readable help, evidence, FAQ and
   troubleshooting for smaller models.

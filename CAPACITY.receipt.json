@@ -1,4 +1,20 @@
 {
+  "reavaliacao_regua_projeto_publicado_versionado_261123": {
+    "date": "2026-11-23",
+    "scope": [
+      ".gitignore",
+      "docs/regua-projeto.md",
+      "docs/INDEX.md",
+      "docs/PLAYBOOK-RULES.md",
+      "docs/adr/0007-shared-principles-memory.md",
+      "INDEX.md",
+      "README.md",
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json",
+      "CHANGELOG.md"
+    ],
+    "delta": "Regua de projeto do repositorio (docs/regua-projeto.md, candidata) e regra de documentacao publicada com comando e codigo de saida em tres superficies (AGENTS.md local, docs/INDEX.md, docs/PLAYBOOK-RULES.md). Excecoes nomeadas no .gitignore: !docs/regua-projeto.md; por decisao do dono, !docs/adr/, !docs/adr/** e !/INDEX.md. Link relativo da fonte do PLAYBOOK que nascia quebrado na projecao virou caminho (registry ISSUE-LOCAL-0061). Prova na arvore pos-commit (indice temporario, repositorio novo): 100 links locais nos 72 .md rastreados, 0 quebrados; fiscal da regua 1.2.0 forma_ok / git_leva sim. Sem mudanca de codigo/teste; suite nao rodada neste delta."
+  },
   "reavaliacao_aud2_r_remanescentes_261123": {
     "date": "2026-11-23",
     "scope": [

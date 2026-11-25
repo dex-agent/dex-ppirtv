@@ -4,8 +4,8 @@ description: "Regras de decisao e procedimentos deste projeto - projecao gerada 
 type: playbook
 generated_by: "tools/playbook/generate-playbook.py"
 authority: derived_projection
-sources_revision: "sha256:ddb9e39547b80fc77f687a9a920c211c101a5bddc2cea1014b313d64dd5330b1"
-sent_revision: "sha256:c3fe3900353785713ca9fdb1d0ff4a840d2eade60eadca73b9a4ac228bd6dc0f"
+sources_revision: "sha256:81cdff5c514e99560adb4559e95c2e24c4b2ec6c8ce10f132bf2f34913c9860b"
+sent_revision: "sha256:4168c941ed6490071348f65b62ea8abab2c9d42238f2726d6e3042c5986d82e0"
 do_not_edit: true
 ---
 # Playbook - dex-PPIRTV
@@ -26,7 +26,7 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 - Localizador: `PAINEL-DE-FERRAMENTAS`
 - Gatilho: na retomada e antes de implementar, consulte as ferramentas e rotas de conhecimento já disponíveis para o projeto.
 - Rotas (nomes, na ordem):
-  - Abra [o índice de documentação](INDEX.md) para localizar fe...
+  - Abra o índice de documentação (`docs/INDEX.md`, na raiz do...
   - No ambiente de trabalho, consulte o painel local em `AGENTS...
 - Fonte: `docs/PLAYBOOK-RULES.md#L3-L8`
 - Selo: `pb-72414c9b`
@@ -38,8 +38,9 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 - Rotas (nomes, na ordem):
   - Vincule o documento no README, no índice de documentação e...
   - Valide a busca pelo título ou localizador e confira os link...
-- Fonte: `docs/PLAYBOOK-RULES.md#L9-L13`
-- Selo: `pb-e48a5b0f`
+  - Confirme que o Git leva o documento: `git ls-files --error-...
+- Fonte: `docs/PLAYBOOK-RULES.md#L9-L14`
+- Selo: `pb-bb6ed9b2`
 
 ## Runbook <-> Playbook (procedimentos)
 
@@ -53,10 +54,10 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 | caminho | sha256 | Enviado? |
 | --- | --- | --- |
-| `docs/PLAYBOOK-RULES.md` | `3aebb8df98b19a4c1042973c59e14b0a8cfc728777839caa2f2c40c80e76f92c` | sim |
-| `AGENTS.md` | `5aa0e4500535c5277ef7c19cb3863634bcc3a7f08830bad330b0af7778133f2b` | nao |
-| `.agents/napkin.md` | `dd54439c6e1ac48cf944b17c03dc76d2d03fd1b506da99a33fc0cdbc664ef48f` | nao |
-| `.agents/PLAN-TASKS/ACTIVE.md` | `575d88d807ff001de4a9b94a1c15d01757de7049adf75232f51e3a829045e62c` | nao |
+| `docs/PLAYBOOK-RULES.md` | `0230fe2800fb45c04483fc36a3eb8c081fba33d05e0d788a3bdb5bb308feb7ad` | sim |
+| `AGENTS.md` | `8bac3dc0c140d45dd6f21069dd533cca7d104f74537a4d42b688f33930e7ec57` | nao |
+| `.agents/napkin.md` | `f78a6b0f983410f71de161b228bbdd85997109bb675e4a53f5586b5e3d0d8781` | nao |
+| `.agents/PLAN-TASKS/ACTIVE.md` | `108adde9764a1a6d6d22d625efcdf2496235736ee5faeaa342ebb0b069784e3f` | nao |
 
 ## Superficie enviada vs local
 
@@ -68,12 +69,12 @@ Destinatario do projeto: `--check-sent` valida as fontes enviadas neste clone.
 
 - Painel de Ferramentas -> `AGENTS.md#L26` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
 - Regras locais -> `AGENTS.md#L69` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
-- Organizacao De Artefatos E Scripts -> `AGENTS.md#L240` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
-- Validacao minima -> `AGENTS.md#L289` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
-- Ordens diretas do Comandante Owner o $chato 🗣️ -> `AGENTS.md#L312` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
-- Dex Agent Local -> `AGENTS.md#L375` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
-- Graphify local -> `AGENTS.md#L420` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
-- Bootstrap (toda janela nova, nesta ordem) -> `AGENTS.md#L453` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
-- Indexação (doutrina da casa) -> `AGENTS.md#L475` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
-- Envio a terceiros -> `AGENTS.md#L482` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
-- Leitura obrigatoria (bootstrap) -> `AGENTS.md#L502` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Organizacao De Artefatos E Scripts -> `AGENTS.md#L262` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Validacao minima -> `AGENTS.md#L311` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Ordens diretas do Comandante Owner o $chato 🗣️ -> `AGENTS.md#L334` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Dex Agent Local -> `AGENTS.md#L397` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Graphify local -> `AGENTS.md#L442` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Bootstrap (toda janela nova, nesta ordem) -> `AGENTS.md#L475` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Indexação (doutrina da casa) -> `AGENTS.md#L497` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Envio a terceiros -> `AGENTS.md#L504` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))
+- Leitura obrigatoria (bootstrap) -> `AGENTS.md#L524` (sem localizador declarado (no titulo, numa linha 'Localizador:' ou sozinho na primeira bala))

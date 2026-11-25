@@ -37,6 +37,10 @@ state under `.agents/` is outside the public documentation boundary.
 
 - [Laudo do falso positivo fiscal](contracts/FISCAL_RECURRENCE_BUG_REPORT_2026-11-02.md)
   — reprodução, causa, correções, testes e lacunas do corte de 2026-11-02.
+- [Régua de desenvolvimento do projeto](regua-projeto.md) — como as regras
+  globais da casa valem neste repositório, com comando, custo medido, ordem e
+  exceção (candidata; revisão medida `af6ddd7`); forma conferida pelo fiscal da
+  skill `dex-regras-desenvolvimento-casa`.
 
 - [MCP quickstart for agents](guides/MCP_AGENT_QUICKSTART.md) — minimal GOAL
   flow, `tools/list` as help, evidence examples, FAQ and troubleshooting.
@@ -101,10 +105,14 @@ A new public guide or operational document is not considered published until:
 
 1. `README.md` links it directly;
 2. this index lists it;
-3. Git includes the document rather than excluding it through `.gitignore`;
+3. Git carries the document: `git ls-files --error-unmatch -- <path>` and
+   `git cat-file -e HEAD:<path>` both exit 0 (index and commit) — any other
+   exit code is not published; a path matched by `.gitignore` (this repository
+   ignores `docs/*` by default) needs a named exception written after the rule;
 4. local link validation and an `rg` discoverability check pass; and
 5. maintainer workspaces also link it from local `AGENTS.md` and `INDEX.md`
-   when those ignored operational surfaces exist.
+   when those operational surfaces exist (`AGENTS.md` is local-only; the root
+   `INDEX.md` is versioned since 2026-11-23).
 
 `LOCALIZER: PPIRTV-PUBLIC-DOCS-INDEX`
 
