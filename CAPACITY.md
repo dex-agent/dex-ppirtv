@@ -1,3 +1,18 @@
+## Reavaliação — fechamento da janela 261125 (2026-11-25)
+
+Delta sobre `65ef302`: SÓ a projeção do PLAYBOOK (`PLAYBOOK.md`,
+`PLAYBOOK.index.json`), regenerada porque `.agents/PLAN-TASKS/ACTIVE.md` e o
+`INDEX.md` dos Trilhos mudaram — o Trilho E1 entrou como próximo passo e a
+frase "flow 6464 ativo" saiu. `src/`, `tests/`, `scripts/`, `tools/` INTOCADOS
+(camping NOT_APPLICABLE). Nenhuma capacidade nova, alterada ou removida: as
+36 capacidades do recibo anterior continuam valendo. Sem mudança de
+código/teste; a suíte NÃO foi rodada neste delta (nenhum arquivo de código
+entrou). Receipt `reavaliacao_fechamento_janela_261125`.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| PLAYBOOK | regen a partir das fontes novas; 2 regras, 0 itens runbook | `generate-playbook.py --repo . --check` → FRESCO no hook do commit |
+
 ## Reavaliação — régua de projeto e regra de publicação versionada (2026-11-23)
 
 Delta sobre `af6ddd7`: SÓ documentação e `.gitignore` — `src/`, `tests/`,

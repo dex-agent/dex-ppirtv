@@ -1,4 +1,14 @@
 {
+  "reavaliacao_fechamento_janela_261125": {
+    "date": "2026-11-25",
+    "scope": [
+      "PLAYBOOK.md",
+      "PLAYBOOK.index.json",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json"
+    ],
+    "delta": "Fechamento da janela sess_fc0d3646: projecao do PLAYBOOK regenerada porque ACTIVE.md e o INDEX dos Trilhos mudaram (Trilho E1 entra como proximo passo; a frase 'flow 6464 ativo' sai). So documentacao derivada; src, tests, scripts e tools intocados. Nenhuma capacidade nova, alterada ou removida; as 36 do recibo anterior continuam. Suite nao rodada neste delta (nenhum arquivo de codigo entrou)."
+  },
   "reavaliacao_regua_projeto_publicado_versionado_261123": {
     "date": "2026-11-23",
     "scope": [
