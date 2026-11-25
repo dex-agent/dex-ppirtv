@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport, getDefaultEnvironment } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { REQUIRED_PROMPTS, REQUIRED_TOOLS } from "../src/domain.js";
+import { RECALL_ERROR_MAX_REFERENCES, RECALL_ERROR_MAX_REFERENCE_LENGTH } from "../src/memory/recall-consumption-contract.js";
 import { SEQUENCE_SCHEMA_INDEX } from "./helpers/sequence-schema-index.js";
 
 let tempRoot: string;
@@ -1712,12 +1713,12 @@ describe("PPIRTV MCP stdio server", () => {
       }
     });
     expect(error.code).not.toBe("PPIRTV_TOOL_ERROR");
-    expect(error.message).toBe("RECALL_CONSUMPTION_UNKNOWN_REFERENCES: 12 unknown reference(s)");
+    expect(error.message).toBe(`RECALL_CONSUMPTION_UNKNOWN_REFERENCES: ${RECALL_ERROR_MAX_REFERENCES} unknown reference(s)`);
     expect(error.message).not.toContain("invented-memory.md");
-    expect(error.details.unknown_references).toHaveLength(12);
-    expect(error.details.valid_references.length).toBeLessThanOrEqual(12);
+    expect(error.details.unknown_references).toHaveLength(RECALL_ERROR_MAX_REFERENCES);
+    expect(error.details.valid_references.length).toBeLessThanOrEqual(RECALL_ERROR_MAX_REFERENCES);
     for (const reference of [...error.details.unknown_references, ...error.details.valid_references]) {
-      expect(reference.length).toBeLessThanOrEqual(160);
+      expect(reference.length).toBeLessThanOrEqual(RECALL_ERROR_MAX_REFERENCE_LENGTH);
       expect(reference).not.toMatch(/[\u0000-\u001f\u007f]/);
     }
     expect(JSON.stringify(rejected).length).toBeLessThan(12_000);

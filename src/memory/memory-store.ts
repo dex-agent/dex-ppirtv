@@ -2,6 +2,7 @@ import { mkdir, readFile, appendFile } from "node:fs/promises";
 import path from "node:path";
 import type { MemoryRecallSummary, MemoryRuntimeRecord } from "./memory-types.js";
 import { redactSecretLikeText } from "./mining-policy.js";
+import { isSecretKeyName } from "../security/secret-redaction.js";
 
 type RuntimeStream = "recalls" | "hooks" | "candidates" | "parking-lot";
 
@@ -179,7 +180,7 @@ function scrubRuntimeValue(value: unknown): unknown {
   if (value && typeof value === "object") {
     const result: Record<string, unknown> = {};
     for (const [key, nested] of Object.entries(value)) {
-      if (/secret|token|password|api[_-]?key|authorization/i.test(key)) {
+      if (isSecretKeyName(key)) {
         result[key] = "[redacted]";
       } else {
         result[key] = scrubRuntimeValue(nested);

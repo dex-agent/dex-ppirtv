@@ -66,7 +66,7 @@ describe("emenda A2 — anexo aceita escopo corroborado pendente do bloqueio", (
     const mod = await import("../src/review-snapshot.js") as {
       pendingReviewScopeForAttach?: (flow: Flow) => unknown;
     };
-    if (typeof mod.pendingReviewScopeForAttach !== "function") return;
+    expect(typeof mod.pendingReviewScopeForAttach, "pendingReviewScopeForAttach saiu de src/review-snapshot.ts").toBe("function");
     const limpo = flowComHistoria([], ["src/app.ts"]);
     expect(mod.pendingReviewScopeForAttach!(limpo)).toBeNull();
     const comVerdict = flowComHistoria([BLOQUEIO, { at: "2026-11-18T16:05:00.000Z", type: "verdict_recorded", data: {} }], ["src/app.ts"]);

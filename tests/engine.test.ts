@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { FlowEngine } from "../src/flow-engine.js";
+import { FlowEngine, WORK_PROGRESS_MAX_RUNNING_EVENTS } from "../src/flow-engine.js";
 import type { AnyPhase, Phase } from "../src/domain.js";
 import { promptText } from "../src/catalogs.js";
 import { validateMemoryPostWrite, type MemoryGraphProvider, MemoryLibrarian, type MemoryHookRunner } from "../src/memory/index.js";
@@ -3978,24 +3978,22 @@ describe("PPIRTV flow engine", () => {
       // como arrays de objetos (Candidates). written traz registros de escrita.
       const idsIn = (list: unknown): string[] => Array.isArray(list) ? list.map((item) => (item as Record<string, unknown>).id as string) : [];
 
-      // Se houver candidato classificado, nenhum dele pode estar em `written`
-      // quando reaproveitamento for 0.
-      for (const candidate of candidates) {
-        const score = candidate.score as { reaproveitamento?: number };
-        if ((score.reaproveitamento ?? 0) === 0) {
-          const writtenIds = idsIn(mined.written);
-          expect(writtenIds).not.toContain(candidate.id);
-          // Deve ter ido para ledger_only ou estacionamento ou discarded, nunca
-          // ficar sem destino (R5: rebaixamento automatico para ledger_only).
-          const ledgerOnlyIds = idsIn(mined.ledger_only);
-          const estacionamentoIds = idsIn(mined.estacionamento);
-          const discardedIds = idsIn(mined.discarded);
-          const candidateId = candidate.id as string;
-          const destination = ledgerOnlyIds.includes(candidateId)
-            || estacionamentoIds.includes(candidateId)
-            || discardedIds.includes(candidateId);
-          expect(destination).toBe(true);
-        }
+      // O cenario precisa produzir ao menos um candidato de reaproveitamento 0;
+      // sem ele, este teste nao exercita a regra e reprova aqui.
+      const zeroReuse = candidates.filter((candidate) => ((candidate.score as { reaproveitamento?: number }).reaproveitamento ?? 0) === 0);
+      expect(zeroReuse.length).toBeGreaterThan(0);
+
+      // Nenhum candidato de reaproveitamento 0 pode estar em `written`.
+      const writtenIds = idsIn(mined.written);
+      for (const candidate of zeroReuse) {
+        const candidateId = candidate.id as string;
+        expect(writtenIds).not.toContain(candidateId);
+        // Deve ter ido para ledger_only ou estacionamento ou discarded, nunca
+        // ficar sem destino (R5: rebaixamento automatico para ledger_only).
+        const destination = idsIn(mined.ledger_only).includes(candidateId)
+          || idsIn(mined.estacionamento).includes(candidateId)
+          || idsIn(mined.discarded).includes(candidateId);
+        expect(destination).toBe(true);
       }
     } finally {
       process.env.DEX_MEMORIA_HOME = originalDexMemoriaHome;
@@ -4524,28 +4522,17 @@ describe("PPIRTV flow engine", () => {
       provided: { implementation_done: true, changed_files: ["src/x.ts"] }
     });
     // Confirmar que o gate de revisao foi registrado (qualquer status)
-    const gateBeforeRegress = await engine.goalGateCheck({ flow_id: flowId, phase: "revisao", persist: true, provided: { diff_reviewed: true, barata_scan: true, test_executed: true, review_findings: ["ok"] } });
-    // Guardar o estado pre-regresso para comparar
-    const statusBeforeRegress = await engine.goalStatus({ flow_id: flowId });
-    const savedGateBefore = (statusBeforeRegress as Record<string, unknown>).gate as Record<string, unknown> | undefined;
+    await engine.goalGateCheck({ flow_id: flowId, phase: "revisao", persist: true, provided: { diff_reviewed: true, barata_scan: true, test_executed: true, review_findings: ["ok"] } });
+    expect((await engine.store.loadFlow(flowId)).gates["revisao"]).toBeDefined();
 
     // Regredir para revisao (simulando fiscal block em validacao)
     await engine.returnTo({ flow_id: flowId, to: "revisao" as AnyPhase as Phase, reason: "Fiscal bloqueou; revisar novamente" });
 
-    // APOS regresso, o gate de revisao deve estar invalidado. Se havia
-    // savedGate, ele nao deve mais existir (ou nao ser "passed" stale).
-    const statusAfterRegress = await engine.goalStatus({ flow_id: flowId });
-    const savedGateAfter = (statusAfterRegress as Record<string, unknown>).gate as Record<string, unknown> | undefined;
-    // Se antes havia gate e agora ainda ha, o status nao pode ser "passed"
-    // stale igual ao pre-regresso.
-    if (savedGateBefore) {
-      expect(savedGateAfter?.status ?? "absent").not.toBe(savedGateBefore.status === "passed" ? "passed" : "__keep__");
-    }
-    // Em qualquer caso, apos regresso o flow deve poder re-checar o gate
-    // sem depender de cache stale.
+    // O gate salvo da fase destino nao pode sobreviver ao regresso.
+    expect((await engine.store.loadFlow(flowId)).gates["revisao"]).toBeUndefined();
+    // Sem o material de revisao, a rechecagem comeca de novo: nao herda o "passed".
     const recheckedGate = await engine.goalGateCheck({ flow_id: flowId, phase: "revisao", persist: false, provided: {} });
-    expect(recheckedGate).toBeDefined();
-    expect(Array.isArray(recheckedGate.missing)).toBe(true);
+    expect(recheckedGate.status).not.toBe("passed");
   });
 
   it("T-HARD-D returnTo invalidates ALL downstream gates not just destination", async () => {
@@ -4594,16 +4581,18 @@ describe("PPIRTV flow engine", () => {
     expect(flowAfterRegress.gates["revisao"]).toBeUndefined();
   });
 
-  it("T-HARD-P2b normalizeGoalEnvelope rejects invalid mode value at boundary", async () => {
-    // P2b (adversario-codigo): mode invalido (case errado, typo, etc.) deve
-    // ser rejeitado na borda e nao entrar cru no store. O Zod do MCP protege,
-    // mas chamadas diretas ao engine precisam do mesmo guard.
+  it("T-HARD-P2b normalizeGoalEnvelope normalizes an invalid mode value to compact at boundary", async () => {
+    // P2b (adversario-codigo): mode invalido (case errado, typo, etc.) nao
+    // pode entrar cru no store. COMPORTAMENTO HOJE: a borda do engine NAO
+    // rejeita — cai no default "compact" (so o Zod do MCP rejeita). Rejeitar
+    // na borda e decisao de produto em aberto (UNTANGLE-LOG, rodada 2, T3);
+    // este teste fixa o comportamento atual ate ela ser tomada.
     const workspace = path.join(tempRoot, "hard-p2b-mode-invalid");
-    const sptPath = await writeFakeSpt(workspace, "Mode invalido rejeitado");
+    const sptPath = await writeFakeSpt(workspace, "Mode invalido normalizado");
     const started = await engine.startGoal({
       workspace,
       spt_path: sptPath,
-      objective: "Mode invalido rejeitado",
+      objective: "Mode invalido normalizado",
       idempotency_key: "dex-code:test-hard-p2b-mode-invalid",
       evidence_required: true,
       required_evidence: ["npm run check"],
@@ -6454,7 +6443,7 @@ describe("PPIRTV flow engine", () => {
     })).rejects.toThrow(/PROGRESS_TOTAL_MISMATCH/);
 
     const seeded = await engine.store.loadFlow(flowId);
-    for (let index = 1; index <= 100; index += 1) {
+    for (let index = 1; index <= WORK_PROGRESS_MAX_RUNNING_EVENTS; index += 1) {
       seeded.history.push({
         at: new Date().toISOString(),
         type: "work_progress_recorded",

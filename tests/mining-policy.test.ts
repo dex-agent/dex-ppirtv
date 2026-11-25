@@ -5,6 +5,8 @@ import {
   collectMemoryNuggets,
   isBookkeepingNugget,
   isWritableCandidate,
+  PARKING_PROMOTION_PREFIX,
+  VERDICT_BOOKKEEPING_PREFIX,
 } from "../src/memory/mining-policy.js";
 import type { MemoryCandidate } from "../src/domain.js";
 
@@ -127,12 +129,13 @@ describe("collectMemoryNuggets", () => {
 // coletor ve-lo (flow-engine.ts:1569 promove ANTES de collectMemoryNuggets),
 // entao o prefixo cru nao casava e o bookkeeping virava candidato.
 describe("isBookkeepingNugget na forma final do item", () => {
-  it("reconhece os 5 prefixos de bookkeeping do flow", () => {
-    expect(isBookkeepingNugget("Racional de veredito: objetivo atendido")).toBe(true);
-    expect(isBookkeepingNugget("Risco residual: PEND-01 aberto")).toBe(true);
-    expect(isBookkeepingNugget("Risco residual estacionado: PEND-01 aberto")).toBe(true);
-    expect(isBookkeepingNugget("Evidencia usada no veredito: ER-01 backup")).toBe(true);
-    expect(isBookkeepingNugget("Achado garimpado do veredito: resumo")).toBe(true);
+  it("todo prefixo que o veredito poe num item de parking e reconhecido como bookkeeping", () => {
+    for (const prefix of Object.values(VERDICT_BOOKKEEPING_PREFIX)) {
+      expect(isBookkeepingNugget(`${prefix} texto qualquer`), prefix).toBe(true);
+    }
+    for (const prefix of Object.values(PARKING_PROMOTION_PREFIX)) {
+      expect(isBookkeepingNugget(`${prefix}: ${Object.values(VERDICT_BOOKKEEPING_PREFIX)[0]} texto qualquer`), prefix).toBe(true);
+    }
   });
 
   it("preserva o contrato de produto: achado de review continua elegivel a candidato", () => {

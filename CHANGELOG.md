@@ -14,6 +14,35 @@ escopo, evidencias e lacunas quando existirem.
   clone consumidor, o `--check` do Playbook verifica os hashes das fontes
   distribuídas e reprova a divergência sem reescrever a projeção.
 
+- **Untangle rodada 2, onda 1 — cópias que divergiram e testes sem âncora
+  (2026-11-25; GO do dono; lista e redesenho em
+  `.agents/UNTANGLE-LOG.md`, seção RODADA 2; Trilho
+  `2026-11-25-untangle-rodada2-onda1`)**. **Segurança:** o armazenamento de
+  memória em runtime (`src/memory/memory-store.ts`) redigia chaves por uma
+  regex privada mais estreita que a fonte dona (`SECRET_KEY_PATTERN`): chaves
+  `credential`, `private_key` e variantes não eram redigidas nos streams
+  `recalls`/`hooks`/`candidates`/`parking-lot`. Agora usa `isSecretKeyName`
+  da fonte dona; teste novo `tests/memory-store-redaction.test.ts` (RED 4 de
+  5 antes da cura, controle positivo `token`). **Cópias consolidadas sem
+  mudança de comportamento:** prefixos de promoção do estacionamento e a
+  regex "não promover" passam a morar só em `mining-policy.ts`
+  (`PARKING_PROMOTION_PREFIX`, `PARKING_ONLY_PATTERN`), e os prefixos de
+  bookkeeping do veredito só em `VERDICT_BOOKKEEPING_PREFIX`, com o filtro
+  `BOOKKEEPING_NUGGET_PREFIXES` derivado dela. **Recusado com motivo**
+  (registrado no log): chaves flat de review em dois validadores, template de
+  memória produtor×validador e ajudantes do trio cutover — em cada caso a
+  repetição é proteção (ensino × gate, produtor × conferidor, corte × sonda).
+  **Testes:** 4 reescritos para falharem na regressão que guardam, cada um
+  com prova de reversão (T-HARD-P1: o bloco de asserção nunca rodava;
+  T4d: laço condicional; 2 guardas `if/return` que passavam vazias); 2 passam
+  a importar a constante exportada em vez do número; 1 duplicata vira teste
+  que ancora produtor ao filtro; 1 teste de medição sem consumidor sai da
+  suíte; T-HARD-P2b passa a declarar o comportamento fixado (normaliza para
+  `compact`) — rejeitar modo inválido na borda segue em aberto. `src/
+  flow-engine.ts` intocado (camping NOT_APPLICABLE). Fora desta onda, na fila:
+  utilitários duplicados (U1-U9), casos especiais do motor (E1-E9), T6, T7,
+  T12, T13.
+
 - **Régua de projeto + regra de publicação versionada (ISSUE-LOCAL-0050;
   lado do projeto do Trilho do registry
   `2026-11-23-regua-cardapio-copia-local`)**: nasce `docs/regua-projeto.md` —

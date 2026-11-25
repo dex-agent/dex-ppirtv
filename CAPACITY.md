@@ -1,3 +1,23 @@
+## Reavaliação — união da onda 1 do untangle rodada 2 ao main (2026-11-25)
+
+Delta sobre `32750e0`: merge do ramo `untangle-onda1-261125` (commit `e13d150`)
+por cima do PR 58. Nenhum arquivo de código além dos da onda 1:
+`src/memory/memory-store.ts`, `src/memory/mining-policy.ts`,
+`src/memory/parking-lot.ts` e `src/verdict-learning.ts`, mais 7 arquivos de
+teste e 1 novo. Conflito só em `CAPACITY.md`, `CAPACITY.receipt.json` e
+`CHANGELOG.md`: resolvido mantendo as entradas dos dois lados (PR 58 e onda 1)
+e acrescentando esta. `src/flow-engine.ts` INTOCADO. Recibo
+`reavaliacao_merge_untangle_onda1_261125`.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| CAP-10 segredo rejeitado antes de persistir | alterada pela onda 1 (redação de chave pela fonte dona); a união não acrescenta mudança | `tests/memory-store-redaction.test.ts`; entrada da onda 1 abaixo |
+| CAP-13 resolução de candidatos de memória | inalterada na união; prefixos com uma fonte só (entrada da onda 1) | `tests/mining-policy.test.ts` |
+| Superfícies do PR 58 (#55–#57) | inalteradas: a onda 1 não toca os arquivos do PR 58 | diff da união limitado aos 14 arquivos da onda 1 |
+| Suíte na árvore unida | 106 arquivos, 1144 aprovados, 4 pulados (main antes da união: 105, 1140, 4) | `npm test` exit 0 |
+| Projeção do PLAYBOOK | regenerada: a fonte `.agents/napkin.md` mudou (nota sobre a trava de merge); só a soma da fonte e a revisão geral mudam, as 2 regras continuam iguais | `generate-playbook.py --repo . --check` exit 0; diff de 2 linhas por arquivo |
+| Build e tipos | sem erro | `npm run build` e `npm run check:types` exit 0 |
+
 ## Reavaliação — correções da auditoria #55–#57 (2026-11-25)
 
 Delta sobre `6f08943`. O schema de `canonical-pairs` continua disponível
@@ -13,6 +33,30 @@ fica fora do clone.
 Validação focada no Windows: três regressões falharam antes das correções e
 41 testes passaram depois, em seis suítes. As 36 capacidades já
 inventariadas permanecem. Recibo `reavaliacao_issues_55_57_261125`.
+
+## Reavaliação — Untangle rodada 2, onda 1: redação de segredo pela fonte dona, prefixos em uma só fonte, testes com âncora (2026-11-25)
+
+Delta sobre `6f08943` (ramo `untangle-onda1-261125`, fora do `main` até GO):
+`src/memory/memory-store.ts` (redação por chave usa `isSecretKeyName` da fonte
+dona), `src/memory/mining-policy.ts` (passa a exportar
+`PARKING_PROMOTION_PREFIX`, `PARKING_ONLY_PATTERN` e
+`VERDICT_BOOKKEEPING_PREFIX`; o filtro deriva a lista dela),
+`src/memory/parking-lot.ts` e `src/verdict-learning.ts` (importam as
+constantes); 7 arquivos de teste e 1 novo. `src/flow-engine.ts` INTOCADO
+(`check:flow-engine`: `no-change-signal`). Receipt
+`reavaliacao_untangle_rodada2_onda1_261125`.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| CAP-10 segredo rejeitado antes de persistir | **alterada:** o runtime de memória redigia chaves por regex privada mais estreita que a dona; `credential`, `private_key`, `client_credentials`, `PRIVATE-KEY` não eram redigidas nos streams `recalls`/`hooks`/`candidates`/`parking-lot`. Agora segue `SECRET_KEY_PATTERN`. | `npx vitest run tests/memory-store-redaction.test.ts`: RED 4 de 5 antes da cura (controle positivo `token` passava), GREEN depois |
+| CAP-13 resolução de candidatos de memória | inalterada em comportamento; prefixos de promoção e de bookkeeping passam a ter uma fonte só | `tests/mining-policy.test.ts`, `tests/verdict-learning-filter.test.ts` verdes |
+| CAP-04 retorno sem salto para frente | teste T-HARD-P1 tinha a asserção central em bloco que nunca rodava; reescrito | mutação (delete do gate desligado) → vermelho |
+| Suíte | 106 arquivos, 1140 aprovados, 4 pulados (antes: 105, 1136, 4) — +5 do teste novo, −1 teste de medição sem consumidor | `npm test` exit 0 |
+| Tipos e compilação | sem erro | `npm run build` e `npm run check:types` exit 0 |
+
+Fora desta onda (declarado no Trilho e no `.agents/UNTANGLE-LOG.md`):
+utilitários duplicados U1-U9, casos especiais do motor E1-E9, testes T6, T7,
+T12 e T13.
 
 ## Reavaliação — fechamento da janela 261125 (2026-11-25)
 
