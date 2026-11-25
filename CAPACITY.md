@@ -1,3 +1,16 @@
+## Reavaliação — união do main (P12) ao ramo do prefixo (2026-11-25)
+
+Delta sobre `72cb244`: só documentação vinda do main (`81972ee`):
+`principles/PRINCIPLES.md` com o P12, PLAYBOOK regenerado e CHANGELOG.
+Conflito em `CAPACITY.md` e `CAPACITY.receipt.json`, resolvido mantendo as
+duas entradas. Nenhum arquivo de `src/`, `tests/` ou `scripts/` entra neste
+commit. Recibo `reavaliacao_uniao_main_no_ramo_prefixo_261125`.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| 36 capacidades | inalteradas por este commit | `npm run check` exit 0 na árvore unida, medido com a cura do prefixo ainda por commitar no ramo (os números já incluem a cura): 106 arquivos, 1145 aprovados, 4 pulados |
+| Playbook | em dia | `generate-playbook.py --repo . --check`: FRESCO |
+
 ## Reavaliação — RED do prefixo "Artefato de review para consulta" (2026-11-25)
 
 Delta sobre `f42be47` (ramo `prefixo-artefato-review-red-261125`): só
@@ -14,6 +27,21 @@ comportamento exige. A cura (o prefixo passar à fonte dona
 |---|---|---|
 | CAP-13 resolução de candidatos de memória | só o teste muda de expectativa; o código segue igual e o caminho do artefato de review ainda vira candidato | `npx vitest run tests/mining-policy.test.ts`: 3 falham, 12 passam |
 | Demais superfícies | inalteradas | nenhum arquivo de `src/` tocado |
+
+## Reavaliação — PRINCIPLES com o P12 e PLAYBOOK regenerado (2026-11-25)
+
+Delta sobre `f42be47`: só documentação. `principles/PRINCIPLES.md` recebe o
+P12 (46 linhas: 1 na lista de frases e a seção nova) e fica idêntico ao
+global `~/.agents/memories/principles/PRINCIPLES.md` (562 linhas cada).
+`PLAYBOOK.md` e `PLAYBOOK.index.json` regenerados porque a fonte
+`.agents/PLAN-TASKS/ACTIVE.md` mudou (só a soma da fonte e a revisão geral; as
+2 regras continuam iguais). Nenhum arquivo de `src/`, `tests/` ou `scripts/`
+tocado. Recibo `reavaliacao_principles_p12_261125`.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| 36 capacidades | inalteradas: mudança só de documentação | `npm run check` completo exit 0 com o P12 aplicado (medido antes da regeneração do PLAYBOOK): auditoria canônica, motor, capacidade, build, tipos e suíte com 106 arquivos, 1144 aprovados, 4 pulados |
+| Playbook | projeção em dia | `generate-playbook.py --repo . --check`: FRESCO |
 
 ## Reavaliação — união da onda 1 do untangle rodada 2 ao main (2026-11-25)
 

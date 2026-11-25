@@ -8,6 +8,11 @@ escopo, evidencias e lacunas quando existirem.
 
 ## [Unreleased] - 2026-07-28
 
+- **Princípios da casa (2026-11-25)**: `principles/PRINCIPLES.md` sincronizado
+  com a fonte global — entra o P12 ("o determinístico cobra o schema; o LLM
+  cumpre o schema"). `npm run audit:canonical`, que parava aqui, volta a
+  passar.
+
 - **Auditoria #55–#57**: `canonical-pairs --schema` funciona também por
   junção de diretório no Windows. A ajuda e o schema de `validate-spt`
   descrevem a normalização de caixa e espaços já usada pelo servidor. No
