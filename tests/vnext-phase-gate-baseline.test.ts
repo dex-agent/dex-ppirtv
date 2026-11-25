@@ -168,63 +168,6 @@ describe("EvaluatePhaseGate legacy oracle baseline", () => {
     expect(legacy.phase_advance_allowed).toBe(false);
     expect(comparison).toEqual(legacy);
   });
-
-  it("measures the core and oracle in separate blocks without a product speed verdict", async () => {
-    const flow = await officialFixture({
-      goal: "Measure isolated gate cost",
-      context: "Known context",
-      risks: ["Known risk"],
-      uncertainties: ["Known uncertainty"]
-    });
-    const coreSnapshot = {
-      phase: "pensamentos",
-      current_phase: "pensamentos",
-      has_next_phase: true,
-      requirements: [
-        requirement("goal", true),
-        requirement("context", true),
-        requirement("risks", true),
-        requirement("uncertainties", true)
-      ],
-      closure_blockers: [] as string[],
-      provided: {},
-      action_signature: "pensamentos:passed",
-      attempt_count: 1,
-      before_fingerprint: null,
-      after_fingerprint: null,
-      required_proof: [] as string[]
-    };
-    const coreSamples = 10_000;
-    const oracleSamples = 20;
-
-    const coreStartedAt = performance.now();
-    for (let index = 0; index < coreSamples; index += 1) {
-      evaluatePhaseGate(coreSnapshot);
-    }
-    const coreDurationMs = performance.now() - coreStartedAt;
-
-    const oracleStartedAt = performance.now();
-    for (let index = 0; index < oracleSamples; index += 1) {
-      await engine.goalGatePreflight({ flow_id: flow.flow_id, phase: "pensamentos" });
-    }
-    const oracleDurationMs = performance.now() - oracleStartedAt;
-
-    const measurement = {
-      core: { samples: coreSamples, duration_ms: coreDurationMs },
-      oracle: { samples: oracleSamples, duration_ms: oracleDurationMs },
-      limits: [
-        "different sample counts; no direct speed ratio",
-        "local in-memory fixture; excludes MCP host, queue, model and transport",
-        "measurement is not evidence of product latency improvement"
-      ]
-    };
-    console.info("[vnext-phase-gate-measurement]", JSON.stringify(measurement));
-
-    expect(measurement.core).toMatchObject({ samples: coreSamples });
-    expect(measurement.oracle).toMatchObject({ samples: oracleSamples });
-    expect(coreDurationMs).toBeGreaterThan(0);
-    expect(oracleDurationMs).toBeGreaterThan(0);
-  });
 });
 
 async function officialFixture(input: {

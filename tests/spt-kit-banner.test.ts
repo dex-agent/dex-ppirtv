@@ -47,11 +47,12 @@ describe("spt-kit preflight: banner do --schema x checks emitidos (vacina issue 
     }
   });
 
-  it("o cabecalho do fonte declara o mesmo shape maximo do banner (S00..S10 hoje)", () => {
-    const { max } = announcedRange();
-    const headerMentionsShape = /S(\d{2})\s*\+\s*shape\s*S(\d{2})/.exec(preflightSource.split("\n", 3).join("\n"));
-    if (headerMentionsShape) {
-      expect(Number(headerMentionsShape[2]), "cabecalho do preflight declara shape menor que o banner do --schema").toBe(max);
-    }
+  it("o cabecalho do fonte anuncia o mesmo range de checks que o banner do --schema", () => {
+    const { min, max } = announcedRange();
+    const header = preflightSource.split("\n", 3).join("\n");
+    const announced = /checks\s+S(\d{2})\.\.S(\d{2})/.exec(header);
+    expect(announced, "cabecalho do preflight nao anuncia 'checks Snn..Snn'").not.toBeNull();
+    expect(Number(announced![1]), "inicio do range no cabecalho difere do --schema").toBe(min);
+    expect(Number(announced![2]), "fim do range no cabecalho difere do --schema").toBe(max);
   });
 });

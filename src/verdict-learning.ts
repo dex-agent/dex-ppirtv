@@ -8,6 +8,7 @@
 import type { Evidence } from "./domain.js";
 import { unique } from "./lang-utils.js";
 import type { FiscalVerdictInput } from "./memory/mining-policy.js";
+import { VERDICT_BOOKKEEPING_PREFIX } from "./memory/mining-policy.js";
 
 function isStrongLearningText(value: string | undefined): boolean {
   return Boolean(value && /(falso verde|contrato|princip|harness|canonical|case|CPU|RTX|CUDA|Graphify|MCP|PPIRTV|loop|bloque|regress|falh)/i.test(value));
@@ -23,13 +24,13 @@ export function deriveVerdictLearning(
   const gold = [
     ...explicitGold,
     ...reviewFindings.filter(isStrongLearningText).map((finding) => `Achado de review: ${finding}`),
-    ...(isStrongLearningText(input.rationale) ? [`Achado garimpado do veredito: ${input.rationale}`] : [])
+    ...(isStrongLearningText(input.rationale) ? [`${VERDICT_BOOKKEEPING_PREFIX.achadoGarimpado} ${input.rationale}`] : [])
   ];
   const parking = [
     ...explicitParking,
-    ...(input.residual_risks ?? []).map((risk) => `Risco residual estacionado: ${risk}`),
+    ...(input.residual_risks ?? []).map((risk) => `${VERDICT_BOOKKEEPING_PREFIX.riscoResidualEstacionado} ${risk}`),
     ...(input.review_artifact_path ? [`Artefato de review para consulta: ${input.review_artifact_path}`] : []),
-    ...evidences.map((evidence) => `Evidencia usada no veredito: ${evidence.title}${evidence.uri ? ` -> ${evidence.uri}` : ""}`)
+    ...evidences.map((evidence) => `${VERDICT_BOOKKEEPING_PREFIX.evidenciaUsada} ${evidence.title}${evidence.uri ? ` -> ${evidence.uri}` : ""}`)
   ];
   return {
     gold_mining: unique(gold),

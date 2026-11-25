@@ -21,9 +21,26 @@ const THEME_RULES: Array<{ theme: string; pattern: RegExp }> = [
   { theme: "php", pattern: /php|laravel|composer/i }
 ];
 
-const PARKING_ONLY_PATTERN = /avaliar|depois|futuro|talvez|pendente|backlog|proximo ciclo/i;
+export const PARKING_ONLY_PATTERN = /avaliar|depois|futuro|talvez|pendente|backlog|proximo ciclo/i;
 const DISCARD_PATTERN = /descartar|ruido|sem promocao/i;
 const LEDGER_ONLY_PATTERN = /ledger[-_ ]only|somente ledger/i;
+
+// Prefixo com que o deposito de parking-lot (src/memory/parking-lot.ts) embrulha
+// cada item promovido a gold_mining. A forma e `${prefixo}: ${item}`.
+export const PARKING_PROMOTION_PREFIX = {
+  armadilha: "Armadilha observada",
+  pontoCego: "Ponto cego observado",
+  dicaDeOuro: "Dica de ouro observada",
+  heuristica: "Heuristica pratica"
+} as const;
+
+// Prefixos que o veredito (src/verdict-learning.ts) poe nos itens de parking que
+// sao registro operacional, nao aprendizado.
+export const VERDICT_BOOKKEEPING_PREFIX = {
+  achadoGarimpado: "Achado garimpado do veredito:",
+  riscoResidualEstacionado: "Risco residual estacionado:",
+  evidenciaUsada: "Evidencia usada no veredito:"
+} as const;
 
 // Bookkeeping do proprio flow NUNCA vira candidato de memoria: sao registros
 // operacionais (rationale do veredito, risco residual, linha de evidencia e o
@@ -33,25 +50,18 @@ const LEDGER_ONLY_PATTERN = /ledger[-_ ]only|somente ledger/i;
 const BOOKKEEPING_NUGGET_PREFIXES: readonly string[] = [
   "racional de veredito:",
   "risco residual:",
-  "risco residual estacionado:",
-  "evidencia usada no veredito:",
-  "achado garimpado do veredito:"
+  ...Object.values(VERDICT_BOOKKEEPING_PREFIX).map((prefix) => stripDiacritics(prefix.toLowerCase()))
 ];
 // "Achado de review:" NAO entra nesta lista de proposito: por contrato de
 // produto (tests/engine.test.ts T33) achados de review continuam elegiveis a
 // candidato editavel. Filtrar review aqui trocaria um defeito por uma regressao.
 
-// O deposito de parking-lot promove itens para gold_mining embrulhando-os com
-// um prefixo de observacao (ver src/memory/parking-lot.ts), e flow-engine.ts
-// promove o parking ANTES de collectMemoryNuggets. Filtrar por prefixo exige,
-// portanto, olhar a forma FINAL do item: estes wrappers sao removidos antes do
-// teste de bookkeeping. RED de origem: evd_20260914114519433_2448_0038.
-const PROMOTION_WRAPPER_PREFIXES: readonly string[] = [
-  "armadilha observada:",
-  "ponto cego observado:",
-  "dica de ouro observada:",
-  "heuristica pratica:"
-];
+// flow-engine.ts promove o parking ANTES de collectMemoryNuggets. Filtrar por
+// prefixo exige, portanto, olhar a forma FINAL do item: estes wrappers sao
+// removidos antes do teste de bookkeeping. RED de origem:
+// evd_20260914114519433_2448_0038.
+const PROMOTION_WRAPPER_PREFIXES: readonly string[] =
+  Object.values(PARKING_PROMOTION_PREFIX).map((prefix) => `${prefix.toLowerCase()}:`);
 const MAX_PROMOTION_UNWRAP_DEPTH = 4;
 // Por que 4: a promocao real produz UM nivel de embrulho
 // (parking-lot.ts:67 -> `${prefix}: ${item}`); 4 da folga para o embrulho duplo

@@ -1,4 +1,24 @@
 {
+  "reavaliacao_untangle_rodada2_onda1_261125": {
+    "date": "2026-11-25",
+    "scope": [
+      "src/memory/memory-store.ts",
+      "src/memory/mining-policy.ts",
+      "src/memory/parking-lot.ts",
+      "src/verdict-learning.ts",
+      "tests/engine.test.ts",
+      "tests/mcp.test.ts",
+      "tests/mining-policy.test.ts",
+      "tests/emenda-a2-deadlock.test.ts",
+      "tests/spt-kit-banner.test.ts",
+      "tests/vnext-phase-gate-baseline.test.ts",
+      "tests/memory-store-redaction.test.ts",
+      "CHANGELOG.md",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json"
+    ],
+    "delta": "Untangle rodada 2 onda 1 (ramo untangle-onda1-261125). CAP-10 ALTERADA: memory-store redigia chaves com regex privada mais estreita que SECRET_KEY_PATTERN (credential e private_key nao redigidas no runtime de memoria); agora usa isSecretKeyName; RED 4/5 antes, GREEN depois. Prefixos de promocao e de bookkeeping com uma fonte so (sem mudanca de comportamento). 4 testes reescritos com prova de reversao; 2 importam constante; 1 duplicata substituida; 1 teste de medicao sem consumidor removido. src/flow-engine.ts intocado. Suite: 106 arquivos, 1140 aprovados, 4 pulados (antes 105/1136/4). build e check:types exit 0."
+  },
   "reavaliacao_fechamento_janela_261125": {
     "date": "2026-11-25",
     "scope": [
