@@ -1,3 +1,19 @@
+## Reavaliação — cura do prefixo "Artefato de review para consulta" (2026-11-25)
+
+Delta sobre `df4279c` (ramo `prefixo-artefato-review-red-261125`):
+`src/memory/mining-policy.ts` (chave nova `artefatoReviewConsulta` em
+`VERDICT_BOOKKEEPING_PREFIX`), `src/verdict-learning.ts` (usa a constante) e
+`tests/verdict-learning-filter.test.ts` (teste do registro preservado). O
+filtro `isBookkeepingNugget` não mudou: já montava a lista a partir da
+constante. `src/flow-engine.ts` INTOCADO. Recibo
+`reavaliacao_cura_prefixo_artefato_review_261125`.
+
+| Superfície | Delta observado | Evidência |
+|---|---|---|
+| CAP-13 resolução de candidatos de memória | **alterada:** o caminho do artefato de review deixa de virar candidato de memória, cru e embrulhado pela promoção; o registro segue no parking_lot do veredito | os 3 testes do RED passam (`tests/mining-policy.test.ts` 15/15); `tests/verdict-learning-filter.test.ts` 2/2; mutação da chave → 4 testes falham, restaurada → 17/17 |
+| Fonte única do prefixo | o texto aparece 1 vez em `src/` | `rg -n -F "Artefato de review para consulta" src`: 1 linha, em `src/memory/mining-policy.ts` |
+| Suíte e tipos | sem regressão | `npm run check` exit 0 na árvore deste commit: 106 arquivos, 1145 aprovados, 4 pulados; build e tipos sem erro |
+
 ## Reavaliação — união do main (P12) ao ramo do prefixo (2026-11-25)
 
 Delta sobre `72cb244`: só documentação vinda do main (`81972ee`):

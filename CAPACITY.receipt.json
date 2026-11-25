@@ -1,4 +1,16 @@
 {
+  "reavaliacao_cura_prefixo_artefato_review_261125": {
+    "date": "2026-11-25",
+    "scope": [
+      "src/memory/mining-policy.ts",
+      "src/verdict-learning.ts",
+      "tests/verdict-learning-filter.test.ts",
+      "CHANGELOG.md",
+      "CAPACITY.md",
+      "CAPACITY.receipt.json"
+    ],
+    "delta": "Sobre df4279c (ramo prefixo-artefato-review-red-261125): chave nova artefatoReviewConsulta em VERDICT_BOOKKEEPING_PREFIX (src/memory/mining-policy.ts), uso da constante em src/verdict-learning.ts e teste do registro preservado em tests/verdict-learning-filter.test.ts. CAP-13 ALTERADA: o caminho do artefato de review deixa de virar candidato de memoria, cru e embrulhado; o registro segue no parking_lot do veredito. isBookkeepingNugget nao mudou. Provas: tests/mining-policy.test.ts 15/15 (os 3 do RED passam); tests/verdict-learning-filter.test.ts 2/2; mutacao da chave faz 4 falharem e, restaurada, da 17/17; rg do texto do prefixo em src/ da 1 linha; npm run check exit 0 com 106 arquivos, 1145 aprovados, 4 pulados. src/flow-engine.ts intocado."
+  },
   "reavaliacao_uniao_main_no_ramo_prefixo_261125": {
     "date": "2026-11-25",
     "scope": [

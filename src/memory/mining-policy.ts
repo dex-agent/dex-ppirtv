@@ -35,11 +35,13 @@ export const PARKING_PROMOTION_PREFIX = {
 } as const;
 
 // Prefixos que o veredito (src/verdict-learning.ts) poe nos itens de parking que
-// sao registro operacional, nao aprendizado.
+// sao registro operacional, nao aprendizado. O caminho do artefato de review
+// entra aqui: diz ONDE consultar, e nao aprendizado reutilizavel.
 export const VERDICT_BOOKKEEPING_PREFIX = {
   achadoGarimpado: "Achado garimpado do veredito:",
   riscoResidualEstacionado: "Risco residual estacionado:",
-  evidenciaUsada: "Evidencia usada no veredito:"
+  evidenciaUsada: "Evidencia usada no veredito:",
+  artefatoReviewConsulta: "Artefato de review para consulta:"
 } as const;
 
 // Bookkeeping do proprio flow NUNCA vira candidato de memoria: sao registros

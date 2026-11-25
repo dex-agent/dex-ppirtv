@@ -29,7 +29,7 @@ export function deriveVerdictLearning(
   const parking = [
     ...explicitParking,
     ...(input.residual_risks ?? []).map((risk) => `${VERDICT_BOOKKEEPING_PREFIX.riscoResidualEstacionado} ${risk}`),
-    ...(input.review_artifact_path ? [`Artefato de review para consulta: ${input.review_artifact_path}`] : []),
+    ...(input.review_artifact_path ? [`${VERDICT_BOOKKEEPING_PREFIX.artefatoReviewConsulta} ${input.review_artifact_path}`] : []),
     ...evidences.map((evidence) => `${VERDICT_BOOKKEEPING_PREFIX.evidenciaUsada} ${evidence.title}${evidence.uri ? ` -> ${evidence.uri}` : ""}`)
   ];
   return {
